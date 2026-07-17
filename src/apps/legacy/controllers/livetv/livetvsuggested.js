@@ -263,7 +263,9 @@ export default function (view, params) {
                 break;
         }
 
-        import(`../livetv/${depends}`).then(({ default: ControllerFactory }) => {
+        // The static '.js' suffix is required for bundlers to statically analyze the import
+        const controllerName = depends.replace(/\.js$/, '');
+        import(`../livetv/${controllerName}.js`).then(({ default: ControllerFactory }) => {
             let tabContent;
 
             if (index === 0) {

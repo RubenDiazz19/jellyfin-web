@@ -14,14 +14,19 @@ export interface AsyncRoute {
     type?: AppType
 }
 
+// NOTE: Route files use mixed extensions (.ts/.tsx), so these imports cannot
+// include an extension in their static part for Vite to analyze them.
+// The @vite-ignore comment suppresses the warning; the Vite dev server still
+// resolves the extensionless request at runtime. Production uses webpack,
+// which code-splits these through its own context module.
 const importRoute = (page: string, type: AppType) => {
     switch (type) {
         case AppType.Dashboard:
-            return import(/* webpackChunkName: "[request]" */ `../../apps/dashboard/routes/${page}`);
+            return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/dashboard/routes/${page}`);
         case AppType.Modern:
-            return import(/* webpackChunkName: "[request]" */ `../../apps/modern/routes/${page}`);
+            return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/modern/routes/${page}`);
         case AppType.Legacy:
-            return import(/* webpackChunkName: "[request]" */ `../../apps/legacy/routes/${page}`);
+            return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/legacy/routes/${page}`);
     }
 };
 

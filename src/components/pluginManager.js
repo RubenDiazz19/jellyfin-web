@@ -94,7 +94,11 @@ class PluginManager {
                 });
             } else {
                 console.debug(`Loading plugin (via dynamic import): ${pluginSpec}`);
-                const pluginResult = await import(/* webpackChunkName: "[request]" */ `../plugins/${pluginSpec}`);
+                // Plugin entry points use mixed extensions (.js/.ts), so this
+                // import cannot be statically analyzed by Vite; @vite-ignore
+                // suppresses the warning and the dev server resolves the
+                // extensionless request at runtime instead.
+                const pluginResult = await import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../plugins/${pluginSpec}`);
                 plugin = new pluginResult.default;
             }
         } else if (pluginSpec.then) {

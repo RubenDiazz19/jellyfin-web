@@ -268,7 +268,9 @@ export default function (view, params) {
                 break;
         }
 
-        import(`../shows/${depends}`).then(({ default: ControllerFactory }) => {
+        // The static '.js' suffix is required for bundlers to statically analyze the import
+        const controllerName = depends.replace(/\.js$/, '');
+        import(`../shows/${controllerName}.js`).then(({ default: ControllerFactory }) => {
             let tabContent;
 
             if (index === 1) {

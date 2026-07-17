@@ -3721,6 +3721,11 @@ export class PlaybackManager {
             if (player && this.isPlaying(player)) {
                 this._playNextAfterEnded = false;
                 onPlaybackStopped.call(player);
+                // Kill the underlying media element too — without this the
+                // <video> keeps playing (and streaming) if the browser
+                // discards the unload but keeps the page alive (bfcache,
+                // aggressive tab close on Chromium desktop).
+                try { player.stop(true, true); } catch { /* swallow */ }
             }
         };
 
@@ -4333,10 +4338,14 @@ export const playbackManager = new PlaybackManager();
 bindMediaSegmentManager(playbackManager);
 bindMediaSessionSubscriber(playbackManager);
 
-window.addEventListener('beforeunload', function () {
+function onPageClosing() {
     try {
         playbackManager.onAppClose();
     } catch (err) {
         console.error('error in onAppClose: ' + err);
     }
-});
+}
+window.addEventListener('beforeunload', onPageClosing);
+// beforeunload no dispara siempre en Chromium moderno (tab close agresivo,
+// móvil, bfcache) — pagehide es el evento fiable equivalente.
+window.addEventListener('pagehide', onPageClosing);

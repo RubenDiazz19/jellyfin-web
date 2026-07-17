@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { Action } from 'history';
 import { FunctionComponent, useEffect } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
@@ -33,31 +34,64 @@ interface ViewOptions {
     }
 }
 
+// Webpack (build de producción) resuelve el template literal `${controllerName}.js`
+// recursivamente vía [request], pero Vite (dev server) trata `${var}` como un
+// único segmento — el mapa que genera para el import dinámico sólo enumera los
+// archivos en el primer nivel de `controllers/`, ignorando subcarpetas como
+// `playback/video/index.js`. Con `import.meta.glob('**/*.js', { eager: false })`
+// declaramos el patrón recursivo explícitamente y ambos bundlers producen el
+// mismo mapa completo.
+const legacyControllers = import.meta.glob('../../apps/legacy/controllers/**/*.js');
+const legacyViews = import.meta.glob('../../apps/legacy/controllers/**/*.html');
+const dashboardControllers = import.meta.glob('../../apps/dashboard/controllers/**/*.js');
+const dashboardViews = import.meta.glob('../../apps/dashboard/controllers/**/*.html');
+const wizardControllers = import.meta.glob('../../apps/wizard/controllers/**/*.js');
+const wizardViews = import.meta.glob('../../apps/wizard/controllers/**/*.html');
+
 const importController = (
     appType: AppType,
     controller: string,
     view: string
 ) => {
+    // Strip the known extensions so they are part of the static import paths
+    // below, which is required for bundlers to statically analyze the imports.
+    const controllerName = controller.replace(/\.js$/, '');
+    const viewName = view.replace(/\.html$/, '');
+
+    let controllers: Record<string, () => Promise<unknown>>;
+    let views: Record<string, () => Promise<unknown>>;
+    let base: string;
     switch (appType) {
         case AppType.Dashboard:
-            return Promise.all([
-                import(/* webpackChunkName: "[request]" */ `../../apps/dashboard/controllers/${controller}`),
-                import(/* webpackChunkName: "[request]" */ `../../apps/dashboard/controllers/${view}`)
-                    .then(html => globalize.translateHtml(html))
-            ]);
+            controllers = dashboardControllers;
+            views = dashboardViews;
+            base = '../../apps/dashboard/controllers/';
+            break;
         case AppType.Wizard:
-            return Promise.all([
-                import(/* webpackChunkName: "[request]" */ `../../apps/wizard/controllers/${controller}`),
-                import(/* webpackChunkName: "[request]" */ `../../apps/wizard/controllers/${view}`)
-                    .then(html => globalize.translateHtml(html))
-            ]);
+            controllers = wizardControllers;
+            views = wizardViews;
+            base = '../../apps/wizard/controllers/';
+            break;
         default:
-            return Promise.all([
-                import(/* webpackChunkName: "[request]" */ `../../apps/legacy/controllers/${controller}`),
-                import(/* webpackChunkName: "[request]" */ `../../apps/legacy/controllers/${view}`)
-                    .then(html => globalize.translateHtml(html))
-            ]);
+            controllers = legacyControllers;
+            views = legacyViews;
+            base = '../../apps/legacy/controllers/';
     }
+
+    const controllerKey = `${base}${controllerName}.js`;
+    const viewKey = `${base}${viewName}.html`;
+    const controllerImporter = controllers[controllerKey];
+    const viewImporter = views[viewKey];
+    if (!controllerImporter) {
+        return Promise.reject(new Error(`[ViewManagerPage] no controller ${controllerKey}`));
+    }
+    if (!viewImporter) {
+        return Promise.reject(new Error(`[ViewManagerPage] no view ${viewKey}`));
+    }
+    return Promise.all([
+        controllerImporter(),
+        viewImporter().then(html => globalize.translateHtml(html))
+    ]);
 };
 
 const loadView = async (

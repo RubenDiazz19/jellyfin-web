@@ -41,8 +41,8 @@ Jellyfin Web is the frontend used for most of the clients available for end user
 
 ### Dependencies
 
-- [Node.js](https://nodejs.org/en/download)
-- npm (included in Node.js)
+- [Bun](https://bun.sh) (package manager and script runner)
+- [Node.js](https://nodejs.org/en/download) (used by the build tools)
 
 ### Getting Started
 
@@ -56,19 +56,22 @@ Jellyfin Web is the frontend used for most of the clients available for end user
 2. Install build dependencies in the project directory.
 
    ```sh
-   npm install
+   bun install
    ```
 
-3. Run the web client with webpack for local development.
+3. Run the web client with the Vite dev server (instant HMR) for local development.
 
    ```sh
-   npm start
+   bun start
    ```
 
-4. Build the client with sourcemaps available.
+4. Build the client with sourcemaps available (webpack, legacy-browser compatible).
 
    ```sh
-   npm run build:development
+   bun run build:development
    ```
+
+See [build/README.md](./build/README.md) for an overview of the build tooling
+(Vite for development and tests, webpack for production builds).
 
 Review the [Contributing Guide](./CONTRIBUTING.md) for more information on our process and tech stack.

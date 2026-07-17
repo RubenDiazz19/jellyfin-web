@@ -8,7 +8,7 @@ import {
 } from 'react-router-dom';
 
 import { DASHBOARD_APP_PATHS, DASHBOARD_APP_ROUTES } from 'apps/dashboard/routes/routes';
-import { APP_ROUTES as FRONTEND_APP_ROUTES } from 'apps/frontend/routes/routes';
+import { APP_ROUTES as FRONTEND_APP_ROUTES } from 'apps/frontend/app/routes';
 import { WIZARD_APP_ROUTES } from 'apps/wizard/routes/routes';
 import AppHeader from 'components/AppHeader';
 import Backdrop from 'components/Backdrop';

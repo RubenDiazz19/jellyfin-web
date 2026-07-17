@@ -193,10 +193,13 @@ function loadTranslation(translations, lang) {
             return;
         }
 
-        const url = filtered[0].path;
+        // Strip the extension so it is part of the static import path below,
+        // which is required for bundlers to statically analyze the import.
+        const langCode = filtered[0].path.replace(/\.json$/, '');
 
-        import(/* webpackChunkName: "[request]" */ `../../strings/${url}`).then((fileContent) => {
-            resolve(fileContent);
+        import(/* webpackChunkName: "[request]" */ `../../strings/${langCode}.json`).then((fileContent) => {
+            // JSON modules export the dictionary as their default export
+            resolve(fileContent.default || fileContent);
         }).catch(() => {
             resolve({});
         });

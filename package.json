@@ -67,6 +67,7 @@
     "ts-loader": "9.6.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.62.0",
+    "vite": "6.3.5",
     "vite-tsconfig-paths": "6.1.1",
     "vitest": "3.2.6",
     "webpack": "5.108.4",
@@ -158,13 +159,15 @@
     "Firefox ESR"
   ],
   "scripts": {
-    "start": "npm run serve",
-    "serve": "webpack serve --config webpack.dev.js",
+    "start": "vite",
+    "dev": "vite",
+    "serve": "vite",
+    "serve:webpack": "webpack serve --config webpack.dev.js",
     "build:analyze": "cross-env NODE_ENV=\"production\" webpack --config webpack.analyze.js",
     "build:development": "webpack --config webpack.dev.js",
     "build:production": "cross-env NODE_ENV=\"production\" webpack --config webpack.prod.js",
     "build:check": "tsc --noEmit",
-    "build:es-check": "npm run build:production && npm run escheck",
+    "build:es-check": "bun run build:production && bun run escheck",
     "escheck": "es-check",
     "lint": "eslint",
     "test": "vitest --watch=false --config vite.config.ts",
@@ -172,8 +175,9 @@
     "stylelint": "stylelint \"src/**/*.{css,scss}\""
   },
   "engines": {
+    "bun": ">=1.2.0",
     "node": ">=24.0.0",
     "npm": ">=11.0.0",
-    "yarn": "YARN NO LONGER USED - use npm instead."
+    "yarn": "YARN NO LONGER USED - use bun instead."
   }
 }
