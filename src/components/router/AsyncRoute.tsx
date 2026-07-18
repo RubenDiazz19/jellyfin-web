@@ -1,6 +1,6 @@
 import type { RouteObject } from 'react-router-dom';
 
-import { AppType } from 'constants/appType';
+import type { AppType } from 'constants/appType';
 
 export interface AsyncRoute {
     /** The URL path for this route. */
@@ -21,14 +21,13 @@ export interface AsyncRoute {
 // which code-splits these through its own context module.
 // Solo queda el dashboard como app con rutas async; el resto de apps
 // (legacy/modern/wizard) se eliminaron con el frontend custom.
-const importRoute = (page: string, _type: AppType) => {
-    return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/dashboard/routes/${page}`);
+const importRoute = (page: string) => {
+    return import(/* @vite-ignore */ `../../apps/dashboard/routes/${page}`);
 };
 
 export const toAsyncPageRoute = ({
     path,
-    page,
-    type = AppType.Legacy
+    page
 }: AsyncRoute): RouteObject => {
     return {
         path,
@@ -37,7 +36,7 @@ export const toAsyncPageRoute = ({
                 // If there is a default export, use it as the Component for compatibility
                 default: Component,
                 ...route
-            } = await importRoute(page ?? path, type);
+            } = await importRoute(page ?? path);
 
             return {
                 Component,

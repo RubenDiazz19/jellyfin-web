@@ -15,9 +15,9 @@ function mapCast(item: JFItem): CastMember[] {
         .map((p) => ({
             name: p.Name,
             role: p.Role || '',
-            photo: p.PrimaryImageTag && p.Id
-                ? imageUrl(p.Id, 'Primary', { tag: p.PrimaryImageTag, maxHeight: 320 })
-                : null
+            photo: p.PrimaryImageTag && p.Id ?
+                imageUrl(p.Id, 'Primary', { tag: p.PrimaryImageTag, maxHeight: 320 }) :
+                null
         }));
 }
 
@@ -51,9 +51,9 @@ function mapShow(item: JFItem): Show {
         backdrop: backdrops[0] ?? '',
         backdrops,
         poster: imageUrl(item.Id, 'Primary', { maxHeight: 900 }) ?? '',
-        logo: item.ImageTags?.Logo
-            ? imageUrl(item.Id, 'Logo', { tag: item.ImageTags.Logo, maxHeight: 400 }) ?? null
-            : null
+        logo: item.ImageTags?.Logo ?
+            imageUrl(item.Id, 'Logo', { tag: item.ImageTags.Logo, maxHeight: 400 }) ?? null :
+            null
     };
 }
 

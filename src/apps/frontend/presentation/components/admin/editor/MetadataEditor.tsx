@@ -56,7 +56,7 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
                     <div style={{ fontSize: 15, fontWeight: 500 }}>Editor de item</div>
                     <button
                         onClick={onClose}
-                        aria-label="Cerrar"
+                        aria-label='Cerrar'
                         style={{
                             marginLeft: 'auto', background: 'none', border: 'none',
                             color: T.dim, fontSize: 22, cursor: 'pointer', lineHeight: 1
@@ -68,11 +68,11 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
                     display: 'flex', gap: 4, padding: '6px 14px',
                     borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 13
                 }}>
-                    <TabButton label="Metadatos" active={tab === 'metadata'} onClick={() => setTab('metadata')} />
-                    <TabButton label="Identificar" active={tab === 'identify'} onClick={() => setTab('identify')} />
-                    <TabButton label="Imágenes" active={tab === 'images'} onClick={() => setTab('images')} />
+                    <TabButton label='Metadatos' active={tab === 'metadata'} onClick={() => setTab('metadata')} />
+                    <TabButton label='Identificar' active={tab === 'identify'} onClick={() => setTab('identify')} />
+                    <TabButton label='Imágenes' active={tab === 'images'} onClick={() => setTab('images')} />
                     {canSubs && (
-                        <TabButton label="Subtítulos" active={tab === 'subtitles'} onClick={() => setTab('subtitles')} />
+                        <TabButton label='Subtítulos' active={tab === 'subtitles'} onClick={() => setTab('subtitles')} />
                     )}
                 </div>
 

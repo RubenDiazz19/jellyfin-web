@@ -1,4 +1,3 @@
-import React from 'react';
 import globalize from 'lib/globalize';
 import Widget from './Widget';
 import DeviceCard from 'apps/dashboard/features/devices/components/DeviceCard';

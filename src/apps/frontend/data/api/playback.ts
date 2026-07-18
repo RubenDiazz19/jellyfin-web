@@ -114,6 +114,7 @@ export async function getPlaybackDecision(
     };
     if (src.SupportsDirectPlay || src.SupportsDirectStream) {
         const params = new URLSearchParams({
+            // eslint-disable-next-line @typescript-eslint/naming-convention -- nombre fijado por la API de Jellyfin
             api_key: session.accessToken,
             Static: 'true',
             MediaSourceId: src.Id

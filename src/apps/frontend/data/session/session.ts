@@ -52,7 +52,7 @@ export function notifySessionChanged() {
 export function clearSession() {
     const apiClient = ServerConnections.currentApiClient?.();
     if (apiClient?.accessToken?.()) {
-        apiClient.logout?.();
+        void apiClient.logout?.();
     }
     window.dispatchEvent(new Event(SESSION_EVENT));
 }

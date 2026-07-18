@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import React, { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useState } from 'react';
 
 import { appHost } from 'components/apphost';
 import Page from 'components/Page';

@@ -19,25 +19,26 @@ body.jf-frontend-active *::after { box-sizing: border-box; }
 html:has(body.jf-frontend-active),
 body.jf-frontend-active,
 body.jf-frontend-active #reactRoot {
-  height: auto !important;
-  min-height: 100vh !important;
+    height: auto !important;
+    min-height: 100vh !important;
 }
 
 body.jf-frontend-active {
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100% !important;
-  border: none !important;
-  background: #000 !important;
-  color: #fff;
-  color-scheme: dark;
-  font-family: 'Noto Sans', system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-  /* Desactiva "scroll anchoring": cuando cambia el contenido de la
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    border: none !important;
+    background: #000 !important;
+    color: #fff;
+    color-scheme: dark;
+    font-family: 'Noto Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+
+    /* Desactiva "scroll anchoring": cuando cambia el contenido de la
      página (navegar entre rutas), el navegador NO intenta preservar la
      posición visual reajustando scrollTop. */
-  overflow-anchor: none;
+    overflow-anchor: none;
 }
 
 /* Scrollbars ocultos también en html (el scrollbar del documento vive
@@ -46,16 +47,17 @@ body.jf-frontend-active {
    además el salto horizontal ya no existe porque no hay scrollbar que
    aparezca/desaparezca. */
 html:has(body.jf-frontend-active) {
-  color-scheme: dark;
-  background: #000 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  scrollbar-width: none;
+    color-scheme: dark;
+    background: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    scrollbar-width: none;
 }
+
 html:has(body.jf-frontend-active)::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 /* Nota: originalmente aquí había `#reactRoot { contain: layout }` para
@@ -75,18 +77,18 @@ html:has(body.jf-frontend-active)::-webkit-scrollbar {
    activo — nuestro fondo ya es negro completo. */
 body.jf-frontend-active .backdropContainer,
 body.jf-frontend-active .backgroundContainer {
-  pointer-events: none !important;
-  opacity: 0 !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
 }
 
 /* Fullscreen API — cuando algún elemento entra en pantalla completa,
    forzamos fondo negro para eliminar el "backdrop" blanco del navegador. */
-body.jf-frontend-active :fullscreen,
-body.jf-frontend-active :-webkit-full-screen {
-  background: #000 !important;
+body.jf-frontend-active :fullscreen {
+    background: #000 !important;
 }
+
 body.jf-frontend-active ::backdrop {
-  background: #000 !important;
+    background: #000 !important;
 }
 
 body.jf-frontend-active button { font-family: inherit; }
@@ -94,6 +96,7 @@ body.jf-frontend-active button { font-family: inherit; }
 /* Animaciones globales del prototipo — se dejan sin scope: son sólo @keyframes
    y no aplican estilos hasta que los referencia una clase, así que no
    interfieren con el resto de la app. */
+
 /* Animación de entrada de página. Solo opacity — NO translate. Motivo:
    App.tsx envuelve las páginas en un div con esta animación. Si añadimos
    `transform` (incluso translateY(6px)), ese div se convierte en el
@@ -102,58 +105,83 @@ body.jf-frontend-active button { font-family: inherit; }
    se posicionan mal si el usuario clica durante los 650ms de animación
    (parecen "moverse por la pantalla"). */
 @keyframes jfp-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes jfp-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-3px);
+    }
 }
 
 @keyframes jfp-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.35; }
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.35;
+    }
 }
 
 @keyframes jfp-arrow {
-  0%, 100% { transform: translateY(0); opacity: 0.9; }
-  50%      { transform: translateY(4px); opacity: 0.55; }
+    0%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.9;
+    }
+
+    50% {
+        transform: translateY(4px);
+        opacity: 0.55;
+    }
 }
 
 @keyframes jfp-skeleton {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
 
 .jfp-fade-in { animation: jfp-fade-in 0.6s ease-out both; }
 
 .jfp-hoverlift {
-  transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1);
+    transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 .jfp-hoverlift:hover { transform: translateY(-4px); }
 
 .jfp-playover {
-  opacity: 0;
-  transition: opacity 0.25s ease-out;
-  background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+    background: rgba(0, 0, 0, 0.35);
 }
 .jfp-hoverlift:hover .jfp-playover { opacity: 1; }
 
 /* Scrollbars discretas — sólo dentro del app. */
-body.jf-frontend-active ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+body.jf-frontend-active ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    background: transparent;
+}
 body.jf-frontend-active * { scrollbar-width: none; }
 
 .jfp-skeleton {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.04) 25%,
-    rgba(255, 255, 255, 0.10) 50%,
-    rgba(255, 255, 255, 0.04) 75%
-  );
-  background-size: 200% 100%;
-  animation: jfp-skeleton 1.6s ease-in-out infinite;
-  border-radius: 4px;
+    background:
+        linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.04) 25%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.04) 75%
+        );
+    background-size: 200% 100%;
+    animation: jfp-skeleton 1.6s ease-in-out infinite;
+    border-radius: 4px;
 }
 
 /* ---------------------------------------------------------------
@@ -169,18 +197,20 @@ body.jf-frontend-active * { scrollbar-width: none; }
    Sólo neutralizamos las diferencias visibles frente a AppLayout:
    scrollbar del navegador y backdrop del RootAppRouter. */
 html:has(body.jf-video-active) {
-  scrollbar-width: none;
-  background: #000 !important;
+    scrollbar-width: none;
+    background: #000 !important;
 }
+
 html:has(body.jf-video-active)::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+    width: 0;
+    height: 0;
+    display: none;
 }
+
 body.jf-video-active .backdropContainer,
 body.jf-video-active .backgroundContainer {
-  pointer-events: none !important;
-  opacity: 0 !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
 }
 
 /* Los iconos del OSD (play, pausa, subs, volumen…) heredan font-size
@@ -189,10 +219,11 @@ body.jf-video-active .backgroundContainer {
    ~50px. Fijamos un tamaño absoluto razonable para el reproductor. */
 .videoOsdBottom .paper-icon-button-light > .material-icons.xlargePaperIconButton,
 .videoOsdBottom .paper-icon-button-light > .material-icons.largePaperIconButton {
-  font-size: 28px !important;
+    font-size: 28px !important;
 }
+
 .videoOsdBottom .paper-icon-button-light {
-  padding: 8px !important;
+    padding: 8px !important;
 }
 
 /* ---------------------------------------------------------------
@@ -218,79 +249,80 @@ body.jf-video-active .backgroundContainer {
 
 html body.jf-frontend-active .dialog.actionSheet,
 html body.jf-video-active .dialog.actionSheet {
-  background: #202020 !important;
-  color: #fff !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 6px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5),
-              0 2px 6px rgba(0, 0, 0, 0.35) !important;
-  min-width: 200px !important;
-  max-width: 300px !important;
-  width: auto !important;
-  max-height: 420px !important;
-  padding: 6px 0 !important;
-  margin: 0 !important;
-  font-family: inherit !important;
-  font-size: 14px !important;
-  overflow: hidden !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+    background: #202020 !important;
+    color: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 6px !important;
+    box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.5),
+        0 2px 6px rgba(0, 0, 0, 0.35) !important;
+    min-width: 200px !important;
+    max-width: 300px !important;
+    width: auto !important;
+    max-height: 420px !important;
+    padding: 6px 0 !important;
+    margin: 0 !important;
+    font-family: inherit !important;
+    font-size: 14px !important;
+    overflow: hidden !important;
+    backdrop-filter: none !important;
 }
 
 html body.jf-frontend-active .dialog.actionSheet .actionSheetContent,
 html body.jf-video-active .dialog.actionSheet .actionSheetContent {
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
 }
+
 html body.jf-frontend-active .dialog.actionSheet .actionSheetScroller,
 html body.jf-video-active .dialog.actionSheet .actionSheetScroller {
-  max-height: 400px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow-y: auto !important;
+    max-height: 400px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
 }
 
 /* Título de sección (Audio, Subtítulos, Ajustes…) */
 html body.jf-frontend-active .dialog.actionSheet .actionSheetTitle,
 html body.jf-video-active .dialog.actionSheet .actionSheetTitle {
-  font-size: 11px !important;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.55) !important;
-  margin: 10px 16px 8px !important;
-  padding: 0 !important;
-  font-weight: 500;
+    font-size: 11px !important;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55) !important;
+    margin: 10px 16px 8px !important;
+    padding: 0 !important;
+    font-weight: 500;
 }
 
 /* Cada opción (Español / Inglés / …) — height auto para permitir wrap. */
 html body.jf-frontend-active .dialog.actionSheet .actionSheetMenuItem,
 html body.jf-video-active .dialog.actionSheet .actionSheetMenuItem {
-  display: block !important;
-  min-height: 36px !important;
-  height: auto !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  font-size: 14px !important;
-  color: #fff !important;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  cursor: pointer !important;
-  transition: background 0.12s ease !important;
-  text-align: left !important;
-  width: 100% !important;
+    display: block !important;
+    min-height: 36px !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 14px !important;
+    color: #fff !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    cursor: pointer !important;
+    transition: background 0.12s ease !important;
+    text-align: left !important;
+    width: 100% !important;
 }
 
 html body.jf-frontend-active .dialog.actionSheet .actionsheetListItemBody,
 html body.jf-video-active .dialog.actionSheet .actionsheetListItemBody {
-  padding: 8px 14px !important;
-  margin: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  min-height: 36px !important;
-  box-sizing: border-box !important;
-  width: 100% !important;
+    padding: 8px 14px !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 36px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
 }
 
 /* Icono de check (marca el item seleccionado). Cuando NO hay check en
@@ -298,64 +330,65 @@ html body.jf-video-active .dialog.actionSheet .actionsheetListItemBody {
    TODO el texto se alinee vertical con los items que sí tienen check. */
 html body.jf-frontend-active .dialog.actionSheet .actionsheetMenuItemIcon,
 html body.jf-video-active .dialog.actionSheet .actionsheetMenuItemIcon {
-  font-size: 18px !important;
-  color: rgba(255, 255, 255, 0.95) !important;
-  margin: 0 12px 0 0 !important;
-  padding: 0 !important;
-  width: 18px !important;
-  min-width: 18px !important;
-  flex-shrink: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+    font-size: 18px !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    margin: 0 12px 0 0 !important;
+    padding: 0 !important;
+    width: 18px !important;
+    min-width: 18px !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 html body.jf-frontend-active .dialog.actionSheet .actionSheetItemText,
 html body.jf-video-active .dialog.actionSheet .actionSheetItemText {
-  font-size: 14px !important;
-  line-height: 1.3 !important;
-  color: #fff !important;
-  flex: 1 !important;
-  /* Texto entero, sin cortar. Si no cabe en una línea, envuelve. El
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    color: #fff !important;
+    flex: 1 !important;
+
+    /* Texto entero, sin cortar. Si no cabe en una línea, envuelve. El
      popup tiene max-width 300px + padding — suficiente para casi todos
      los idiomas. */
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: unset !important;
-  word-break: break-word;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    word-break: break-word;
 }
 
 html body.jf-frontend-active .dialog.actionSheet .actionSheetItemAsideText,
 html body.jf-video-active .dialog.actionSheet .actionSheetItemAsideText {
-  font-size: 12px !important;
-  color: rgba(255, 255, 255, 0.5) !important;
-  margin: 0 0 0 12px !important;
-  opacity: 1 !important;
+    font-size: 12px !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    margin: 0 0 0 12px !important;
+    opacity: 1 !important;
 }
 
 html body.jf-frontend-active .dialog.actionSheet .actionSheetMenuItem:hover,
 html body.jf-frontend-active .dialog.actionSheet .actionSheetMenuItem:focus,
 html body.jf-video-active .dialog.actionSheet .actionSheetMenuItem:hover,
 html body.jf-video-active .dialog.actionSheet .actionSheetMenuItem:focus {
-  background: rgba(255, 255, 255, 0.08) !important;
-  transform: none !important;
-  outline: none !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    transform: none !important;
+    outline: none !important;
 }
 
 html body.jf-frontend-active .dialog.actionSheet .actionsheetDivider,
 html body.jf-video-active .dialog.actionSheet .actionsheetDivider {
-  margin: 4px 12px !important;
-  background: rgba(255, 255, 255, 0.08) !important;
-  height: 1px !important;
-  border: none !important;
+    margin: 4px 12px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    height: 1px !important;
+    border: none !important;
 }
 
 /* Backdrop del dialog: casi invisible — no queremos tapar el vídeo ni
    la página que está debajo del popup. */
 html body.jf-frontend-active .dialogBackdropOpened,
 html body.jf-video-active .dialogBackdropOpened {
-  opacity: 0.1 !important;
-  background: #000 !important;
+    opacity: 0.1 !important;
+    background: #000 !important;
 }
 
 /* ============================================================
@@ -363,343 +396,342 @@ html body.jf-video-active .dialogBackdropOpened {
    ============================================================ */
 
 .jfp-video {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  overflow: hidden;
-  background: #000;
-  color: #fff;
-  font-family: 'Inter', system-ui, sans-serif;
-  user-select: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    overflow: hidden;
+    background: #000;
+    color: #fff;
+    font-family: 'Inter', system-ui, sans-serif;
+    user-select: none;
 }
 
 .jfp-video.is-idle {
-  cursor: none;
+    cursor: none;
 }
 
 .jfp-video-el {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background: #000;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
 }
 
 .jfp-video-el::cue {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 1.05em;
-  line-height: 1.4;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.55);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 1.05em;
+    line-height: 1.4;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
 }
 
 /* ── Zonas superior/inferior con fade ── */
 
 .jfp-video-top {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 22px 26px;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
-  opacity: 1;
-  transition: opacity 0.35s ease;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 22px 26px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
+    opacity: 1;
+    transition: opacity 0.35s ease;
 }
 
 .jfp-video-title {
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.4px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.8);
 }
 
 .jfp-video-controls {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 3;
-  padding: 18px 26px 20px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), transparent);
-  opacity: 1;
-  transition: opacity 0.35s ease;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 3;
+    padding: 18px 26px 20px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.72), transparent);
+    opacity: 1;
+    transition: opacity 0.35s ease;
 }
 
 .jfp-video.is-idle .jfp-video-top,
 .jfp-video.is-idle .jfp-video-controls {
-  opacity: 0;
-  pointer-events: none;
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* ── Seek bar ── */
 
 .jfp-video-progress {
-  padding: 10px 0;
-  cursor: pointer;
-  touch-action: none;
+    padding: 10px 0;
+    cursor: pointer;
+    touch-action: none;
 }
 
 .jfp-video-progress-track {
-  position: relative;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 2px;
-  transition: height 0.15s ease;
+    position: relative;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 2px;
+    transition: height 0.15s ease;
 }
 
 .jfp-video-progress:hover .jfp-video-progress-track {
-  height: 5px;
+    height: 5px;
 }
 
 .jfp-video-progress-fill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  background: #fff;
-  border-radius: 2px;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: #fff;
+    border-radius: 2px;
 }
 
 .jfp-video-progress-thumb {
-  position: absolute;
-  top: 50%;
-  width: 13px;
-  height: 13px;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
-  transform: translate(-50%, -50%) scale(0);
-  transition: transform 0.15s ease;
+    position: absolute;
+    top: 50%;
+    width: 13px;
+    height: 13px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.15s ease;
 }
 
 .jfp-video-progress:hover .jfp-video-progress-thumb {
-  transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -50%) scale(1);
 }
 
 /* ── Fila de botones ── */
 
 .jfp-video-controls-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
 }
 
 .jfp-video-controls-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .jfp-video-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  color: rgba(255, 255, 255, 0.85);
-  background: none;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    color: rgba(255, 255, 255, 0.85);
+    background: none;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
 }
 
 .jfp-video-btn:hover,
 .jfp-video-btn.is-active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .jfp-video-btn-play {
-  width: 50px;
-  height: 50px;
+    width: 50px;
+    height: 50px;
 }
 
 .jfp-video-time {
-  margin-left: 10px;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  color: #fff;
+    margin-left: 10px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
 }
 
 .jfp-video-time-total {
-  color: rgba(255, 255, 255, 0.55);
+    color: rgba(255, 255, 255, 0.55);
 }
 
 /* ── Volumen ── */
 
 .jfp-video-volume {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .jfp-video-volume input[type='range'] {
-  width: 0;
-  height: 3px;
-  opacity: 0;
-  appearance: none;
-  background:
-    linear-gradient(to right, #fff var(--jfp-vol, 100%), rgba(255, 255, 255, 0.25) var(--jfp-vol, 100%));
-  border-radius: 2px;
-  outline: none;
-  cursor: pointer;
-  transition: width 0.25s ease, opacity 0.25s ease;
+    width: 0;
+    height: 3px;
+    opacity: 0;
+    appearance: none;
+    background: linear-gradient(to right, #fff var(--jfp-vol, 100%), rgba(255, 255, 255, 0.25) var(--jfp-vol, 100%));
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    transition: width 0.25s ease, opacity 0.25s ease;
 }
 
 .jfp-video-volume:hover input[type='range'],
 .jfp-video-volume input[type='range']:focus-visible {
-  width: 86px;
-  opacity: 1;
+    width: 86px;
+    opacity: 1;
 }
 
 .jfp-video-volume input[type='range']::-webkit-slider-thumb {
-  width: 11px;
-  height: 11px;
-  appearance: none;
-  background: #fff;
-  border-radius: 50%;
+    width: 11px;
+    height: 11px;
+    appearance: none;
+    background: #fff;
+    border-radius: 50%;
 }
 
 .jfp-video-volume input[type='range']::-moz-range-thumb {
-  width: 11px;
-  height: 11px;
-  background: #fff;
-  border: none;
-  border-radius: 50%;
+    width: 11px;
+    height: 11px;
+    background: #fff;
+    border: none;
+    border-radius: 50%;
 }
 
 /* ── Menú de ajustes (audio / subtítulos) ── */
 
 .jfp-video-settings {
-  position: relative;
+    position: relative;
 }
 
 .jfp-video-settings-menu {
-  position: absolute;
-  right: 0;
-  bottom: 56px;
-  z-index: 4;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 240px;
-  max-height: 60vh;
-  padding: 16px 8px;
-  overflow-y: auto;
-  background: rgba(16, 16, 18, 0.92);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+    position: absolute;
+    right: 0;
+    bottom: 56px;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 240px;
+    max-height: 60vh;
+    padding: 16px 8px;
+    overflow-y: auto;
+    background: rgba(16, 16, 18, 0.92);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
 }
 
 .jfp-video-settings-menu section {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
 
 .jfp-video-settings-menu header {
-  padding: 0 14px 8px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 2.5px;
-  color: rgba(255, 255, 255, 0.45);
-  text-transform: uppercase;
+    padding: 0 14px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
 }
 
 .jfp-video-settings-option {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 9px 14px;
-  font-family: inherit;
-  font-size: 13px;
-  text-align: left;
-  color: rgba(255, 255, 255, 0.75);
-  background: none;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    text-align: left;
+    color: rgba(255, 255, 255, 0.75);
+    background: none;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
 .jfp-video-settings-option:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .jfp-video-settings-option.is-active {
-  color: #fff;
+    color: #fff;
 }
 
 .jfp-video-settings-dot {
-  flex-shrink: 0;
-  width: 5px;
-  height: 5px;
-  background: transparent;
-  border-radius: 50%;
+    flex-shrink: 0;
+    width: 5px;
+    height: 5px;
+    background: transparent;
+    border-radius: 50%;
 }
 
 .jfp-video-settings-option.is-active .jfp-video-settings-dot {
-  background: #fff;
+    background: #fff;
 }
 
 /* ── Loading / error ── */
 
 .jfp-video-loading {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
 
 .jfp-video-spinner {
-  color: rgba(255, 255, 255, 0.9);
-  animation: jfp-video-spin 1s linear infinite;
+    color: rgba(255, 255, 255, 0.9);
+    animation: jfp-video-spin 1s linear infinite;
 }
 
 @keyframes jfp-video-spin {
-  to { transform: rotate(360deg); }
+    to { transform: rotate(360deg); }
 }
 
 .jfp-video-error {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.82);
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.82);
 }
 
 .jfp-video-error-msg {
-  max-width: 420px;
-  font-size: 15px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.85);
+    max-width: 420px;
+    font-size: 15px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .jfp-video-error-btn {
-  padding: 11px 26px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: #000;
-  background: #fff;
-  border: none;
-  border-radius: 999px;
-  cursor: pointer;
+    padding: 11px 26px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #000;
+    background: #fff;
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
 }

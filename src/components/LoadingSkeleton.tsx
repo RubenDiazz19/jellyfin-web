@@ -1,5 +1,5 @@
 import Skeleton, { type SkeletonProps } from '@mui/material/Skeleton/Skeleton';
-import React, { FC } from 'react';
+import { FC } from 'react';
 
 interface LoadingSkeletonProps extends SkeletonProps {
     isLoading: boolean

@@ -1,6 +1,6 @@
 import { type SupportedColorScheme, ThemeProvider, useColorScheme } from '@mui/material/styles';
 import { QueryClientProvider } from '@tanstack/react-query';
-import React, { type FC, type PropsWithChildren, useEffect } from 'react';
+import { type FC, type PropsWithChildren, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 

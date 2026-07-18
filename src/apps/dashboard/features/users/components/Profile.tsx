@@ -1,6 +1,6 @@
 import type { BaseItemDto, NameIdPair, SyncPlayUserAccessType, UserDto } from '@jellyfin/sdk/lib/generated-client';
 import escapeHTML from 'escape-html';
-import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import globalize from 'lib/globalize';

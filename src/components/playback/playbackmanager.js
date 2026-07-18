@@ -3723,7 +3723,9 @@ export class PlaybackManager {
                 // <video> keeps playing (and streaming) if the browser
                 // discards the unload but keeps the page alive (bfcache,
                 // aggressive tab close on Chromium desktop).
-                try { player.stop(true, true); } catch { /* swallow */ }
+                try {
+                    player.stop(true, true);
+                } catch { /* swallow */ }
             }
         };
 

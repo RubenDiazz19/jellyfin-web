@@ -42,7 +42,7 @@ export async function uploadImageFile(itemId: string, type: ImageType, file: Fil
     }
     const buf = await file.arrayBuffer();
     const base64 = arrayBufferToBase64(buf);
-    const mime = file.type && /^image\//.test(file.type) ? file.type : 'image/jpeg';
+    const mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
     const res = await fetch(`${trimSlash(session.serverUrl)}/Items/${itemId}/Images/${type}`, {
         method: 'POST',
         headers: {

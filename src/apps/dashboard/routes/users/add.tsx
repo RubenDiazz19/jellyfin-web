@@ -1,5 +1,5 @@
 import type { BaseItemDto, CreateUserByName } from '@jellyfin/sdk/lib/generated-client';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 
 import globalize from '../../../../lib/globalize';
 import loading from '../../../../components/loading/loading';

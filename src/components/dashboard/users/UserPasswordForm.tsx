@@ -1,4 +1,4 @@
-import React, { FunctionComponent, useCallback, useEffect, useMemo, useRef } from 'react';
+import { FunctionComponent, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client';
 import Dashboard from '../../../utils/dashboard';
 import globalize from '../../../lib/globalize';

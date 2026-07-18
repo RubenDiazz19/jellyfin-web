@@ -5,10 +5,11 @@ import type { Show } from '../models';
 
 export const showCache = new Map<string, Promise<Show>>();
 
+// showCache se rellena desde shows.ts; sonar solo ve este fichero.
 export function clearShowCache(): void {
-    showCache.clear();
+    showCache.clear(); // eslint-disable-line sonarjs/no-empty-collection
 }
 
 export function invalidateShow(itemId: string): void {
-    showCache.delete(itemId);
+    showCache.delete(itemId); // eslint-disable-line sonarjs/no-empty-collection
 }

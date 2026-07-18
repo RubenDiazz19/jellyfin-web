@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import Page from 'components/Page';
 import globalize from 'lib/globalize';
 import Box from '@mui/material/Box';

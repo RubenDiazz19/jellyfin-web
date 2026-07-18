@@ -142,9 +142,9 @@ function devStaticAssets(): Plugin {
                     filePath = path.join(SRC_DIR, 'serviceworker.js');
                 }
                 if (!filePath || !fs.existsSync(filePath)) return next();
-                res.setHeader('Content-Type', filePath.endsWith('.js')
-                    ? 'application/javascript'
-                    : 'application/octet-stream');
+                res.setHeader('Content-Type', filePath.endsWith('.js') ?
+                    'application/javascript' :
+                    'application/octet-stream');
                 fs.createReadStream(filePath).pipe(res);
             });
         }

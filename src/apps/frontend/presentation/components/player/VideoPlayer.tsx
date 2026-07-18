@@ -122,41 +122,43 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
             onClick={() => { videoPlayerVM.togglePlay(); showControls(); }}
             onDoubleClick={videoPlayerVM.toggleFullscreen}
         >
-            <video ref={videoRef} className="jfp-video-el" playsInline crossOrigin="anonymous">
+            {/* Los subtítulos se montan como <track> dinámico según la pista elegida. */}
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <video ref={videoRef} className='jfp-video-el' playsInline crossOrigin='anonymous'>
                 {subtitleUrl && (
                     <track
-                        kind="subtitles"
+                        kind='subtitles'
                         src={subtitleUrl}
                         default
-                        label="Subtítulos"
+                        label='Subtítulos'
                     />
                 )}
             </video>
 
-            <div className="jfp-video-top" onClick={(e) => e.stopPropagation()}>
+            <div className='jfp-video-top' onClick={(e) => e.stopPropagation()}>
                 <button
-                    type="button"
-                    className="jfp-video-btn"
+                    type='button'
+                    className='jfp-video-btn'
                     onClick={onClose}
-                    aria-label="Volver"
+                    aria-label='Volver'
                 >
                     <PlayerIc.Back />
                 </button>
                 {videoPlayerVM.title.value && (
-                    <div className="jfp-video-title">{videoPlayerVM.title.value}</div>
+                    <div className='jfp-video-title'>{videoPlayerVM.title.value}</div>
                 )}
             </div>
 
             {(loading || buffering) && !error && (
-                <div className="jfp-video-loading" aria-label="Cargando">
+                <div className='jfp-video-loading' aria-label='Cargando'>
                     <PlayerIc.Spinner />
                 </div>
             )}
 
             {error && (
-                <div className="jfp-video-error" onClick={(e) => e.stopPropagation()}>
-                    <div className="jfp-video-error-msg">{error}</div>
-                    <button type="button" className="jfp-video-error-btn" onClick={onClose}>
+                <div className='jfp-video-error' onClick={(e) => e.stopPropagation()}>
+                    <div className='jfp-video-error-msg'>{error}</div>
+                    <button type='button' className='jfp-video-error-btn' onClick={onClose}>
                         Volver
                     </button>
                 </div>

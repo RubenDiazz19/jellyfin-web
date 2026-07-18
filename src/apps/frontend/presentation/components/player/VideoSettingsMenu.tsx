@@ -25,18 +25,18 @@ export function VideoSettingsMenu() {
     if (!hasOptions) return null;
 
     return (
-        <div className="jfp-video-settings" ref={rootRef}>
+        <div className='jfp-video-settings' ref={rootRef}>
             <button
-                type="button"
+                type='button'
                 className={`jfp-video-btn${open ? ' is-active' : ''}`}
                 onClick={() => setOpen((v) => !v)}
-                aria-label="Audio y subtítulos"
+                aria-label='Audio y subtítulos'
                 aria-expanded={open}
             >
                 <PlayerIc.Settings />
             </button>
             {open && (
-                <div className="jfp-video-settings-menu">
+                <div className='jfp-video-settings-menu'>
                     {audio.length > 1 && (
                         <section>
                             <header>Audio</header>
@@ -54,7 +54,7 @@ export function VideoSettingsMenu() {
                         <section>
                             <header>Subtítulos</header>
                             <MenuOption
-                                label="Desactivados"
+                                label='Desactivados'
                                 active={videoPlayerVM.selectedSubtitle.value == null}
                                 onSelect={() => videoPlayerVM.setSubtitleTrack(null)}
                             />
@@ -81,11 +81,11 @@ function MenuOption({
 }) {
     return (
         <button
-            type="button"
+            type='button'
             className={`jfp-video-settings-option${active ? ' is-active' : ''}`}
             onClick={onSelect}
         >
-            <span className="jfp-video-settings-dot" aria-hidden />
+            <span className='jfp-video-settings-dot' aria-hidden />
             {label}
         </button>
     );

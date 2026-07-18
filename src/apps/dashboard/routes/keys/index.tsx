@@ -8,7 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import parseISO from 'date-fns/parseISO';
 import { type MRT_ColumnDef, type MRT_Theme, useMaterialReactTable } from 'material-react-table';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import DateTimeCell from 'apps/dashboard/components/table/DateTimeCell';
 import TablePage, { DEFAULT_TABLE_OPTIONS } from 'apps/dashboard/components/table/TablePage';

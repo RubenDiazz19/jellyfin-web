@@ -1,7 +1,7 @@
 import Search from '@mui/icons-material/Search';
 import InputBase, { type InputBaseProps } from '@mui/material/InputBase';
 import { alpha, styled } from '@mui/material/styles';
-import React, { type FC } from 'react';
+import { type FC } from 'react';
 
 const SearchContainer = styled('div')(({ theme }) => ({
     display: 'flex',

@@ -71,11 +71,11 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                 actual por otra distinta.
             </Muted>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 12 }}>
-                <Field label="Nombre">
+                <Field label='Nombre'>
                     <TextInput value={name} onChange={setName} />
                 </Field>
-                <Field label="Año">
-                    <TextInput value={year} onChange={setYear} placeholder="opcional" />
+                <Field label='Año'>
+                    <TextInput value={year} onChange={setYear} placeholder='opcional' />
                 </Field>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                     <PrimaryBtn onClick={doSearch} disabled={searching}>
@@ -94,7 +94,7 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                         }}>
                             {r.ImageUrl && (
                                 <img
-                                    src={r.ImageUrl} alt=""
+                                    src={r.ImageUrl} alt=''
                                     style={{ width: 60, height: 90, objectFit: 'cover', borderRadius: 4 }}
                                 />
                             )}

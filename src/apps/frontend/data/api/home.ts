@@ -7,16 +7,16 @@ import { loadSession } from '../session/session';
 import { apiFetch } from './http';
 import { imageUrl } from './images';
 import { getShows } from './shows';
-import { FIELDS_LIST, type JFItem, type JFResumeItem } from './types';
+import { FIELDS_LIST, type JFItem } from './types';
 
 export async function getHomeCarousel(): Promise<CarouselSlide[]> {
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
     const uid = session.userId;
     const [resume, latest] = await Promise.all([
-        apiFetch<{ Items: JFResumeItem[] }>(
+        apiFetch<{ Items: JFItem[] }>(
             `/Users/${uid}/Items/Resume?Limit=4&MediaTypes=Video&Fields=ProductionYear,RunTimeTicks,ParentId`
-        ).catch(() => ({ Items: [] as JFResumeItem[] })),
+        ).catch(() => ({ Items: [] as JFItem[] })),
         // /Items/Latest returns a bare array, not { Items }.
         apiFetch<JFItem[]>(
             `/Users/${uid}/Items/Latest?IncludeItemTypes=Series&Limit=5&Fields=${FIELDS_LIST}`
@@ -31,12 +31,12 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
         const pct = (it.UserData?.PlayedPercentage ?? 0) / 100;
         const runtimeMin = it.RunTimeTicks ? it.RunTimeTicks / 10_000_000 / 60 : 0;
         const backdrop =
-            (it.ParentBackdropItemId && it.ParentBackdropImageTags?.[0]
-                ? imageUrl(it.ParentBackdropItemId, 'Backdrop', {
+            (it.ParentBackdropItemId && it.ParentBackdropImageTags?.[0] ?
+                imageUrl(it.ParentBackdropItemId, 'Backdrop', {
                     tag: it.ParentBackdropImageTags[0],
                     maxWidth: 2560
-                })
-                : undefined)
+                }) :
+                undefined)
             ?? imageUrl(it.SeriesId, 'Backdrop', { maxWidth: 2560 })
             ?? '';
         slides.push({
@@ -52,12 +52,12 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
             remaining: runtimeMin ? String(Math.max(1, Math.round((1 - pct) * runtimeMin))) : '',
             backdrop,
             poster: imageUrl(it.SeriesId, 'Primary', { maxHeight: 900 }) ?? '',
-            logo: it.ParentLogoItemId
-                ? imageUrl(it.ParentLogoItemId, 'Logo', {
+            logo: it.ParentLogoItemId ?
+                imageUrl(it.ParentLogoItemId, 'Logo', {
                     tag: it.ParentLogoImageTag,
                     maxHeight: 400
-                })
-                : null,
+                }) :
+                null,
             jfEpisodeId: it.Id,
             positionTicks: it.UserData?.PlaybackPositionTicks
         });
@@ -67,9 +67,9 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
     for (const it of latest ?? []) {
         if (seen.has(it.Id)) continue;
         seen.add(it.Id);
-        const backdrop = it.BackdropImageTags?.[0]
-            ? imageUrl(it.Id, 'Backdrop', { tag: it.BackdropImageTags[0], maxWidth: 2560 })
-            : imageUrl(it.Id, 'Primary', { maxHeight: 1440 });
+        const backdrop = it.BackdropImageTags?.[0] ?
+            imageUrl(it.Id, 'Backdrop', { tag: it.BackdropImageTags[0], maxWidth: 2560 }) :
+            imageUrl(it.Id, 'Primary', { maxHeight: 1440 });
         slides.push({
             type: 'new',
             id: it.Id,
@@ -83,9 +83,9 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
             remaining: '',
             backdrop: backdrop ?? '',
             poster: imageUrl(it.Id, 'Primary', { maxHeight: 900 }) ?? '',
-            logo: it.ImageTags?.Logo
-                ? imageUrl(it.Id, 'Logo', { tag: it.ImageTags.Logo, maxHeight: 400 })
-                : null
+            logo: it.ImageTags?.Logo ?
+                imageUrl(it.Id, 'Logo', { tag: it.ImageTags.Logo, maxHeight: 400 }) :
+                null
         });
     }
 

@@ -1,5 +1,5 @@
 import ExtensionIcon from '@mui/icons-material/Extension';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import BaseCard from 'apps/dashboard/components/BaseCard';

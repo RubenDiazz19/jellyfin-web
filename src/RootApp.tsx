@@ -1,6 +1,5 @@
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
-import React from 'react';
 
 import QueryClientEventHandler from 'components/QueryClientEventHandler';
 import { ApiProvider } from 'hooks/useApi';

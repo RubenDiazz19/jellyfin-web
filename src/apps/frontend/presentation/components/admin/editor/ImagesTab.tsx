@@ -54,7 +54,7 @@ export function ImagesTab({ itemId }: { itemId: string }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
             <SingleImageSection
-                label="Póster (Primary)" itemId={itemId} type="Primary" src={primary}
+                label='Póster (Primary)' itemId={itemId} type='Primary' src={primary}
                 onDone={applyOk} onError={showErr}
             />
             <BackdropSection
@@ -62,7 +62,7 @@ export function ImagesTab({ itemId }: { itemId: string }) {
                 onDone={applyOk} onError={showErr}
             />
             <SingleImageSection
-                label="Logo" itemId={itemId} type="Logo" src={logo} wide
+                label='Logo' itemId={itemId} type='Logo' src={logo} wide
                 onDone={applyOk} onError={showErr}
             />
         </div>
@@ -95,7 +95,7 @@ function SingleImageSection({
         } catch (e) { onError(e); }
     };
     const doDelete = async () => {
-        if (!confirm(`¿Borrar ${label}?`)) return;
+        if (!window.confirm(`¿Borrar ${label}?`)) return;
         try {
             await deleteImage(itemId, type);
             onDone();
@@ -105,8 +105,8 @@ function SingleImageSection({
     const openAlternatives = async () => {
         setAlt('loading');
         try {
-            const { images } = await getRemoteImages(itemId, type);
-            setImages(images);
+            const { images: remote } = await getRemoteImages(itemId, type);
+            setImages(remote);
             setAlt('results');
         } catch (e) {
             setAlt('idle');
@@ -121,8 +121,7 @@ function SingleImageSection({
             toast(`${label} aplicada`, 'success');
             onDone();
             setAlt('idle');
-        } catch (e) { onError(e); }
-        finally { setApplying(null); }
+        } catch (e) { onError(e); } finally { setApplying(null); }
     };
 
     return (
@@ -169,7 +168,7 @@ function BackdropSection({
     const handleFiles = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
         for (const f of Array.from(files)) {
-            if (!/^image\//.test(f.type)) continue;
+            if (!f.type.startsWith('image/')) continue;
             try {
                 await uploadImageFile(itemId, 'Backdrop', f);
                 toast(`Fondo añadido (${(f.size / 1024).toFixed(0)} KB)`, 'success');
@@ -188,7 +187,7 @@ function BackdropSection({
     };
 
     const deleteAt = async (index: number) => {
-        if (!confirm(`¿Borrar el fondo ${index + 1}?`)) return;
+        if (!window.confirm(`¿Borrar el fondo ${index + 1}?`)) return;
         try {
             await deleteImage(itemId, 'Backdrop', index);
             onDone();
@@ -198,8 +197,8 @@ function BackdropSection({
     const openAlternatives = async () => {
         setAlt('loading');
         try {
-            const { images } = await getRemoteImages(itemId, 'Backdrop');
-            setImages(images);
+            const { images: remote } = await getRemoteImages(itemId, 'Backdrop');
+            setImages(remote);
             setAlt('results');
         } catch (e) {
             setAlt('idle');
@@ -213,8 +212,7 @@ function BackdropSection({
             await setImageByUrl(itemId, 'Backdrop', url);
             toast('Fondo añadido', 'success');
             onDone();
-        } catch (e) { onError(e); }
-        finally { setApplying(null); }
+        } catch (e) { onError(e); } finally { setApplying(null); }
     };
 
     return (
@@ -238,7 +236,7 @@ function BackdropSection({
                         }} />
                         <button
                             onClick={() => deleteAt(b.index)}
-                            aria-label="Borrar"
+                            aria-label='Borrar'
                             style={{
                                 position: 'absolute', top: 6, right: 6,
                                 width: 26, height: 26, borderRadius: '50%',
@@ -255,7 +253,7 @@ function BackdropSection({
                     onDrop={(e) => {
                         e.preventDefault();
                         setDragOver(false);
-                        handleFiles(e.dataTransfer.files);
+                        void handleFiles(e.dataTransfer.files);
                     }}
                     onClick={() => fileRef.current?.click()}
                     style={{
@@ -271,18 +269,18 @@ function BackdropSection({
                 </div>
             </div>
             <input
-                ref={fileRef} type="file" accept="image/*" multiple hidden
-                onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
+                ref={fileRef} type='file' accept='image/*' multiple hidden
+                onChange={(e) => { void handleFiles(e.target.files); e.target.value = ''; }}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <div style={{ flex: 1 }}>
-                    <TextInput value={newUrl} onChange={setNewUrl} placeholder="Añadir por URL: https://…" />
+                    <TextInput value={newUrl} onChange={setNewUrl} placeholder='Añadir por URL: https://…' />
                 </div>
                 <SecondaryBtn onClick={addByUrl} disabled={!newUrl}>Añadir URL</SecondaryBtn>
             </div>
             {alt === 'results' && (
                 <RemoteImagesGrid
-                    images={images} thumbAspect="16/9"
+                    images={images} thumbAspect='16/9'
                     onPick={applyRemote} applying={applying}
                     onClose={() => setAlt('idle')}
                 />
@@ -303,14 +301,14 @@ function ImageEditor({
     const [newUrl, setNewUrl] = useState('');
     const [dragOver, setDragOver] = useState(false);
     const fileRef = useRef<HTMLInputElement>(null);
-    const previewStyle: React.CSSProperties = wide
-        ? { width: 220, aspectRatio: '16/9' }
-        : { width: 100, aspectRatio: '2/3' };
+    const previewStyle: React.CSSProperties = wide ?
+        { width: 220, aspectRatio: '16/9' } :
+        { width: 100, aspectRatio: '2/3' };
 
     const handleFiles = (files: FileList | null) => {
         if (!files || files.length === 0) return;
         const f = files[0];
-        if (!/^image\//.test(f.type)) return;
+        if (!f.type.startsWith('image/')) return;
         onUploadFile(f);
     };
 
@@ -322,7 +320,7 @@ function ImageEditor({
                 onDrop={(e) => {
                     e.preventDefault();
                     setDragOver(false);
-                    handleFiles(e.dataTransfer.files);
+                    void handleFiles(e.dataTransfer.files);
                 }}
                 onClick={() => fileRef.current?.click()}
                 style={{
@@ -349,8 +347,8 @@ function ImageEditor({
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <input
-                    ref={fileRef} type="file" accept="image/*" hidden
-                    onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
+                    ref={fileRef} type='file' accept='image/*' hidden
+                    onChange={(e) => { void handleFiles(e.target.files); e.target.value = ''; }}
                 />
                 <div style={{ display: 'flex', gap: 8 }}>
                     <PrimaryBtn onClick={() => fileRef.current?.click()}>Subir archivo</PrimaryBtn>
@@ -359,7 +357,7 @@ function ImageEditor({
                 <div style={{ fontSize: 11, color: T.dim, marginTop: 4 }}>o desde una URL:</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <div style={{ flex: 1 }}>
-                        <TextInput value={newUrl} onChange={setNewUrl} placeholder="https://…" />
+                        <TextInput value={newUrl} onChange={setNewUrl} placeholder='https://…' />
                     </div>
                     <SecondaryBtn
                         onClick={() => { onApplyUrl(newUrl); setNewUrl(''); }}
@@ -401,7 +399,7 @@ function RemoteImagesGrid({
                                 borderRadius: 6, padding: '4px 8px', fontSize: 12
                             }}
                         >
-                            <option value="">Todos los idiomas</option>
+                            <option value=''>Todos los idiomas</option>
                             {langs.map((l) => (<option key={l} value={l}>{l}</option>))}
                         </select>
                     )}

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import globalize from 'lib/globalize';
 import Widget from './Widget';
 import type { TaskInfo } from '@jellyfin/sdk/lib/generated-client/models/task-info';

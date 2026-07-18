@@ -18,9 +18,9 @@ export class LoginViewModel {
     busy = signal(false);
 
     constructor(private api: ApiService) {
-        const saved = typeof localStorage !== 'undefined'
-            ? localStorage.getItem(SERVER_URL_KEY)
-            : null;
+        const saved = typeof localStorage !== 'undefined' ?
+            localStorage.getItem(SERVER_URL_KEY) :
+            null;
         if (saved) {
             this.serverUrl.value = saved;
             this.step.value = 'login';

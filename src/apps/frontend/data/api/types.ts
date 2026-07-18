@@ -63,8 +63,6 @@ export type JFItem = {
     };
 };
 
-export type JFResumeItem = JFItem;
-
 export const FIELDS_LIST =
     'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate';
 export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status`;

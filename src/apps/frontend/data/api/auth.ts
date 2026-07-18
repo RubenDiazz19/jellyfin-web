@@ -37,9 +37,9 @@ export async function authenticate(
         auth = await apiClient.authenticateUserByName(username, password);
     } catch (err: any) {
         throw new Error(
-            err?.status === 401
-                ? 'Usuario o contraseña incorrectos'
-                : `Error del servidor (${err?.status ?? '?'})`
+            err?.status === 401 ?
+                'Usuario o contraseña incorrectos' :
+                `Error del servidor (${err?.status ?? '?'})`
         );
     }
     const displayName = auth?.User?.Name ?? username;

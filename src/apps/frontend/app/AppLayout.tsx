@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import loading from 'components/loading/loading';
 import App from './App';
 import { toggleFullscreen } from '../shared/fullscreen';
@@ -35,7 +35,7 @@ export const Component = () => {
         return () => {
             document.body.classList.remove('jf-frontend-active');
             window.removeEventListener('keydown', onKey, { capture: true });
-            cleanupRefs.current.forEach(fn => fn());
+            cleanupRefs.current.forEach(fn => { fn(); });
             cleanupRefs.current = [];
         };
     }, []);

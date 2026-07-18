@@ -45,7 +45,11 @@ export class SearchViewModel {
     constructor(private api: ApiService) {}
 
     results = computed<SearchResult[]>(() => {
+        // Lecturas intencionadas: registran los contadores como dependencias
+        // del computed para re-filtrar cuando cambian favoritos/vistos.
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         this.favsVersion.value;
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         this.watchedVersion.value;
 
         const jf = this.shows.value.map((s) => ({ ...s, _type: 'show' as const }));
@@ -65,12 +69,12 @@ export class SearchViewModel {
             if (type === 'peliculas' && item._type !== 'movie') return false;
 
             if (state !== 'todo') {
-                const isFav = item._type === 'show'
-                    ? FAVS.has(item.id)
-                    : FAVS.has(`movie-${item.id}`);
-                const isWatched = item._type === 'show'
-                    ? isSeriesWatched(item)
-                    : isMovieWatched(item);
+                const isFav = item._type === 'show' ?
+                    FAVS.has(item.id) :
+                    FAVS.has(`movie-${item.id}`);
+                const isWatched = item._type === 'show' ?
+                    isSeriesWatched(item) :
+                    isMovieWatched(item);
                 if (state === 'favs' && !isFav) return false;
                 if (state === 'vistos' && !isWatched) return false;
                 if (state === 'no-vistos' && isWatched) return false;

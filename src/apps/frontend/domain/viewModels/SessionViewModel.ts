@@ -30,9 +30,9 @@ export class SessionViewModel {
         if (this.started || typeof window === 'undefined') return () => {};
         this.started = true;
         this.api.session.wireServerConnectionsEvents();
-        window.addEventListener(this.api.session.CHANGE_EVENT, this.refresh);
+        window.addEventListener(this.api.session.changeEvent, this.refresh);
         return () => {
-            window.removeEventListener(this.api.session.CHANGE_EVENT, this.refresh);
+            window.removeEventListener(this.api.session.changeEvent, this.refresh);
             this.started = false;
         };
     }

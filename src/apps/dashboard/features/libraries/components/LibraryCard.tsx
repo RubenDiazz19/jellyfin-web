@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { VirtualFolderInfo } from '@jellyfin/sdk/lib/generated-client/models/virtual-folder-info';
 import BaseCard from 'apps/dashboard/components/BaseCard';
 import getCollectionTypeOptions from '../utils/collectionTypeOptions';

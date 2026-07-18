@@ -169,9 +169,9 @@ export class VideoPlayerViewModel {
      */
     setSubtitleTrack = (index: number | null) => {
         if (index === this.selectedSubtitle.value) return;
-        const stream = index == null
-            ? null
-            : this.subtitleTracks.value.find((s) => s.index === index) ?? null;
+        const stream = index == null ?
+            null :
+            this.subtitleTracks.value.find((s) => s.index === index) ?? null;
 
         // Si había un subtítulo quemado, quitarlo (o cambiarlo) exige recarga.
         // -1 = "sin subtítulos" explícito para que el servidor no reactive
@@ -182,9 +182,9 @@ export class VideoPlayerViewModel {
         }
 
         this.selectedSubtitle.value = index;
-        this.subtitleUrl.value = stream && this.decision
-            ? this.api.playback.subtitleVttUrl(this.itemId, this.decision.mediaSourceId, stream.index)
-            : null;
+        this.subtitleUrl.value = stream && this.decision ?
+            this.api.playback.subtitleVttUrl(this.itemId, this.decision.mediaSourceId, stream.index) :
+            null;
     };
 
     /** Para la reproducción y reporta el stop. Idempotente. */
@@ -205,7 +205,7 @@ export class VideoPlayerViewModel {
             this.video.removeAttribute('src');
             this.video.load();
         }
-        this.detachFns.forEach((fn) => fn());
+        this.detachFns.forEach((fn) => { fn(); });
         this.detachFns = [];
         this.video = null;
         this.container = null;
@@ -268,9 +268,7 @@ export class VideoPlayerViewModel {
                 this.hls = hls;
                 hls.on(HlsMod.Events.ERROR, (_ev, data) => {
                     if (!data.fatal || this.closed) return;
-                    if (data.type === 'networkError') hls.startLoad();
-                    else if (data.type === 'mediaError') hls.recoverMediaError();
-                    else {
+                    if (data.type === 'networkError') { hls.startLoad(); } else if (data.type === 'mediaError') { hls.recoverMediaError(); } else {
                         this.error.value = 'Error fatal de reproducción HLS';
                         this.loading.value = false;
                     }
@@ -282,12 +280,12 @@ export class VideoPlayerViewModel {
             }
 
             // Subtítulo inicial o el que ha pedido la recarga (-1 = ninguno).
-            const subIndex = opts.subtitleStreamIndex === -1
-                ? null
-                : opts.subtitleStreamIndex ?? decision.activeSubtitleIndex ?? null;
-            const subStream = subIndex == null
-                ? null
-                : decision.subtitleStreams.find((s) => s.index === subIndex) ?? null;
+            const subIndex = opts.subtitleStreamIndex === -1 ?
+                null :
+                opts.subtitleStreamIndex ?? decision.activeSubtitleIndex ?? null;
+            const subStream = subIndex == null ?
+                null :
+                decision.subtitleStreams.find((s) => s.index === subIndex) ?? null;
             if (subStream?.isText) {
                 this.selectedSubtitle.value = subStream.index;
                 this.subtitleUrl.value = this.api.playback.subtitleVttUrl(
@@ -333,7 +331,9 @@ export class VideoPlayerViewModel {
 
     private startProgressTimer() {
         this.stopProgressTimer();
-        this.progressTimer = setInterval(() => void this.reportProgress(), PROGRESS_REPORT_MS);
+        this.progressTimer = setInterval(() => {
+            void this.reportProgress();
+        }, PROGRESS_REPORT_MS);
     }
 
     private stopProgressTimer() {

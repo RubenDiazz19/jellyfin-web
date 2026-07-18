@@ -1,4 +1,4 @@
-import React, { type FC, type PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react';
+import { type FC, type PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import useElementSize from 'hooks/useElementSize';
 import layoutManager from '../../components/layoutManager';

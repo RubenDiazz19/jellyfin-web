@@ -1,5 +1,4 @@
 import List from '@mui/material/List';
-import React from 'react';
 import StorageListItem from 'apps/dashboard/features/storage/components/StorageListItem';
 import globalize from 'lib/globalize';
 import Widget from './Widget';

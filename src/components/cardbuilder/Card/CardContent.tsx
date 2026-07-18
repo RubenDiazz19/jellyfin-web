@@ -1,4 +1,4 @@
-import React, { type FC } from 'react';
+import { type FC } from 'react';
 import classNames from 'classnames';
 import { getDefaultBackgroundClass } from '../utils/builder';
 import CardImageContainer from './CardImageContainer';

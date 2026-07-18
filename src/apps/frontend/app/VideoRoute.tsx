@@ -35,7 +35,7 @@ export const Component = () => {
         else navigate('/', { replace: true });
     }, [navigate]);
 
-    if (!itemId) return <Navigate to="/" replace />;
+    if (!itemId) return <Navigate to='/' replace />;
 
     return (
         <VideoPlayer

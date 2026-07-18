@@ -2,7 +2,7 @@ import type { SvgIconComponent } from '@mui/icons-material';
 import ImageNotSupported from '@mui/icons-material/ImageNotSupported';
 import Box from '@mui/material/Box/Box';
 import Paper from '@mui/material/Paper/Paper';
-import React, { type FC } from 'react';
+import { type FC } from 'react';
 
 import { LoadingSkeleton } from './LoadingSkeleton';
 

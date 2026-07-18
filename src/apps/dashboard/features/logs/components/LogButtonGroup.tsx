@@ -1,4 +1,3 @@
-import React from 'react';
 import ContentCopy from '@mui/icons-material/ContentCopy';
 import FileDownload from '@mui/icons-material/FileDownload';
 import VisibilityIcon from '@mui/icons-material/Visibility';

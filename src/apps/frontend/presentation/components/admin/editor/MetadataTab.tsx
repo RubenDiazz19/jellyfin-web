@@ -72,27 +72,27 @@ export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () =
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Field label="Título">
+            <Field label='Título'>
                 <TextInput value={name} onChange={setName} autoFocus />
             </Field>
-            <Field label="Título original">
+            <Field label='Título original'>
                 <TextInput value={originalTitle} onChange={setOriginalTitle} />
             </Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <Field label="Año">
-                    <TextInput value={year} onChange={setYear} placeholder="2015" />
+                <Field label='Año'>
+                    <TextInput value={year} onChange={setYear} placeholder='2015' />
                 </Field>
-                <Field label="Calificación">
-                    <TextInput value={officialRating} onChange={setOfficialRating} placeholder="TV-14" />
+                <Field label='Calificación'>
+                    <TextInput value={officialRating} onChange={setOfficialRating} placeholder='TV-14' />
                 </Field>
             </div>
-            <Field label="Géneros (separados por comas)">
+            <Field label='Géneros (separados por comas)'>
                 <TextInput value={genres} onChange={setGenres} />
             </Field>
-            <Field label="Sinopsis">
+            <Field label='Sinopsis'>
                 <TextArea value={overview} onChange={setOverview} rows={5} />
             </Field>
-            <Field label="Taglines (una por línea)">
+            <Field label='Taglines (una por línea)'>
                 <TextArea value={taglines} onChange={setTaglines} rows={2} />
             </Field>
             <FooterRow>

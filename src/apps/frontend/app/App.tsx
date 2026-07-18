@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { T } from '../presentation/theme/tokens';
+import { T, type HeroPosKey, type HeroScrimKey } from '../presentation/theme/tokens';
 import {
     pathToRoute,
     routeToPath,
@@ -20,14 +20,13 @@ import { LoginPage } from '../presentation/pages/LoginPage';
 
 // Páginas de acceso puntual: se cargan bajo demanda para no engordar el
 // bundle inicial. React.lazy + Suspense hace el split automáticamente.
-const GenrePage    = lazy(() => import('../presentation/pages/GenrePage').then(m => ({ default: m.GenrePage })));
-const PersonPage   = lazy(() => import('../presentation/pages/PersonPage').then(m => ({ default: m.PersonPage })));
+const GenrePage = lazy(() => import('../presentation/pages/GenrePage').then(m => ({ default: m.GenrePage })));
+const PersonPage = lazy(() => import('../presentation/pages/PersonPage').then(m => ({ default: m.PersonPage })));
 const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 import {
     useTweaks, TweaksPanel, TweakSection, TweakRadio
 } from '../presentation/components/tweaks/TweaksPanel';
-import type { HeroPosKey, HeroScrimKey } from '../presentation/theme/tokens';
 import { ToastProvider } from '../presentation/components/toast/ToastProvider';
 import { useSession } from '../domain/bridge/useSession';
 import { PlayerProvider } from '../presentation/components/player/PlayerProvider';
@@ -96,35 +95,35 @@ function AuthedApp() {
     return (
         <>
             <div key={location.pathname} style={{ animation: 'jfp-fade-in 0.65s ease' }}>
-                {route.page === 'home'     && <HomePage navigate={navigate} />}
-                {route.page === 'series'   && <LibraryPage kind="series" navigate={navigate} />}
-                {route.page === 'movies'   && <LibraryPage kind="movies" navigate={navigate} />}
-                {route.page === 'show'     && <ShowPage showId={route.showId} navigate={navigate} hero={t} />}
-                {route.page === 'season'   && <SeasonPage showId={route.showId} seasonN={route.seasonN} navigate={navigate} />}
-                {route.page === 'episode'  && <EpisodePage showId={route.showId} seasonN={route.seasonN} epN={route.epN} navigate={navigate} />}
-                {route.page === 'movie'    && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
-                {route.page === 'search'   && <SearchPage navigate={navigate} />}
+                {route.page === 'home' && <HomePage navigate={navigate} />}
+                {route.page === 'series' && <LibraryPage kind='series' navigate={navigate} />}
+                {route.page === 'movies' && <LibraryPage kind='movies' navigate={navigate} />}
+                {route.page === 'show' && <ShowPage showId={route.showId} navigate={navigate} hero={t} />}
+                {route.page === 'season' && <SeasonPage showId={route.showId} seasonN={route.seasonN} navigate={navigate} />}
+                {route.page === 'episode' && <EpisodePage showId={route.showId} seasonN={route.seasonN} epN={route.epN} navigate={navigate} />}
+                {route.page === 'movie' && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
+                {route.page === 'search' && <SearchPage navigate={navigate} />}
                 <Suspense fallback={<PageFallback />}>
-                    {route.page === 'genre'    && <GenrePage genre={route.genre} navigate={navigate} />}
-                    {route.page === 'person'   && <PersonPage name={route.name} navigate={navigate} />}
+                    {route.page === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
+                    {route.page === 'person' && <PersonPage name={route.name} navigate={navigate} />}
                     {route.page === 'settings' && <SettingsPage navigate={navigate} />}
-                    {route.page === 'profile'  && <SettingsPage navigate={navigate} />}
+                    {route.page === 'profile' && <SettingsPage navigate={navigate} />}
                 </Suspense>
             </div>
-            <TweaksPanel title="Tweaks">
-                <TweakSection label="Pantalla de detalle" />
+            <TweaksPanel title='Tweaks'>
+                <TweakSection label='Pantalla de detalle' />
                 <TweakRadio
-                    label="Posición" value={t.heroPos}
+                    label='Posición' value={t.heroPos}
                     options={['Esquina', 'Inferior', 'Centro'] as const}
                     onChange={(v) => setTweak('heroPos', v)}
                 />
                 <TweakRadio
-                    label="Información" value={t.heroInfo}
+                    label='Información' value={t.heroInfo}
                     options={['Mínima', 'Completa'] as const}
                     onChange={(v) => setTweak('heroInfo', v)}
                 />
                 <TweakRadio
-                    label="Veladura" value={t.heroScrim}
+                    label='Veladura' value={t.heroScrim}
                     options={['Sutil', 'Media', 'Intensa'] as const}
                     onChange={(v) => setTweak('heroScrim', v)}
                 />

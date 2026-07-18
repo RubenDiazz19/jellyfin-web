@@ -1,4 +1,4 @@
-import React, { type FC } from 'react';
+import { type FC } from 'react';
 
 import layoutManager from 'components/layoutManager';
 import { ItemAction } from 'constants/itemAction';

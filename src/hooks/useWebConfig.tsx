@@ -1,4 +1,4 @@
-import React, { type FC, type PropsWithChildren, createContext, useContext, useEffect, useState } from 'react';
+import { type FC, type PropsWithChildren, createContext, useContext, useEffect, useState } from 'react';
 
 import type { WebConfig } from '../types/webConfig';
 import defaultConfig from '../config.json';

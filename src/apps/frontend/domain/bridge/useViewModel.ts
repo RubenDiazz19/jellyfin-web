@@ -48,7 +48,7 @@ export function useViewModel<T extends object>(vm: T): T {
                 onChange();
             })
         );
-        return () => unsubs.forEach((u) => u());
+        return () => unsubs.forEach((u) => { u(); });
     }, [vm]);
 
     useSyncExternalStore(subscribe, () => version.current, () => version.current);

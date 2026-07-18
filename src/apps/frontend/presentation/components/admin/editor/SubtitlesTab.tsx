@@ -43,7 +43,7 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
                 Se descargan y añaden como pista adicional al fichero.
             </Muted>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12 }}>
-                <Field label="Idioma (ISO 639-2, ej. spa/eng/jpn)">
+                <Field label='Idioma (ISO 639-2, ej. spa/eng/jpn)'>
                     <TextInput value={lang} onChange={setLang} />
                 </Field>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>

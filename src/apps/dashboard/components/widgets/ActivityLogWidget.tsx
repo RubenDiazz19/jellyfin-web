@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import globalize from 'lib/globalize';
 import Widget from './Widget';
 import List from '@mui/material/List';

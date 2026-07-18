@@ -1,4 +1,3 @@
-import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 // NOTE: We need to import this first to initialize the connection

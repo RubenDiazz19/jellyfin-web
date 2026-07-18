@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import globalize from '../../../../lib/globalize';
 import confirm from '../../../../components/confirm/confirm';
 import UserCardBox from '../../../../components/dashboard/users/UserCardBox';

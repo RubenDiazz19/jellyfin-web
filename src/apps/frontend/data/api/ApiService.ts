@@ -61,7 +61,7 @@ const sessionService = {
     setDisplayName: setSessionDisplayName,
     notifyChanged: notifySessionChanged,
     wireServerConnectionsEvents,
-    CHANGE_EVENT: SESSION_EVENT
+    changeEvent: SESSION_EVENT
 };
 
 const authService = { authenticate, normalizeServerUrl };
@@ -117,6 +117,7 @@ export type SubtitleService = typeof subtitleService;
 export type AdminService = typeof adminService;
 
 export class ApiService {
+    // eslint-disable-next-line max-params -- DI por constructor con defaults
     constructor(
         readonly session: SessionService = sessionService,
         readonly auth: AuthService = authService,

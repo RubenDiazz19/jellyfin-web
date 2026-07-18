@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import type { ActivityLogEntry } from '@jellyfin/sdk/lib/generated-client/models/activity-log-entry';
 import Notifications from '@mui/icons-material/Notifications';
 import Avatar from '@mui/material/Avatar';

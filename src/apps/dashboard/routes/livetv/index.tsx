@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Page from 'components/Page';
 import { useNamedConfiguration } from 'hooks/useNamedConfiguration';

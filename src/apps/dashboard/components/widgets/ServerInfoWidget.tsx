@@ -1,4 +1,3 @@
-import React from 'react';
 import globalize from 'lib/globalize';
 import Widget from './Widget';
 import Paper from '@mui/material/Paper';

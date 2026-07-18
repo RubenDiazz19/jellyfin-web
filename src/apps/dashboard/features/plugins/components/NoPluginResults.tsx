@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
-import React, { type FC } from 'react';
+import { type FC } from 'react';
 
 import globalize from 'lib/globalize';
 

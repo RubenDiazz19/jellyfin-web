@@ -1,4 +1,4 @@
-import React, { type FC, useCallback, useEffect, useState } from 'react';
+import { type FC, useCallback, useEffect, useState } from 'react';
 import classNames from 'classnames';
 
 import CircularProgress, {
