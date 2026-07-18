@@ -16,6 +16,9 @@ config.json
 # vim
 *.sw?
 
+# local media library (dev server test content)
+media/
+
 # direnv
 .direnv/
 

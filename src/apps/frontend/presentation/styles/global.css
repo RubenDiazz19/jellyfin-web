@@ -195,74 +195,165 @@ body.jf-video-active .backgroundContainer {
   padding: 8px !important;
 }
 
-/* El menú de subtítulos/audio se abre en un `<dialog>` con la clase
-   .actionSheet. Por defecto:
-     - hereda un fondo transparente del theme (invisible sobre el vídeo)
-     - dialogHelper mete un `.dialogBackdrop` a 0.5 de opacidad, atenuando
-       toda la pantalla y ocultando la película.
-     - los items usan `.listItem` con padding grande + font-size heredado
-       de jellyfin (14.88px en desktop) → menús altos de ~340px.
-   Queremos un popup minimalista tipo Jellyfin, muy compacto, con el vídeo
-   visible detrás. */
-dialog.actionSheet,
-.actionSheet {
-  background-color: rgba(20, 20, 20, 0.94) !important;
+/* ---------------------------------------------------------------
+   Menús actionSheet — reset completo, estilo Jellyfin oficial.
+   ---------------------------------------------------------------
+   Los menús de audio/subs/settings del reproductor y todos los popups
+   del frontend custom.
+
+   IMPORTANTE: dialogHelper.createDialog() usa `<div>`, NO `<dialog>`
+   HTML5. Los selectores deben ser `.dialog.actionSheet`, no
+   `dialog.actionSheet` — sino no matchean nada y las reglas por
+   defecto de jellyfin siguen ganando.
+
+   Especificidad: `html body.jf-* .dialog.actionSheet` (0,4,2) para ganar
+   contra los defaults `.actionsheet-not-fullscreen` (0,1,0), incluso
+   cuando el actionSheet.scss se carga DESPUÉS de global.css (el
+   controller del video-osd lo importa dinámicamente al mostrar el
+   menú por primera vez).
+
+   Estética: fondo sólido #202020, borde 1px sutil, items 42px con icono
+   de check a la izquierda y texto 14px — igual que el menú nativo de
+   Jellyfin en /web/#/settings pero sin depender de temas MUI. */
+
+html body.jf-frontend-active .dialog.actionSheet,
+html body.jf-video-active .dialog.actionSheet {
+  background: #202020 !important;
   color: #fff !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75) !important;
-  border-radius: 4px !important;
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  min-width: 160px !important;
-  max-width: 280px !important;
-  font-size: 13px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5),
+              0 2px 6px rgba(0, 0, 0, 0.35) !important;
+  min-width: 200px !important;
+  max-width: 300px !important;
+  width: auto !important;
+  max-height: 420px !important;
+  padding: 6px 0 !important;
+  margin: 0 !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  overflow: hidden !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
-dialog.actionSheet .actionSheetContent {
-  padding: 0.25em 0 !important;
+
+html body.jf-frontend-active .dialog.actionSheet .actionSheetContent,
+html body.jf-video-active .dialog.actionSheet .actionSheetContent {
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
 }
-dialog.actionSheet .actionSheetTitle {
+html body.jf-frontend-active .dialog.actionSheet .actionSheetScroller,
+html body.jf-video-active .dialog.actionSheet .actionSheetScroller {
+  max-height: 400px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-y: auto !important;
+}
+
+/* Título de sección (Audio, Subtítulos, Ajustes…) */
+html body.jf-frontend-active .dialog.actionSheet .actionSheetTitle,
+html body.jf-video-active .dialog.actionSheet .actionSheetTitle {
   font-size: 11px !important;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  opacity: 0.55;
-  margin: 0.55em 0.9em 0.35em !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  margin: 10px 16px 8px !important;
   padding: 0 !important;
+  font-weight: 500;
 }
-dialog.actionSheet .actionSheetMenuItem {
-  min-height: 0 !important;
+
+/* Cada opción (Español / Inglés / …) — height auto para permitir wrap. */
+html body.jf-frontend-active .dialog.actionSheet .actionSheetMenuItem,
+html body.jf-video-active .dialog.actionSheet .actionSheetMenuItem {
+  display: block !important;
+  min-height: 36px !important;
+  height: auto !important;
   padding: 0 !important;
-  font-size: 13px !important;
+  margin: 0 !important;
+  font-size: 14px !important;
+  color: #fff !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+  transition: background 0.12s ease !important;
+  text-align: left !important;
+  width: 100% !important;
 }
-dialog.actionSheet .actionsheetListItemBody {
-  padding: 0.45em 0.85em !important;
+
+html body.jf-frontend-active .dialog.actionSheet .actionsheetListItemBody,
+html body.jf-video-active .dialog.actionSheet .actionsheetListItemBody {
+  padding: 8px 14px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 36px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
 }
-dialog.actionSheet .actionSheetItemText {
-  font-size: 13px !important;
-  line-height: 1.25 !important;
+
+/* Icono de check (marca el item seleccionado). Cuando NO hay check en
+   este item, el <span> queda vacío pero mantiene el ancho para que
+   TODO el texto se alinee vertical con los items que sí tienen check. */
+html body.jf-frontend-active .dialog.actionSheet .actionsheetMenuItemIcon,
+html body.jf-video-active .dialog.actionSheet .actionsheetMenuItemIcon {
+  font-size: 18px !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  margin: 0 12px 0 0 !important;
+  padding: 0 !important;
+  width: 18px !important;
+  min-width: 18px !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
-dialog.actionSheet .actionSheetItemAsideText {
-  font-size: 11px !important;
-  opacity: 0.55;
-  margin-left: 0.75em !important;
-  margin-right: 0 !important;
+
+html body.jf-frontend-active .dialog.actionSheet .actionSheetItemText,
+html body.jf-video-active .dialog.actionSheet .actionSheetItemText {
+  font-size: 14px !important;
+  line-height: 1.3 !important;
+  color: #fff !important;
+  flex: 1 !important;
+  /* Texto entero, sin cortar. Si no cabe en una línea, envuelve. El
+     popup tiene max-width 300px + padding — suficiente para casi todos
+     los idiomas. */
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  word-break: break-word;
 }
-dialog.actionSheet .actionsheetMenuItemIcon {
-  font-size: 16px !important;
-  margin: 0 0.55em 0 0.15em !important;
+
+html body.jf-frontend-active .dialog.actionSheet .actionSheetItemAsideText,
+html body.jf-video-active .dialog.actionSheet .actionSheetItemAsideText {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  margin: 0 0 0 12px !important;
+  opacity: 1 !important;
 }
-dialog.actionSheet .actionsheetDivider {
-  margin: 0.15em 0 !important;
+
+html body.jf-frontend-active .dialog.actionSheet .actionSheetMenuItem:hover,
+html body.jf-frontend-active .dialog.actionSheet .actionSheetMenuItem:focus,
+html body.jf-video-active .dialog.actionSheet .actionSheetMenuItem:hover,
+html body.jf-video-active .dialog.actionSheet .actionSheetMenuItem:focus {
   background: rgba(255, 255, 255, 0.08) !important;
+  transform: none !important;
+  outline: none !important;
 }
-dialog.actionSheet .actionSheetMenuItem:hover,
-dialog.actionSheet .actionSheetMenuItem:focus {
+
+html body.jf-frontend-active .dialog.actionSheet .actionsheetDivider,
+html body.jf-video-active .dialog.actionSheet .actionsheetDivider {
+  margin: 4px 12px !important;
   background: rgba(255, 255, 255, 0.08) !important;
+  height: 1px !important;
+  border: none !important;
 }
-/* Backdrop atenuado a casi nada — sólo un tono para dar profundidad, no
-   para tapar el vídeo. dialogHelper añade este div para TODOS los diálogos
-   (incluidos los no-modales), así que lo pisamos globalmente. */
-.dialogBackdropOpened {
-  opacity: 0.15 !important;
-}
-dialog.actionSheet::backdrop {
-  background: rgba(0, 0, 0, 0.15) !important;
+
+/* Backdrop del dialog: casi invisible — no queremos tapar el vídeo ni
+   la página que está debajo del popup. */
+html body.jf-frontend-active .dialogBackdropOpened,
+html body.jf-video-active .dialogBackdropOpened {
+  opacity: 0.1 !important;
+  background: #000 !important;
 }

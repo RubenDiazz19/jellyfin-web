@@ -6,6 +6,12 @@ import loading from 'components/loading/loading';
 import { playbackManager } from 'components/playback/playbackmanager';
 
 import { installFocusPreventScrollPatch } from '../shared/focusPatch';
+// Los overrides del actionSheet (menús de audio/subs/settings) y de
+// jf-video-active viven en global.css. AppLayout lo importa cuando el usuario
+// navega por el frontend, pero si entra directo a /video (F5 o URL directa)
+// esta ruta se monta sin pasar por AppLayout — importar aquí garantiza que
+// los estilos estén cargados sin depender del orden de navegación.
+import '../presentation/styles/global.css';
 
 // La VideoPage oficial usa ViewManagerPage → viewContainer, que necesita
 // encontrar `.mainAnimatedPages` en el DOM. Ese div lo pinta AppBody, así

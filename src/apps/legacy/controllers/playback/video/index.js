@@ -952,7 +952,10 @@ export default function (view) {
     }
 
     function onSettingsButtonClick() {
-        const btn = this;
+        // Capturar el rect ya (no el elemento) para que el popup se
+        // posicione donde estaba el botón al hacer click, aunque el OSD lo
+        // oculte antes de que se resuelva el import dinámico.
+        const btn = this.getBoundingClientRect();
 
         import('components/playback/playersettingsmenu').then((playerSettingsMenu) => {
             const player = currentPlayer;
@@ -1032,7 +1035,10 @@ export default function (view) {
 
             return opt;
         });
-        const positionTo = this;
+        // Capturar el rect ya (no pasar el elemento) para que el popup se
+        // posicione donde estaba el botón al hacer click, aunque el OSD lo
+        // oculte antes de que se resuelva el import dinámico.
+        const positionTo = this.getBoundingClientRect();
 
         import('components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
             actionsheet.show({
@@ -1149,7 +1155,10 @@ export default function (view) {
             menuItems.unshift(secondarySubtitleMenuItem);
         }
 
-        const positionTo = this;
+        // Capturar el rect ya (no pasar el elemento) para que el popup se
+        // posicione donde estaba el botón al hacer click, aunque el OSD lo
+        // oculte antes de que se resuelva el import dinámico.
+        const positionTo = this.getBoundingClientRect();
 
         import('components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
             actionsheet.show({

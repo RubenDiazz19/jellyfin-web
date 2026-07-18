@@ -35,7 +35,7 @@ interface Options {
     menuItemClass?: string;
     offsetLeft?: number;
     offsetTop?: number;
-    positionTo?: Element | null;
+    positionTo?: PositionTarget | null;
     positionY?: string;
     resolveOnClick?: boolean | (string | null)[];
     shaded?: boolean;
@@ -52,6 +52,8 @@ interface Offset {
     height: number;
 }
 
+type PositionTarget = Element | Offset;
+
 interface DialogOptions {
     autoFocus?: boolean;
     enableHistory?: boolean;
@@ -65,7 +67,11 @@ interface DialogOptions {
     size?: string;
 }
 
-function getOffsets(elems: Element[]): Offset[] {
+function isElement(target: PositionTarget): target is Element {
+    return typeof (target as Element).getBoundingClientRect === 'function';
+}
+
+function getOffsets(elems: PositionTarget[]): Offset[] {
     const results: Offset[] = [];
 
     if (!document) {
@@ -73,7 +79,7 @@ function getOffsets(elems: Element[]): Offset[] {
     }
 
     for (const elem of elems) {
-        const box = elem.getBoundingClientRect();
+        const box = isElement(elem) ? elem.getBoundingClientRect() : elem;
 
         results.push({
             top: box.top,
@@ -86,45 +92,48 @@ function getOffsets(elems: Element[]): Offset[] {
     return results;
 }
 
-function getPosition(positionTo: Element, options: Options, dlg: HTMLElement) {
+function getPosition(positionTo: PositionTarget, options: Options, dlg: HTMLElement) {
     const windowSize = dom.getWindowSize();
     const windowHeight = windowSize.innerHeight;
     const windowWidth = windowSize.innerWidth;
 
     const pos = getOffsets([positionTo])[0];
 
-    if (options.positionY !== 'top') {
-        pos.top += (pos.height || 0) / 2;
-    }
-
-    pos.left += (pos.width || 0) / 2;
-
     const height = dlg.offsetHeight || 300;
     const width = dlg.offsetWidth || 160;
+    const GAP = 8;
 
-    // Account for popup size
-    pos.top -= height / 2;
-    pos.left -= width / 2;
-
-    // Avoid showing too close to the bottom
-    const overflowX = pos.left + width - windowWidth;
-    const overflowY = pos.top + height - windowHeight;
-
-    if (overflowX > 0) {
-        pos.left -= (overflowX + 20);
-    }
-    if (overflowY > 0) {
-        pos.top -= (overflowY + 20);
+    // Si no hay un rect utilizable (botón oculto/desmontado → 0×0, o
+    // colapsado en un eje), centrar en vez de caer en la esquina superior
+    // izquierda. Un botón realmente visible siempre tiene ancho Y alto > 0.
+    if (!pos.width || !pos.height) {
+        const top = Math.max(10, Math.round((windowHeight - height) / 2));
+        const left = Math.max(10, Math.round((windowWidth - width) / 2));
+        return { top, left, width: 0, height: 0 };
     }
 
-    pos.top += (options.offsetTop || 0);
-    pos.left += (options.offsetLeft || 0);
+    // Ancla vertical: popup encima del botón (dropup). Si no cabe arriba,
+    // debajo. Si tampoco cabe debajo, se pega al bottom del viewport.
+    let top;
+    if (options.positionY === 'top') {
+        top = pos.top - height / 2;
+    } else {
+        top = pos.top - height - GAP;
+        if (top < 10) {
+            const below = pos.top + (pos.height || 0) + GAP;
+            top = (below + height <= windowHeight - 10) ? below : Math.max(10, windowHeight - height - 10);
+        }
+    }
 
-    // Do some boundary checking
-    pos.top = Math.max(pos.top, 10);
-    pos.left = Math.max(pos.left, 10);
+    // Ancla horizontal: centro del popup alineado con centro del botón,
+    // clampeado a los bordes del viewport (margen 10px).
+    let left = pos.left + (pos.width || 0) / 2 - width / 2;
+    left = Math.max(10, Math.min(left, windowWidth - width - 10));
 
-    return pos;
+    top += (options.offsetTop || 0);
+    left += (options.offsetLeft || 0);
+
+    return { top, left, width: pos.width, height: pos.height };
 }
 
 function centerFocus(elem: Element, horiz: boolean, on: boolean) {
