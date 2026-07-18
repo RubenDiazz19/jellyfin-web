@@ -50,6 +50,16 @@ export function PlayBtn({ size = 96, onClick, label, progress = null, hoverText 
 
       <button
         onClick={onClick}
+        // preventDefault en mousedown bloquea el focus nativo del navegador.
+        // Sin esto, Chrome enfoca el <button> al bajar el ratón y — si el
+        // botón está cerca del borde inferior del viewport (nuestros heroes
+        // son 100vh con `justify-content: flex-end`) — scrollea unos px para
+        // acomodar el focus ring. Ese scroll desplaza visualmente el botón,
+        // el mouseup cae fuera y el `click` no se dispara: hay que apretar
+        // dos veces. El monkey-patch de HTMLElement.prototype.focus fuerza
+        // preventScroll:true pero SÓLO en llamadas explícitas .focus() — el
+        // focus nativo del navegador durante mousedown no pasa por él.
+        onMouseDown={(e) => e.preventDefault()}
         aria-label={label || 'Reproducir'}
         style={{
           position: 'absolute', inset: 0,

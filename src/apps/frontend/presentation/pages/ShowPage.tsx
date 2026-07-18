@@ -196,6 +196,12 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
         <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', gap: 16 }}>
           <button
             onClick={startPlay}
+            // Mismo motivo que PlayBtn: sin bloquear el focus nativo, Chrome
+            // scrollea unos px al pulsar (el botón vive en el hero 100vh con
+            // flex-end) y el mouseup cae fuera → el click no dispara a la
+            // primera. preventDefault en mousedown mantiene el click intacto
+            // y la accesibilidad con Tab.
+            onMouseDown={(e) => e.preventDefault()}
             style={{
               position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center',
               gap: 10, padding: '14px 28px',
