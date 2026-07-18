@@ -19,15 +19,10 @@ export interface AsyncRoute {
 // The @vite-ignore comment suppresses the warning; the Vite dev server still
 // resolves the extensionless request at runtime. Production uses webpack,
 // which code-splits these through its own context module.
-const importRoute = (page: string, type: AppType) => {
-    switch (type) {
-        case AppType.Dashboard:
-            return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/dashboard/routes/${page}`);
-        case AppType.Modern:
-            return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/modern/routes/${page}`);
-        case AppType.Legacy:
-            return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/legacy/routes/${page}`);
-    }
+// Solo queda el dashboard como app con rutas async; el resto de apps
+// (legacy/modern/wizard) se eliminaron con el frontend custom.
+const importRoute = (page: string, _type: AppType) => {
+    return import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../../apps/dashboard/routes/${page}`);
 };
 
 export const toAsyncPageRoute = ({

@@ -93,13 +93,9 @@ class PluginManager {
                     ServerConnections
                 });
             } else {
-                console.debug(`Loading plugin (via dynamic import): ${pluginSpec}`);
-                // Plugin entry points use mixed extensions (.js/.ts), so this
-                // import cannot be statically analyzed by Vite; @vite-ignore
-                // suppresses the warning and the dev server resolves the
-                // extensionless request at runtime instead.
-                const pluginResult = await import(/* webpackChunkName: "[request]" */ /* @vite-ignore */ `../plugins/${pluginSpec}`);
-                plugin = new pluginResult.default;
+                // Local bundled plugins were removed along with the legacy
+                // frontend; only URL and promise-based plugins remain valid.
+                throw new Error(`Local plugins are no longer bundled: ${pluginSpec}`);
             }
         } else if (pluginSpec.then) {
             console.debug('Loading plugin (via promise/async function)');

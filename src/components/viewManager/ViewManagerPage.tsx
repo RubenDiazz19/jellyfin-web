@@ -41,42 +41,23 @@ interface ViewOptions {
 // `playback/video/index.js`. Con `import.meta.glob('**/*.js', { eager: false })`
 // declaramos el patrón recursivo explícitamente y ambos bundlers producen el
 // mismo mapa completo.
-const legacyControllers = import.meta.glob('../../apps/legacy/controllers/**/*.js');
-const legacyViews = import.meta.glob('../../apps/legacy/controllers/**/*.html');
 const dashboardControllers = import.meta.glob('../../apps/dashboard/controllers/**/*.js');
 const dashboardViews = import.meta.glob('../../apps/dashboard/controllers/**/*.html');
-const wizardControllers = import.meta.glob('../../apps/wizard/controllers/**/*.js');
-const wizardViews = import.meta.glob('../../apps/wizard/controllers/**/*.html');
 
 const importController = (
-    appType: AppType,
+    _appType: AppType,
     controller: string,
     view: string
 ) => {
     // Strip the known extensions so they are part of the static import paths
     // below, which is required for bundlers to statically analyze the imports.
+    // Solo el dashboard conserva vistas legacy (controller + html).
     const controllerName = controller.replace(/\.js$/, '');
     const viewName = view.replace(/\.html$/, '');
 
-    let controllers: Record<string, () => Promise<unknown>>;
-    let views: Record<string, () => Promise<unknown>>;
-    let base: string;
-    switch (appType) {
-        case AppType.Dashboard:
-            controllers = dashboardControllers;
-            views = dashboardViews;
-            base = '../../apps/dashboard/controllers/';
-            break;
-        case AppType.Wizard:
-            controllers = wizardControllers;
-            views = wizardViews;
-            base = '../../apps/wizard/controllers/';
-            break;
-        default:
-            controllers = legacyControllers;
-            views = legacyViews;
-            base = '../../apps/legacy/controllers/';
-    }
+    const base = '../../apps/dashboard/controllers/';
+    const controllers = dashboardControllers;
+    const views = dashboardViews;
 
     const controllerKey = `${base}${controllerName}.js`;
     const viewKey = `${base}${viewName}.html`;

@@ -17,7 +17,6 @@ import { appRouter } from '../components/router/appRouter';
 import { appHost } from '../components/apphost';
 import { playbackManager } from '../components/playback/playbackmanager';
 import { pluginManager } from '../components/pluginManager';
-import groupSelectionMenu from '../plugins/syncPlay/ui/groupSelectionMenu';
 import browser from './browser';
 import imageHelper from '../utils/image';
 import { getMenuLinks } from '../scripts/settings/webSettings';
@@ -272,14 +271,13 @@ function onPlaybackStop(e, stopInfo) {
 function onCastButtonClicked() {
     const btn = this;
 
-    import('../components/playback/playerSelectionMenu').then((playerSelectionMenu) => {
-        playerSelectionMenu.show(btn);
-    });
+    // El selector de reproductores remotos se retiró con el frontend custom.
+    void btn;
 }
 
 function onSyncButtonClicked() {
-    const btn = this;
-    groupSelectionMenu.show(btn);
+    // SyncPlay se retiró junto con los plugins locales; el botón nunca se
+    // muestra porque pluginManager ya no registra PluginType.SyncPlay.
 }
 
 function getItemHref(item, context) {

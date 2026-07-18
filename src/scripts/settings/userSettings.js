@@ -2,7 +2,6 @@ import { getDisplayPreferencesQuery } from 'hooks/api/useDisplayPreferences';
 import { getUserQuery } from 'hooks/api/useUser';
 import { QUERY_KEY } from 'hooks/useUsers';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
-import { StillWatchingOptions } from 'plugins/stillWatching/constants';
 import Events from 'utils/events';
 import { queryClient } from 'utils/query/queryClient';
 import { toBoolean } from 'utils/string';
@@ -577,14 +576,6 @@ export class UserSettings {
      * @param {string|undefined} [val] - The still watching prompt option.
      * @return {string} The still watching prompt option.
      */
-    stillWatchingPrompt(val) {
-        if (val !== undefined) {
-            return this.set('stillWatchingPrompt', val, false);
-        }
-
-        return this.get('stillWatchingPrompt', false) || StillWatchingOptions.Default;
-    }
-
     /**
     * @typedef {Object} Query
     * @property {number} StartIndex - query StartIndex.
