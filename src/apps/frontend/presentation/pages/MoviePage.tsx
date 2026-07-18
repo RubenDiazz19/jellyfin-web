@@ -20,10 +20,30 @@ type PageProps = { movieId: string; navigate: Navigate; hero?: HeroTweaks };
 export function MoviePage({ movieId, navigate, hero }: PageProps) {
     useViewModel(movieVM);
     useEffect(() => {
-        movieVM.load(movieId);
+        void movieVM.load(movieId);
     }, [movieId]);
     const movie = movieVM.movieFor(movieId);
-    if (!movie) return null;
+    if (!movie) {
+        if (movieVM.error.value) {
+            return (
+                <section style={{
+                    minHeight: '100vh', background: '#000', color: '#ff6b6b', fontFamily: T.ui,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
+                }}>
+                    {movieVM.error.value}
+                </section>
+            );
+        }
+        return (
+            <section style={{
+                minHeight: '100vh', background: '#000', color: T.dim, fontFamily: T.ui,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
+            }}>
+                Cargando…
+            </section>
+        );
+    }
     return (
         <>
             <MovieHero movie={movie} navigate={navigate} hero={hero} />

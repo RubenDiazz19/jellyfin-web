@@ -16,19 +16,22 @@ export class ShowViewModel {
     constructor(private api: ApiService) {}
 
     async load(id: string) {
-        // Si ya tenemos esa serie cargada, no parpadeamos a "loading":
-        // getShow cachea, pero además evitamos el reset visual.
-        if (this.show.value?.id === id && !this.error.value) return;
         const seq = ++this.seq;
-        this.show.value = null;
-        this.error.value = null;
-        this.loading.value = true;
+        // Si ya tenemos datos para esta id, no mostramos loading (optimistic):
+        // la UI ve los datos anteriores hasta que llegue el refresh.
+        if (this.show.value?.id !== id) {
+            this.show.value = null;
+            this.error.value = null;
+            this.loading.value = true;
+        }
         try {
             const show = await this.api.catalog.getShow(id);
             if (seq !== this.seq) return;
             this.show.value = show;
+            this.error.value = null;
         } catch (e) {
             if (seq !== this.seq) return;
+            if (this.show.value?.id === id) return; // no sobreescribir datos previos con error
             this.error.value = (e as Error).message;
         } finally {
             if (seq === this.seq) this.loading.value = false;

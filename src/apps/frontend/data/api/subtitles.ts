@@ -1,6 +1,6 @@
 // Remote subtitle search + download (OpenSubtitles etc., configured on server).
 
-import { invalidateShow } from './cache';
+import { clearShowCache } from './cache';
 import { apiSend } from './http';
 
 export type RemoteSubtitle = {
@@ -23,5 +23,5 @@ export async function downloadSubtitle(itemId: string, subtitleId: string): Prom
         'POST',
         {}
     );
-    invalidateShow(itemId);
+    clearShowCache();
 }

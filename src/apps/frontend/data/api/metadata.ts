@@ -1,7 +1,7 @@
 // Metadata editing + remote provider search (TMDB/TVDB "Identify…").
 
 import { loadSession } from '../session/session';
-import { invalidateShow } from './cache';
+import { clearShowCache } from './cache';
 import { apiFetch, apiSend } from './http';
 
 export type ItemMetadataPatch = {
@@ -35,7 +35,7 @@ export async function updateItemMetadata(itemId: string, patch: ItemMetadataPatc
     const current = await getItemRaw(itemId);
     const merged = { ...current, ...patch };
     await apiSend(`/Items/${itemId}`, 'POST', merged);
-    invalidateShow(itemId);
+    clearShowCache();
 }
 
 export async function remoteSearch(
@@ -61,5 +61,5 @@ export async function applyRemoteSearchResult(
     result: RemoteSearchResult
 ): Promise<void> {
     await apiSend(`/Items/RemoteSearch/Apply/${itemId}?replaceAllImages=true`, 'POST', result);
-    invalidateShow(itemId);
+    clearShowCache();
 }

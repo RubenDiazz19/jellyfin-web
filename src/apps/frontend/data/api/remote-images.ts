@@ -2,7 +2,7 @@
 // remote providers (TMDB/TVDB).
 
 import { loadSession } from '../session/session';
-import { invalidateShow } from './cache';
+import { clearShowCache } from './cache';
 import { apiFetch, apiSend, authHeader, trimSlash } from './http';
 import type { ImageType } from './images';
 
@@ -23,12 +23,12 @@ export async function setImageByUrl(itemId: string, type: ImageType, url: string
         `/Items/${itemId}/RemoteImages/Download?Type=${type}&ImageUrl=${encodeURIComponent(url)}`,
         'POST'
     );
-    invalidateShow(itemId);
+    clearShowCache();
 }
 
 export async function deleteImage(itemId: string, type: ImageType, index = 0): Promise<void> {
     await apiSend(`/Items/${itemId}/Images/${type}/${index}`, 'DELETE');
-    invalidateShow(itemId);
+    clearShowCache();
 }
 
 // Jellyfin expects the body as base64 with the image Content-Type. Format is
@@ -56,7 +56,7 @@ export async function uploadImageFile(itemId: string, type: ImageType, file: Fil
         const text = await res.text().catch(() => '');
         throw new Error(`Upload falló: HTTP ${res.status} ${text}`);
     }
-    invalidateShow(itemId);
+    clearShowCache();
 }
 
 export async function getRemoteImages(

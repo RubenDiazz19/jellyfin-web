@@ -2,7 +2,7 @@
 // the browser device profile we send.
 
 import { loadSession } from '../session/session';
-import { invalidateShow } from './cache';
+import { clearShowCache } from './cache';
 import { apiSend, trimSlash } from './http';
 
 export type MediaStreamInfo = {
@@ -192,7 +192,10 @@ export async function reportPlaybackStop(
                 'DELETE'
             ).catch(() => {});
         }
-        invalidateShow(itemId);
+        // itemId is the played EPISODE, but showCache is keyed by show id, so
+        // a targeted delete would never match. Clearing the whole cache keeps
+        // "continue watching" fresh; each show refetches once on next visit.
+        clearShowCache();
     } catch { /* silent */ }
 }
 

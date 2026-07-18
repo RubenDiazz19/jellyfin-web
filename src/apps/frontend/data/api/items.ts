@@ -1,7 +1,7 @@
 // Direct item actions surfaced from the "more" menu.
 
 import { loadSession } from '../session/session';
-import { invalidateShow } from './cache';
+import { clearShowCache } from './cache';
 import { apiSend, trimSlash } from './http';
 
 export async function markPlayed(itemId: string, played: boolean): Promise<void> {
@@ -11,7 +11,7 @@ export async function markPlayed(itemId: string, played: boolean): Promise<void>
         `/Users/${session.userId}/PlayedItems/${itemId}`,
         played ? 'POST' : 'DELETE'
     );
-    invalidateShow(itemId);
+    clearShowCache();
 }
 
 export async function toggleFavorite(itemId: string, favorite: boolean): Promise<void> {
@@ -21,7 +21,7 @@ export async function toggleFavorite(itemId: string, favorite: boolean): Promise
         `/Users/${session.userId}/FavoriteItems/${itemId}`,
         favorite ? 'POST' : 'DELETE'
     );
-    invalidateShow(itemId);
+    clearShowCache();
 }
 
 export async function refreshItemMetadata(itemId: string): Promise<void> {
@@ -33,7 +33,7 @@ export async function refreshItemMetadata(itemId: string): Promise<void> {
 
 export async function deleteItem(itemId: string): Promise<void> {
     await apiSend(`/Items/${itemId}`, 'DELETE');
-    invalidateShow(itemId);
+    clearShowCache();
 }
 
 export function downloadUrl(itemId: string): string {

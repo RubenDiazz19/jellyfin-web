@@ -1,8 +1,3 @@
-// ViewModel del detalle de película. La API de Jellyfin del frontend aún no
-// expone películas (solo series), así que resuelve contra el catálogo proto.
-// Cuando exista catalog.getMovie(), este VM es el único punto a tocar.
-// Regla MVVM: esta clase no importa React ni nada de presentation/.
-
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { PROTO_DATA, type Movie } from '../../data/models';
@@ -12,15 +7,46 @@ export class MovieViewModel {
     loading = signal(false);
     error = signal<string | null>(null);
 
+    private seq = 0;
+
     constructor(private api: ApiService) {}
 
-    load(id: string) {
-        this.movie.value = PROTO_DATA.movies[id] ?? null;
-        this.error.value = null;
-        this.loading.value = false;
+    async load(id: string) {
+        // Si ya tenemos esa película cargada desde API y no ha cambiado la id,
+        // solo refrescamos si viene de PROTO_DATA (primera carga).
+        const cached = this.movie.value;
+        if (cached && cached.id === id && !this.error.value && !PROTO_DATA.movies[id]) return;
+
+        // Limpiamos el error si cambiamos de id
+        if (cached?.id !== id) this.error.value = null;
+
+        const seq = ++this.seq;
+        // Primero mostramos proto data instantáneamente si existe
+        const proto = PROTO_DATA.movies[id];
+        if (proto) {
+            this.movie.value = proto;
+            this.loading.value = false;
+            this.error.value = null;
+        } else {
+            this.movie.value = null;
+            this.loading.value = true;
+        }
+
+        try {
+            const movie = await this.api.catalog.getMovie(id);
+            if (seq !== this.seq) return;
+            this.movie.value = movie;
+            this.loading.value = false;
+            this.error.value = null;
+        } catch (e) {
+            if (seq !== this.seq) return;
+            // Si ya teníamos proto data, no sobreescribimos con error
+            if (proto) return;
+            this.error.value = (e as Error).message;
+            this.loading.value = false;
+        }
     }
 
-    /** Película cargada solo si coincide con la id pedida. */
     movieFor(id: string): Movie | null {
         const m = this.movie.value;
         return m && m.id === id ? m : null;

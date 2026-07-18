@@ -6,6 +6,7 @@ export { authenticate, type AuthResult } from './auth';
 export { imageUrl, getItemBackdrops, type ImageType } from './images';
 export { clearShowCache } from './cache';
 export { getShows, getShow } from './shows';
+export { getMovie } from './movies';
 export { getHomeCarousel } from './home';
 export {
     getPlaybackDecision,

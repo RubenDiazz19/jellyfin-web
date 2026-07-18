@@ -76,9 +76,9 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         const { x, width } = dragStart.current;
         setDragPct(((e.clientX - x) / width) * (100 / slideCount));
     };
-    const onPointerUp = () => {
+    const onPointerUp = (e: React.PointerEvent) => {
         if (!dragging || !dragStart.current) return;
-        const dxPct = dragPct * (slideCount / 100); // volvemos a fracción (-1..1)
+        const dxPct = dragPct * (slideCount / 100);
         let delta = 0;
         if (dxPct < -0.15) delta = 1;
         else if (dxPct > 0.15) delta = -1;
@@ -87,6 +87,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         setDragPct(0);
         dragStart.current = null;
         setPaused(false);
+        (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
     };
 
     // Trackpads generan muchos wheel events con inercia. Estrategia: lock más
@@ -94,6 +95,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     useEffect(() => {
         const el = heroRef.current;
         if (!el) return;
+        wheelAccum.current = 0;
         let resetTimer: ReturnType<typeof setTimeout> | null = null;
         const onWheel = (e: WheelEvent) => {
             if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.2) return;

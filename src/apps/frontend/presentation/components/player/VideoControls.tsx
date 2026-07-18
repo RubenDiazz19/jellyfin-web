@@ -2,7 +2,7 @@
 // play/pausa, volumen, ajustes y fullscreen.
 import { useRef, useState } from 'react';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
-import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { useSignalValue } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
 import { VolumeSlider } from './VolumeSlider';
 import { VideoSettingsMenu } from './VideoSettingsMenu';
@@ -18,16 +18,16 @@ function formatTime(totalSeconds: number): string {
 }
 
 export function VideoControls() {
-    useViewModel(videoPlayerVM);
     const barRef = useRef<HTMLDivElement>(null);
-    // Durante el arrastre solo se mueve la UI; el seek real se hace al soltar
-    // (seekear HLS en cada pointermove relanzaría el transcode sin parar).
     const [dragPct, setDragPct] = useState<number | null>(null);
 
-    const duration = videoPlayerVM.duration.value;
-    const current = videoPlayerVM.currentTime.value;
-    const playing = videoPlayerVM.playing.value;
-    const fullscreen = videoPlayerVM.fullscreen.value;
+    // Suscripciones individuales: useViewModel suscribiría a TODOS los
+    // signals del VM (audioTracks, subtitleUrl, buffering…); así solo
+    // re-renderizamos por los 4 que este componente pinta de verdad.
+    const duration = useSignalValue(videoPlayerVM.duration);
+    const current = useSignalValue(videoPlayerVM.currentTime);
+    const playing = useSignalValue(videoPlayerVM.playing);
+    const fullscreen = useSignalValue(videoPlayerVM.fullscreen);
 
     const pct = dragPct ?? (duration > 0 ? (current / duration) * 100 : 0);
     const shownTime = dragPct != null ? (dragPct / 100) * duration : current;
