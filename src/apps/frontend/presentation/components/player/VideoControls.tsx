@@ -1,0 +1,106 @@
+// Barra de controles del reproductor: seek bar arrastrable, tiempos,
+// play/pausa, volumen, ajustes y fullscreen.
+import { useRef, useState } from 'react';
+import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
+import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { PlayerIc } from './playerIcons';
+import { VolumeSlider } from './VolumeSlider';
+import { VideoSettingsMenu } from './VideoSettingsMenu';
+
+function formatTime(totalSeconds: number): string {
+    if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return '0:00';
+    const s = Math.floor(totalSeconds % 60);
+    const m = Math.floor((totalSeconds / 60) % 60);
+    const h = Math.floor(totalSeconds / 3600);
+    const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+    return `${h > 0 ? `${h}:` : ''}${mm}:${String(s).padStart(2, '0')}`;
+}
+
+export function VideoControls() {
+    useViewModel(videoPlayerVM);
+    const barRef = useRef<HTMLDivElement>(null);
+    // Durante el arrastre solo se mueve la UI; el seek real se hace al soltar
+    // (seekear HLS en cada pointermove relanzaría el transcode sin parar).
+    const [dragPct, setDragPct] = useState<number | null>(null);
+
+    const duration = videoPlayerVM.duration.value;
+    const current = videoPlayerVM.currentTime.value;
+    const playing = videoPlayerVM.playing.value;
+    const fullscreen = videoPlayerVM.fullscreen.value;
+
+    const pct = dragPct ?? (duration > 0 ? (current / duration) * 100 : 0);
+    const shownTime = dragPct != null ? (dragPct / 100) * duration : current;
+
+    const pctFromEvent = (e: React.PointerEvent): number => {
+        const rect = barRef.current?.getBoundingClientRect();
+        if (!rect || rect.width === 0) return 0;
+        return Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 0), 100);
+    };
+
+    const onPointerDown = (e: React.PointerEvent) => {
+        if (duration <= 0) return;
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        setDragPct(pctFromEvent(e));
+    };
+    const onPointerMove = (e: React.PointerEvent) => {
+        if (dragPct == null) return;
+        setDragPct(pctFromEvent(e));
+    };
+    const onPointerUp = (e: React.PointerEvent) => {
+        if (dragPct == null) return;
+        videoPlayerVM.seek((pctFromEvent(e) / 100) * duration);
+        setDragPct(null);
+    };
+
+    return (
+        <div className="jfp-video-controls" onClick={(e) => e.stopPropagation()}>
+            <div
+                ref={barRef}
+                className="jfp-video-progress"
+                role="slider"
+                aria-label="Posición"
+                aria-valuemin={0}
+                aria-valuemax={Math.floor(duration)}
+                aria-valuenow={Math.floor(shownTime)}
+                onPointerDown={onPointerDown}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={() => setDragPct(null)}
+            >
+                <div className="jfp-video-progress-track">
+                    <div className="jfp-video-progress-fill" style={{ width: `${pct}%` }} />
+                    <div className="jfp-video-progress-thumb" style={{ left: `${pct}%` }} />
+                </div>
+            </div>
+
+            <div className="jfp-video-controls-row">
+                <div className="jfp-video-controls-group">
+                    <button
+                        type="button"
+                        className="jfp-video-btn jfp-video-btn-play"
+                        onClick={videoPlayerVM.togglePlay}
+                        aria-label={playing ? 'Pausa' : 'Reproducir'}
+                    >
+                        {playing ? <PlayerIc.Pause /> : <PlayerIc.Play />}
+                    </button>
+                    <VolumeSlider />
+                    <span className="jfp-video-time">
+                        {formatTime(shownTime)}
+                        <span className="jfp-video-time-total"> / {formatTime(duration)}</span>
+                    </span>
+                </div>
+                <div className="jfp-video-controls-group">
+                    <VideoSettingsMenu />
+                    <button
+                        type="button"
+                        className="jfp-video-btn"
+                        onClick={videoPlayerVM.toggleFullscreen}
+                        aria-label={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                    >
+                        {fullscreen ? <PlayerIc.FullscreenExit /> : <PlayerIc.Fullscreen />}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
