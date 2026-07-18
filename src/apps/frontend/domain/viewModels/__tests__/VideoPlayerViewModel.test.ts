@@ -1,0 +1,160 @@
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { VideoPlayerViewModel } from '../VideoPlayerViewModel';
+import type { ApiService } from '../../../data/api/ApiService';
+import type { PlaybackDecision } from '../../../data/api/playback';
+
+vi.mock('../../../data/api/ApiService', () => ({ apiService: {} }));
+
+const TICKS = 10_000_000;
+
+// Doble del HTMLVideoElement: solo la superficie que usa el ViewModel.
+class FakeVideo extends EventTarget {
+    currentTime = 0;
+    duration = 0;
+    volume = 1;
+    muted = false;
+    paused = true;
+    src = '';
+    textTracks: never[] = [];
+    play = vi.fn(() => {
+        this.paused = false;
+        this.dispatchEvent(new Event('play'));
+        return Promise.resolve();
+    });
+    pause = vi.fn(() => {
+        this.paused = true;
+        this.dispatchEvent(new Event('pause'));
+    });
+    load = vi.fn();
+    removeAttribute = vi.fn((attr: string) => {
+        if (attr === 'src') this.src = '';
+    });
+    canPlayType = vi.fn(() => '');
+}
+
+function decision(overrides: Partial<PlaybackDecision> = {}): PlaybackDecision {
+    return {
+        kind: 'direct',
+        url: 'http://server/Videos/x/stream',
+        playSessionId: 'ps1',
+        mediaSourceId: 'ms1',
+        audioStreams: [
+            { index: 1, displayTitle: 'Español', isDefault: true, isText: false }
+        ],
+        subtitleStreams: [
+            { index: 3, displayTitle: 'Español (SRT)', isDefault: false, isText: true }
+        ],
+        ...overrides
+    };
+}
+
+function mockApi(dec = decision()): ApiService {
+    return {
+        playback: {
+            getPlaybackDecision: vi.fn(() => Promise.resolve(dec)),
+            subtitleVttUrl: vi.fn((itemId: string, msId: string, idx: number) =>
+                `http://server/Videos/${itemId}/${msId}/Subtitles/${idx}/0/Stream.vtt`),
+            reportPlaybackStart: vi.fn(() => Promise.resolve()),
+            reportPlaybackProgress: vi.fn(() => Promise.resolve()),
+            reportPlaybackStop: vi.fn(() => Promise.resolve())
+        }
+    } as unknown as ApiService;
+}
+
+describe('VideoPlayerViewModel', () => {
+    let video: FakeVideo;
+    let container: HTMLElement;
+    let api: ApiService;
+    let vm: VideoPlayerViewModel;
+
+    beforeEach(() => {
+        localStorage.clear();
+        video = new FakeVideo();
+        container = document.createElement('div');
+        api = mockApi();
+        vm = new VideoPlayerViewModel(api);
+        vm.attach(video as unknown as HTMLVideoElement, container);
+    });
+
+    afterEach(() => {
+        vm.close();
+    });
+
+    test('open() reproduce en directo, reanuda posición y reporta el inicio', async () => {
+        await vm.open('item1', { startTicks: 30 * TICKS, title: 'Dandelion 1x01' });
+
+        expect(video.src).toBe('http://server/Videos/x/stream');
+        expect(vm.title.value).toBe('Dandelion 1x01');
+        expect(api.playback.reportPlaybackStart).toHaveBeenCalledWith('item1');
+
+        // El seek de reanudación llega al cargar los metadatos.
+        video.duration = 1400;
+        video.dispatchEvent(new Event('loadedmetadata'));
+        expect(video.currentTime).toBe(30);
+        expect(video.play).toHaveBeenCalled();
+    });
+
+    test('el subtítulo de texto activo expone su URL VTT sin recargar', async () => {
+        await vm.open('item1');
+        vm.setSubtitleTrack(3);
+
+        expect(vm.selectedSubtitle.value).toBe(3);
+        expect(vm.subtitleUrl.value).toContain('/Subtitles/3/0/Stream.vtt');
+        expect(api.playback.getPlaybackDecision).toHaveBeenCalledTimes(1);
+
+        vm.setSubtitleTrack(null);
+        expect(vm.subtitleUrl.value).toBeNull();
+        expect(api.playback.getPlaybackDecision).toHaveBeenCalledTimes(1);
+    });
+
+    test('togglePlay alterna reproducción y los eventos actualizan signals', async () => {
+        await vm.open('item1');
+
+        vm.togglePlay();
+        expect(video.play).toHaveBeenCalled();
+        expect(vm.playing.value).toBe(true);
+
+        vm.togglePlay();
+        expect(video.pause).toHaveBeenCalled();
+        expect(vm.playing.value).toBe(false);
+    });
+
+    test('seek y volumen se acotan a los rangos válidos', async () => {
+        await vm.open('item1');
+        video.duration = 100;
+        video.dispatchEvent(new Event('durationchange'));
+
+        vm.seek(500);
+        expect(video.currentTime).toBe(100);
+        vm.seek(-5);
+        expect(video.currentTime).toBe(0);
+
+        vm.setVolume(2);
+        expect(video.volume).toBe(1);
+        vm.setVolume(-1);
+        expect(video.volume).toBe(0);
+    });
+
+    test('close() reporta el stop con la posición actual', async () => {
+        await vm.open('item1');
+        video.currentTime = 42;
+        vm.close();
+
+        expect(api.playback.reportPlaybackStop)
+            .toHaveBeenCalledWith('item1', 42 * TICKS, 'ps1');
+        expect(video.pause).toHaveBeenCalled();
+    });
+
+    test('un error de PlaybackInfo queda expuesto en el signal', async () => {
+        api = mockApi();
+        (api.playback.getPlaybackDecision as ReturnType<typeof vi.fn>)
+            .mockRejectedValueOnce(new Error('Sin fuentes reproducibles'));
+        vm.close();
+        vm = new VideoPlayerViewModel(api);
+        vm.attach(video as unknown as HTMLVideoElement, container);
+        await vm.open('item1');
+
+        expect(vm.error.value).toBe('Sin fuentes reproducibles');
+        expect(vm.loading.value).toBe(false);
+    });
+});
