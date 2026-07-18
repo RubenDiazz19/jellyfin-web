@@ -19,7 +19,7 @@ import { useWebConfig } from 'hooks/useWebConfig';
 import globalize from 'lib/globalize';
 
 import LibraryIcon from '../LibraryIcon';
-import DrawerHeaderLink from './DrawerHeaderLink';
+import DrawerHeaderLink from 'apps/dashboard/components/drawer/DrawerHeaderLink';
 
 const MainDrawerContent = () => {
     const { user } = useApi();

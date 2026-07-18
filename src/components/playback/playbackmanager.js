@@ -22,9 +22,9 @@ import { includesAny } from '../../utils/container.ts';
 import { getItems } from '../../utils/jellyfin-apiclient/getItems.ts';
 import { getItemBackdropImageUrl } from '../../utils/jellyfin-apiclient/backdropImage';
 
-import { PlayerEvent } from 'apps/legacy/features/playback/constants/playerEvent';
-import { bindMediaSegmentManager } from 'apps/legacy/features/playback/utils/mediaSegmentManager';
-import { bindMediaSessionSubscriber } from 'apps/legacy/features/playback/utils/mediaSessionSubscriber';
+import { PlayerEvent } from 'components/playback/constants/playerEvent';
+import { bindMediaSegmentManager } from 'components/playback/utils/mediaSegmentManager';
+import { bindMediaSessionSubscriber } from 'components/playback/utils/mediaSessionSubscriber';
 import { AppFeature } from 'constants/appFeature';
 import { PluginType } from 'constants/pluginType';
 import { TICKS_PER_SECOND } from 'constants/time';

@@ -1,7 +1,7 @@
 import escapeHtml from 'escape-html';
 
-import { getImageUrl } from 'apps/legacy/features/playback/utils/image';
-import { getItemTextLines } from 'apps/legacy/features/playback/utils/itemText';
+import { getImageUrl } from 'components/playback/utils/image';
+import { getItemTextLines } from 'components/playback/utils/itemText';
 import { AppFeature } from 'constants/appFeature';
 import { ItemAction } from 'constants/itemAction';
 
