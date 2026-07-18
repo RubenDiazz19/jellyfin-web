@@ -194,6 +194,12 @@ export default defineConfig(({ command }) => ({
 
     define: getDefines(command === 'serve'),
 
+    // tsconfig (jsx: react-jsx) solo cubre .tsx; los .jsx como index.jsx
+    // necesitan que esbuild use también el runtime automático de React.
+    esbuild: {
+        jsx: 'automatic'
+    },
+
     build: {
         // Fuera de src/ (la raíz de Vite); si no, el bundle acaba en
         // src/dist y contamina el árbol de fuentes.
