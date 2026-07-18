@@ -47,24 +47,42 @@ function listPackageModules(spec: string): string[] {
 }
 
 // `import template from './x.html'` → default-exports the raw markup string.
-// Matches the webpack html-loader behaviour the legacy views rely on. The
-// import is rewritten to Vite's `?raw` so the core build-html plugin never
-// tries to parse the template as an HTML entry (which breaks `vite build`).
-function htmlTemplates(): Plugin {
-    return {
-        name: 'jf-html-templates',
-        enforce: 'pre',
-        async resolveId(source, importer) {
-            if (!source.split('?')[0].endsWith('.html') || !importer) return null;
-            if (source.includes('?raw')) return null;
-            // The app entry point must go through Vite's own HTML pipeline.
-            if (importer.endsWith('.html')) return null;
-            const resolved = await this.resolve(source, importer, { skipSelf: true });
-            if (!resolved) return null;
-            if (resolved.id.split('?')[0] === path.join(SRC_DIR, 'index.html')) return null;
-            return resolved.id.split('?')[0] + '?raw';
+// Matches the webpack html-loader behaviour the legacy views rely on.
+//  - dev: transform directo a JS (el escáner de optimizeDeps lo entiende).
+//  - build: se reescribe el import a `?raw` para que el plugin interno
+//    build-html no intente parsear la plantilla como entry (rompe el build).
+function htmlTemplates(): Plugin[] {
+    return [
+        {
+            name: 'jf-html-templates-serve',
+            apply: 'serve',
+            enforce: 'pre',
+            transform(_code, id) {
+                if (!id.endsWith('.html')) return null;
+                if (id.split('?')[0] === path.join(SRC_DIR, 'index.html')) return null;
+                const raw = fs.readFileSync(id.split('?')[0], 'utf-8');
+                return {
+                    code: `export default ${JSON.stringify(raw)};`,
+                    map: null
+                };
+            }
+        },
+        {
+            name: 'jf-html-templates-build',
+            apply: 'build',
+            enforce: 'pre',
+            async resolveId(source, importer) {
+                if (!source.split('?')[0].endsWith('.html') || !importer) return null;
+                if (source.includes('?raw')) return null;
+                // The app entry point must go through Vite's own HTML pipeline.
+                if (importer.endsWith('.html')) return null;
+                const resolved = await this.resolve(source, importer, { skipSelf: true });
+                if (!resolved) return null;
+                if (resolved.id.split('?')[0] === path.join(SRC_DIR, 'index.html')) return null;
+                return resolved.id.split('?')[0] + '?raw';
+            }
         }
-    };
+    ];
 }
 
 // `import Worker from './x.worker.ts'` → Worker constructor, mirroring
@@ -167,7 +185,7 @@ export default defineConfig(({ command }) => ({
     plugins: [
         // Resolves bare imports relative to src/ (tsconfig "baseUrl")
         tsconfigPaths(),
-        htmlTemplates(),
+        ...htmlTemplates(),
         workerImports(),
         injectApp(),
         devStaticAssets(),
@@ -175,6 +193,13 @@ export default defineConfig(({ command }) => ({
     ],
 
     define: getDefines(command === 'serve'),
+
+    build: {
+        // Fuera de src/ (la raíz de Vite); si no, el bundle acaba en
+        // src/dist y contamina el árbol de fuentes.
+        outDir: path.join(REPO_ROOT, 'dist'),
+        emptyOutDir: true
+    },
 
     resolve: {
         alias: [
@@ -197,20 +222,10 @@ export default defineConfig(({ command }) => ({
         include: [
             // Heavy players/readers loaded on demand
             'dompurify',
-            'epubjs',
-            'flv.js',
             'headroom.js',
             'hls.js',
-            'hls.js/dist/hls.js',
-            'jquery',
-            'jstree',
-            'libpgs',
             'markdown-it',
-            'pdfjs-dist',
             'sortablejs',
-            'swiper',
-            'swiper/bundle',
-            '@jellyfin/libass-wasm',
             'blurhash',
             'react-dom',
             'lodash-es/debounce',
@@ -225,8 +240,7 @@ export default defineConfig(({ command }) => ({
             ...listPackageModules('@jellyfin/sdk/lib/generated-client/api'),
             ...listPackageModules('@jellyfin/sdk/lib/generated-client/models'),
             ...listPackageModules('@jellyfin/sdk/lib/utils/api')
-        ],
-        exclude: ['libarchive.js']
+        ]
     },
 
     test: {
