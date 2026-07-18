@@ -407,6 +407,49 @@ export default tseslint.config(
         }
     },
 
+    // Fronteras MVVM del frontend custom:
+    //   View (presentation/) no importa de data/ — solo ViewModels/bridge.
+    //   ViewModel (domain/viewModels/) no importa de presentation/ ni React.
+    {
+        files: [ 'src/apps/frontend/**/*.{ts,tsx}' ],
+        rules: {
+            'import/no-restricted-paths': ['error', {
+                zones: [
+                    {
+                        target: './src/apps/frontend/presentation',
+                        from: './src/apps/frontend/data',
+                        message: 'View no puede importar de data/. Usa domain/viewModels/ o las fachadas de domain/.'
+                    },
+                    {
+                        target: './src/apps/frontend/domain/viewModels',
+                        from: './src/apps/frontend/presentation',
+                        message: 'ViewModel no puede importar de presentation/.'
+                    },
+                    {
+                        target: './src/apps/frontend/data',
+                        from: './src/apps/frontend/presentation',
+                        message: 'Model no puede importar de presentation/.'
+                    }
+                ]
+            }]
+        }
+    },
+    {
+        files: [ 'src/apps/frontend/domain/viewModels/**/*.ts' ],
+        rules: {
+            'no-restricted-imports': ['error', {
+                paths: [
+                    { name: 'react', message: 'ViewModel no puede importar React. Usa signals.' },
+                    { name: 'react-dom', message: 'ViewModel no puede importar React. Usa signals.' }
+                ],
+                patterns: [{
+                    group: ['react-router*', '@preact/signals-react*'],
+                    message: 'ViewModel no puede depender de React ni de su router.'
+                }]
+            }]
+        }
+    },
+
     // Legacy JS (less strict)
     {
         files: [ 'src/**/*.{js,jsx}' ],
