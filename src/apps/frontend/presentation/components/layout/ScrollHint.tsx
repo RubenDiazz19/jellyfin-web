@@ -1,5 +1,5 @@
 import { T } from '../../theme/tokens';
-import { useScrollY } from '../../../domain/hooks/useScrollY';
+import { useScrollY } from '../../../domain/bridge/useScrollY';
 
 type Props = { label?: string };
 

@@ -1,5 +1,5 @@
 import { T } from '../../theme/tokens';
-import type { CastMember } from '../../../data/models';
+import type { CastMember } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 
 type Props = { cast: CastMember[]; navigate: Navigate; label?: string };

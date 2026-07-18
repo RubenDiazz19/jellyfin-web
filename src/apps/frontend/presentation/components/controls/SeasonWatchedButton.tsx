@@ -1,10 +1,10 @@
 import { Ic } from '../../theme/icons';
-import { WATCHED } from '../../../data/stores/watchedStore';
-import { useWatchedVersion } from '../../../domain/hooks/useWatched';
+import { WATCHED } from '../../../domain/stores';
+import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { IconButton } from './IconButton';
 import { WatchedBadge } from './WatchedBadge';
 import { useToast } from '../toast/ToastProvider';
-import type { Show, Season } from '../../../data/models';
+import type { Show, Season } from '../../../domain/models';
 
 type Props = { show: Show; season: Season; size?: number };
 

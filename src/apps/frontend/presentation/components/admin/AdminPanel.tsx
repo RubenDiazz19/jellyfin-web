@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
-import { getSystemInfo, refreshLibrary, dashboardUrl } from '../../../data/api';
-import type { SystemInfo } from '../../../data/api';
+import { getSystemInfo, refreshLibrary, dashboardUrl } from '../../../domain/api';
+import type { SystemInfo } from '../../../domain/api';
 import { useToast } from '../toast/ToastProvider';
 
 type Props = { onClose: () => void };

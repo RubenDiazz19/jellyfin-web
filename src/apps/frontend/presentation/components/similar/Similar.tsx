@@ -1,6 +1,6 @@
 import { T } from '../../theme/tokens';
-import { PROTO_DATA } from '../../../data/models';
-import type { Show, Movie } from '../../../data/models';
+import { PROTO_DATA } from '../../../domain/models';
+import type { Show, Movie } from '../../../domain/models';
 import { PosterCard } from '../cards/PosterCard';
 import { MovieCard } from '../cards/MovieCard';
 import type { Navigate } from '../../../app/router';

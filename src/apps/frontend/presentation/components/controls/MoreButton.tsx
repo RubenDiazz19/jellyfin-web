@@ -2,16 +2,16 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
-import { useFav } from '../../../domain/hooks/useFav';
-import { useWatched } from '../../../domain/hooks/useWatched';
+import { useFav } from '../../../domain/bridge/useFav';
+import { useWatched } from '../../../domain/bridge/useWatched';
 import { IconButton } from './IconButton';
 import { useToast } from '../toast/ToastProvider';
-import { useSession } from '../../../data/session/SessionProvider';
+import { useSession } from '../../../domain/bridge/useSession';
 import {
   markPlayed, toggleFavorite as apiToggleFavorite,
   refreshItemMetadata, deleteItem,
   downloadUrl, nativeItemUrl,
-} from '../../../data/api';
+} from '../../../domain/api';
 import { MetadataEditor, type EditorKind } from '../admin/editor';
 import { usePlayer } from '../player/PlayerProvider';
 

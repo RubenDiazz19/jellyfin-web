@@ -29,7 +29,7 @@ import {
 } from '../presentation/components/tweaks/TweaksPanel';
 import type { HeroPosKey, HeroScrimKey } from '../presentation/theme/tokens';
 import { ToastProvider } from '../presentation/components/toast/ToastProvider';
-import { SessionProvider, useSession } from '../data/session/SessionProvider';
+import { useSession } from '../domain/bridge/useSession';
 import { PlayerProvider } from '../presentation/components/player/PlayerProvider';
 
 type TweakDefaults = {
@@ -141,12 +141,10 @@ function Root() {
 
 export default function App() {
     return (
-        <SessionProvider>
-            <ToastProvider>
-                <PlayerProvider>
-                    <Root />
-                </PlayerProvider>
-            </ToastProvider>
-        </SessionProvider>
+        <ToastProvider>
+            <PlayerProvider>
+                <Root />
+            </PlayerProvider>
+        </ToastProvider>
     );
 }

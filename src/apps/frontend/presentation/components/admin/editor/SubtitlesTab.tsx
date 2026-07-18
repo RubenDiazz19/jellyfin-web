@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { downloadSubtitle, searchSubtitles, type RemoteSubtitle } from '../../../../data/api';
+import { downloadSubtitle, searchSubtitles, type RemoteSubtitle } from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
 import { Field, Muted, PrimaryBtn, SecondaryBtn, TextInput } from './primitives';

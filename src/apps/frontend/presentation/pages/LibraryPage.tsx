@@ -1,18 +1,27 @@
+import { useEffect } from 'react';
 import { T } from '../theme/tokens';
-import { PROTO_DATA, useProtoData } from '../../data/models';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
-import { EmptyState } from '../components/skeleton/Skeleton';
+import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
+import { libraryVM } from '../../domain/viewModels/LibraryViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
 import type { Navigate } from '../../app/router';
 
 type Props = { kind: 'series' | 'movies'; navigate: Navigate };
 
 export function LibraryPage({ kind, navigate }: Props) {
-  useProtoData();
+  useViewModel(libraryVM);
+  useEffect(() => {
+    void libraryVM.load(kind);
+  }, [kind]);
+
   const isSeries = kind === 'series';
-  const items = isSeries ? Object.values(PROTO_DATA.shows) : Object.values(PROTO_DATA.movies);
+  const items = isSeries ? libraryVM.shows.value : libraryVM.movies.value;
   const title = isSeries ? 'Series' : 'Películas';
+  const loading = libraryVM.loading.value || libraryVM.kind.value !== kind;
+  const error = libraryVM.error.value;
+
   return (
     <>
       <Nav navigate={navigate} active={isSeries ? 'series' : 'movies'} />
@@ -27,22 +36,30 @@ export function LibraryPage({ kind, navigate }: Props) {
           }}>
             {title}
           </h1>
-          <span style={{ fontFamily: T.ui, fontSize: 13, color: T.dim }}>
-            {items.length} {isSeries ? 'títulos' : 'películas'}
-          </span>
+          {!loading && (
+            <span style={{ fontFamily: T.ui, fontSize: 13, color: T.dim }}>
+              {items.length} {isSeries ? 'títulos' : 'películas'}
+            </span>
+          )}
         </div>
-        {items.length === 0 ? (
+        {loading ? (
+          <SkeletonRow title="" />
+        ) : error ? (
+          <EmptyState title="No se pudo cargar la biblioteca" hint={error} />
+        ) : items.length === 0 ? (
           <EmptyState
             title={isSeries ? 'No hay series todavía' : 'No hay películas todavía'}
-            hint="Cuando enchufemos Jellyfin, aparecerá aquí tu biblioteca real."
+            hint={isSeries
+              ? 'Añade contenido al servidor y lanza un rescan desde el panel de administración.'
+              : 'La biblioteca de películas aparecerá aquí cuando la API las exponga.'}
           />
         ) : (
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 28,
           }}>
             {isSeries
-              ? (items as any[]).map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)
-              : (items as any[]).map((m) => <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />)}
+              ? libraryVM.shows.value.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)
+              : libraryVM.movies.value.map((m) => <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />)}
           </div>
         )}
       </section>

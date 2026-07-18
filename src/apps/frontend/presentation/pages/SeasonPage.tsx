@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { PROTO_DATA, findSeason, useProtoData } from '../../data/models';
-import type { Show, Season } from '../../data/models';
-import { useJellyfinShow } from '../../domain/hooks/useJellyfin';
+import { PROTO_DATA, findSeason } from '../../domain/models';
+import type { Show, Season } from '../../domain/models';
+import { showVM } from '../../domain/viewModels/ShowViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
@@ -13,13 +15,25 @@ import type { Navigate } from '../../app/router';
 type PageProps = { showId: string; seasonN: number; navigate: Navigate };
 
 export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
-  useProtoData();
   const proto = PROTO_DATA.shows[showId];
-  const jf = useJellyfinShow(proto ? undefined : showId);
-  const show = proto ?? jf.data;
+  useViewModel(showVM);
+  useEffect(() => {
+    if (!proto) void showVM.load(showId);
+  }, [proto, showId]);
+  const show = proto ?? showVM.showFor(showId);
   const season = show ? findSeason(show, seasonN) : null;
   if (!show || !season) {
-    if (jf.loading) {
+    if (showVM.error.value) {
+      return (
+        <section style={{
+          minHeight: '100vh', background: '#000', color: '#ff6b6b', fontFamily: T.ui,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          {showVM.error.value}
+        </section>
+      );
+    }
+    if (!show) {
       return (
         <section style={{
           minHeight: '100vh', background: '#000', color: T.dim, fontFamily: T.ui,
@@ -30,16 +44,7 @@ export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
         </section>
       );
     }
-    if (jf.error) {
-      return (
-        <section style={{
-          minHeight: '100vh', background: '#000', color: '#ff6b6b', fontFamily: T.ui,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-        }}>
-          {jf.error}
-        </section>
-      );
-    }
+    // Serie cargada pero temporada inexistente en la URL.
     return null;
   }
   return (

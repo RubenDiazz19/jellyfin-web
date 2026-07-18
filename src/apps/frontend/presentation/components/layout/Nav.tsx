@@ -1,13 +1,13 @@
 import React from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
-import { useScrollY } from '../../../domain/hooks/useScrollY';
+import { useScrollY } from '../../../domain/bridge/useScrollY';
 import { FavButton } from '../controls/FavButton';
 import { WatchedButton } from '../controls/WatchedButton';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { UserAvatar } from './UserAvatar';
-import type { Movie } from '../../../data/models';
+import type { Movie } from '../../../domain/models';
 import type { Route } from '../../../app/router';
 
 type Crumb = { label: string; to?: Route };

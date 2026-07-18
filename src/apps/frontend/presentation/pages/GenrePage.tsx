@@ -1,5 +1,5 @@
 import { T } from '../theme/tokens';
-import { PROTO_DATA, useProtoData } from '../../data/models';
+import { PROTO_DATA } from '../../domain/models';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
@@ -11,7 +11,6 @@ type Props = { genre: string; navigate: Navigate };
 // Página de género: agrupa series y películas cuyo `genres` contiene el género.
 // Se muestra en dos secciones (series primero, películas después).
 export function GenrePage({ genre, navigate }: Props) {
-  useProtoData();
   const g = genre.toLowerCase();
   const shows = Object.values(PROTO_DATA.shows).filter((s) =>
     s.genres.some((x) => x.toLowerCase() === g),

@@ -1,6 +1,6 @@
 import { T } from '../theme/tokens';
-import { PROTO_DATA, useProtoData } from '../../data/models';
-import type { Show, Movie } from '../../data/models';
+import { PROTO_DATA } from '../../domain/models';
+import type { Show, Movie } from '../../domain/models';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
@@ -13,7 +13,6 @@ type Props = { name: string; navigate: Navigate };
 // los datos locales — todo item cuyo `cast[]` contenga a esa persona.
 // El "papel" que se muestra en la ficha es el primer role encontrado.
 export function PersonPage({ name, navigate }: Props) {
-  useProtoData();
 
   const shows: { show: Show; role: string; photo?: string | null }[] = [];
   const movies: { movie: Movie; role: string; photo?: string | null }[] = [];

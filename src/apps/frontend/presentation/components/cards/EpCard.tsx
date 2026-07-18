@@ -1,10 +1,10 @@
 import React from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
-import { useWatched } from '../../../domain/hooks/useWatched';
+import { useWatched } from '../../../domain/bridge/useWatched';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
-import type { Show, Season, Episode } from '../../../data/models';
+import type { Show, Season, Episode } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 
 type Props = { show: Show; season: Season; ep: Episode; navigate: Navigate };

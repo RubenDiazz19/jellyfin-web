@@ -1,9 +1,9 @@
 import { Ic } from '../../theme/icons';
-import { useWatched } from '../../../domain/hooks/useWatched';
+import { useWatched } from '../../../domain/bridge/useWatched';
 import { IconButton } from './IconButton';
 import { WatchedBadge } from './WatchedBadge';
 import { useToast } from '../toast/ToastProvider';
-import type { Movie } from '../../../data/models';
+import type { Movie } from '../../../domain/models';
 
 type Props = { movie: Movie; size?: number; badge?: boolean };
 

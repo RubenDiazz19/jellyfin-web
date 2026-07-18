@@ -1,6 +1,6 @@
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
-import { useSession } from '../../data/session/SessionProvider';
+import { useSession } from '../../domain/bridge/useSession';
 import { useToast } from '../components/toast/ToastProvider';
 import type { Navigate } from '../../app/router';
 

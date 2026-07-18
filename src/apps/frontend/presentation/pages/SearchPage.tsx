@@ -1,17 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { PROTO_DATA, useProtoData } from '../../data/models';
 import { Nav } from '../components/layout/Nav';
 import { EmptyState } from '../components/skeleton/Skeleton';
-import { FAVS } from '../../data/stores/favsStore';
-import { WATCHED } from '../../data/stores/watchedStore';
-import { useFavVersion } from '../../domain/hooks/useFav';
-import { useWatchedVersion } from '../../domain/hooks/useWatched';
+import {
+  searchVM, type StateFilter, type TypeFilter
+} from '../../domain/viewModels/SearchViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
 import type { Navigate } from '../../app/router';
-
-type TypeFilter = 'todo' | 'series' | 'peliculas';
-type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
 
 const TYPE_TABS: { id: TypeFilter; label: string }[] = [
   { id: 'todo',       label: 'Todo' },
@@ -26,76 +22,29 @@ const STATE_TABS: { id: StateFilter; label: string }[] = [
   { id: 'no-vistos', label: 'No vistos' },
 ];
 
-// Comprueba si una serie está "vista" (todos sus episodios marcados).
-function isSeriesWatched(show: any): boolean {
-  const ids = (show.seasons || []).flatMap((s: any) =>
-    (s.episodes || []).map((e: any) => `${show.id}-s${s.n}-e${e.n}`),
-  );
-  return ids.length > 0 && ids.every((id: string) => WATCHED.has(id));
-}
-
-// Comprueba si una serie está en favoritos (por id) o alguno de sus episodios.
-function isSeriesFav(show: any): boolean {
-  return FAVS.has(show.id);
-}
-
-function isMovieWatched(movie: any): boolean {
-  return (movie.watched ?? 0) >= 1 || WATCHED.has(`movie-${movie.id}`);
-}
-
-function isMovieFav(movie: any): boolean {
-  return FAVS.has(`movie-${movie.id}`);
-}
-
 export function SearchPage({ navigate }: { navigate: Navigate }) {
-  useProtoData();
-  // Nos suscribimos a cambios de fav/visto para re-filtrar cuando el usuario
-  // toca esos estados desde otro lugar mientras está en la búsqueda.
-  useFavVersion();
-  useWatchedVersion();
-
-  const [query, setQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('todo');
-  const [stateFilter, setStateFilter] = useState<StateFilter>('todo');
+  // Todo el filtrado vive en SearchViewModel; la página solo pinta signals.
+  useViewModel(searchVM);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // start() re-filtra cuando cambian favoritos/vistos desde otro sitio;
+    // load() trae la biblioteca real para buscar sobre ella.
+    const stop = searchVM.start();
+    void searchVM.load();
     const t = setTimeout(() => inputRef.current?.focus(), 80);
-    return () => clearTimeout(t);
+    return () => {
+      stop();
+      clearTimeout(t);
+    };
   }, []);
 
-  const all = useMemo(() => {
-    const shows = Object.values(PROTO_DATA.shows).map((s) => ({ ...s, _type: 'show' as const }));
-    const movies = Object.values(PROTO_DATA.movies).map((m) => ({ ...m, _type: 'movie' as const }));
-    return [...shows, ...movies];
-  }, []);
-
-  const q = query.trim().toLowerCase();
-  const filtered = all.filter((item) => {
-    // Filtro por tipo
-    if (typeFilter === 'series' && item._type !== 'show') return false;
-    if (typeFilter === 'peliculas' && item._type !== 'movie') return false;
-
-    // Filtro por estado
-    if (stateFilter !== 'todo') {
-      const isFav = item._type === 'show' ? isSeriesFav(item) : isMovieFav(item);
-      const isWatched = item._type === 'show' ? isSeriesWatched(item) : isMovieWatched(item);
-      if (stateFilter === 'favs' && !isFav) return false;
-      if (stateFilter === 'vistos' && !isWatched) return false;
-      if (stateFilter === 'no-vistos' && isWatched) return false;
-    }
-
-    // Filtro por texto
-    if (!q) return true;
-    return (
-      item.title?.toLowerCase().includes(q) ||
-      (item as any).synopsis?.toLowerCase().includes(q) ||
-      item.genres?.some((g: string) => g.toLowerCase().includes(q)) ||
-      (item as any).cast?.some((c: any) => c.name?.toLowerCase().includes(q))
-    );
-  });
-
-  const anyFilterActive = typeFilter !== 'todo' || stateFilter !== 'todo' || !!q;
+  const query = searchVM.query.value;
+  const typeFilter = searchVM.typeFilter.value;
+  const stateFilter = searchVM.stateFilter.value;
+  const q = query.trim();
+  const filtered = searchVM.results.value;
+  const anyFilterActive = searchVM.anyFilterActive.value;
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0b', color: T.fg, fontFamily: T.ui }}>
@@ -115,7 +64,7 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => searchVM.setQuery(e.target.value)}
             placeholder="Buscar series, películas, actores…"
             style={{
               width: '100%', boxSizing: 'border-box',
@@ -130,7 +79,7 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
           />
           {query && (
             <div
-              onClick={() => setQuery('')}
+              onClick={searchVM.clearQuery}
               style={{
                 position: 'absolute', right: 18, top: '50%',
                 transform: 'translateY(-50%)', cursor: 'pointer',
@@ -146,13 +95,13 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
           label="Tipo"
           tabs={TYPE_TABS}
           active={typeFilter}
-          onChange={setTypeFilter}
+          onChange={searchVM.setTypeFilter}
         />
         <FilterRow<StateFilter>
           label="Estado"
           tabs={STATE_TABS}
           active={stateFilter}
-          onChange={setStateFilter}
+          onChange={searchVM.setStateFilter}
         />
       </div>
 

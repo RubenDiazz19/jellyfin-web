@@ -6,7 +6,7 @@ import { FavButton } from '../controls/FavButton';
 import { PlayBtn } from '../controls/PlayBtn';
 import { Progress } from '../controls/Progress';
 import type { Navigate } from '../../../app/router';
-import type { CarouselSlide } from '../../../data/models';
+import type { CarouselSlide } from '../../../domain/models';
 
 type Props = { slide: CarouselSlide; navigate: Navigate };
 

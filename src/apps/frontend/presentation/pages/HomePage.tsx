@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatRemaining } from '../theme/format';
-import { PROTO_DATA, useProtoData } from '../../data/models';
-import type { CarouselSlide } from '../../data/models';
-import { useJellyfinShows, useJellyfinCarousel } from '../../domain/hooks/useJellyfin';
-import { useSession } from '../../data/session/SessionProvider';
+import { PROTO_DATA } from '../../domain/models';
+import type { CarouselSlide } from '../../domain/models';
+import { homeVM } from '../../domain/viewModels/HomeViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useSession } from '../../domain/bridge/useSession';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
@@ -19,15 +20,17 @@ import { SkeletonRow } from '../components/skeleton/Skeleton';
 import type { Navigate } from '../../app/router';
 
 export function HomePage({ navigate }: { navigate: Navigate }) {
-  useProtoData();
   const { session } = useSession();
   const { play } = usePlayer();
   const jellyfinMode = !!session?.accessToken;
   // En modo Jellyfin el carrusel se construye con datos reales (continuar
   // viendo + últimas series); en modo prototipo, con PROTO_DATA.
-  const jfCarousel = useJellyfinCarousel();
-  const slides = jellyfinMode ? (jfCarousel.data ?? []) : PROTO_DATA.carousel;
-  const heroLoading = jellyfinMode && jfCarousel.loading;
+  useViewModel(homeVM);
+  useEffect(() => {
+    if (jellyfinMode) void homeVM.load();
+  }, [jellyfinMode]);
+  const slides = jellyfinMode ? homeVM.slides.value : PROTO_DATA.carousel;
+  const heroLoading = jellyfinMode && (homeVM.heroLoading.value || !homeVM.heroReady.value);
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   // dragPct: porcentaje ya normalizado por el ancho del hero — así el render
@@ -324,35 +327,31 @@ const HeroSlide = React.memo(function HeroSlide({
 });
 
 const HomeLibrary = React.memo(function HomeLibrary({ navigate }: { navigate: Navigate }) {
-  const data = useProtoData();
-  const jfShows = useJellyfinShows();
   const { session } = useSession();
   const jellyfinMode = !!session?.accessToken;
   if (jellyfinMode) {
-    return <HomeLibraryJellyfin jfShows={jfShows} navigate={navigate} />;
+    return <HomeLibraryJellyfin navigate={navigate} />;
   }
-  return <HomeLibraryProto data={data} navigate={navigate} />;
+  return <HomeLibraryProto data={PROTO_DATA} navigate={navigate} />;
 });
 
-function HomeLibraryJellyfin({
-  jfShows, navigate,
-}: {
-  jfShows: ReturnType<typeof useJellyfinShows>; navigate: Navigate;
-}) {
-  const series = jfShows.data ?? [];
-  if (jfShows.loading) {
+function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
+  // homeVM.load() lo dispara HomePage al montar; aquí solo se leen signals.
+  useViewModel(homeVM);
+  const series = homeVM.shows.value;
+  if (homeVM.showsLoading.value || !homeVM.showsReady.value) {
     return (
       <section style={{ background: '#000', color: '#fff', paddingBottom: 96, fontFamily: T.ui }}>
         <SkeletonRow title="Series" />
       </section>
     );
   }
-  if (jfShows.error) {
+  if (homeVM.showsError.value) {
     return (
       <section style={{
         background: '#000', color: '#ff6b6b', padding: '80px 56px', fontFamily: T.ui, fontSize: 14,
       }}>
-        {jfShows.error}
+        {homeVM.showsError.value}
       </section>
     );
   }
@@ -377,7 +376,7 @@ function HomeLibraryJellyfin({
 function HomeLibraryProto({
   data, navigate,
 }: {
-  data: ReturnType<typeof useProtoData>; navigate: Navigate;
+  data: typeof PROTO_DATA; navigate: Navigate;
 }) {
   const cw = data.carousel.filter((s) => s.type === 'continue');
   const movies = Object.values(data.movies);

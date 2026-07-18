@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { T, HERO_POS, HERO_SCRIM, type HeroPosKey, type HeroScrimKey } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatRemaining } from '../theme/format';
-import { WATCHED } from '../../data/stores/watchedStore';
-import { useWatchedVersion } from '../../domain/hooks/useWatched';
-import { PROTO_DATA, useProtoData } from '../../data/models';
-import type { Show } from '../../data/models';
-import { useJellyfinShow } from '../../domain/hooks/useJellyfin';
+import { WATCHED } from '../../domain/stores';
+import { useWatchedVersion } from '../../domain/bridge/useWatched';
+import { PROTO_DATA } from '../../domain/models';
+import type { Show } from '../../domain/models';
+import { showVM } from '../../domain/viewModels/ShowViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
@@ -26,34 +27,33 @@ export type HeroTweaks = {
 type PageProps = { showId: string; navigate: Navigate; hero?: HeroTweaks };
 
 export function ShowPage({ showId, navigate, hero }: PageProps) {
-  useProtoData();
   const proto = PROTO_DATA.shows[showId];
   // Si la ID no está en el catálogo prototipo asumimos que viene de Jellyfin.
-  const jf = useJellyfinShow(proto ? undefined : showId);
-  const show = proto ?? jf.data;
+  useViewModel(showVM);
+  useEffect(() => {
+    if (!proto) void showVM.load(showId);
+  }, [proto, showId]);
+  const show = proto ?? showVM.showFor(showId);
   if (!show) {
-    if (jf.loading) {
-      return (
-        <section style={{
-          minHeight: '100vh', background: '#000', color: T.dim, fontFamily: T.ui,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, letterSpacing: 3, textTransform: 'uppercase',
-        }}>
-          Cargando…
-        </section>
-      );
-    }
-    if (jf.error) {
+    if (showVM.error.value) {
       return (
         <section style={{
           minHeight: '100vh', background: '#000', color: '#ff6b6b', fontFamily: T.ui,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
         }}>
-          {jf.error}
+          {showVM.error.value}
         </section>
       );
     }
-    return null;
+    return (
+      <section style={{
+        minHeight: '100vh', background: '#000', color: T.dim, fontFamily: T.ui,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 13, letterSpacing: 3, textTransform: 'uppercase',
+      }}>
+        Cargando…
+      </section>
+    );
   }
   return (
     <>

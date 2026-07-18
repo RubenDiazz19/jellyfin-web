@@ -1,11 +1,11 @@
 import React from 'react';
 import { T } from '../../theme/tokens';
-import { WATCHED } from '../../../data/stores/watchedStore';
-import { useWatchedVersion } from '../../../domain/hooks/useWatched';
+import { WATCHED } from '../../../domain/stores';
+import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
-import { PROTO_DATA } from '../../../data/models';
+import { PROTO_DATA } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 
 // El "slide" mínimo que necesita esta card. Encaja tanto con un show

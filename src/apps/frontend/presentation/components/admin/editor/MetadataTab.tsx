@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getItemRaw, updateItemMetadata } from '../../../../data/api';
+import { getItemRaw, updateItemMetadata } from '../../../../domain/api';
 import { useToast } from '../../toast/ToastProvider';
 import {
     ErrText,

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
-import { useSession } from '../../../data/session/SessionProvider';
+import { useSession } from '../../../domain/bridge/useSession';
 import { useToast } from '../toast/ToastProvider';
 import { AdminPanel } from '../admin/AdminPanel';
 import type { Navigate } from '../../../app/router';

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { T, HERO_POS, HERO_SCRIM } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatRuntime, formatRemaining } from '../theme/format';
-import { useWatched } from '../../domain/hooks/useWatched';
-import { PROTO_DATA, useProtoData } from '../../data/models';
-import type { Movie } from '../../data/models';
+import { useWatched } from '../../domain/bridge/useWatched';
+import type { Movie } from '../../domain/models';
+import { movieVM } from '../../domain/viewModels/MovieViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
@@ -17,8 +18,11 @@ import type { HeroTweaks } from './ShowPage';
 type PageProps = { movieId: string; navigate: Navigate; hero?: HeroTweaks };
 
 export function MoviePage({ movieId, navigate, hero }: PageProps) {
-  useProtoData();
-  const movie = PROTO_DATA.movies[movieId];
+  useViewModel(movieVM);
+  useEffect(() => {
+    movieVM.load(movieId);
+  }, [movieId]);
+  const movie = movieVM.movieFor(movieId);
   if (!movie) return null;
   return (
     <>

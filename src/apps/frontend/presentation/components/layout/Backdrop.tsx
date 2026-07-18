@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useImageStorage } from '../../../domain/hooks/useImageStorage';
+import { useImageStorage } from '../../../domain/bridge/useImageStorage';
 
 type Props = {
   src: string;

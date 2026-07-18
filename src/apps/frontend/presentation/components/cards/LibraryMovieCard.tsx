@@ -1,10 +1,10 @@
 import React from 'react';
 import { T } from '../../theme/tokens';
-import { useWatchedVersion } from '../../../domain/hooks/useWatched';
+import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
-import type { Movie } from '../../../data/models';
+import type { Movie } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 
 type Props = { movie: Movie; navigate: Navigate };

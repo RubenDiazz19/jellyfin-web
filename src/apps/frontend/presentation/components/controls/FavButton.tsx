@@ -1,5 +1,5 @@
 import { Ic } from '../../theme/icons';
-import { useFav } from '../../../domain/hooks/useFav';
+import { useFav } from '../../../domain/bridge/useFav';
 import { IconButton } from './IconButton';
 import { useToast } from '../toast/ToastProvider';
 

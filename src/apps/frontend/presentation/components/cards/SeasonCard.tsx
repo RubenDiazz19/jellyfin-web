@@ -3,7 +3,7 @@ import { T } from '../../theme/tokens';
 import { SeasonWatchedButton } from '../controls/SeasonWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
-import type { Show, Season } from '../../../data/models';
+import type { Show, Season } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 
 type Props = { show: Show; season: Season; navigate: Navigate };

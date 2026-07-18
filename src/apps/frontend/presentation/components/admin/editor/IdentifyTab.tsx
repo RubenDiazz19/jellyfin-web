@@ -4,7 +4,7 @@ import {
     getItemRaw,
     remoteSearch,
     type RemoteSearchResult
-} from '../../../../data/api';
+} from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
 import type { EditorKind } from './MetadataEditor';

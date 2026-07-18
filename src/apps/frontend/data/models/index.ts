@@ -2,8 +2,6 @@
 // Data lives in Jellyfin; PROTO_DATA is kept as an empty fallback singleton
 // so unauthenticated pages don't crash while accessing collections.
 
-import { useState } from 'react';
-
 export type Rating = { imdb: number; rt: number; age: string };
 export type CastMember = { name: string; role: string; photo?: string | null };
 
@@ -103,14 +101,6 @@ export type ProtoData = {
 };
 
 export const PROTO_DATA: ProtoData = { shows: {}, movies: {}, carousel: [] };
-
-// Legacy hook kept as identity: pages read from PROTO_DATA as a fallback while
-// the Jellyfin API is not authenticated. It used to subscribe to a TMDb hydrate
-// event that no longer fires.
-export function useProtoData(): ProtoData {
-    useState(0);
-    return PROTO_DATA;
-}
 
 export const findSeason = (show: Show | undefined, seasonN: number | string): Season | null => {
     if (!show?.seasons) return null;

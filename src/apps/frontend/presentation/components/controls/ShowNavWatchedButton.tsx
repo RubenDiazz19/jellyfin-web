@@ -1,7 +1,7 @@
 import { Ic } from '../../theme/icons';
-import { WATCHED } from '../../../data/stores/watchedStore';
-import { useWatchedVersion } from '../../../domain/hooks/useWatched';
-import { PROTO_DATA } from '../../../data/models';
+import { WATCHED } from '../../../domain/stores';
+import { useWatchedVersion } from '../../../domain/bridge/useWatched';
+import { PROTO_DATA } from '../../../domain/models';
 import { IconButton } from './IconButton';
 import { WatchedBadge } from './WatchedBadge';
 import { useToast } from '../toast/ToastProvider';

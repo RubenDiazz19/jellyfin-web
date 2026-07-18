@@ -1,49 +1,31 @@
-import { useState } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { notifySessionChanged } from '../../data/session/session';
-import { authenticate, normalizeServerUrl } from '../../data/api';
+import { loginVM } from '../../domain/viewModels/LoginViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
 import { useToast } from '../components/toast/ToastProvider';
 
-// Two-step login: pick server, then username + password. On success the auth
-// module updates ServerConnections and we fan-out SESSION_EVENT so the rest
-// of the tree re-renders authed.
-
-type Step = 'server' | 'login';
+// Login en dos pasos: servidor y luego usuario + contraseña. La lógica vive
+// en LoginViewModel; esta View solo pinta signals y muestra el resultado.
 
 export function LoginPage() {
-  const [step, setStep] = useState<Step>(() =>
-    localStorage.getItem('jfp-server-url') ? 'login' : 'server',
-  );
-  const [serverUrl, setServerUrl] = useState<string>(
-    () => localStorage.getItem('jfp-server-url') ?? '',
-  );
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
+  useViewModel(loginVM);
   const toast = useToast();
+
+  const step = loginVM.step.value;
+  const serverUrl = loginVM.serverUrl.value;
+  const username = loginVM.username.value;
+  const password = loginVM.password.value;
+  const busy = loginVM.busy.value;
 
   const chooseServer = (e: React.FormEvent) => {
     e.preventDefault();
-    const normalized = normalizeServerUrl(serverUrl);
-    if (!normalized) return;
-    setServerUrl(normalized);
-    localStorage.setItem('jfp-server-url', normalized);
-    setStep('login');
+    loginVM.chooseServer();
   };
 
   const submitLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password) return;
-    setBusy(true);
-    try {
-      const auth = await authenticate(serverUrl.trim(), username.trim(), password);
-      notifySessionChanged();
-      toast(`Sesión iniciada como ${auth.displayName}`, 'success');
-    } catch (err) {
-      toast((err as Error).message || 'No se pudo iniciar sesión', 'warn');
-      setBusy(false);
-    }
+    const result = await loginVM.submitLogin();
+    toast(result.message, result.ok ? 'success' : 'warn');
   };
 
   return (
@@ -72,7 +54,7 @@ export function LoginPage() {
             <input
               autoFocus
               value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
+              onChange={(e) => loginVM.setServerUrl(e.target.value)}
               placeholder="http://mi-servidor.local:8096"
               style={inputStyle}
             />
@@ -88,7 +70,7 @@ export function LoginPage() {
           <form onSubmit={submitLogin}>
             <button
               type="button"
-              onClick={() => setStep('server')}
+              onClick={loginVM.backToServer}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: 'none', border: 'none', color: T.dim,
@@ -105,7 +87,7 @@ export function LoginPage() {
             <input
               autoFocus
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => loginVM.setUsername(e.target.value)}
               placeholder="tu usuario"
               autoComplete="username"
               style={inputStyle}
@@ -115,7 +97,7 @@ export function LoginPage() {
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => loginVM.setPassword(e.target.value)}
               placeholder="••••••••"
               autoComplete="current-password"
               style={inputStyle}
