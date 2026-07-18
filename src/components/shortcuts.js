@@ -13,7 +13,6 @@ import inputManager from '../scripts/inputManager';
 import { appRouter } from './router/appRouter';
 import globalize from '../lib/globalize';
 import dom from '../utils/dom';
-import recordingHelper from './recordingcreator/recordinghelper';
 import toast from './toast/toast';
 import * as userSettings from '../scripts/settings/userSettings';
 
@@ -74,9 +73,8 @@ function playAllFromHere(card, serverId, queue) {
 }
 
 function showProgramDialog(item) {
-    import('./recordingcreator/recordingcreator').then(({ default:recordingCreator }) => {
-        recordingCreator.show(item.Id, item.ServerId);
-    });
+    // El editor de grabaciones de Live TV se retiró con el frontend legacy.
+    console.warn('[shortcuts] recording UI was removed', item?.Id);
 }
 
 function getItem(button) {
@@ -376,29 +374,15 @@ function editItem(item, serverId) {
     return new Promise((resolve, reject) => {
         const currentServerId = apiClient.serverInfo().Id;
 
-        if (item.Type === 'Timer') {
-            if (item.ProgramId) {
-                import('./recordingcreator/recordingcreator').then(({ default: recordingCreator }) => {
-                    recordingCreator.show(item.ProgramId, currentServerId).then(resolve, reject);
-                });
-            } else {
-                import('./recordingcreator/recordingeditor').then(({ default: recordingEditor }) => {
-                    recordingEditor.show(item.Id, currentServerId).then(resolve, reject);
-                });
-            }
-        } else {
-            import('./metadataEditor/metadataEditor').then(({ default: metadataEditor }) => {
-                metadataEditor.show(item.Id, currentServerId).then(resolve, reject);
-            });
-        }
+        // Los editores de grabaciones y metadatos se retiraron con el
+        // frontend legacy.
+        void currentServerId;
+        reject(new Error('Editing is no longer available'));
     });
 }
 
-function onRecordCommand(serverId, id, type, timerId, seriesTimerId) {
-    if (type === 'Program' || timerId || seriesTimerId) {
-        const programId = type === 'Program' ? id : null;
-        recordingHelper.toggleRecording(serverId, programId, timerId, seriesTimerId);
-    }
+function onRecordCommand() {
+    // La gestión de grabaciones se retiró con el frontend legacy.
 }
 
 export function onClick(e) {

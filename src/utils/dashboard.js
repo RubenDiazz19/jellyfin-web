@@ -14,7 +14,6 @@ import datetime from '../scripts/datetime';
 import { setBackdropTransparency } from '../components/backdrop/backdrop';
 import DirectoryBrowser from '../components/directorybrowser/directorybrowser';
 import dialogHelper from '../components/dialogHelper/dialogHelper';
-import itemIdentifier from '../components/itemidentifier/itemidentifier';
 import { getLocationSearch } from './url.ts';
 import { queryClient } from './query/queryClient';
 
@@ -254,7 +253,7 @@ const Dashboard = {
     datetime,
     DirectoryBrowser,
     dialogHelper,
-    itemIdentifier,
+
     setBackdropTransparency
 };
 

@@ -140,14 +140,6 @@ export async function getCommands(options) {
             });
         }
 
-        if (itemHelper.supportsAddingToCollection(item) && (user.Policy.IsAdministrator || user.Policy.EnableCollectionManagement)) {
-            commands.push({
-                name: globalize.translate('AddToCollection'),
-                id: 'addtocollection',
-                icon: 'playlist_add'
-            });
-        }
-
         if (itemHelper.supportsAddingToPlaylist(item) && options.playlist !== false) {
             commands.push({
                 name: globalize.translate('AddToPlaylist'),
@@ -232,70 +224,12 @@ export async function getCommands(options) {
         }
     }
 
-    const canEdit = itemHelper.canEdit(user, item);
-    if (canEdit && options.edit !== false && item.Type !== 'SeriesTimer') {
-        const text = (item.Type === 'Timer' || item.Type === 'SeriesTimer') ? globalize.translate('Edit') : globalize.translate('EditMetadata');
-        commands.push({
-            name: text,
-            id: 'edit',
-            icon: 'edit'
-        });
-    }
-
     if (itemHelper.canEditImages(user, item) && options.editImages !== false) {
         commands.push({
             name: globalize.translate('EditImages'),
             id: 'editimages',
             icon: 'image'
         });
-    }
-
-    if (itemHelper.canEditSubtitles(user, item) && options.editSubtitles !== false) {
-        commands.push({
-            name: globalize.translate('EditSubtitles'),
-            id: 'editsubtitles',
-            icon: 'closed_caption'
-        });
-    }
-
-    if (itemHelper.canEditLyrics(user, item)) {
-        commands.push({
-            name: globalize.translate('EditLyrics'),
-            id: 'editlyrics',
-            icon: 'lyrics'
-        });
-    }
-
-    if (options.identify !== false && itemHelper.canIdentify(user, item)) {
-        commands.push({
-            name: globalize.translate('Identify'),
-            id: 'identify',
-            icon: 'edit'
-        });
-    }
-
-    if (item.MediaSources && options.moremediainfo !== false) {
-        commands.push({
-            name: globalize.translate('MoreMediaInfo'),
-            id: 'moremediainfo',
-            icon: 'info'
-        });
-    }
-
-    if (item.Type === 'Program' && options.record !== false) {
-        if (item.TimerId) {
-            commands.push({
-                name: globalize.translate('ManageRecording'),
-                id: 'record',
-                icon: 'fiber_manual_record'
-            });
-        } else {
-            commands.push({
-                name: globalize.translate('Record'),
-                id: 'record',
-                icon: 'fiber_manual_record'
-            });
-        }
     }
 
     if (itemHelper.canRefreshMetadata(item, user)) {
@@ -394,15 +328,6 @@ function executeCommand(item, id, options) {
     return new Promise(function (resolve, reject) {
         // eslint-disable-next-line sonarjs/max-switch-cases
         switch (id) {
-            case 'addtocollection':
-                import('./collectionEditor/collectionEditor').then(({ default: CollectionEditor }) => {
-                    const collectionEditor = new CollectionEditor();
-                    collectionEditor.show({
-                        items: [itemId],
-                        serverId: serverId
-                    }).then(getResolveFunction(resolve, id, true), getResolveFunction(resolve, id));
-                });
-                break;
             case 'addtoplaylist':
                 import('./playlisteditor/playlisteditor').then(({ default: PlaylistEditor }) => {
                     const playlistEditor = new PlaylistEditor();
@@ -490,19 +415,6 @@ function executeCommand(item, id, options) {
                 getResolveFunction(resolve, id)();
                 break;
             }
-            case 'editsubtitles':
-                import('./subtitleeditor/subtitleeditor').then(({ default: subtitleEditor }) => {
-                    subtitleEditor.show(itemId, serverId).then(getResolveFunction(resolve, id, true), getResolveFunction(resolve, id));
-                });
-                break;
-            case 'editlyrics':
-                import('./lyricseditor/lyricseditor').then(({ default: lyricseditor }) => {
-                    lyricseditor.show(itemId, serverId).then(getResolveFunction(resolve, id, true), getResolveFunction(resolve, id));
-                });
-                break;
-            case 'edit':
-                editItem(apiClient, item).then(getResolveFunction(resolve, id, true), getResolveFunction(resolve, id));
-                break;
             case 'editplaylist':
                 import('./playlisteditor/playlisteditor').then(({ default: PlaylistEditor }) => {
                     const playlistEditor = new PlaylistEditor();
@@ -518,16 +430,6 @@ function executeCommand(item, id, options) {
                         itemId: itemId,
                         serverId: serverId
                     }).then(getResolveFunction(resolve, id, true), getResolveFunction(resolve, id));
-                });
-                break;
-            case 'identify':
-                import('./itemidentifier/itemidentifier').then((itemIdentifier) => {
-                    itemIdentifier.show(itemId, serverId).then(getResolveFunction(resolve, id, true), getResolveFunction(resolve, id));
-                });
-                break;
-            case 'moremediainfo':
-                import('./itemMediaInfo/itemMediaInfo').then((itemMediaInfo) => {
-                    itemMediaInfo.show(itemId, serverId).then(getResolveFunction(resolve, id), getResolveFunction(resolve, id));
                 });
                 break;
             case 'multiSelect':
@@ -565,11 +467,6 @@ function executeCommand(item, id, options) {
                 break;
             case 'clearQueue':
                 playbackManager.clearQueue();
-                break;
-            case 'record':
-                import('./recordingcreator/recordingcreator').then(({ default: recordingCreator }) => {
-                    recordingCreator.show(itemId, serverId).then(getResolveFunction(resolve, id, true), getResolveFunction(resolve, id));
-                });
                 break;
             case 'shuffle':
                 playbackManager.shuffle(item);
@@ -662,21 +559,13 @@ function executeCommand(item, id, options) {
     });
 }
 
+// La gestión de timers de grabación se retiró con el frontend legacy.
 function deleteTimer(apiClient, item, resolve, command) {
-    import('./recordingcreator/recordinghelper').then(({ default: recordingHelper }) => {
-        const timerId = item.TimerId || item.Id;
-        recordingHelper.cancelTimerWithConfirmation(timerId, item.ServerId).then(function () {
-            getResolveFunction(resolve, command, true)();
-        });
-    });
+    getResolveFunction(resolve, command)();
 }
 
 function deleteSeriesTimer(apiClient, item, resolve, command) {
-    import('./recordingcreator/recordinghelper').then(({ default: recordingHelper }) => {
-        recordingHelper.cancelSeriesTimerWithConfirmation(item.Id, item.ServerId).then(function () {
-            getResolveFunction(resolve, command, true)();
-        });
-    });
+    getResolveFunction(resolve, command)();
 }
 
 function play(item, resume, queue, queueNext) {
@@ -713,26 +602,6 @@ function play(item, resume, queue, queueNext) {
             }
         });
     }
-}
-
-function editItem(apiClient, item) {
-    return new Promise(function (resolve, reject) {
-        const serverId = apiClient.serverInfo().Id;
-
-        if (item.Type === 'Timer') {
-            import('./recordingcreator/recordingeditor').then(({ default: recordingEditor }) => {
-                recordingEditor.show(item.Id, serverId).then(resolve, reject);
-            });
-        } else if (item.Type === 'SeriesTimer') {
-            import('./recordingcreator/seriesrecordingeditor').then(({ default: recordingEditor }) => {
-                recordingEditor.show(item.Id, serverId).then(resolve, reject);
-            });
-        } else {
-            import('./metadataEditor/metadataEditor').then(({ default: metadataEditor }) => {
-                metadataEditor.show(item.Id, serverId).then(resolve, reject);
-            });
-        }
-    });
 }
 
 function deleteItem(apiClient, item) {

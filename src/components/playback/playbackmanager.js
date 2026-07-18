@@ -32,7 +32,6 @@ import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 import { MediaError } from 'types/mediaError';
 import { getMediaError } from 'utils/mediaError';
-import { bindSkipSegment } from './skipsegment.ts';
 import * as bitrateTest from 'utils/bitrateTest';
 
 const UNLIMITED_ITEMS = -1;
@@ -1151,7 +1150,6 @@ export class PlaybackManager {
                 if (!brightnessOsdLoaded) {
                     brightnessOsdLoaded = true;
                     // TODO: Have this trigger an event instead to get the osd out of here
-                    import('./brightnessosd').then();
                 }
                 player.setBrightness(val);
             }
@@ -3758,7 +3756,6 @@ export class PlaybackManager {
         }
 
         bindMediaSegmentManager(self);
-        this._skipSegment = bindSkipSegment(self);
     }
 
     getCurrentPlayer() {

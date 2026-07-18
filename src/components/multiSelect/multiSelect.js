@@ -195,13 +195,6 @@ function showMenuForSelectedItems(e) {
                 icon: 'select_all'
             });
 
-            if (user.Policy.IsAdministrator || user.Policy.EnableCollectionManagement) {
-                menuItems.push({
-                    name: globalize.translate('AddToCollection'),
-                    id: 'addtocollection',
-                    icon: 'add'
-                });
-            }
             menuItems.push({
                 name: globalize.translate('AddToPlaylist'),
                 id: 'playlist',
@@ -279,17 +272,6 @@ function showMenuForSelectedItems(e) {
                                         }
                                     }
                                 }
-                                break;
-                            case 'addtocollection':
-                                import('../collectionEditor/collectionEditor').then(({ default: CollectionEditor }) => {
-                                    const collectionEditor = new CollectionEditor();
-                                    collectionEditor.show({
-                                        items: items,
-                                        serverId: serverId
-                                    });
-                                });
-                                hideSelections();
-                                dispatchNeedsRefresh();
                                 break;
                             case 'playlist':
                                 import('../playlisteditor/playlisteditor').then(({ default: PlaylistEditor }) => {

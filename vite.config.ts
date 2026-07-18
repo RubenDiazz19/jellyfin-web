@@ -47,18 +47,22 @@ function listPackageModules(spec: string): string[] {
 }
 
 // `import template from './x.html'` → default-exports the raw markup string.
-// Matches the webpack html-loader behaviour the legacy views rely on.
+// Matches the webpack html-loader behaviour the legacy views rely on. The
+// import is rewritten to Vite's `?raw` so the core build-html plugin never
+// tries to parse the template as an HTML entry (which breaks `vite build`).
 function htmlTemplates(): Plugin {
     return {
         name: 'jf-html-templates',
         enforce: 'pre',
-        transform(_code, id) {
-            if (!id.endsWith('.html')) return null;
-            const raw = fs.readFileSync(id.split('?')[0], 'utf-8');
-            return {
-                code: `export default ${JSON.stringify(raw)};`,
-                map: null
-            };
+        async resolveId(source, importer) {
+            if (!source.split('?')[0].endsWith('.html') || !importer) return null;
+            if (source.includes('?raw')) return null;
+            // The app entry point must go through Vite's own HTML pipeline.
+            if (importer.endsWith('.html')) return null;
+            const resolved = await this.resolve(source, importer, { skipSelf: true });
+            if (!resolved) return null;
+            if (resolved.id.split('?')[0] === path.join(SRC_DIR, 'index.html')) return null;
+            return resolved.id.split('?')[0] + '?raw';
         }
     };
 }
@@ -84,14 +88,20 @@ function workerImports(): Plugin {
 function injectApp(): Plugin {
     return {
         name: 'jf-inject-app',
-        transformIndexHtml() {
-            return [
-                {
-                    tag: 'script',
-                    attrs: { type: 'module', src: '/index.jsx' },
-                    injectTo: 'body'
-                }
-            ];
+        transformIndexHtml: {
+            // 'pre' para que el build recoja el script como entry module;
+            // con el orden por defecto la inyección llega tarde y el bundle
+            // sale vacío.
+            order: 'pre',
+            handler() {
+                return [
+                    {
+                        tag: 'script',
+                        attrs: { type: 'module', src: './index.jsx' },
+                        injectTo: 'body'
+                    }
+                ];
+            }
         }
     };
 }
