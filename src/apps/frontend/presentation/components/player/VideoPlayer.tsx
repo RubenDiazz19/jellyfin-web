@@ -129,7 +129,11 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video ref={videoRef} className='jfp-video-el' playsInline crossOrigin='anonymous'>
                 {subtitleUrl && (
+                    // key fuerza el remount: si solo cambia el src, el navegador
+                    // no recarga el VTT y siguen apareciendo los subtítulos
+                    // viejos.
                     <track
+                        key={subtitleUrl}
                         kind='subtitles'
                         src={subtitleUrl}
                         default
