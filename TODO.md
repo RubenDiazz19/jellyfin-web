@@ -31,6 +31,7 @@ Reglas:
 - **Fase 6** — RootAppRouter simplificado (solo dashboard + frontend)
 - **Fase 7** — package.json limpio (sin webpack/babel/polyfills, build con Vite)
 - **Fase 8.1–8.4** — TypeScript, lint, tests y build de producción verificados
+- **Fase 9.1–9.7** — Mejoras post-revisión: releasePointerCapture en el carrusel, ShowViewModel con refresco optimista + fix del caché (`clearShowCache()` en toda mutación), MoviePage con loading/error, MovieViewModel con API real + tests, `useSignalValue` en VideoControls, reset de wheelAccum
 
 ---
 
@@ -46,44 +47,7 @@ Reglas:
 
 ---
 
-## Fase 9 — Mejoras post-revisión
-
-### 9.1 releasePointerCapture en el carrusel ✓
-
-El hero de HomePage capturaba el puntero en `onPointerDown` sin soltarlo explícitamente.
-- [x] En `onPointerUp`/`onPointerCancel`, añadido `e.currentTarget.releasePointerCapture?.(e.pointerId)`
-
-### 9.2 loading.hide() duplicado ✓
-
-`loading.hide()` se llama tanto en `VideoRoute.tsx` como en `AppLayout.tsx`.
-- [x] Verificado: `loading.hide()` ya es idempotente. No requiere cambios.
-
-### 9.3 ShowViewModel con refresco optimista ✓
-
-`ShowViewModel.load()` retornaba temprano si la serie ya estaba cargada, dejando stale el "continuar viendo".
-- [x] Ahora siempre re-fetch pero sin mostrar loading si ya hay datos (optimistic update). El error no sobreescribe datos previos.
-- [x] Fix del caché que lo hacía inútil: `invalidateShow(itemId)` se llamaba con ids de episodio pero `showCache` se indexa por id de serie (el delete nunca casaba). Ahora toda mutación (fin de reproducción, marcar visto, editar metadatos/imágenes/subtítulos) hace `clearShowCache()` — siempre correcto; cada serie re-fetchea una vez en la siguiente visita.
-
-### 9.4 MoviePage con loading/error ✓
-
-- [x] Añadidos estados loading/error en `MoviePage` (como ShowPage)
-
-### 9.5 MovieViewModel con API real ✓
-
-`MovieViewModel.load()` solo resolvía de `PROTO_DATA`.
-- [x] Añadido `data/api/movies.ts` con `getMovie(id)` y `mapMovie()` (mismo patrón que shows.ts)
-- [x] Registrado en ApiService como `catalog.getMovie` y exportado en el barrel
-- [x] `MovieViewModel.load()` llama a la API con fallback a PROTO_DATA, seq anti-race y sin pisar proto con errores
-- [x] Tests de MovieViewModel (`__tests__/MovieViewModel.test.ts`, 6 casos)
-
-### 9.6 useSignalValue en VideoControls ✓
-
-`useViewModel(videoPlayerVM)` suscribía **todos** los signals del VM.
-- [x] Sustituido por `useSignalValue` individual para `currentTime`, `duration`, `playing`, `fullscreen` (el componente ya no re-renderiza por audioTracks/subtitleUrl/buffering…)
-
-### 9.7 wheelAccum residual en carrusel ✓
-
-- [x] Resetear `wheelAccum.current = 0` al inicio del nuevo efecto
+## Fase 9 — Pendientes menores
 
 ### 9.8 CSS specificity (pendiente)
 
@@ -94,6 +58,53 @@ Los selectores de actionSheet (`html body.jf-frontend-active .dialog.actionSheet
 
 Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `VideoPlayerViewModel` solo usa `element.requestFullscreen()`.
 - [ ] Verificar comportamiento en Safari y añadir fallback si es necesario
+
+---
+
+## Fase 10 — Reproductor: nuevas funcionalidades
+
+### 10.1 Velocidad de reproducción y menú de pistas siempre accesible
+
+- [ ] Signal `playbackRate` + comando `setPlaybackRate` en VideoPlayerViewModel (persiste al recargar la fuente por cambio de pista vía `defaultPlaybackRate`)
+- [ ] Sección «Velocidad» (0.5×–2×) en VideoSettingsMenu
+- [ ] El menú de ajustes se muestra siempre (antes solo con >1 audio o subtítulos); la pista de audio se lista aunque solo haya una
+- [ ] Tests del comando en VideoPlayerViewModel.test
+
+### 10.2 Picture-in-Picture
+
+- [ ] Signals `pipAvailable`/`pipActive` + comando `togglePip` (con feature-detect: oculto en navegadores sin API)
+- [ ] Botón PiP en el OSD + salida limpia en `close()`
+- [ ] Atajo de teclado `p`
+- [ ] Tests
+
+### 10.3 Enviar a TV (Chromecast / AirPlay)
+
+- [ ] Remote Playback API (`video.remote`): signals `castAvailable`/`castState` + comando `promptCast` (sin SDK externo; Chrome → Cast, Safari → AirPlay)
+- [ ] Botón en el OSD, visible solo cuando hay receptores en la red; estado activo mientras se emite
+- [ ] Nota: con transcode HLS (MSE) Chrome no permite remoting — el botón solo aparece en DirectPlay
+- [ ] Tests
+
+### 10.4 Saltos de ±10 s en el OSD
+
+- [ ] Botones retroceder/avanzar 10 s junto al play (los atajos ← → ya existían)
+
+---
+
+## Fase 11 — Hero: tiempo restante al hacer hover en play
+
+- [ ] `formatRemainingCompact()`: `<60 min` → «42 min»; `≥60` → «1 h 12 min» (60 exacto → «1 h»)
+- [ ] El PlayBtn del hero usa el formato compacto en el hoverText (slides «continuar viendo»)
+- [ ] Tests del formateador
+
+---
+
+## Fase 12 — Progreso actualizado al instante al salir del reproductor
+
+Bug: al salir de un episodio/película, la página de destino (home/serie) hace fetch en paralelo con el `reportPlaybackStop` aún en vuelo → el servidor responde con la posición vieja y el progreso no se ve hasta recargar.
+
+- [ ] Barrera `settlePlaybackReports()` en data/api/playback.ts: los fetch de catálogo (home carousel, shows, movie) esperan al último stop en vuelo (con timeout de seguridad de 2 s)
+- [ ] `clearShowCache()` dentro de la barrera; el DELETE de ActiveEncodings sale del camino crítico
+- [ ] Tests de la barrera (orden stop → fetch, timeout)
 
 ---
 
