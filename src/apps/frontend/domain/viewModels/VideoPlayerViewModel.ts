@@ -40,6 +40,13 @@ export class VideoPlayerViewModel {
     /** El navegador soporta Picture-in-Picture (Firefox no expone la API). */
     pipAvailable = signal(false);
     pipActive = signal(false);
+    /**
+     * Hay receptores de Remote Playback (Chromecast en Chrome, AirPlay en
+     * Safari) alcanzables para la fuente actual. Con transcode HLS (MSE)
+     * Chrome no permite remoting y esto queda en false.
+     */
+    castAvailable = signal(false);
+    castState = signal<RemotePlaybackState>('disconnected');
 
     private video: HTMLVideoElement | null = null;
     private container: HTMLElement | null = null;
@@ -106,6 +113,8 @@ export class VideoPlayerViewModel {
             && !!document.pictureInPictureEnabled;
         on('enterpictureinpicture', () => { this.pipActive.value = true; });
         on('leavepictureinpicture', () => { this.pipActive.value = false; });
+
+        this.watchRemotePlayback(video);
         on('error', () => {
             if (this.closed) return;
             this.error.value = 'No se pudo reproducir el vídeo';
@@ -196,6 +205,13 @@ export class VideoPlayerViewModel {
         }
     };
 
+    /** Abre el selector de receptores del navegador (Cast/AirPlay). */
+    promptCast = () => {
+        const remote = this.video?.remote;
+        if (!remote) return;
+        void remote.prompt().catch(() => {});
+    };
+
     /** Cambia la pista de audio: nuevo PlaybackInfo conservando la posición. */
     setAudioTrack = (index: number) => {
         if (index === this.selectedAudio.value) return;
@@ -258,6 +274,32 @@ export class VideoPlayerViewModel {
 
     // ── Interno ─────────────────────────────────────────────────────────────
 
+    /** Sigue la disponibilidad de receptores remotos mientras dure el attach. */
+    private watchRemotePlayback(video: HTMLVideoElement) {
+        const remote = video.remote;
+        if (!remote || typeof remote.watchAvailability !== 'function') return;
+
+        this.castState.value = remote.state;
+        const onConnecting = () => { this.castState.value = 'connecting'; };
+        const onConnect = () => { this.castState.value = 'connected'; };
+        const onDisconnect = () => { this.castState.value = 'disconnected'; };
+        remote.addEventListener('connecting', onConnecting);
+        remote.addEventListener('connect', onConnect);
+        remote.addEventListener('disconnect', onDisconnect);
+
+        let watchId: number | null = null;
+        remote.watchAvailability((available) => { this.castAvailable.value = available; })
+            .then((id) => { watchId = id; })
+            .catch(() => { this.castAvailable.value = false; });
+
+        this.detachFns.push(() => {
+            remote.removeEventListener('connecting', onConnecting);
+            remote.removeEventListener('connect', onConnect);
+            remote.removeEventListener('disconnect', onDisconnect);
+            if (watchId != null) void remote.cancelWatchAvailability(watchId).catch(() => {});
+        });
+    }
+
     private reset() {
         this.currentTime.value = 0;
         this.duration.value = 0;
@@ -272,6 +314,8 @@ export class VideoPlayerViewModel {
         this.subtitleUrl.value = null;
         this.playbackRate.value = 1;
         this.pipActive.value = false;
+        this.castAvailable.value = false;
+        this.castState.value = 'disconnected';
         this.burnedSubtitle = null;
         this.itemId = '';
     }

@@ -30,6 +30,8 @@ export function VideoControls() {
     const fullscreen = useSignalValue(videoPlayerVM.fullscreen);
     const pipAvailable = useSignalValue(videoPlayerVM.pipAvailable);
     const pipActive = useSignalValue(videoPlayerVM.pipActive);
+    const castAvailable = useSignalValue(videoPlayerVM.castAvailable);
+    const castState = useSignalValue(videoPlayerVM.castState);
 
     const pct = dragPct ?? (duration > 0 ? (current / duration) * 100 : 0);
     const shownTime = dragPct != null ? (dragPct / 100) * duration : current;
@@ -94,6 +96,17 @@ export function VideoControls() {
                 </div>
                 <div className='jfp-video-controls-group'>
                     <VideoSettingsMenu />
+                    {/* Visible mientras se emite aunque la disponibilidad parpadee. */}
+                    {(castAvailable || castState !== 'disconnected') && (
+                        <button
+                            type='button'
+                            className={`jfp-video-btn${castState === 'connected' ? ' is-active' : ''}`}
+                            onClick={videoPlayerVM.promptCast}
+                            aria-label={castState === 'connected' ? 'Emitiendo — cambiar receptor' : 'Enviar a TV'}
+                        >
+                            <PlayerIc.Cast />
+                        </button>
+                    )}
                     {pipAvailable && (
                         <button
                             type='button'

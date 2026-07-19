@@ -77,12 +77,12 @@ Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `Vid
 - [x] Atajo de teclado `p`
 - [x] Tests
 
-### 10.3 Enviar a TV (Chromecast / AirPlay)
+### 10.3 Enviar a TV (Chromecast / AirPlay) ✓
 
-- [ ] Remote Playback API (`video.remote`): signals `castAvailable`/`castState` + comando `promptCast` (sin SDK externo; Chrome → Cast, Safari → AirPlay)
-- [ ] Botón en el OSD, visible solo cuando hay receptores en la red; estado activo mientras se emite
-- [ ] Nota: con transcode HLS (MSE) Chrome no permite remoting — el botón solo aparece en DirectPlay
-- [ ] Tests
+- [x] Remote Playback API (`video.remote`): signals `castAvailable`/`castState` + comando `promptCast` (sin SDK externo; Chrome → Cast, Safari → AirPlay)
+- [x] Botón en el OSD, visible solo cuando hay receptores en la red; estado activo mientras se emite
+- [x] Nota: con transcode HLS (MSE) Chrome no permite remoting — el botón solo aparece en DirectPlay
+- [x] Tests
 
 ### 10.4 Saltos de ±10 s en el OSD
 

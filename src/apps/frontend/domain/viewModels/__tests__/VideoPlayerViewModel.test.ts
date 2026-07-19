@@ -185,6 +185,41 @@ describe('VideoPlayerViewModel', () => {
         expect(vm.pipActive.value).toBe(false);
     });
 
+    test('castAvailable sigue watchAvailability y promptCast abre el selector', async () => {
+        class FakeRemote extends EventTarget {
+            state: RemotePlaybackState = 'disconnected';
+            cb: ((available: boolean) => void) | null = null;
+            watchAvailability = vi.fn((cb: (available: boolean) => void) => {
+                this.cb = cb;
+                return Promise.resolve(7);
+            });
+            cancelWatchAvailability = vi.fn(() => Promise.resolve());
+            prompt = vi.fn(() => Promise.resolve());
+        }
+        const remote = new FakeRemote();
+        (video as unknown as { remote: unknown }).remote = remote;
+
+        // Re-attach: el seguimiento de receptores se engancha al conectar el <video>.
+        vm.close();
+        vm = new VideoPlayerViewModel(api);
+        vm.attach(video as unknown as HTMLVideoElement, container);
+        await vm.open('item1');
+
+        remote.cb?.(true);
+        expect(vm.castAvailable.value).toBe(true);
+
+        vm.promptCast();
+        expect(remote.prompt).toHaveBeenCalled();
+
+        remote.dispatchEvent(new Event('connect'));
+        expect(vm.castState.value).toBe('connected');
+        remote.dispatchEvent(new Event('disconnect'));
+        expect(vm.castState.value).toBe('disconnected');
+
+        vm.close();
+        expect(remote.cancelWatchAvailability).toHaveBeenCalledWith(7);
+    });
+
     test('close() reporta el stop con la posición actual', async () => {
         await vm.open('item1');
         video.currentTime = 42;
