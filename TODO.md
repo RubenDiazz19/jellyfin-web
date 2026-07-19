@@ -110,14 +110,14 @@ Bug: al salir de un episodio/película, la página de destino (home/serie) hací
 
 ## Fase 13 — Reproductor: fix de cambio de audio y menús divididos
 
-### 13.1 Fix: el cambio de pista de audio no surtía efecto
+### 13.1 Fix: el cambio de pista de audio no surtía efecto ✓
 
 Causa raíz (verificada contra el servidor con curl): Jellyfin ignora `audioStreamIndex` en PlaybackInfo **si no va acompañado de `mediaSourceId`** — la TranscodingUrl volvía siempre con `AudioStreamIndex=1` (el default).
 
-- [ ] `getPlaybackDecision` acepta `mediaSourceId` y lo envía como query param
-- [ ] `reload()` (cambio de audio / subtítulo quemado) pasa el `mediaSourceId` de la decisión vigente
-- [ ] Test: setAudioTrack repide PlaybackInfo con `audioStreamIndex` + `mediaSourceId`
-- [ ] Verificación E2E: la TranscodingUrl trae el AudioStreamIndex elegido
+- [x] `getPlaybackDecision` acepta `mediaSourceId` y lo envía como query param
+- [x] `reload()` (cambio de audio / subtítulo quemado) pasa el `mediaSourceId` de la decisión vigente
+- [x] Test: setAudioTrack repide PlaybackInfo con `audioStreamIndex` + `mediaSourceId`
+- [x] Verificación E2E: la TranscodingUrl trae el AudioStreamIndex elegido y el `<video>` cambia de sesión conservando la posición
 
 ### 13.2 Menús divididos: subtítulos, audio y velocidad
 

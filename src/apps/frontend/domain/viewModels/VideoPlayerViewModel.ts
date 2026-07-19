@@ -324,6 +324,7 @@ export class VideoPlayerViewModel {
     private async loadSource(opts: {
         audioStreamIndex?: number;
         subtitleStreamIndex?: number;
+        mediaSourceId?: string;
     }) {
         const video = this.video;
         if (!video) return;
@@ -414,7 +415,9 @@ export class VideoPlayerViewModel {
         this.loading.value = true;
         await this.loadSource({
             audioStreamIndex: opts.audioStreamIndex ?? this.selectedAudio.value ?? undefined,
-            subtitleStreamIndex: opts.subtitleStreamIndex
+            subtitleStreamIndex: opts.subtitleStreamIndex,
+            // Imprescindible: sin él, el servidor ignora los índices pedidos.
+            mediaSourceId: this.decision?.mediaSourceId
         });
     }
 

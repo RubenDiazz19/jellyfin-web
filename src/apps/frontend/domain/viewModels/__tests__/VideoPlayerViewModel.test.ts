@@ -113,6 +113,17 @@ describe('VideoPlayerViewModel', () => {
         expect(api.playback.getPlaybackDecision).toHaveBeenCalledTimes(1);
     });
 
+    test('setAudioTrack repide PlaybackInfo con el índice y el mediaSourceId', async () => {
+        await vm.open('item1');
+        vm.setAudioTrack(2);
+        await Promise.resolve();
+
+        const calls = (api.playback.getPlaybackDecision as ReturnType<typeof vi.fn>).mock.calls;
+        expect(calls).toHaveLength(2);
+        // Sin mediaSourceId el servidor ignora audioStreamIndex (fix 13.1).
+        expect(calls[1][1]).toMatchObject({ audioStreamIndex: 2, mediaSourceId: 'ms1' });
+    });
+
     test('togglePlay alterna reproducción y los eventos actualizan signals', async () => {
         await vm.open('item1');
 

@@ -81,6 +81,7 @@ export async function getPlaybackDecision(
         startTicks?: number;
         audioStreamIndex?: number;
         subtitleStreamIndex?: number;
+        mediaSourceId?: string;
     } = {}
 ): Promise<PlaybackDecision> {
     const session = loadSession();
@@ -89,6 +90,9 @@ export async function getPlaybackDecision(
     if (opts.startTicks) q.set('startTimeTicks', String(opts.startTicks));
     if (opts.audioStreamIndex != null) q.set('audioStreamIndex', String(opts.audioStreamIndex));
     if (opts.subtitleStreamIndex != null) q.set('subtitleStreamIndex', String(opts.subtitleStreamIndex));
+    // Sin mediaSourceId el servidor IGNORA los índices de pista pedidos y la
+    // TranscodingUrl vuelve con el audio por defecto (verificado en 10.10).
+    if (opts.mediaSourceId) q.set('mediaSourceId', opts.mediaSourceId);
     const res = await apiSend(
         `/Items/${itemId}/PlaybackInfo?${q.toString()}`,
         'POST',
