@@ -119,13 +119,13 @@ Causa raíz (verificada contra el servidor con curl): Jellyfin ignora `audioStre
 - [x] Test: setAudioTrack repide PlaybackInfo con `audioStreamIndex` + `mediaSourceId`
 - [x] Verificación E2E: la TranscodingUrl trae el AudioStreamIndex elegido y el `<video>` cambia de sesión conservando la posición
 
-### 13.2 Menús divididos: subtítulos, audio y velocidad
+### 13.2 Menús divididos: subtítulos, audio y velocidad ✓
 
 El menú único de ajustes era demasiado grande.
 
-- [ ] Tres botones independientes en el OSD, cada uno con su icono y su panel: Subtítulos (visible si hay pistas), Audio (visible si hay pistas), Velocidad (siempre)
-- [ ] Solo un panel abierto a la vez; click fuera cierra
-- [ ] Iconos nuevos: subtítulos (CC), audio (ondas), velocidad (velocímetro)
+- [x] Tres botones independientes en el OSD, cada uno con su icono y su panel: Subtítulos (visible si hay pistas), Audio (visible si hay pistas), Velocidad (siempre)
+- [x] Solo un panel abierto a la vez; click fuera cierra
+- [x] Iconos nuevos: subtítulos (CC), audio (ecualizador), velocidad (velocímetro)
 
 ---
 

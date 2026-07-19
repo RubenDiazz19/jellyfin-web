@@ -609,7 +609,12 @@ html body.jf-video-active .dialogBackdropOpened {
     border-radius: 50%;
 }
 
-/* ── Menú de ajustes (audio / subtítulos) ── */
+/* ── Menús de pistas (subtítulos / audio / velocidad) ── */
+
+.jfp-video-settings-cluster {
+    display: flex;
+    gap: 6px;
+}
 
 .jfp-video-settings {
     position: relative;

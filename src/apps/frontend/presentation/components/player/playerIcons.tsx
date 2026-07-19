@@ -100,10 +100,28 @@ export const PlayerIc = {
             <rect x='12.5' y='12.5' width='8.5' height='6.5' rx='1.5' stroke='currentColor' strokeWidth={sw} />
         </svg>
     ),
-    Settings: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+    Subtitles: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
         <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
             <rect x='3.5' y='5.5' width='17' height='13' rx='2' stroke='currentColor' strokeWidth={sw} />
             <path d='M6.5 14.5h5M13.5 14.5h4M6.5 11h2M10.5 11h7' stroke='currentColor' strokeWidth={sw} strokeLinecap='round' />
+        </svg>
+    ),
+    AudioTrack: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <path
+                d='M4.5 10v4M8.25 7.5v9M12 5v14M15.75 8.5v7M19.5 10.5v3'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+            />
+        </svg>
+    ),
+    Speed: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <path
+                d='M4.5 16.5a8 8 0 1115 0'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+            />
+            <path d='M12 16.5l3.6-4.8' stroke='currentColor' strokeWidth={sw} strokeLinecap='round' />
+            <circle cx='12' cy='16.5' r='1' fill='currentColor' />
         </svg>
     ),
     Spinner: ({ size = 54 }: IconProps): ReactElement => (
