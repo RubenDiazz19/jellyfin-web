@@ -3,6 +3,7 @@
 
 import type { CastMember, Episode, Season, Show } from '../models';
 import { loadSession } from '../session/session';
+import { WATCHED } from '../stores/watchedStore';
 import { showCache } from './cache';
 import { apiFetch } from './http';
 import { imageUrl } from './images';
@@ -171,6 +172,7 @@ export async function getShow(id: string): Promise<Show> {
         );
         const show = mapShow(item);
         show.seasons = await getSeasonsWithEpisodes(id);
+        hydrateWatched(id, show.seasons);
         const firstIncomplete = show.seasons
             .flatMap((s) => s.episodes.map((e) => ({ s, e })))
             .find(({ e }) => e.watched < 1);
@@ -209,6 +211,7 @@ async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
         const eps = (epData.Items ?? []).map(mapEpisode).sort((a, b) => a.n - b.n);
         seasons.push({
             n: s.IndexNumber,
+            jfId: s.Id,
             year: s.ProductionYear,
             total: eps.length,
             watched: eps.filter((e) => e.watched >= 1).length,
@@ -221,4 +224,22 @@ async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
     }
     seasons.sort((a, b) => a.n - b.n);
     return seasons;
+}
+
+// Trae el estado del servidor al store local: los botones agregados de
+// "visto" (temporada / serie) leen del store para reactividad instantánea,
+// pero la verdad es el server. Sincroniza en ambos sentidos dentro del
+// scope de esta serie: lo marcado en el server entra al set; lo que ya no
+// esté marcado (desmarcado en otro cliente) sale.
+function hydrateWatched(showId: string, seasons: Season[]) {
+    const allIds: string[] = [];
+    const watched: string[] = [];
+    for (const season of seasons) {
+        for (const ep of season.episodes) {
+            const id = `${showId}-s${season.n}-e${ep.n}`;
+            allIds.push(id);
+            if (ep.watched >= 1) watched.push(id);
+        }
+    }
+    WATCHED.sync(allIds, watched);
 }

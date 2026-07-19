@@ -26,7 +26,11 @@ export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props)
             >
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 55%)' }} />
                 <div style={{ position: 'absolute', top: 10, left: 12 }}>
-                    <WatchedButton id={`${slide.id}-s${slide.season}-e${slide.episode}`} size={16} badge />
+                    <WatchedButton
+                        id={`${slide.id}-s${slide.season}-e${slide.episode}`}
+                        serverId={slide.jfEpisodeId}
+                        size={16} badge
+                    />
                 </div>
                 <div style={{ position: 'absolute', top: 10, right: 12 }}>
                     <FavButton id={slide.id} size={16} />

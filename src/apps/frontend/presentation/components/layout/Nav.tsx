@@ -102,7 +102,11 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                         ) : actionData?.type === 'movie' ? (
                             <MovieWatchedButton movie={actionData.movie} size={17} />
                         ) : (
-                            <WatchedButton id={actionId} size={17} />
+                            <WatchedButton
+                                id={actionId}
+                                serverId={actionData?.type === 'episode' ? actionData.id : undefined}
+                                size={17}
+                            />
                         )}
                         <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.18)' }} />
                     </>

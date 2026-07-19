@@ -88,7 +88,8 @@ function EpisodeHero({
                     { label: `Temporada ${season.n}`, to: { page: 'season', showId: show.id, seasonN: season.n } },
                     { label: `Episodio ${ep.n}` }
                 ]}
-                actionId={ep.jfId ?? `${show.id}-s${season.n}-e${ep.n}`}
+                actionId={`${show.id}-s${season.n}-e${ep.n}`}
+                actionData={ep.jfId ? { type: 'episode', id: ep.jfId } : undefined}
             />
             <Backdrop src={ep.thumbHD || ep.thumb || ''} fadeBottom={0.92} sharp />
 
@@ -304,7 +305,10 @@ function EpisodeDetail({
                                         }}
                                     >
                                         <FavButton id={`${show.id}-s${season.n}-e${nextEp.n}`} size={15} />
-                                        <WatchedButton id={`${show.id}-s${season.n}-e${nextEp.n}`} size={15} />
+                                        <WatchedButton
+                                            id={`${show.id}-s${season.n}-e${nextEp.n}`}
+                                            serverId={nextEp.jfId} size={15}
+                                        />
                                     </div>
                                     <div style={{
                                         position: 'absolute', left: 16, bottom: 12,

@@ -30,6 +30,8 @@ export type Season = {
     synopsis?: string;
     backdrop?: string;
     episodes: Episode[];
+    // Id real del server (para markPlayed a nivel de temporada).
+    jfId?: string;
 };
 
 export type Show = {

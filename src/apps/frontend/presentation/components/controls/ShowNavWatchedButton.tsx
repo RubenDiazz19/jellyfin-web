@@ -1,32 +1,65 @@
 import { Ic } from '../../theme/icons';
 import { WATCHED } from '../../../domain/stores';
-import { useWatchedVersion } from '../../../domain/bridge/useWatched';
+import { useWatched, useWatchedVersion } from '../../../domain/bridge/useWatched';
+import { useSession } from '../../../domain/bridge/useSession';
+import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { showVM } from '../../../domain/viewModels/ShowViewModel';
 import { PROTO_DATA } from '../../../domain/models';
+import { markPlayed } from '../../../domain/api';
 import { IconButton } from './IconButton';
 import { WatchedBadge } from './WatchedBadge';
 import { useToast } from '../toast/ToastProvider';
 
 // "Visto" para series — calcula el estado agregado desde todos los episodios
-// de todas las temporadas y marca/desmarca todos a la vez. Se usa tanto en
-// el Nav de la ficha como en las tarjetas de la Home/librería, para que
-// marcar visto en la carátula quede reflejado en la ficha y viceversa.
+// de todas las temporadas y marca/desmarca todos a la vez. Con sesión real,
+// llama a markPlayed(showId) — el server propaga a episodios; en catálogos
+// donde aún no se ha cargado el detalle (posters/carousel) el estado
+// agregado no está disponible: usamos como fallback el propio showId en
+// el store local para dar feedback inmediato.
 type Props = { showId: string; size?: number; badge?: boolean };
 
 export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props) {
     useWatchedVersion();
+    useViewModel(showVM);
     const toast = useToast();
-    const show = PROTO_DATA.shows[showId];
+    const { session } = useSession();
+    const isReal = !!session?.accessToken;
+    const proto = PROTO_DATA.shows[showId];
+    const show = proto ?? showVM.showFor(showId);
     const allEpIds = show ?
         (show.seasons || []).flatMap((season) =>
             (season.episodes || []).map((ep) => `${showId}-s${season.n}-e${ep.n}`)
         ) :
         [];
-    const allWatched = allEpIds.length > 0 && allEpIds.every((id) => WATCHED.has(id));
-    const toggle = () => {
-        WATCHED.setMany(allEpIds, !allWatched);
-        toast(allWatched ?
-            `Serie marcada como no vista · ${show?.title ?? ''}` :
-            `Serie marcada como vista · ${show?.title ?? ''}`);
+    // Con episodios cargados: agregado real. Sin ellos: fallback al showId
+    // como "id de item" en el store — no se propaga a episodios pero permite
+    // ver el toggle inmediato en un poster.
+    const [fallback, toggleFallback] = useWatched(showId);
+    const allWatched = allEpIds.length > 0 ?
+        allEpIds.every((id) => WATCHED.has(id)) :
+        fallback;
+
+    const toggle = async () => {
+        const next = !allWatched;
+        if (allEpIds.length > 0) WATCHED.setMany(allEpIds, next);
+        else toggleFallback();
+        if (!isReal) {
+            toast(next ?
+                `Serie marcada como vista · ${show?.title ?? ''}` :
+                `Serie marcada como no vista · ${show?.title ?? ''}`);
+            return;
+        }
+        try {
+            await markPlayed(showId, next);
+            toast(next ?
+                `Serie marcada como vista · ${show?.title ?? ''}` :
+                `Serie marcada como no vista · ${show?.title ?? ''}`, 'success');
+        } catch (e) {
+            // Revert local si el server falla.
+            if (allEpIds.length > 0) WATCHED.setMany(allEpIds, !next);
+            else toggleFallback();
+            toast((e as Error).message, 'warn');
+        }
     };
     return (
         <IconButton

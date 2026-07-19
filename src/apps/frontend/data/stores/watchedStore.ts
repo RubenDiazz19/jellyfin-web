@@ -40,5 +40,23 @@ export const WATCHED = {
         const s = ensure();
         ids.forEach((id) => { if (value) s.add(id); else s.delete(id); });
         persist();
+    },
+    // Sincroniza el subconjunto `scopeIds` con la lista `watchedIds`: los
+    // ids del scope que no estén en `watchedIds` salen del set; los que
+    // estén, entran. Un único evento aunque cambien varios.
+    sync(scopeIds: string[], watchedIds: string[]) {
+        const s = ensure();
+        const target = new Set(watchedIds);
+        let changed = false;
+        for (const id of scopeIds) {
+            const shouldBe = target.has(id);
+            const has = s.has(id);
+            if (shouldBe && !has) {
+                s.add(id); changed = true;
+            } else if (!shouldBe && has) {
+                s.delete(id); changed = true;
+            }
+        }
+        if (changed) persist();
     }
 };

@@ -1,5 +1,6 @@
 import type { CastMember, Movie } from '../models';
 import { loadSession } from '../session/session';
+import { WATCHED } from '../stores/watchedStore';
 import { apiFetch } from './http';
 import { imageUrl } from './images';
 import { settlePlaybackReports } from './playback';
@@ -59,5 +60,8 @@ export async function getMovie(id: string): Promise<Movie> {
     const item = await apiFetch<JFItem>(
         `/Users/${session.userId}/Items/${id}?Fields=${FIELDS_DETAIL}`
     );
-    return mapMovie(item);
+    const movie = mapMovie(item);
+    // Sincroniza el store local con lo que dice el server.
+    WATCHED.sync([`movie-${movie.id}`], (movie.watched ?? 0) >= 1 ? [`movie-${movie.id}`] : []);
+    return movie;
 }
