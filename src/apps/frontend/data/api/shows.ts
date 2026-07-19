@@ -6,6 +6,7 @@ import { loadSession } from '../session/session';
 import { showCache } from './cache';
 import { apiFetch } from './http';
 import { imageUrl } from './images';
+import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem, type JFMediaStream } from './types';
 
 function mapCast(item: JFItem): CastMember[] {
@@ -147,6 +148,7 @@ function mapEpisode(item: JFItem): Episode {
 }
 
 export async function getShows(): Promise<Show[]> {
+    await settlePlaybackReports();
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
     const data = await apiFetch<{ Items: JFItem[] }>(
@@ -156,6 +158,9 @@ export async function getShows(): Promise<Show[]> {
 }
 
 export async function getShow(id: string): Promise<Show> {
+    // Antes de mirar el caché: un stop en vuelo está a punto de limpiarlo y
+    // de mover las posiciones en el servidor.
+    await settlePlaybackReports();
     const cached = showCache.get(id);
     if (cached) return cached;
     const p = (async () => {

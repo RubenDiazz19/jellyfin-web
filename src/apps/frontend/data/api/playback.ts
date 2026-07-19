@@ -174,29 +174,54 @@ export async function reportPlaybackProgress(
     } catch { /* silent */ }
 }
 
+// Último stop en vuelo. Al salir del reproductor, la página de destino hace
+// fetch inmediatamente; sin barrera esa petición corre en paralelo con el
+// stop y el servidor responde con la posición vieja ("continuar viendo"
+// desactualizado hasta recargar).
+let pendingStopReport: Promise<void> = Promise.resolve();
+
+/**
+ * Espera al último reportPlaybackStop en vuelo. Los fetch de catálogo que
+ * leen posiciones (home carousel, show, movie) la llaman antes de pedir
+ * datos. Timeout de seguridad: si el stop se atasca, mejor servir datos
+ * ligeramente viejos que bloquear la UI.
+ */
+export function settlePlaybackReports(): Promise<void> {
+    return Promise.race([
+        pendingStopReport,
+        new Promise<void>((resolve) => setTimeout(resolve, 2000))
+    ]);
+}
+
 export async function reportPlaybackStop(
     itemId: string,
     positionTicks: number,
     playSessionId?: string
 ): Promise<void> {
-    try {
-        await apiSend('/Sessions/Playing/Stopped', 'POST', {
-            ItemId: itemId,
-            PositionTicks: positionTicks,
-            PlaySessionId: playSessionId
-        });
-        if (playSessionId) {
-            // Tell the server it can free the ffmpeg process.
-            await apiSend(
-                `/Videos/ActiveEncodings?deviceId=${encodeURIComponent(getDeviceId())}&playSessionId=${playSessionId}`,
-                'DELETE'
-            ).catch(() => {});
-        }
-        // itemId is the played EPISODE, but showCache is keyed by show id, so
-        // a targeted delete would never match. Clearing the whole cache keeps
-        // "continue watching" fresh; each show refetches once on next visit.
-        clearShowCache();
-    } catch { /* silent */ }
+    const report = (async () => {
+        try {
+            await apiSend('/Sessions/Playing/Stopped', 'POST', {
+                ItemId: itemId,
+                PositionTicks: positionTicks,
+                PlaySessionId: playSessionId
+            });
+            // itemId is the played EPISODE, but showCache is keyed by show id, so
+            // a targeted delete would never match. Clearing the whole cache keeps
+            // "continue watching" fresh; each show refetches once on next visit.
+            clearShowCache();
+        } catch { /* silent */ }
+    })();
+    pendingStopReport = report;
+    await report;
+    if (playSessionId) {
+        // Tell the server it can free the ffmpeg process. Deliberately after
+        // resolving the barrier: freeing the encoder doesn't affect the data
+        // the next page reads.
+        await apiSend(
+            `/Videos/ActiveEncodings?deviceId=${encodeURIComponent(getDeviceId())}&playSessionId=${playSessionId}`,
+            'DELETE'
+        ).catch(() => {});
+    }
 }
 
 function getDeviceId(): string {

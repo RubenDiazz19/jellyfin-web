@@ -2,6 +2,7 @@ import type { CastMember, Movie } from '../models';
 import { loadSession } from '../session/session';
 import { apiFetch } from './http';
 import { imageUrl } from './images';
+import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, ticksToMinutes, type JFItem } from './types';
 
 function mapCast(item: JFItem): CastMember[] {
@@ -52,6 +53,7 @@ function mapMovie(item: JFItem): Movie {
 }
 
 export async function getMovie(id: string): Promise<Movie> {
+    await settlePlaybackReports();
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
     const item = await apiFetch<JFItem>(

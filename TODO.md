@@ -98,13 +98,13 @@ Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `Vid
 
 ---
 
-## Fase 12 — Progreso actualizado al instante al salir del reproductor
+## Fase 12 — Progreso actualizado al instante al salir del reproductor ✓
 
-Bug: al salir de un episodio/película, la página de destino (home/serie) hace fetch en paralelo con el `reportPlaybackStop` aún en vuelo → el servidor responde con la posición vieja y el progreso no se ve hasta recargar.
+Bug: al salir de un episodio/película, la página de destino (home/serie) hacía fetch en paralelo con el `reportPlaybackStop` aún en vuelo → el servidor respondía con la posición vieja y el progreso no se veía hasta recargar.
 
-- [ ] Barrera `settlePlaybackReports()` en data/api/playback.ts: los fetch de catálogo (home carousel, shows, movie) esperan al último stop en vuelo (con timeout de seguridad de 2 s)
-- [ ] `clearShowCache()` dentro de la barrera; el DELETE de ActiveEncodings sale del camino crítico
-- [ ] Tests de la barrera (orden stop → fetch, timeout)
+- [x] Barrera `settlePlaybackReports()` en data/api/playback.ts: los fetch de catálogo (home carousel, shows, movie) esperan al último stop en vuelo (con timeout de seguridad de 2 s)
+- [x] `clearShowCache()` dentro de la barrera; el DELETE de ActiveEncodings sale del camino crítico
+- [x] Tests de la barrera (orden stop → fetch, timeout)
 
 ---
 

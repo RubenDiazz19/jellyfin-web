@@ -6,10 +6,14 @@ import type { CarouselSlide, Show } from '../models';
 import { loadSession } from '../session/session';
 import { apiFetch } from './http';
 import { imageUrl } from './images';
+import { settlePlaybackReports } from './playback';
 import { getShows } from './shows';
 import { FIELDS_LIST, type JFItem } from './types';
 
 export async function getHomeCarousel(): Promise<CarouselSlide[]> {
+    // El stop del reproductor puede seguir en vuelo al aterrizar aquí; sin
+    // esperar, /Items/Resume devuelve la posición vieja.
+    await settlePlaybackReports();
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
     const uid = session.userId;
