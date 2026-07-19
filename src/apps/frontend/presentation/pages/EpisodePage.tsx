@@ -186,7 +186,11 @@ function EpisodeDetail({
         <section style={{
             background: '#000', color: '#fff', padding: '32px 56px 96px', fontFamily: T.ui
         }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 80 }}>
+            {/* minmax(0,…): sin él los tracks 1fr valen minmax(auto,1fr) y su
+                mínimo es el min-content del hijo (la fila de reparto, muy
+                ancha) → la rejilla se desborda y en pantalla completa el
+                sobrante se ve como una columna negra a la derecha. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: 80 }}>
                 <div>
                     <div style={{
                         fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',

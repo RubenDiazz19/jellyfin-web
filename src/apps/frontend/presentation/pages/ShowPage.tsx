@@ -267,7 +267,9 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
         <section style={{
             background: '#000', color: '#fff', padding: '32px 56px 96px', fontFamily: T.ui
         }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 64 }}>
+            {/* minmax(0,…) evita el grid blowout: sin él el track 1fr no baja
+                del min-content del reparto y la rejilla desborda el viewport. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 64 }}>
                 <div>
                     <div style={{
                         fontFamily: T.ui, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',

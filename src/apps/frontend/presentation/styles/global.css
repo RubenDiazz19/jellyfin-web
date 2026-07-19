@@ -52,6 +52,14 @@ html:has(body.jf-frontend-active) {
     margin: 0 !important;
     padding: 0 !important;
     scrollbar-width: none;
+
+    /* Red de seguridad contra el "grid blowout": si algún hijo desborda
+       horizontalmente, `clip` lo recorta a nivel de documento en vez de
+       dejar una franja negra a la derecha (visible sobre todo en pantalla
+       completa del navegador, donde el scrollbar oculto no la delata).
+       `clip` en vez de `hidden`: no crea contenedor de scroll, así no
+       interfiere con los `position: fixed`/cálculos de los menús flotantes. */
+    overflow-x: clip;
 }
 
 html:has(body.jf-frontend-active)::-webkit-scrollbar {
