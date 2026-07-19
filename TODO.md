@@ -84,9 +84,9 @@ Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `Vid
 - [x] Nota: con transcode HLS (MSE) Chrome no permite remoting — el botón solo aparece en DirectPlay
 - [x] Tests
 
-### 10.4 Saltos de ±10 s en el OSD
+### 10.4 Saltos de ±10 s en el OSD ✓
 
-- [ ] Botones retroceder/avanzar 10 s junto al play (los atajos ← → ya existían)
+- [x] Botones retroceder/avanzar 10 s junto al play (los atajos ← → ya existían)
 
 ---
 

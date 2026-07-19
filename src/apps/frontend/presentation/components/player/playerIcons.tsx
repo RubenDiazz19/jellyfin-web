@@ -47,6 +47,38 @@ export const PlayerIc = {
             />
         </svg>
     ),
+    Replay10: ({ size = 24, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <path
+                d='M11.5 5.5a7.5 7.5 0 1 1-6.9 4.6'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+            />
+            <path
+                d='M11.9 2.8L8.9 5.5l3 2.7'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round' strokeLinejoin='round'
+            />
+            <text
+                x='12' y='15.6' textAnchor='middle' fontSize='7' fontWeight='600'
+                fill='currentColor' fontFamily='inherit'
+            >10</text>
+        </svg>
+    ),
+    Forward10: ({ size = 24, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <path
+                d='M12.5 5.5a7.5 7.5 0 1 0 6.9 4.6'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+            />
+            <path
+                d='M12.1 2.8l3 2.7-3 2.7'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round' strokeLinejoin='round'
+            />
+            <text
+                x='12' y='15.6' textAnchor='middle' fontSize='7' fontWeight='600'
+                fill='currentColor' fontFamily='inherit'
+            >10</text>
+        </svg>
+    ),
     Cast: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
         <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
             <path

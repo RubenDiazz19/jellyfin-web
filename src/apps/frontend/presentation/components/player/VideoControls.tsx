@@ -82,11 +82,27 @@ export function VideoControls() {
                 <div className='jfp-video-controls-group'>
                     <button
                         type='button'
+                        className='jfp-video-btn'
+                        onClick={() => videoPlayerVM.seekBy(-10)}
+                        aria-label='Retroceder 10 segundos'
+                    >
+                        <PlayerIc.Replay10 />
+                    </button>
+                    <button
+                        type='button'
                         className='jfp-video-btn jfp-video-btn-play'
                         onClick={videoPlayerVM.togglePlay}
                         aria-label={playing ? 'Pausa' : 'Reproducir'}
                     >
                         {playing ? <PlayerIc.Pause /> : <PlayerIc.Play />}
+                    </button>
+                    <button
+                        type='button'
+                        className='jfp-video-btn'
+                        onClick={() => videoPlayerVM.seekBy(10)}
+                        aria-label='Avanzar 10 segundos'
+                    >
+                        <PlayerIc.Forward10 />
                     </button>
                     <VolumeSlider />
                     <span className='jfp-video-time'>
