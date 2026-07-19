@@ -16,6 +16,12 @@ export function IconButton({ onClick, ariaLabel, padding = 4, active = false, st
     return (
         <button
             onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+            // Mismo motivo que PlayBtn: sin bloquear el focus nativo del
+            // mousedown, Chrome scrollea unos px para acomodar el focus ring
+            // cuando el botón vive cerca del borde del viewport (heroes 100vh)
+            // — se notaba al abrir el menú de los 3 puntos. El click y el Tab
+            // siguen funcionando.
+            onMouseDown={(e) => e.preventDefault()}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
             aria-label={ariaLabel}
