@@ -108,6 +108,37 @@ Bug: al salir de un episodio/película, la página de destino (home/serie) hací
 
 ---
 
+## Fase 13 — Reproductor: fix de cambio de audio y menús divididos
+
+### 13.1 Fix: el cambio de pista de audio no surtía efecto
+
+Causa raíz (verificada contra el servidor con curl): Jellyfin ignora `audioStreamIndex` en PlaybackInfo **si no va acompañado de `mediaSourceId`** — la TranscodingUrl volvía siempre con `AudioStreamIndex=1` (el default).
+
+- [ ] `getPlaybackDecision` acepta `mediaSourceId` y lo envía como query param
+- [ ] `reload()` (cambio de audio / subtítulo quemado) pasa el `mediaSourceId` de la decisión vigente
+- [ ] Test: setAudioTrack repide PlaybackInfo con `audioStreamIndex` + `mediaSourceId`
+- [ ] Verificación E2E: la TranscodingUrl trae el AudioStreamIndex elegido
+
+### 13.2 Menús divididos: subtítulos, audio y velocidad
+
+El menú único de ajustes era demasiado grande.
+
+- [ ] Tres botones independientes en el OSD, cada uno con su icono y su panel: Subtítulos (visible si hay pistas), Audio (visible si hay pistas), Velocidad (siempre)
+- [ ] Solo un panel abierto a la vez; click fuera cierra
+- [ ] Iconos nuevos: subtítulos (CC), audio (ondas), velocidad (velocímetro)
+
+---
+
+## Fase 14 — ShowPage: tiempo restante expandible en el play del hero
+
+El botón píldora del hero sustituía el texto al hacer hover (`T1 E05` → restante), y en modo Jellyfin `cont.remaining` venía vacío (hover mostraba una cadena vacía).
+
+- [ ] `getShow()` rellena `cont.remaining` desde el runtime × progreso del episodio en curso
+- [ ] Hover: el botón se expande solo en horizontal con «· 12 min» (formato compacto), misma altura, animado; al quitar el ratón vuelve a su estado
+- [ ] La barra de progreso interna del botón se mantiene
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |
