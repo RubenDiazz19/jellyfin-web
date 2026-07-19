@@ -80,6 +80,10 @@ describe('VideoPlayerViewModel', () => {
 
     afterEach(() => {
         vm.close();
+        // Stubs de PiP definidos por el test correspondiente (jsdom no trae la API).
+        delete (document as { pictureInPictureEnabled?: boolean }).pictureInPictureEnabled;
+        delete (document as { pictureInPictureElement?: Element | null }).pictureInPictureElement;
+        delete (document as { exitPictureInPicture?: () => Promise<void> }).exitPictureInPicture;
     });
 
     test('open() reproduce en directo, reanuda posición y reporta el inicio', async () => {
@@ -150,6 +154,35 @@ describe('VideoPlayerViewModel', () => {
         expect(video.playbackRate).toBe(3);
         vm.setPlaybackRate(0.1);
         expect(video.playbackRate).toBe(0.25);
+    });
+
+    test('togglePip entra y sale de Picture-in-Picture', async () => {
+        const requestPip = vi.fn(() => Promise.resolve({} as PictureInPictureWindow));
+        (video as unknown as HTMLVideoElement).requestPictureInPicture = requestPip;
+        let pipEl: Element | null = null;
+        Object.defineProperty(document, 'pictureInPictureEnabled', { value: true, configurable: true });
+        Object.defineProperty(document, 'pictureInPictureElement', { get: () => pipEl, configurable: true });
+        const exitPip = vi.fn(() => { pipEl = null; return Promise.resolve(); });
+        // eslint-disable-next-line compat/compat -- stub del test, no código de producción
+        document.exitPictureInPicture = exitPip;
+
+        // Re-attach: pipAvailable se evalúa al conectar el <video>.
+        vm.close();
+        vm = new VideoPlayerViewModel(api);
+        vm.attach(video as unknown as HTMLVideoElement, container);
+        await vm.open('item1');
+        expect(vm.pipAvailable.value).toBe(true);
+
+        vm.togglePip();
+        expect(requestPip).toHaveBeenCalled();
+        video.dispatchEvent(new Event('enterpictureinpicture'));
+        expect(vm.pipActive.value).toBe(true);
+
+        pipEl = video as unknown as Element;
+        vm.togglePip();
+        expect(exitPip).toHaveBeenCalled();
+        video.dispatchEvent(new Event('leavepictureinpicture'));
+        expect(vm.pipActive.value).toBe(false);
     });
 
     test('close() reporta el stop con la posición actual', async () => {

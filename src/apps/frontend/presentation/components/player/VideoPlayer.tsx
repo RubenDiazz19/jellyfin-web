@@ -70,6 +70,9 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                 case 'f':
                     videoPlayerVM.toggleFullscreen();
                     break;
+                case 'p':
+                    videoPlayerVM.togglePip();
+                    break;
                 case 'ArrowLeft':
                     e.preventDefault();
                     videoPlayerVM.seekBy(-10);

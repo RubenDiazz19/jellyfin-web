@@ -28,6 +28,8 @@ export function VideoControls() {
     const current = useSignalValue(videoPlayerVM.currentTime);
     const playing = useSignalValue(videoPlayerVM.playing);
     const fullscreen = useSignalValue(videoPlayerVM.fullscreen);
+    const pipAvailable = useSignalValue(videoPlayerVM.pipAvailable);
+    const pipActive = useSignalValue(videoPlayerVM.pipActive);
 
     const pct = dragPct ?? (duration > 0 ? (current / duration) * 100 : 0);
     const shownTime = dragPct != null ? (dragPct / 100) * duration : current;
@@ -92,6 +94,16 @@ export function VideoControls() {
                 </div>
                 <div className='jfp-video-controls-group'>
                     <VideoSettingsMenu />
+                    {pipAvailable && (
+                        <button
+                            type='button'
+                            className={`jfp-video-btn${pipActive ? ' is-active' : ''}`}
+                            onClick={videoPlayerVM.togglePip}
+                            aria-label={pipActive ? 'Salir de Picture-in-Picture' : 'Picture-in-Picture'}
+                        >
+                            <PlayerIc.Pip />
+                        </button>
+                    )}
                     <button
                         type='button'
                         className='jfp-video-btn'

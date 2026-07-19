@@ -47,6 +47,15 @@ export const PlayerIc = {
             />
         </svg>
     ),
+    Pip: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <path
+                d='M9.5 18.5H5a2 2 0 01-2-2V7a2 2 0 012-2h14a2 2 0 012 2v2.5'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+            />
+            <rect x='12.5' y='12.5' width='8.5' height='6.5' rx='1.5' stroke='currentColor' strokeWidth={sw} />
+        </svg>
+    ),
     Settings: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
         <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
             <rect x='3.5' y='5.5' width='17' height='13' rx='2' stroke='currentColor' strokeWidth={sw} />

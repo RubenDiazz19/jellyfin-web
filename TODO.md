@@ -70,12 +70,12 @@ Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `Vid
 - [x] El menú de ajustes se muestra siempre (antes solo con >1 audio o subtítulos); la pista de audio se lista aunque solo haya una
 - [x] Tests del comando en VideoPlayerViewModel.test
 
-### 10.2 Picture-in-Picture
+### 10.2 Picture-in-Picture ✓
 
-- [ ] Signals `pipAvailable`/`pipActive` + comando `togglePip` (con feature-detect: oculto en navegadores sin API)
-- [ ] Botón PiP en el OSD + salida limpia en `close()`
-- [ ] Atajo de teclado `p`
-- [ ] Tests
+- [x] Signals `pipAvailable`/`pipActive` + comando `togglePip` (con feature-detect: oculto en navegadores sin API)
+- [x] Botón PiP en el OSD + salida limpia en `close()`
+- [x] Atajo de teclado `p`
+- [x] Tests
 
 ### 10.3 Enviar a TV (Chromecast / AirPlay)
 

@@ -37,6 +37,9 @@ export class VideoPlayerViewModel {
     subtitleUrl = signal<string | null>(null);
     /** Velocidad de reproducción actual (1 = normal). */
     playbackRate = signal(1);
+    /** El navegador soporta Picture-in-Picture (Firefox no expone la API). */
+    pipAvailable = signal(false);
+    pipActive = signal(false);
 
     private video: HTMLVideoElement | null = null;
     private container: HTMLElement | null = null;
@@ -96,6 +99,13 @@ export class VideoPlayerViewModel {
         });
         on('ended', () => { this.playing.value = false; void this.reportProgress(); });
         on('ratechange', () => { this.playbackRate.value = video.playbackRate; });
+
+        this.pipAvailable.value =
+            typeof video.requestPictureInPicture === 'function'
+            // eslint-disable-next-line compat/compat -- esta línea ES el feature-detect de PiP
+            && !!document.pictureInPictureEnabled;
+        on('enterpictureinpicture', () => { this.pipActive.value = true; });
+        on('leavepictureinpicture', () => { this.pipActive.value = false; });
         on('error', () => {
             if (this.closed) return;
             this.error.value = 'No se pudo reproducir el vídeo';
@@ -176,6 +186,16 @@ export class VideoPlayerViewModel {
         }
     };
 
+    togglePip = () => {
+        const v = this.video;
+        if (!v || !this.pipAvailable.value) return;
+        if (document.pictureInPictureElement === v) {
+            void document.exitPictureInPicture().catch(() => {});
+        } else {
+            void v.requestPictureInPicture().catch(() => {});
+        }
+    };
+
     /** Cambia la pista de audio: nuevo PlaybackInfo conservando la posición. */
     setAudioTrack = (index: number) => {
         if (index === this.selectedAudio.value) return;
@@ -220,6 +240,10 @@ export class VideoPlayerViewModel {
         this.hls?.destroy();
         this.hls = null;
         if (this.video) {
+            // La ventana PiP no debe sobrevivir a la salida del reproductor.
+            if (document.pictureInPictureElement === this.video) {
+                void document.exitPictureInPicture().catch(() => {});
+            }
             this.video.pause();
             this.video.removeAttribute('src');
             this.video.load();
@@ -247,6 +271,7 @@ export class VideoPlayerViewModel {
         this.selectedSubtitle.value = null;
         this.subtitleUrl.value = null;
         this.playbackRate.value = 1;
+        this.pipActive.value = false;
         this.burnedSubtitle = null;
         this.itemId = '';
     }
