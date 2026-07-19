@@ -139,6 +139,53 @@ El botón píldora del hero sustituía el texto al hacer hover (`T1 E05` → res
 
 ---
 
+## Fase 15 — Fixes: subtítulos, marcar como visto y layout del menú
+
+### 15.1 Fix: el cambio de subtítulos no surtía efecto ✓
+
+El `<track>` VTT solo cambiaba de `src`; el navegador no recarga un track ya
+montado al mutar su atributo, así que seguían viéndose los subtítulos viejos.
+
+- [x] `key={subtitleUrl}` en el `<track>` fuerza el remount → el navegador
+      carga el nuevo VTT
+- [x] Verificación E2E: al cambiar de pista el `<track>.src` pasa de
+      `Subtitles/17` a `Subtitles/16` y el modo sigue en `showing`
+
+### 15.2 Marcar como visto contra Jellyfin ✓
+
+Los botones agregados solo tocaban el store local; no se propagaban al server.
+
+- [x] `WATCHED.sync(scope, watched)` sincroniza el subconjunto de una serie/
+      película con la verdad del server (un único evento)
+- [x] `getShow()` / `getMovie()` hidratan el store desde `UserData.Played`
+- [x] `ShowNavWatchedButton` → `markPlayed(showId)` (el server propaga a todos
+      los episodios/temporadas); `SeasonWatchedButton` → `markPlayed(seasonId)`;
+      `MovieWatchedButton` → `markPlayed(movieId)`; `WatchedButton` acepta
+      `serverId` (jfId del episodio) y marca en el server si hay sesión
+- [x] Estado agregado (serie/temporada completas) se deriva de los episodios:
+      marcar todos ⇒ marcado; desmarcar uno ⇒ desmarcado. Revert local si el
+      server falla
+- [x] Verificación E2E contra el server real: 7 no vistos → 0 → 7
+
+### 15.3 Fix: columna negra a la derecha al abrir el menú «más opciones» ✓
+
+Grid blowout: las rejillas de dos columnas de las páginas de detalle
+(`1.5fr 1fr` / `1.6fr 1fr`) usaban tracks `1fr` = `minmax(auto, 1fr)`, cuyo
+mínimo es el min-content del hijo (la fila de reparto, muy ancha) → la rejilla
+desbordaba el viewport (`scrollWidth` 2263 > 1920). En pantalla completa del
+navegador ese sobrante se veía como una franja negra a la derecha al abrir
+cualquier menú.
+
+- [x] `minmax(0, Nfr)` en ShowDetail / EpisodeDetail / MoviePage → los tracks
+      pueden encogerse y la `CastList` scrollea dentro de su `overflow-x: auto`
+- [x] Red de seguridad: `overflow-x: clip` en `html:has(body.jf-frontend-active)`
+      (clip, no hidden: no crea contenedor de scroll ni rompe los `position:
+      fixed` de los menús flotantes)
+- [x] Verificación E2E: `scrollWidth == clientWidth` en show/episode antes y
+      después de abrir el menú, y en pantalla completa (1999px) sin franja negra
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |
