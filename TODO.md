@@ -90,11 +90,11 @@ Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `Vid
 
 ---
 
-## Fase 11 — Hero: tiempo restante al hacer hover en play
+## Fase 11 — Hero: tiempo restante al hacer hover en play ✓
 
-- [ ] `formatRemainingCompact()`: `<60 min` → «42 min»; `≥60` → «1 h 12 min» (60 exacto → «1 h»)
-- [ ] El PlayBtn del hero usa el formato compacto en el hoverText (slides «continuar viendo»)
-- [ ] Tests del formateador
+- [x] `formatRemainingCompact()`: `<60 min` → «42 min»; `≥60` → «1 h 12 min» (60 exacto → «1 h»)
+- [x] El PlayBtn del hero usa el formato compacto en el hoverText (slides «continuar viendo»)
+- [x] Tests del formateador
 
 ---
 

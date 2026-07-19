@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { formatRemaining } from '../theme/format';
+import { formatRemainingCompact } from '../theme/format';
 import { PROTO_DATA, type CarouselSlide } from '../../domain/models';
 import { homeVM } from '../../domain/viewModels/HomeViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
@@ -317,7 +317,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                         size={108}
                         onClick={onPlay}
                         progress={isContinue ? slide.progress : null}
-                        hoverText={isContinue ? formatRemaining(slide.remaining, { suffix: '' }) || null : null}
+                        hoverText={isContinue ? formatRemainingCompact(slide.remaining) || null : null}
                     />
                 </div>
             </div>
