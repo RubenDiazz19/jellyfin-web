@@ -14,6 +14,8 @@ class FakeVideo extends EventTarget {
     volume = 1;
     muted = false;
     paused = true;
+    playbackRate = 1;
+    defaultPlaybackRate = 1;
     src = '';
     textTracks: never[] = [];
     play = vi.fn(() => {
@@ -133,6 +135,21 @@ describe('VideoPlayerViewModel', () => {
         expect(video.volume).toBe(1);
         vm.setVolume(-1);
         expect(video.volume).toBe(0);
+    });
+
+    test('setPlaybackRate acota el rango y persiste como default para recargas', async () => {
+        await vm.open('item1');
+
+        vm.setPlaybackRate(1.5);
+        expect(video.playbackRate).toBe(1.5);
+        // defaultPlaybackRate mantiene la velocidad tras un load() por cambio de pista.
+        expect(video.defaultPlaybackRate).toBe(1.5);
+        expect(vm.playbackRate.value).toBe(1.5);
+
+        vm.setPlaybackRate(10);
+        expect(video.playbackRate).toBe(3);
+        vm.setPlaybackRate(0.1);
+        expect(video.playbackRate).toBe(0.25);
     });
 
     test('close() reporta el stop con la posición actual', async () => {

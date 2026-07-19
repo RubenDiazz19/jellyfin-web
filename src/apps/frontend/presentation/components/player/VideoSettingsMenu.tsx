@@ -1,8 +1,10 @@
-// Menú de ajustes del reproductor: pista de audio y subtítulos.
+// Menú de ajustes del reproductor: pista de audio, subtítulos y velocidad.
 import { useEffect, useRef, useState } from 'react';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
+
+const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export function VideoSettingsMenu() {
     useViewModel(videoPlayerVM);
@@ -21,8 +23,7 @@ export function VideoSettingsMenu() {
 
     const audio = videoPlayerVM.audioTracks.value;
     const subs = videoPlayerVM.subtitleTracks.value;
-    const hasOptions = audio.length > 1 || subs.length > 0;
-    if (!hasOptions) return null;
+    const rate = videoPlayerVM.playbackRate.value;
 
     return (
         <div className='jfp-video-settings' ref={rootRef}>
@@ -30,14 +31,14 @@ export function VideoSettingsMenu() {
                 type='button'
                 className={`jfp-video-btn${open ? ' is-active' : ''}`}
                 onClick={() => setOpen((v) => !v)}
-                aria-label='Audio y subtítulos'
+                aria-label='Audio, subtítulos y velocidad'
                 aria-expanded={open}
             >
                 <PlayerIc.Settings />
             </button>
             {open && (
                 <div className='jfp-video-settings-menu'>
-                    {audio.length > 1 && (
+                    {audio.length > 0 && (
                         <section>
                             <header>Audio</header>
                             {audio.map((a) => (
@@ -68,6 +69,17 @@ export function VideoSettingsMenu() {
                             ))}
                         </section>
                     )}
+                    <section>
+                        <header>Velocidad</header>
+                        {RATES.map((r) => (
+                            <MenuOption
+                                key={r}
+                                label={r === 1 ? 'Normal' : `${r}×`}
+                                active={rate === r}
+                                onSelect={() => videoPlayerVM.setPlaybackRate(r)}
+                            />
+                        ))}
+                    </section>
                 </div>
             )}
         </div>

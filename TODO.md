@@ -63,12 +63,12 @@ Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `Vid
 
 ## Fase 10 — Reproductor: nuevas funcionalidades
 
-### 10.1 Velocidad de reproducción y menú de pistas siempre accesible
+### 10.1 Velocidad de reproducción y menú de pistas siempre accesible ✓
 
-- [ ] Signal `playbackRate` + comando `setPlaybackRate` en VideoPlayerViewModel (persiste al recargar la fuente por cambio de pista vía `defaultPlaybackRate`)
-- [ ] Sección «Velocidad» (0.5×–2×) en VideoSettingsMenu
-- [ ] El menú de ajustes se muestra siempre (antes solo con >1 audio o subtítulos); la pista de audio se lista aunque solo haya una
-- [ ] Tests del comando en VideoPlayerViewModel.test
+- [x] Signal `playbackRate` + comando `setPlaybackRate` en VideoPlayerViewModel (persiste al recargar la fuente por cambio de pista vía `defaultPlaybackRate`)
+- [x] Sección «Velocidad» (0.5×–2×) en VideoSettingsMenu
+- [x] El menú de ajustes se muestra siempre (antes solo con >1 audio o subtítulos); la pista de audio se lista aunque solo haya una
+- [x] Tests del comando en VideoPlayerViewModel.test
 
 ### 10.2 Picture-in-Picture
 

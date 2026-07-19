@@ -35,6 +35,8 @@ export class VideoPlayerViewModel {
     selectedSubtitle = signal<number | null>(null);
     /** URL del VTT activo (solo subtítulos de texto). La View pinta <track>. */
     subtitleUrl = signal<string | null>(null);
+    /** Velocidad de reproducción actual (1 = normal). */
+    playbackRate = signal(1);
 
     private video: HTMLVideoElement | null = null;
     private container: HTMLElement | null = null;
@@ -63,6 +65,11 @@ export class VideoPlayerViewModel {
         video.volume = Number.isFinite(savedVolume) ? Math.min(Math.max(savedVolume, 0), 1) : 1;
         this.volume.value = video.volume;
 
+        // El <video> puede reutilizarse entre items: la velocidad no debe
+        // heredarse de la reproducción anterior.
+        video.defaultPlaybackRate = 1;
+        video.playbackRate = 1;
+
         const on = <K extends keyof HTMLVideoElementEventMap>(
             ev: K, fn: () => void
         ) => {
@@ -88,6 +95,7 @@ export class VideoPlayerViewModel {
             localStorage.setItem(VOLUME_KEY, String(video.volume));
         });
         on('ended', () => { this.playing.value = false; void this.reportProgress(); });
+        on('ratechange', () => { this.playbackRate.value = video.playbackRate; });
         on('error', () => {
             if (this.closed) return;
             this.error.value = 'No se pudo reproducir el vídeo';
@@ -145,6 +153,17 @@ export class VideoPlayerViewModel {
         const v = this.video;
         if (!v) return;
         v.muted = !v.muted;
+    };
+
+    setPlaybackRate = (rate: number) => {
+        const v = this.video;
+        if (!v || !Number.isFinite(rate)) return;
+        const r = Math.min(Math.max(rate, 0.25), 3);
+        // load() (recarga por cambio de pista) resetea playbackRate al valor
+        // de defaultPlaybackRate — fijando ambos, la velocidad sobrevive.
+        v.defaultPlaybackRate = r;
+        v.playbackRate = r;
+        this.playbackRate.value = r;
     };
 
     toggleFullscreen = () => {
@@ -227,6 +246,7 @@ export class VideoPlayerViewModel {
         this.selectedAudio.value = null;
         this.selectedSubtitle.value = null;
         this.subtitleUrl.value = null;
+        this.playbackRate.value = 1;
         this.burnedSubtitle = null;
         this.itemId = '';
     }
