@@ -175,13 +175,17 @@ export async function getShow(id: string): Promise<Show> {
             .flatMap((s) => s.episodes.map((e) => ({ s, e })))
             .find(({ e }) => e.watched < 1);
         if (firstIncomplete) {
+            const { s, e } = firstIncomplete;
             show.cont = {
-                seasonN: firstIncomplete.s.n,
-                epN: firstIncomplete.e.n,
-                progress: firstIncomplete.e.watched,
-                remaining: ''
+                seasonN: s.n,
+                epN: e.n,
+                progress: e.watched,
+                // Minutos restantes del episodio en curso (la View los formatea).
+                remaining: e.runtime ?
+                    String(Math.max(1, Math.round((1 - e.watched) * e.runtime))) :
+                    ''
             };
-            show.defaultSeason = firstIncomplete.s.n;
+            show.defaultSeason = s.n;
         }
         return show;
     })();

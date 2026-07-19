@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { T, HERO_POS, HERO_SCRIM, type HeroPosKey, type HeroScrimKey } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { formatRemaining } from '../theme/format';
+import { formatRemainingCompact } from '../theme/format';
 import { WATCHED } from '../../domain/stores';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
 import { PROTO_DATA, type Show } from '../../domain/models';
@@ -77,7 +77,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     const inProgress = !complete && !!cont && progress > 0;
     const [btnHover, setBtnHover] = useState(false);
     const epLabel = `T${target.seasonN} E${String(target.epN).padStart(2, '0')}`;
-    const remaining = cont ? formatRemaining(cont.remaining) || cont.remaining || '' : '';
+    const remaining = cont ? formatRemainingCompact(cont.remaining) : '';
     const pos = HERO_POS[hero?.heroPos ?? 'Esquina'];
     const minimal = hero?.heroInfo === 'Mínima';
     const scrim = HERO_SCRIM[hero?.heroScrim ?? 'Media'];
@@ -228,9 +228,22 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                             {complete ?
                                 <Ic.Check size={14} stroke='#000' /> :
                                 <Ic.Play size={14} fill='#fff' />}
-                            {inProgress ?
-                                (btnHover ? remaining : epLabel) :
-                                complete ? 'Visto' : `Reproducir ${label}`}
+                            <span>
+                                {inProgress ? epLabel : complete ? 'Visto' : `Reproducir ${label}`}
+                                {/* Tiempo restante: el botón crece solo en horizontal al
+                                    hacer hover (max-width animado) y vuelve al soltar. */}
+                                {inProgress && remaining && (
+                                    <span style={{
+                                        display: 'inline-block', overflow: 'hidden',
+                                        whiteSpace: 'nowrap', verticalAlign: 'bottom',
+                                        maxWidth: btnHover ? 140 : 0,
+                                        opacity: btnHover ? 1 : 0,
+                                        transition: 'max-width .4s cubic-bezier(.65,0,.35,1), opacity .25s ease'
+                                    }}>
+                                        {` · ${remaining}`}
+                                    </span>
+                                )}
+                            </span>
                         </span>
                     </button>
                     <button style={{

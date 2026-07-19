@@ -129,13 +129,13 @@ El menú único de ajustes era demasiado grande.
 
 ---
 
-## Fase 14 — ShowPage: tiempo restante expandible en el play del hero
+## Fase 14 — ShowPage: tiempo restante expandible en el play del hero ✓
 
 El botón píldora del hero sustituía el texto al hacer hover (`T1 E05` → restante), y en modo Jellyfin `cont.remaining` venía vacío (hover mostraba una cadena vacía).
 
-- [ ] `getShow()` rellena `cont.remaining` desde el runtime × progreso del episodio en curso
-- [ ] Hover: el botón se expande solo en horizontal con «· 12 min» (formato compacto), misma altura, animado; al quitar el ratón vuelve a su estado
-- [ ] La barra de progreso interna del botón se mantiene
+- [x] `getShow()` rellena `cont.remaining` desde el runtime × progreso del episodio en curso
+- [x] Hover: el botón se expande solo en horizontal con «· 12 min» (formato compacto), misma altura, animado; al quitar el ratón vuelve a su estado (verificado E2E: 129→187 px de ancho, altura constante 44 px)
+- [x] La barra de progreso interna del botón se mantiene
 
 ---
 
