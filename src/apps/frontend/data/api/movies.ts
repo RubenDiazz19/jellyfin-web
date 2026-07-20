@@ -4,7 +4,7 @@ import { WATCHED } from '../stores/watchedStore';
 import { apiFetch } from './http';
 import { imageUrl } from './images';
 import { settlePlaybackReports } from './playback';
-import { FIELDS_DETAIL, ticksToMinutes, type JFItem } from './types';
+import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem } from './types';
 
 function mapCast(item: JFItem): CastMember[] {
     return (item.People ?? [])
@@ -51,6 +51,22 @@ function mapMovie(item: JFItem): Movie {
             imageUrl(item.Id, 'Logo', { tag: item.ImageTags.Logo, maxHeight: 400 }) ?? null :
             null
     };
+}
+
+export async function getMovies(): Promise<Movie[]> {
+    await settlePlaybackReports();
+    const session = loadSession();
+    if (!session?.userId) throw new Error('Sin sesión');
+    const data = await apiFetch<{ Items: JFItem[] }>(
+        `/Users/${session.userId}/Items?IncludeItemTypes=Movie&Recursive=true&SortBy=SortName&Fields=${FIELDS_LIST}`
+    );
+    const movies = (data.Items ?? []).map(mapMovie);
+    // Hidrata el store local de "visto" con la verdad del server.
+    WATCHED.sync(
+        movies.map((m) => `movie-${m.id}`),
+        movies.filter((m) => (m.watched ?? 0) >= 1).map((m) => `movie-${m.id}`)
+    );
+    return movies;
 }
 
 export async function getMovie(id: string): Promise<Movie> {

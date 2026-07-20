@@ -49,9 +49,7 @@ export function LibraryPage({ kind, navigate }: Props) {
                 ) : items.length === 0 ? (
                     <EmptyState
                         title={isSeries ? 'No hay series todavía' : 'No hay películas todavía'}
-                        hint={isSeries ?
-                            'Añade contenido al servidor y lanza un rescan desde el panel de administración.' :
-                            'La biblioteca de películas aparecerá aquí cuando la API las exponga.'}
+                        hint='Añade contenido al servidor y lanza un rescan desde el panel de administración.'
                     />
                 ) : (
                     <div style={{

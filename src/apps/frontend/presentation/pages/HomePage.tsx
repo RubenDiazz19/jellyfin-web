@@ -133,7 +133,8 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         const cur = slides[idxRef.current];
         if (!cur) return;
         if (cur.type === 'continue' && cur.jfEpisodeId) {
-            // Modo Jellyfin: reanuda el episodio directamente en el reproductor.
+            // Modo Jellyfin: reanuda el episodio/película directamente en el
+            // reproductor.
             play({
                 itemId: cur.jfEpisodeId,
                 title: cur.season != null && cur.episode != null ?
@@ -141,13 +142,15 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                     cur.title,
                 startTicks: cur.positionTicks
             });
-        } else if (cur.type === 'continue') {
+        } else if (cur.type === 'continue' && cur.kind !== 'movie') {
             navigate({
                 page: 'episode',
                 showId: cur.id,
                 seasonN: cur.season as number,
                 epN: cur.episode as number
             });
+        } else if (cur.kind === 'movie') {
+            navigate({ page: 'movie', movieId: cur.id });
         } else {
             navigate({ page: 'show', showId: cur.id });
         }
@@ -296,12 +299,17 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                 width: 5, height: 5, borderRadius: 999, background: '#fff',
                                 display: 'inline-block', animation: 'jfp-pulse 1.8s ease-in-out infinite'
                             }} />
-                            T{slide.season} · E{slide.episode}
+                            {/* Películas: no hay T·E, solo la etiqueta de continuar. */}
+                            {slide.season != null ? `T${slide.season} · E${slide.episode}` : 'Continuar viendo'}
                         </span>
-                        <Ic.Dot />
-                        <span style={{ fontStyle: 'italic', fontFamily: T.display, fontSize: 18 }}>
-                            {slide.episodeTitle}
-                        </span>
+                        {slide.episodeTitle && (
+                            <>
+                                <Ic.Dot />
+                                <span style={{ fontStyle: 'italic', fontFamily: T.display, fontSize: 18 }}>
+                                    {slide.episodeTitle}
+                                </span>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <div style={{
@@ -338,10 +346,12 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     // homeVM.load() lo dispara HomePage al montar; aquí solo se leen signals.
     useViewModel(homeVM);
     const series = homeVM.shows.value;
+    const movies = homeVM.movies.value;
     if (homeVM.showsLoading.value || !homeVM.showsReady.value) {
         return (
             <section style={{ background: '#000', color: '#fff', paddingBottom: 96, fontFamily: T.ui }}>
                 <SkeletonRow title='Series' />
+                <SkeletonRow title='Películas' />
             </section>
         );
     }
@@ -368,6 +378,13 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
                     </div>
                 )}
             </Row>
+            {movies.length > 0 && (
+                <Row title='Películas'>
+                    <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
+                        {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
+                    </div>
+                </Row>
+            )}
         </section>
     );
 }

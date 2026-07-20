@@ -1,13 +1,14 @@
-// ViewModel de la Home: carrusel del hero + biblioteca de series.
+// ViewModel de la Home: carrusel del hero + biblioteca (series y películas).
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
-import type { CarouselSlide, Show } from '../../data/models';
+import type { CarouselSlide, Movie, Show } from '../../data/models';
 
 export class HomeViewModel {
     slides = signal<CarouselSlide[]>([]);
     shows = signal<Show[]>([]);
+    movies = signal<Movie[]>([]);
     heroLoading = signal(false);
     showsLoading = signal(false);
     showsError = signal<string | null>(null);
@@ -47,9 +48,15 @@ export class HomeViewModel {
             });
 
         try {
-            const shows = await this.api.catalog.getShows();
+            // Series y películas en paralelo; las películas son opcionales
+            // (si fallan, la Home sigue mostrando las series).
+            const [shows, movies] = await Promise.all([
+                this.api.catalog.getShows(),
+                this.api.catalog.getMovies().catch(() => [] as Movie[])
+            ]);
             if (seq !== this.seq) return;
             this.shows.value = shows;
+            this.movies.value = movies;
         } catch (e) {
             if (seq !== this.seq) return;
             this.showsError.value = (e as Error).message;

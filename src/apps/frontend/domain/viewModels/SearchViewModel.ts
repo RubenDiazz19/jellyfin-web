@@ -33,6 +33,7 @@ export class SearchViewModel {
 
     /** Biblioteca real de Jellyfin (vacía sin sesión). */
     shows = signal<Show[]>([]);
+    movies = signal<Movie[]>([]);
     loading = signal(false);
 
     // Los stores de favoritos/vistos notifican por eventos del DOM; estos
@@ -57,8 +58,12 @@ export class SearchViewModel {
         const protoShows = Object.values(PROTO_DATA.shows)
             .filter((s) => !jfIds.has(s.id))
             .map((s) => ({ ...s, _type: 'show' as const }));
-        const movies = Object.values(PROTO_DATA.movies).map((m) => ({ ...m, _type: 'movie' as const }));
-        const all: SearchResult[] = [...jf, ...protoShows, ...movies];
+        const jfMovies = this.movies.value.map((m) => ({ ...m, _type: 'movie' as const }));
+        const jfMovieIds = new Set(jfMovies.map((m) => m.id));
+        const protoMovies = Object.values(PROTO_DATA.movies)
+            .filter((m) => !jfMovieIds.has(m.id))
+            .map((m) => ({ ...m, _type: 'movie' as const }));
+        const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies];
 
         const type = this.typeFilter.value;
         const state = this.stateFilter.value;
@@ -107,12 +112,17 @@ export class SearchViewModel {
         const seq = ++this.seq;
         this.loading.value = true;
         try {
-            const shows = await this.api.catalog.getShows();
+            const [shows, movies] = await Promise.all([
+                this.api.catalog.getShows(),
+                this.api.catalog.getMovies().catch(() => [] as Movie[])
+            ]);
             if (seq !== this.seq) return;
             this.shows.value = shows;
+            this.movies.value = movies;
         } catch {
             if (seq !== this.seq) return;
             this.shows.value = [];
+            this.movies.value = [];
         } finally {
             if (seq === this.seq) this.loading.value = false;
         }

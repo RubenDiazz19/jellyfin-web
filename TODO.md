@@ -186,6 +186,139 @@ cualquier menú.
 
 ---
 
+---
+
+## Fase 16 — Optimizaciones de rendimiento y mejora del código
+
+### 🟥 Alto impacto
+
+#### 16.1 N+1 queries al cargar serie
+**Archivo:** `data/api/shows.ts:getSeasonsWithEpisodes()`
+
+Por cada temporada hace 1 request → para 10 temporadas son 11 requests secuenciales. Jellyfin permite obtener todos los episodios de golpe.
+
+- [ ] Hacer una sola llamada a `/Shows/{id}/Episodes` con `userId` y agrupar por `ParentIndexNumber`
+
+#### 16.2 Hero image de episodios usa `Primary` en vez de `Thumb`
+**Archivo:** `data/api/shows.ts:140-141`, usado en `EpisodePage.tsx:94`
+
+```ts
+thumbHD: imageUrl(item.Id, 'Primary', { maxWidth: 1920 })
+```
+
+Jellyfin tiene tipo `Thumb` específico para thumbnails de episodio, normalmente 16:9 y con mejor encuadre. También se puede caer a `ParentBackdropImageTags` (backdrop de la serie) cuando no hay thumbnail.
+
+- [ ] Probar con `imageUrl(item.Id, 'Thumb')` primero, fallback a `Primary`
+
+#### 16.3 Sin negociación de formato de imagen
+**Archivo:** `data/api/images.ts:imageUrl()`
+
+Todas las imágenes se piden sin `format`. Jellyfin soporta `format=webp` y `format=avif` — reducirían el peso de imágenes 50-70%. Crítico para hero images de 1920px que son LCP.
+
+- [ ] Añadir `format` param según soporte del navegador (accept header o feature detect)
+
+### 🟧 Medio impacto
+
+#### 16.4 `useViewModel` re-renderiza todo el componente por cualquier cambio
+**Archivo:** `domain/bridge/useViewModel.ts`
+
+Suscribe a todos los signals del ViewModel. En ShowPage, cambiar `loading` o `error` re-renderiza la página completa aunque solo haya cambiado el estado de carga.
+
+- [ ] Usar `useSignalValue(signal)` individual o `useSignals()` auto-tracking
+
+#### 16.5 Backdrop renderiza TODAS las imágenes del crossfade en el DOM
+**Archivo:** `presentation/components/layout/Backdrop.tsx:29-39`
+
+```tsx
+pool.map((url, i) => (
+    <div style={{ opacity: i === idx ? 1 : 0 }} />
+))
+```
+
+Si una serie tiene 5 backdrops, hay 5 divs con `background-image` en el DOM. Las imágenes ocultas (opacity 0) igual se descargan.
+
+- [ ] Render solo la imagen activa y pre-cargar la siguiente con `new Image()`
+
+#### 16.6 Sin preload para hero images (LCP)
+La hero image se carga via CSS `background-image` → prioridad baja. Debería tener `<link rel="preload">` o un `<img fetchpriority="high">` oculto.
+
+- [ ] Añadir preload hint cuando se monta el Backdrop
+
+#### 16.7 Sin error boundaries
+Cualquier error en render de una página crashea toda la app.
+
+- [ ] Envolver cada página en un `ErrorBoundary` con fallback UI
+
+#### 16.8 `as any` en props de alineación
+**Archivo:** `ShowPage.tsx`, `MoviePage.tsx`
+
+```tsx
+alignItems: pos.align as any,
+```
+
+Hero position tokens tienen tipos literales que no casan con `CSSProperties`.
+
+- [ ] Mapear los tokens a valores válidos de CSSProperties
+
+#### 16.9 Cache de shows sin invalidación por tiempo
+**Archivo:** `data/api/cache.ts`
+
+`showCache` solo se limpia en mutaciones (watched, playback stop). Los datos pueden estar stale indefinidamente.
+
+- [ ] Añadir TTL (ej. 5 minutos) o timestamp de última mutación
+
+### 🟩 Bajo impacto
+
+#### 16.10 Date formatting sin memo
+```tsx
+new Date(ep.date).toLocaleDateString('es-ES', { ... })
+```
+Se ejecuta en cada render, a veces 2-3 veces por página.
+
+- [ ] Extraer a variable o usar `useMemo`
+
+#### 16.11 Muchos divs con onClick en vez de `<button>`
+Géneros, breadcrumbs, etc. usan `<span onClick>` → no funcionan con teclado.
+
+- [ ] Usar `<button>` con estilos reset
+
+#### 16.12 Sin manejo de foco en navegación
+Al cambiar de página, el foco no se gestiona. Usuarios de teclado pierden la posición.
+
+- [ ] Gestionar foco al navegar entre páginas
+
+#### 16.13 `target: ES5` en tsconfig
+Vite transpila igual, pero es confuso. Podría ser `ES2017+` para bundles más pequeños.
+
+- [ ] Cambiar a `ES2017+` en tsconfig
+
+#### 16.14 Baja cobertura de tests
+6 tests para 92 archivos. Sin tests de componentes ni integración.
+
+- [ ] Añadir tests de componentes e integración
+
+---
+
+## Fase 17 — Películas con API real ✓
+
+Antes las películas solo existían en el catálogo proto; con sesión Jellyfin la
+biblioteca `/movies` salía vacía y ni la home ni el hero ni la búsqueda las
+mostraban.
+
+- [x] `getMovies()` en data/api/movies.ts (listado con `IncludeItemTypes=Movie`
+      + hidratación del store «visto» desde `UserData.Played`)
+- [x] `LibraryViewModel.load('movies')` usa la API real con sesión
+- [x] `HomeViewModel` carga series y películas en paralelo (películas opcionales:
+      si fallan, las series siguen); fila «Películas» en la home Jellyfin
+- [x] Hero: películas a medias desde `/Items/Resume` (etiqueta «Continuar
+      viendo» sin T·E, reanuda directo en el reproductor) + últimas películas
+      intercaladas con las series en los slides «nuevo»
+- [x] `SearchViewModel` busca también sobre las películas del server
+- [x] Tests del HomeViewModel actualizados (getMovies en mocks + caso de fallo
+      parcial); E2E: biblioteca con contador, ficha con logo/play, hero con 2 slides
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |

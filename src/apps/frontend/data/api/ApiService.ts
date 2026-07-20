@@ -21,7 +21,7 @@ import { authenticate } from './auth';
 import { normalizeServerUrl } from './http';
 import { clearShowCache } from './cache';
 import { getShows, getShow } from './shows';
-import { getMovie } from './movies';
+import { getMovie, getMovies } from './movies';
 import { getHomeCarousel } from './home';
 import { imageUrl, getItemBackdrops } from './images';
 import {
@@ -67,7 +67,7 @@ const sessionService = {
 
 const authService = { authenticate, normalizeServerUrl };
 
-const catalogService = { getShows, getShow, getMovie, getHomeCarousel, clearShowCache };
+const catalogService = { getShows, getShow, getMovie, getMovies, getHomeCarousel, clearShowCache };
 
 const imageService = { imageUrl, getItemBackdrops };
 
