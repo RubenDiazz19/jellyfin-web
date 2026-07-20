@@ -10,6 +10,28 @@ import { settlePlaybackReports } from './playback';
 import { getShows } from './shows';
 import { FIELDS_LIST, type JFItem } from './types';
 
+/**
+ * Todos los fondos de un item, con su tag. El tag es imprescindible: sin él
+ * el navegador cachea la URL para siempre y el hero sigue mostrando la
+ * imagen vieja después de cambiarla desde la ficha.
+ * Si el item no tiene backdrops, cae al póster (también con tag).
+ */
+function backdropsOf(
+    itemId: string | undefined,
+    backdropTags: string[] | undefined,
+    primaryTag?: string
+): string[] {
+    if (!itemId) return [];
+    const tags = backdropTags ?? [];
+    if (tags.length > 0) {
+        return tags
+            .map((tag, i) => imageUrl(itemId, 'Backdrop', { tag, maxWidth: 2560, index: i }))
+            .filter((u): u is string => !!u);
+    }
+    const primary = imageUrl(itemId, 'Primary', { maxHeight: 1440, tag: primaryTag });
+    return primary ? [primary] : [];
+}
+
 export async function getHomeCarousel(): Promise<CarouselSlide[]> {
     // El stop del reproductor puede seguir en vuelo al aterrizar aquí; sin
     // esperar, /Items/Resume devuelve la posición vieja.
@@ -19,7 +41,9 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
     const uid = session.userId;
     const [resume, latestSeries, latestMovies] = await Promise.all([
         apiFetch<{ Items: JFItem[] }>(
-            `/Users/${uid}/Items/Resume?Limit=4&MediaTypes=Video&Fields=ProductionYear,RunTimeTicks,ParentId`
+            // ImageTags/BackdropImageTags explícitos: sin ellos no podemos
+            // construir URLs con tag y el hero se queda con imágenes cacheadas.
+            `/Users/${uid}/Items/Resume?Limit=4&MediaTypes=Video&Fields=ProductionYear,RunTimeTicks,ParentId,ImageTags,BackdropImageTags,ParentBackdropImageTags`
         ).catch(() => ({ Items: [] as JFItem[] })),
         // /Items/Latest returns a bare array, not { Items }.
         apiFetch<JFItem[]>(
@@ -37,16 +61,14 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
         const runtimeMin = it.RunTimeTicks ? it.RunTimeTicks / 10_000_000 / 60 : 0;
         const remaining = runtimeMin ? String(Math.max(1, Math.round((1 - pct) * runtimeMin))) : '';
         if (it.SeriesId) {
-            // Episodio a medias: el slide enlaza a la serie.
-            const backdrop =
-                (it.ParentBackdropItemId && it.ParentBackdropImageTags?.[0] ?
-                    imageUrl(it.ParentBackdropItemId, 'Backdrop', {
-                        tag: it.ParentBackdropImageTags[0],
-                        maxWidth: 2560
-                    }) :
-                    undefined)
-                ?? imageUrl(it.SeriesId, 'Backdrop', { maxWidth: 2560 })
-                ?? '';
+            // Episodio a medias: el slide enlaza a la serie, así que las
+            // imágenes son las de la serie padre.
+            const backdrops = backdropsOf(
+                it.ParentBackdropItemId ?? it.SeriesId,
+                it.ParentBackdropImageTags,
+                it.SeriesPrimaryImageTag
+            );
+            const backdrop = backdrops[0] ?? '';
             slides.push({
                 type: 'continue',
                 id: it.SeriesId,
@@ -59,7 +81,10 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
                 progress: pct,
                 remaining,
                 backdrop,
-                poster: imageUrl(it.SeriesId, 'Primary', { maxHeight: 900 }) ?? '',
+                backdrops,
+                poster: imageUrl(it.SeriesId, 'Primary', {
+                    maxHeight: 900, tag: it.SeriesPrimaryImageTag
+                }) ?? '',
                 logo: it.ParentLogoItemId ?
                     imageUrl(it.ParentLogoItemId, 'Logo', {
                         tag: it.ParentLogoImageTag,
@@ -71,6 +96,7 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
             });
         } else {
             // Película a medias: se reanuda directamente en el reproductor.
+            const backdrops = backdropsOf(it.Id, it.BackdropImageTags, it.ImageTags?.Primary);
             slides.push({
                 type: 'continue',
                 id: it.Id,
@@ -82,10 +108,11 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
                 year: it.ProductionYear ?? 0,
                 progress: pct,
                 remaining,
-                backdrop: (it.BackdropImageTags?.[0] ?
-                    imageUrl(it.Id, 'Backdrop', { tag: it.BackdropImageTags[0], maxWidth: 2560 }) :
-                    imageUrl(it.Id, 'Primary', { maxHeight: 1440 })) ?? '',
-                poster: imageUrl(it.Id, 'Primary', { maxHeight: 900 }) ?? '',
+                backdrop: backdrops[0] ?? '',
+                backdrops,
+                poster: imageUrl(it.Id, 'Primary', {
+                    maxHeight: 900, tag: it.ImageTags?.Primary
+                }) ?? '',
                 logo: it.ImageTags?.Logo ?
                     imageUrl(it.Id, 'Logo', { tag: it.ImageTags.Logo, maxHeight: 400 }) :
                     null,
@@ -107,9 +134,7 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
     for (const { it, kind } of latest) {
         if (seen.has(it.Id)) continue;
         seen.add(it.Id);
-        const backdrop = it.BackdropImageTags?.[0] ?
-            imageUrl(it.Id, 'Backdrop', { tag: it.BackdropImageTags[0], maxWidth: 2560 }) :
-            imageUrl(it.Id, 'Primary', { maxHeight: 1440 });
+        const backdrops = backdropsOf(it.Id, it.BackdropImageTags, it.ImageTags?.Primary);
         slides.push({
             type: 'new',
             id: it.Id,
@@ -121,8 +146,11 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
             year: it.ProductionYear ?? 0,
             progress: null,
             remaining: '',
-            backdrop: backdrop ?? '',
-            poster: imageUrl(it.Id, 'Primary', { maxHeight: 900 }) ?? '',
+            backdrop: backdrops[0] ?? '',
+            backdrops,
+            poster: imageUrl(it.Id, 'Primary', {
+                maxHeight: 900, tag: it.ImageTags?.Primary
+            }) ?? '',
             logo: it.ImageTags?.Logo ?
                 imageUrl(it.Id, 'Logo', { tag: it.ImageTags.Logo, maxHeight: 400 }) :
                 null
@@ -144,6 +172,8 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
                 progress: null,
                 remaining: '',
                 backdrop: s.backdrop || s.poster || '',
+                // mapShow() ya construye los backdrops con tag.
+                backdrops: s.backdrops?.length ? s.backdrops : undefined,
                 poster: s.poster ?? '',
                 logo: s.logo ?? null
             });

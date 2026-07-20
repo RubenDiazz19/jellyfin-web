@@ -78,9 +78,20 @@ function AuthedApp() {
         }
     }, [location.pathname, rrNavigate]);
 
-    // Scroll al top en cada cambio de ruta: el HashRouter no restaura scroll y
-    // React 18 puede diferir el commit, así que forzamos el reset en el ciclo
-    // de layout y en el rAF siguiente por si algún efecto vuelve a scrollear.
+    // El navegador restaura por su cuenta la posición de scroll al movernos
+    // por el historial (atrás/adelante), lo que pisa nuestro reset. Con
+    // 'manual' mandamos nosotros.
+    useLayoutEffect(() => {
+        const prev = window.history.scrollRestoration;
+        window.history.scrollRestoration = 'manual';
+        return () => { window.history.scrollRestoration = prev; };
+    }, []);
+
+    // Scroll al top en cada cambio de ruta. Un único reset no basta: la
+    // inercia del ratón puede seguir viva tras el click y el documento crece
+    // cuando llegan datos e imágenes (lo que reabre el rango de scroll). Por
+    // eso insistimos durante ~500 ms, pero cedemos en cuanto el usuario
+    // scrollea a propósito para no pelearnos con él.
     // Además movemos el foco al contenedor de la página: sin esto, un usuario
     // de teclado se queda "anclado" al botón de la página anterior (ya
     // desmontado) y el orden de tabulación arranca de cualquier parte. El
@@ -88,6 +99,13 @@ function AuthedApp() {
     // reset de scroll.
     const pageRef = useRef<HTMLDivElement>(null);
     useLayoutEffect(() => {
+        let stopped = false;
+        const release = () => { stopped = true; };
+        const opts = { passive: true } as const;
+        window.addEventListener('wheel', release, opts);
+        window.addEventListener('touchstart', release, opts);
+        window.addEventListener('keydown', release, opts);
+
         const reset = () => {
             window.scrollTo(0, 0);
             if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
@@ -96,8 +114,20 @@ function AuthedApp() {
         };
         reset();
         pageRef.current?.focus();
-        const raf = requestAnimationFrame(reset);
-        return () => cancelAnimationFrame(raf);
+
+        const start = performance.now();
+        let raf = requestAnimationFrame(function tick() {
+            if (stopped) return;
+            reset();
+            if (performance.now() - start < 500) raf = requestAnimationFrame(tick);
+        });
+
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('wheel', release);
+            window.removeEventListener('touchstart', release);
+            window.removeEventListener('keydown', release);
+        };
     }, [location.pathname]);
 
     return (

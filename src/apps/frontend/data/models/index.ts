@@ -90,6 +90,9 @@ export type CarouselSlide = {
     progress: number | null;
     remaining: string;
     backdrop: string;
+    // Todos los fondos del item (con tag), para que el hero rote entre ellos
+    // y refleje los cambios de imagen hechos en la ficha.
+    backdrops?: string[];
     poster: string;
     logo?: string | null;
     jfEpisodeId?: string;

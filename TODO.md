@@ -390,6 +390,32 @@ capturas:
 
 ---
 
+## Fase 21 — Hero con las imágenes reales del item y scroll siempre arriba ✓
+
+- [x] **Hero de la home con las imágenes del contenido.** Tres causas: el
+      `<Backdrop>` del hero no recibía `itemId` (así que ignoraba el fondo
+      personalizado guardado en local, que sí aplicaba la ficha), varias URLs
+      de fondo se construían **sin `tag`** (el navegador las cacheaba para
+      siempre y seguía mostrando la imagen vieja tras cambiarla), y el hero
+      solo usaba una imagen. Ahora: helper `backdropsOf()` construye TODOS los
+      fondos con su tag (con fallback al póster, también con tag), el carrusel
+      los expone en `CarouselSlide.backdrops`, el endpoint `/Items/Resume`
+      pide explícitamente `ImageTags,BackdropImageTags,ParentBackdropImageTags`
+      y el hero recibe `itemId` + `srcs` para rotar entre ellos.
+      Verificado E2E: los 4 slides usan imágenes de su propio item, todas con
+      `tag` y en webp; un fondo personalizado en local aparece en el hero (antes
+      solo en la ficha).
+- [x] **El scroll siempre arranca arriba.** `history.scrollRestoration` pasa a
+      `'manual'` (el navegador restauraba la posición al moverse por el
+      historial, pisando el reset) y el reset se mantiene ~500 ms en vez de un
+      solo frame, para sobrevivir a la inercia del ratón y al crecimiento del
+      documento cuando llegan datos/imágenes. Cede en cuanto el usuario
+      scrollea a propósito (wheel/touch/teclado) para no pelearse con él.
+      Verificado E2E: y=0 en todo el muestreo (0,3 s → 5 s), también con
+      atrás/adelante, y el scroll manual posterior sigue funcionando.
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |
