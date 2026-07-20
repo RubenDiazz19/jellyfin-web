@@ -3,20 +3,19 @@ import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { useSession } from '../../../domain/bridge/useSession';
 import { useToast } from '../toast/ToastProvider';
-import { AdminPanel } from '../admin/AdminPanel';
 import type { Navigate } from '../../../app/router';
 
 // Avatar circular con menú desplegable (perfil, ajustes, logout).
 // Antes era decorativo; ahora usa la sesión activa como fuente de verdad.
+// La administración vive centralizada en Ajustes (secciones Bibliotecas/
+// Servidor/Usuarios), no como entrada aparte del menú.
 export function UserAvatar({ navigate }: { navigate: Navigate }) {
     const { session, logout } = useSession();
     const toast = useToast();
     const [open, setOpen] = useState(false);
-    const [adminOpen, setAdminOpen] = useState(false);
     const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
     const initial = (session?.displayName ?? '?').slice(0, 1).toUpperCase();
-    const isJellyfin = !!session?.accessToken;
 
     useEffect(() => {
         if (!open) return;
@@ -91,7 +90,6 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 6px' }} />
                     {item('Perfil', () => navigate({ page: 'profile' }))}
                     {item('Ajustes', () => navigate({ page: 'settings' }))}
-                    {isJellyfin && item('Panel de administración', () => setAdminOpen(true))}
                     {item('Cambiar usuario', () => {
                         toast('Sesión cerrada — inicia con otro usuario', 'info');
                         logout();
@@ -104,7 +102,6 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                 </div>,
                 document.body
             )}
-            {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
         </div>
     );
 }

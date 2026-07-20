@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
-import { AdminPanel } from '../components/admin/AdminPanel';
 import { useSession } from '../../domain/bridge/useSession';
 import { useToast } from '../components/toast/ToastProvider';
 import {
@@ -15,11 +15,14 @@ import {
 import type { Navigate } from '../../app/router';
 
 // Ajustes de usuario contra la API real de Jellyfin: la idea es no tener que
-// abrir el web nativo para las preferencias del día a día. Las herramientas
-// de servidor (usuarios, carpetas, plugins) siguen en el panel de
-// administración embebido.
+// abrir el web nativo para las preferencias del día a día. Toda la
+// administración se centraliza aquí; las herramientas profundas de servidor
+// (carpetas, plugins, alta de usuarios) enlazan al dashboard embebido de la
+// propia app (#/dashboard).
 
 type SectionId = 'perfil' | 'reproduccion' | 'subtitulos' | 'bibliotecas' | 'servidor' | 'usuarios';
+
+type GoDashboard = (sub?: string) => void;
 
 const LANGUAGES: [string, string][] = [
     ['', 'Cualquiera'],
@@ -62,7 +65,12 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
     const [section, setSection] = useState<SectionId>(initial);
     const [user, setUser] = useState<CurrentUser | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
-    const [adminOpen, setAdminOpen] = useState(false);
+    // useNavigate del router raíz: el dashboard embebido (apps/dashboard) vive
+    // en la misma SPA bajo /dashboard. window.location.hash NO basta — el
+    // data-router de react-router no reevalúa las rutas con un cambio de hash
+    // manual, así que hay que navegar por aquí.
+    const rrNavigate = useNavigate();
+    const goDashboard: GoDashboard = (sub = '') => rrNavigate(`/dashboard${sub}`);
 
     useEffect(() => {
         if (!isReal) return;
@@ -164,23 +172,19 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
                                     <SubtitleSection config={user.config} patch={patchConfig} />
                                 )}
                                 {section === 'bibliotecas' && (
-                                    <LibrariesSection
-                                        isAdmin={user.isAdmin}
-                                        openAdmin={() => setAdminOpen(true)}
-                                    />
+                                    <LibrariesSection isAdmin={user.isAdmin} goDashboard={goDashboard} />
                                 )}
                                 {section === 'servidor' && (
-                                    <ServerSection openAdmin={() => setAdminOpen(true)} />
+                                    <ServerSection isAdmin={user.isAdmin} goDashboard={goDashboard} />
                                 )}
                                 {section === 'usuarios' && user.isAdmin && (
-                                    <UsersSection openAdmin={() => setAdminOpen(true)} />
+                                    <UsersSection goDashboard={goDashboard} />
                                 )}
                             </>
                         )}
                     </div>
                 </div>
             </section>
-            {adminOpen && <AdminPanel onClose={() => setAdminOpen(false)} />}
         </>
     );
 }
@@ -446,7 +450,7 @@ function SubtitleSection({
 
 // ── Bibliotecas ─────────────────────────────────────────────────────────────
 
-function LibrariesSection({ isAdmin, openAdmin }: { isAdmin: boolean; openAdmin: () => void }) {
+function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; goDashboard: GoDashboard }) {
     const toast = useToast();
     const [views, setViews] = useState<UserView[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -510,8 +514,8 @@ function LibrariesSection({ isAdmin, openAdmin }: { isAdmin: boolean; openAdmin:
                     <button style={btnSecondary} disabled={scanning} onClick={onScan}>
                         {scanning ? 'Lanzando…' : 'Escanear todas las bibliotecas'}
                     </button>
-                    <button style={btnSecondary} onClick={openAdmin}>
-                        Gestionar carpetas (panel de administración)
+                    <button style={btnSecondary} onClick={() => goDashboard('/libraries')}>
+                        Gestionar carpetas
                     </button>
                 </div>
             )}
@@ -521,7 +525,7 @@ function LibrariesSection({ isAdmin, openAdmin }: { isAdmin: boolean; openAdmin:
 
 // ── Servidor ────────────────────────────────────────────────────────────────
 
-function ServerSection({ openAdmin }: { openAdmin: () => void }) {
+function ServerSection({ isAdmin, goDashboard }: { isAdmin: boolean; goDashboard: GoDashboard }) {
     const [info, setInfo] = useState<SystemInfo | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -544,18 +548,20 @@ function ServerSection({ openAdmin }: { openAdmin: () => void }) {
                     <InfoRow label='Id' value={info.id} />
                 </>
             )}
-            <div style={{ marginTop: 32 }}>
-                <button style={btnSecondary} onClick={openAdmin}>
-                    Abrir panel de administración
-                </button>
-            </div>
+            {isAdmin && (
+                <div style={{ marginTop: 32 }}>
+                    <button style={btnSecondary} onClick={() => goDashboard()}>
+                        Configuración avanzada del servidor
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
 
 // ── Usuarios (admin) ────────────────────────────────────────────────────────
 
-function UsersSection({ openAdmin }: { openAdmin: () => void }) {
+function UsersSection({ goDashboard }: { goDashboard: GoDashboard }) {
     const [users, setUsers] = useState<UserListEntry[] | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -613,11 +619,11 @@ function UsersSection({ openAdmin }: { openAdmin: () => void }) {
                 </div>
             )}
             <div style={{ color: T.dim, fontSize: 13, marginBottom: 16 }}>
-                El alta, permisos y contraseñas de otros usuarios se gestionan en el panel
-                de administración.
+                Desde aquí puedes ver el estado; el alta, permisos y contraseñas de otros
+                usuarios se editan en la gestión avanzada.
             </div>
-            <button style={btnSecondary} onClick={openAdmin}>
-                Abrir panel de administración
+            <button style={btnSecondary} onClick={() => goDashboard('/users')}>
+                Gestionar usuarios
             </button>
         </div>
     );
@@ -707,7 +713,12 @@ function SelectBox({
             }}
         >
             {options.map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
+                // El popup nativo del select no hereda los estilos del control:
+                // sin fondo/color explícitos, algunos Chromium pintan blanco
+                // sobre blanco (texto invisible).
+                <option key={v} value={v} style={{ background: '#141416', color: '#fff' }}>
+                    {l}
+                </option>
             ))}
         </select>
     );

@@ -369,6 +369,27 @@ marcar visto/borrar/metadata fallaban.
 
 ---
 
+## Fase 20 — Play de películas, selects legibles y admin centralizado ✓
+
+Tres correcciones sobre la ficha de película y los ajustes reportadas con
+capturas:
+
+- [x] El botón «Reproducir/Continuar viendo» de la película no hacía nada (no
+      tenía `onClick`) y provocaba el micro-scroll al enfocar. Ahora abre el
+      reproductor con el id real y `startTicks` del progreso; `preventDefault`
+      en mousedown elimina el scroll (E2E: navega a `/video?item=…&start=…`)
+- [x] Las `<option>` de los desplegables de Ajustes salían blanco-sobre-blanco
+      (el popup nativo no hereda estilos): fondo `#141416` + texto blanco
+      explícitos en cada opción
+- [x] Eliminado el modal «Panel de administración» (y su componente AdminPanel):
+      toda la administración se centraliza en Ajustes. Bibliotecas/Servidor/
+      Usuarios enlazan al **dashboard embebido** (`/dashboard`, `/dashboard/
+      libraries`, `/dashboard/users`) vía `useNavigate` del router raíz —
+      `window.location.hash` no bastaba porque el data-router no reevalúa rutas
+      con un cambio de hash manual (verificado E2E: carga «Panel de control»)
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |

@@ -10,6 +10,7 @@ import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
+import { usePlayer } from '../components/player/PlayerProvider';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
 import type { Navigate } from '../../app/router';
@@ -63,10 +64,24 @@ function MovieHero({
     const watched = liveWatched || watchedNum >= 1;
     const inProgress = !watched && progress > 0;
     const [btnHover, setBtnHover] = useState(false);
-    const remaining = formatRemaining(movie.remaining) || movie.remaining || '';
+    // Minutos restantes desde el progreso (movie.remaining llega vacío del server).
+    const runtimeMin = parseInt(movie.runtime, 10) || 0;
+    const remaining = inProgress && runtimeMin ?
+        formatRemaining(Math.max(1, Math.round((1 - progress) * runtimeMin)), { suffix: '' }) :
+        '';
     const pos = HERO_POS[hero?.heroPos ?? 'Esquina'];
     const minimal = hero?.heroInfo === 'Mínima';
     const scrim = HERO_SCRIM[hero?.heroScrim ?? 'Media'];
+    const { play } = usePlayer();
+    const startPlay = () => {
+        play({
+            itemId: movie.id,
+            title: movie.title,
+            startTicks: inProgress && runtimeMin ?
+                Math.round(runtimeMin * 60 * progress * 10_000_000) :
+                undefined
+        });
+    };
     return (
         <section style={{
             position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', background: '#000'
@@ -170,6 +185,11 @@ function MovieHero({
 
                     <div style={{ marginTop: 36, display: 'flex', alignItems: 'center', gap: 18 }}>
                         <button
+                            onClick={startPlay}
+                            // Mismo motivo que el hero de series: sin bloquear el focus
+                            // nativo, Chrome scrollea unos px al pulsar (botón en hero
+                            // 100vh) y el click puede no disparar a la primera.
+                            onMouseDown={(e) => e.preventDefault()}
                             style={{
                                 position: 'relative', overflow: 'hidden',
                                 display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px',
