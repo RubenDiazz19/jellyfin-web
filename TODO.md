@@ -188,7 +188,7 @@ cualquier menú.
 
 ---
 
-## Fase 16 — Optimizaciones de rendimiento y mejora del código
+## Fase 16 — Optimizaciones de rendimiento y mejora del código ✓
 
 ### 🟥 Alto impacto
 
@@ -197,7 +197,7 @@ cualquier menú.
 
 Por cada temporada hace 1 request → para 10 temporadas son 11 requests secuenciales. Jellyfin permite obtener todos los episodios de golpe.
 
-- [ ] Hacer una sola llamada a `/Shows/{id}/Episodes` con `userId` y agrupar por `ParentIndexNumber`
+- [x] Una sola llamada a `/Shows/{id}/Episodes` + Seasons en paralelo; episodios agrupados por `ParentIndexNumber` (E2E: 1 request donde antes había N+1)
 
 #### 16.2 Hero image de episodios usa `Primary` en vez de `Thumb`
 **Archivo:** `data/api/shows.ts:140-141`, usado en `EpisodePage.tsx:94`
@@ -208,14 +208,14 @@ thumbHD: imageUrl(item.Id, 'Primary', { maxWidth: 1920 })
 
 Jellyfin tiene tipo `Thumb` específico para thumbnails de episodio, normalmente 16:9 y con mejor encuadre. También se puede caer a `ParentBackdropImageTags` (backdrop de la serie) cuando no hay thumbnail.
 
-- [ ] Probar con `imageUrl(item.Id, 'Thumb')` primero, fallback a `Primary`
+- [x] Cadena `Thumb` (si hay tag) → `Primary` → backdrop de la serie, con el tag correcto en la URL
 
 #### 16.3 Sin negociación de formato de imagen
 **Archivo:** `data/api/images.ts:imageUrl()`
 
 Todas las imágenes se piden sin `format`. Jellyfin soporta `format=webp` y `format=avif` — reducirían el peso de imágenes 50-70%. Crítico para hero images de 1920px que son LCP.
 
-- [ ] Añadir `format` param según soporte del navegador (accept header o feature detect)
+- [x] `format=webp` en `imageUrl()` y `getItemBackdrops()` (sin feature-detect: todo navegador que soporta el resto del frontend decodifica webp; verificado E2E: todas las respuestas llegan `image/webp`)
 
 ### 🟧 Medio impacto
 
@@ -224,7 +224,7 @@ Todas las imágenes se piden sin `format`. Jellyfin soporta `format=webp` y `for
 
 Suscribe a todos los signals del ViewModel. En ShowPage, cambiar `loading` o `error` re-renderiza la página completa aunque solo haya cambiado el estado de carga.
 
-- [ ] Usar `useSignalValue(signal)` individual o `useSignals()` auto-tracking
+- [x] Nuevo `useVmSignals(vm, pick)` de suscripción selectiva; aplicado en Home (hero ya no re-renderiza al cargar la biblioteca), Show/Season/Episode (sin suscripción a `loading`) y Movie
 
 #### 16.5 Backdrop renderiza TODAS las imágenes del crossfade en el DOM
 **Archivo:** `presentation/components/layout/Backdrop.tsx:29-39`
@@ -237,17 +237,17 @@ pool.map((url, i) => (
 
 Si una serie tiene 5 backdrops, hay 5 divs con `background-image` en el DOM. Las imágenes ocultas (opacity 0) igual se descargan.
 
-- [ ] Render solo la imagen activa y pre-cargar la siguiente con `new Image()`
+- [x] Doble búfer (activa + saliente durante el fade) y precarga de la siguiente con `new Image()` (E2E: 1 capa en DOM donde antes había N)
 
 #### 16.6 Sin preload para hero images (LCP)
 La hero image se carga via CSS `background-image` → prioridad baja. Debería tener `<link rel="preload">` o un `<img fetchpriority="high">` oculto.
 
-- [ ] Añadir preload hint cuando se monta el Backdrop
+- [x] `<link rel="preload" as="image" fetchpriority="high">` del backdrop activo, gestionado por el propio Backdrop
 
 #### 16.7 Sin error boundaries
 Cualquier error en render de una página crashea toda la app.
 
-- [ ] Envolver cada página en un `ErrorBoundary` con fallback UI
+- [x] `ErrorBoundary` con fallback (recargar / volver al inicio) montado con key por ruta en App.tsx
 
 #### 16.8 `as any` en props de alineación
 **Archivo:** `ShowPage.tsx`, `MoviePage.tsx`
@@ -258,14 +258,14 @@ alignItems: pos.align as any,
 
 Hero position tokens tienen tipos literales que no casan con `CSSProperties`.
 
-- [ ] Mapear los tokens a valores válidos de CSSProperties
+- [x] `HERO_POS` tipado con `CSSProperties[...]`; eliminados los `as any` de ShowPage/MoviePage
 
 #### 16.9 Cache de shows sin invalidación por tiempo
 **Archivo:** `data/api/cache.ts`
 
 `showCache` solo se limpia en mutaciones (watched, playback stop). Los datos pueden estar stale indefinidamente.
 
-- [ ] Añadir TTL (ej. 5 minutos) o timestamp de última mutación
+- [x] TTL de 5 min en showCache (API compatible con Map; tests con fake timers)
 
 ### 🟩 Bajo impacto
 
@@ -275,27 +275,27 @@ new Date(ep.date).toLocaleDateString('es-ES', { ... })
 ```
 Se ejecuta en cada render, a veces 2-3 veces por página.
 
-- [ ] Extraer a variable o usar `useMemo`
+- [x] `formatDateLong()` con caché por fecha en theme/format.ts; EpisodePage lo usa en sus 3 sitios
 
 #### 16.11 Muchos divs con onClick en vez de `<button>`
 Géneros, breadcrumbs, etc. usan `<span onClick>` → no funcionan con teclado.
 
-- [ ] Usar `<button>` con estilos reset
+- [x] Nav (logo, tabs, breadcrumbs, lupa) y géneros de Show/Movie (hero y detalle) son `<button>` con reset heredado
 
 #### 16.12 Sin manejo de foco en navegación
 Al cambiar de página, el foco no se gestiona. Usuarios de teclado pierden la posición.
 
-- [ ] Gestionar foco al navegar entre páginas
+- [x] Al cambiar de ruta el foco se mueve al contenedor de la página (`tabIndex=-1`, sin outline; preventScroll vía focusPatch)
 
 #### 16.13 `target: ES5` en tsconfig
 Vite transpila igual, pero es confuso. Podría ser `ES2017+` para bundles más pequeños.
 
-- [ ] Cambiar a `ES2017+` en tsconfig
+- [x] `target: ES2020` + `lib ES2020` (typecheck y build de producción verificados)
 
 #### 16.14 Baja cobertura de tests
 6 tests para 92 archivos. Sin tests de componentes ni integración.
 
-- [ ] Añadir tests de componentes e integración
+- [x] +17 tests: watchedStore (toggle/setMany/sync y eventos), showCache TTL, formatDateLong, LibraryViewModel (películas, proto, error, carreras) — 223 en total
 
 ---
 
@@ -344,6 +344,28 @@ tener que abrir el web nativo para el día a día).
 - [x] E2E contra el server: el toggle cambia `RememberSubtitleSelections` en el
       server y revierte; el idioma de subtítulos llega como `spa`; secciones de
       bibliotecas/servidor/usuarios cargan datos reales
+
+---
+
+## Fase 19 — Menú «más opciones» de películas arreglado ✓
+
+Causa raíz: MoviePage pasaba al MoreButton el id con prefijo `movie-` (clave
+de los stores locales) — todas las llamadas al server iban con un id inválido:
+la descarga no arrancaba, el editor de imágenes no encontraba las aplicadas,
+marcar visto/borrar/metadata fallaban.
+
+- [x] MoreButton recibe SIEMPRE el id real; el prefijo `movie-` de los stores
+      locales (visto/favorito) lo aplica internamente según `type`
+- [x] Descargar funciona (E2E: evento download con «Obsession.mp4»)
+- [x] «Editar imágenes» muestra póster/fondos/logo actuales (E2E: Primary
+      visible y «Fondos (1)»)
+- [x] «Añadir a lista de reproducción» y «Añadir a colección» nativos:
+      data/api/lists.ts (getPlaylists/getCollections, add, create) + diálogo
+      AddToDialog con listado, carátulas y creación — sin saltar al web nativo
+      (también en series y episodios)
+- [x] E2E contra el server: crear playlist desde el diálogo aparece en
+      /Items?IncludeItemTypes=Playlist; marcar reproducido cambia
+      UserData.Played
 
 ---
 

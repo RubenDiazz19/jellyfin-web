@@ -38,3 +38,19 @@ export function formatRemaining(
     }
     return `${m} minutos${suffix}`;
 }
+
+// Fecha larga en español ("10 de julio de 2015") con caché: toLocaleDateString
+// crea un Intl.DateTimeFormat en cada llamada y las páginas repiten la misma
+// fecha varias veces por render.
+const dateCache = new Map<string, string>();
+
+export function formatDateLong(date: string | undefined): string {
+    if (!date) return '';
+    const hit = dateCache.get(date);
+    if (hit != null) return hit;
+    const formatted = new Date(date).toLocaleDateString('es-ES', {
+        year: 'numeric', month: 'long', day: 'numeric'
+    });
+    dateCache.set(date, formatted);
+    return formatted;
+}

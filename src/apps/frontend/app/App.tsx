@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useLayoutEffect, useMemo } from 'react';
+import { lazy, Suspense, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { T, type HeroPosKey, type HeroScrimKey } from '../presentation/theme/tokens';
@@ -81,6 +81,12 @@ function AuthedApp() {
     // Scroll al top en cada cambio de ruta: el HashRouter no restaura scroll y
     // React 18 puede diferir el commit, así que forzamos el reset en el ciclo
     // de layout y en el rAF siguiente por si algún efecto vuelve a scrollear.
+    // Además movemos el foco al contenedor de la página: sin esto, un usuario
+    // de teclado se queda "anclado" al botón de la página anterior (ya
+    // desmontado) y el orden de tabulación arranca de cualquier parte. El
+    // monkey-patch de focus fuerza preventScroll, así que no compite con el
+    // reset de scroll.
+    const pageRef = useRef<HTMLDivElement>(null);
     useLayoutEffect(() => {
         const reset = () => {
             window.scrollTo(0, 0);
@@ -89,13 +95,19 @@ function AuthedApp() {
             document.body.scrollTop = 0;
         };
         reset();
+        pageRef.current?.focus();
         const raf = requestAnimationFrame(reset);
         return () => cancelAnimationFrame(raf);
     }, [location.pathname]);
 
     return (
         <>
-            <div key={location.pathname} style={{ animation: 'jfp-fade-in 0.65s ease' }}>
+            <div
+                key={location.pathname}
+                ref={pageRef}
+                tabIndex={-1}
+                style={{ animation: 'jfp-fade-in 0.65s ease', outline: 'none' }}
+            >
                 {/* key por ruta también en la barrera: navegar resetea el error. */}
                 <ErrorBoundary>
                     {route.page === 'home' && <HomePage navigate={navigate} />}

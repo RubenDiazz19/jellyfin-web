@@ -139,14 +139,19 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                     }}>
                         {show.genres.map((g, i) => (
                             <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span
+                                <button
                                     onClick={(e) => { e.stopPropagation(); navigate({ page: 'genre', genre: g }); }}
-                                    style={{ cursor: 'pointer' }}
+                                    style={{
+                                        background: 'none', border: 'none', padding: 0,
+                                        font: 'inherit', color: 'inherit',
+                                        letterSpacing: 'inherit', textTransform: 'inherit',
+                                        cursor: 'pointer'
+                                    }}
                                     onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
                                     onMouseLeave={(e) => (e.currentTarget.style.color = '')}
                                 >
                                     {g}
-                                </span>
+                                </button>
                                 {i < show.genres.length - 1 && <span style={{ opacity: 0.5 }}>·</span>}
                             </span>
                         ))}
@@ -310,10 +315,14 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                         <span>
                             {show.genres.map((g, i) => (
                                 <span key={g}>
-                                    <span
+                                    <button
                                         onClick={() => navigate({ page: 'genre', genre: g })}
-                                        style={{ cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
-                                    >{g}</span>
+                                        style={{
+                                            background: 'none', border: 'none', padding: 0,
+                                            font: 'inherit', color: 'inherit', cursor: 'pointer',
+                                            textDecoration: 'underline dotted', textUnderlineOffset: 3
+                                        }}
+                                    >{g}</button>
                                     {i < show.genres.length - 1 && ', '}
                                 </span>
                             ))}

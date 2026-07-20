@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
+import { formatDateLong } from '../theme/format';
 import { PROTO_DATA, findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { showVM } from '../../domain/viewModels/ShowViewModel';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
@@ -154,7 +155,7 @@ function EpisodeHero({
                         {ep.date && (
                             <>
                                 <span>
-                                    {new Date(ep.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {formatDateLong(ep.date)}
                                 </span>
                                 <Ic.Dot />
                             </>
@@ -236,7 +237,7 @@ function EpisodeDetail({
                             <>
                                 <span style={{ color: T.dim }}>Emisión</span>
                                 <span>
-                                    {new Date(ep.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    {formatDateLong(ep.date)}
                                 </span>
                             </>
                         )}
@@ -328,7 +329,7 @@ function EpisodeDetail({
                                     <span>{nextEp.runtime} min</span>
                                     <span>
                                         {nextEp.date
-                      && new Date(nextEp.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      && formatDateLong(nextEp.date)}
                                     </span>
                                 </div>
                             </div>

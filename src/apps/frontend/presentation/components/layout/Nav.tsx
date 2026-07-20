@@ -30,6 +30,14 @@ const NAV_LINKS = [
     { id: 'movies', label: 'Películas' }
 ] as const;
 
+// Reset para que un <button> real (accesible con teclado) se vea como los
+// antiguos spans clicables.
+const linkReset: React.CSSProperties = {
+    background: 'none', border: 'none', padding: 0, margin: 0,
+    font: 'inherit', color: 'inherit', letterSpacing: 'inherit',
+    cursor: 'pointer'
+};
+
 export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionData }: NavProps) {
     const y = useScrollY();
     const scrolled = y > 80;
@@ -45,50 +53,58 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
             borderBottom: scrolled ? `1px solid ${T.hairline}` : '1px solid transparent',
             transition: 'background .25s, border-color .25s, backdrop-filter .25s'
         }}>
-            <div
+            <button
                 onClick={() => navigate({ page: 'home' })}
                 style={{
+                    ...linkReset,
                     fontFamily: T.display, fontStyle: 'italic', fontSize: 22, letterSpacing: 0.5,
-                    color: T.fg, cursor: 'pointer'
+                    color: T.fg
                 }}
             >
                 jellyfin
-            </div>
+            </button>
 
             {breadcrumb ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: T.dim, fontSize: 12, flex: 1 }}>
                     {breadcrumb.map((b, i) => (
                         <React.Fragment key={i}>
                             {i > 0 && <span style={{ opacity: 0.4 }}>›</span>}
-                            <span
-                                onClick={b.to ? () => navigate(b.to as Route) : undefined}
-                                style={{
-                                    color: i === breadcrumb.length - 1 ? T.fg : T.dim,
-                                    cursor: b.to ? 'pointer' : 'default'
-                                }}
-                            >
-                                {b.label}
-                            </span>
+                            {b.to ? (
+                                <button
+                                    onClick={() => navigate(b.to as Route)}
+                                    style={{
+                                        ...linkReset,
+                                        color: i === breadcrumb.length - 1 ? T.fg : T.dim
+                                    }}
+                                >
+                                    {b.label}
+                                </button>
+                            ) : (
+                                <span style={{ color: i === breadcrumb.length - 1 ? T.fg : T.dim }}>
+                                    {b.label}
+                                </span>
+                            )}
                         </React.Fragment>
                     ))}
                 </div>
             ) : (
                 <div style={{ display: 'flex', gap: 26, flex: 1 }}>
                     {NAV_LINKS.map((l) => (
-                        <span
+                        <button
                             key={l.id}
                             onClick={() => navigate(l.id === 'home' ? { page: 'home' } : { page: l.id })}
                             style={{
+                                ...linkReset,
                                 color: l.id === active ? T.fg : T.dim,
                                 fontWeight: l.id === active ? 500 : 400,
-                                position: 'relative', cursor: 'pointer'
+                                position: 'relative'
                             }}
                         >
                             {l.label}
                             {l.id === active && (
                                 <div style={{ position: 'absolute', bottom: -6, left: 0, right: 0, height: 1, background: T.fg }} />
                             )}
-                        </span>
+                        </button>
                     ))}
                 </div>
             )}
@@ -111,17 +127,18 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                         <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.18)' }} />
                     </>
                 )}
-                <div
+                <button
                     onClick={() => navigate({ page: 'search' })}
+                    aria-label='Buscar'
                     style={{
-                        cursor: 'pointer', display: 'flex', alignItems: 'center',
+                        ...linkReset, display: 'flex', alignItems: 'center',
                         padding: '4px 6px', borderRadius: 6, transition: 'background .15s'
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                     <Ic.Search size={16} />
-                </div>
+                </button>
                 <UserAvatar navigate={navigate} />
             </div>
         </div>

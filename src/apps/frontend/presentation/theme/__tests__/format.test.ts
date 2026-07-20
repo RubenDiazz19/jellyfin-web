@@ -1,5 +1,23 @@
 import { describe, expect, test } from 'vitest';
-import { formatRemaining, formatRemainingCompact, formatRuntime } from '../format';
+import { formatDateLong, formatRemaining, formatRemainingCompact, formatRuntime } from '../format';
+
+describe('formatDateLong', () => {
+    test('fecha larga en español', () => {
+        expect(formatDateLong('2015-07-10T00:00:00Z')).toBe('10 de julio de 2015');
+    });
+
+    test('la segunda llamada sale del caché (mismo resultado)', () => {
+        const a = formatDateLong('2020-01-05T00:00:00Z');
+        const b = formatDateLong('2020-01-05T00:00:00Z');
+        expect(a).toBe(b);
+        expect(a).toBe('5 de enero de 2020');
+    });
+
+    test('sin fecha → cadena vacía', () => {
+        expect(formatDateLong(undefined)).toBe('');
+        expect(formatDateLong('')).toBe('');
+    });
+});
 
 describe('formatRemainingCompact', () => {
     test('menos de una hora → solo minutos', () => {
