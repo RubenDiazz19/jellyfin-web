@@ -13,6 +13,7 @@ import {
     downloadUrl, nativeItemUrl
 } from '../../../domain/api';
 import { MetadataEditor, type EditorKind } from '../admin/editor';
+import { AddToDialog } from './AddToDialog';
 import { usePlayer } from '../player/PlayerProvider';
 
 type MenuItem =
@@ -38,12 +39,17 @@ export function MoreButton({
 }: Props) {
     const [open, setOpen] = useState(false);
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
+    const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
     const [menuPos, setMenuPos] = useState<{
         top?: number; bottom?: number; right: number; maxHeight: number;
     } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
-    const [w, toggleW] = useWatched(id);
-    const [fav, toggleFav] = useFav(id);
+    // `id` es SIEMPRE el id real del server (lo usan descarga, metadata,
+    // imágenes, borrado…). Los stores locales de visto/favorito usan la
+    // clave con prefijo para películas — la misma que el resto de botones.
+    const localKey = type === 'movie' ? `movie-${id}` : id;
+    const [w, toggleW] = useWatched(localKey);
+    const [fav, toggleFav] = useFav(localKey);
     const toast = useToast();
     const { session } = useSession();
     const { play } = usePlayer();
@@ -177,8 +183,8 @@ export function MoreButton({
                 fn: doMarkPlayed },
             { label: fav ? 'Quitar de favoritos' : 'Añadir a favoritos',
                 fn: doToggleFav },
-            { label: 'Añadir a lista de reproducción', fn: () => openNative() },
-            { label: 'Añadir a colección', fn: () => openNative() },
+            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
+            { label: 'Añadir a colección', fn: () => setAddTo('collection') },
             { isDivider: true },
             { label: 'Descargar', fn: doDownload },
             { label: 'Compartir', fn: doShare },
@@ -202,7 +208,8 @@ export function MoreButton({
                 fn: doMarkPlayed },
             { label: fav ? 'Quitar de favoritos' : 'Añadir a favoritos',
                 fn: doToggleFav },
-            { label: 'Añadir a lista de reproducción', fn: () => openNative() },
+            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
+            { label: 'Añadir a colección', fn: () => setAddTo('collection') },
             { isDivider: true },
             { label: 'Compartir', fn: doShare },
             { isDivider: true },
@@ -221,7 +228,7 @@ export function MoreButton({
                 fn: doMarkPlayed },
             { label: fav ? 'Quitar de favoritos' : 'Añadir a favoritos',
                 fn: doToggleFav },
-            { label: 'Añadir a lista de reproducción', fn: () => openNative() },
+            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
             { isDivider: true },
             { label: 'Descargar', fn: doDownload },
             { label: 'Compartir', fn: doShare },
@@ -294,6 +301,14 @@ export function MoreButton({
                     kind={type as EditorKind}
                     initialTab={editor}
                     onClose={() => setEditor(null)}
+                />
+            )}
+            {addTo && (
+                <AddToDialog
+                    kind={addTo}
+                    itemId={id}
+                    itemTitle={itemTitle}
+                    onClose={() => setAddTo(null)}
                 />
             )}
         </div>

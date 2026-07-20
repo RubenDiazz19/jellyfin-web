@@ -204,7 +204,10 @@ function MovieHero({
                             <Ic.Plus size={14} /> Mi lista
                         </button>
                         <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
-                        <MoreButton id={`movie-${movie.id}`} size={18} type='movie' itemTitle={movie.title} />
+                        {/* id real del server: descarga/metadata/imágenes lo
+                            necesitan; el prefijo movie- es solo de los stores
+                            locales y lo aplica MoreButton internamente. */}
+                        <MoreButton id={movie.id} size={18} type='movie' itemTitle={movie.title} />
                     </div>
                 </div>
             </div>

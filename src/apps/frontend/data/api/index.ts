@@ -44,6 +44,15 @@ export { searchSubtitles, downloadSubtitle, type RemoteSubtitle } from './subtit
 export { getSystemInfo, refreshLibrary, dashboardUrl, type SystemInfo } from './admin';
 export { getMaxStreamingBitrate, setMaxStreamingBitrate } from './playback';
 export {
+    getPlaylists,
+    addToPlaylist,
+    createPlaylist,
+    getCollections,
+    addToCollection,
+    createCollection,
+    type ListEntry
+} from './lists';
+export {
     getCurrentUser,
     updateUserConfig,
     changePassword,
