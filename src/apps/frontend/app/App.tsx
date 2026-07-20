@@ -27,6 +27,7 @@ const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage').the
 import {
     useTweaks, TweaksPanel, TweakSection, TweakRadio
 } from '../presentation/components/tweaks/TweaksPanel';
+import { ErrorBoundary } from '../presentation/components/layout/ErrorBoundary';
 import { ToastProvider } from '../presentation/components/toast/ToastProvider';
 import { useSession } from '../domain/bridge/useSession';
 import { PlayerProvider } from '../presentation/components/player/PlayerProvider';
@@ -95,20 +96,23 @@ function AuthedApp() {
     return (
         <>
             <div key={location.pathname} style={{ animation: 'jfp-fade-in 0.65s ease' }}>
-                {route.page === 'home' && <HomePage navigate={navigate} />}
-                {route.page === 'series' && <LibraryPage kind='series' navigate={navigate} />}
-                {route.page === 'movies' && <LibraryPage kind='movies' navigate={navigate} />}
-                {route.page === 'show' && <ShowPage showId={route.showId} navigate={navigate} hero={t} />}
-                {route.page === 'season' && <SeasonPage showId={route.showId} seasonN={route.seasonN} navigate={navigate} />}
-                {route.page === 'episode' && <EpisodePage showId={route.showId} seasonN={route.seasonN} epN={route.epN} navigate={navigate} />}
-                {route.page === 'movie' && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
-                {route.page === 'search' && <SearchPage navigate={navigate} />}
-                <Suspense fallback={<PageFallback />}>
-                    {route.page === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
-                    {route.page === 'person' && <PersonPage name={route.name} navigate={navigate} />}
-                    {route.page === 'settings' && <SettingsPage navigate={navigate} initial='reproduccion' />}
-                    {route.page === 'profile' && <SettingsPage navigate={navigate} initial='perfil' />}
-                </Suspense>
+                {/* key por ruta también en la barrera: navegar resetea el error. */}
+                <ErrorBoundary>
+                    {route.page === 'home' && <HomePage navigate={navigate} />}
+                    {route.page === 'series' && <LibraryPage kind='series' navigate={navigate} />}
+                    {route.page === 'movies' && <LibraryPage kind='movies' navigate={navigate} />}
+                    {route.page === 'show' && <ShowPage showId={route.showId} navigate={navigate} hero={t} />}
+                    {route.page === 'season' && <SeasonPage showId={route.showId} seasonN={route.seasonN} navigate={navigate} />}
+                    {route.page === 'episode' && <EpisodePage showId={route.showId} seasonN={route.seasonN} epN={route.epN} navigate={navigate} />}
+                    {route.page === 'movie' && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
+                    {route.page === 'search' && <SearchPage navigate={navigate} />}
+                    <Suspense fallback={<PageFallback />}>
+                        {route.page === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
+                        {route.page === 'person' && <PersonPage name={route.name} navigate={navigate} />}
+                        {route.page === 'settings' && <SettingsPage navigate={navigate} initial='reproduccion' />}
+                        {route.page === 'profile' && <SettingsPage navigate={navigate} initial='perfil' />}
+                    </Suspense>
+                </ErrorBoundary>
             </div>
             <TweaksPanel title='Tweaks'>
                 <TweakSection label='Pantalla de detalle' />

@@ -3,7 +3,7 @@ import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { PROTO_DATA, findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { showVM } from '../../domain/viewModels/ShowViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
@@ -19,7 +19,7 @@ type PageProps = { showId: string; seasonN: number; epN: number; navigate: Navig
 
 export function EpisodePage({ showId, seasonN, epN, navigate }: PageProps) {
     const proto = PROTO_DATA.shows[showId];
-    useViewModel(showVM);
+    useVmSignals(showVM, (vm) => [vm.show, vm.error]);
     useEffect(() => {
         if (!proto) void showVM.load(showId);
     }, [proto, showId]);

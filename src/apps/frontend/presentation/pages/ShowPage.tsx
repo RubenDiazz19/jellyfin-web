@@ -6,7 +6,7 @@ import { WATCHED } from '../../domain/stores';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
 import { PROTO_DATA, type Show } from '../../domain/models';
 import { showVM } from '../../domain/viewModels/ShowViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
@@ -28,7 +28,9 @@ type PageProps = { showId: string; navigate: Navigate; hero?: HeroTweaks };
 export function ShowPage({ showId, navigate, hero }: PageProps) {
     const proto = PROTO_DATA.shows[showId];
     // Si la ID no está en el catálogo prototipo asumimos que viene de Jellyfin.
-    useViewModel(showVM);
+    // La página no lee `loading` (pinta «Cargando…» cuando show es null), así
+    // que no se suscribe a él.
+    useVmSignals(showVM, (vm) => [vm.show, vm.error]);
     useEffect(() => {
         if (!proto) void showVM.load(showId);
     }, [proto, showId]);
@@ -125,8 +127,8 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             <div style={{
                 position: 'absolute', inset: 0, padding: pos.pad,
                 display: 'flex', flexDirection: 'column',
-                alignItems: pos.align as any, justifyContent: pos.justify as any,
-                textAlign: pos.text as any
+                alignItems: pos.align, justifyContent: pos.justify,
+                textAlign: pos.text
             }}>
                 {!minimal && (
                     <div style={{

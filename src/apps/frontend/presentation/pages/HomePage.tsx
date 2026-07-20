@@ -4,7 +4,7 @@ import { Ic } from '../theme/icons';
 import { formatRemainingCompact } from '../theme/format';
 import { PROTO_DATA, type CarouselSlide } from '../../domain/models';
 import { homeVM } from '../../domain/viewModels/HomeViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { useSession } from '../../domain/bridge/useSession';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { Backdrop } from '../components/layout/Backdrop';
@@ -24,7 +24,8 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     const jellyfinMode = !!session?.accessToken;
     // En modo Jellyfin el carrusel se construye con datos reales (continuar
     // viendo + últimas series); en modo prototipo, con PROTO_DATA.
-    useViewModel(homeVM);
+    // Solo los signals del hero: cargar la biblioteca no re-pinta el carrusel.
+    useVmSignals(homeVM, (vm) => [vm.slides, vm.heroLoading, vm.heroReady]);
     useEffect(() => {
         if (jellyfinMode) void homeVM.load();
     }, [jellyfinMode]);
@@ -344,7 +345,9 @@ const HomeLibrary = React.memo(function HomeLibraryBase({ navigate }: { navigate
 
 function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     // homeVM.load() lo dispara HomePage al montar; aquí solo se leen signals.
-    useViewModel(homeVM);
+    useVmSignals(homeVM, (vm) => [
+        vm.shows, vm.movies, vm.showsLoading, vm.showsReady, vm.showsError
+    ]);
     const series = homeVM.shows.value;
     const movies = homeVM.movies.value;
     if (homeVM.showsLoading.value || !homeVM.showsReady.value) {

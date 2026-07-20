@@ -5,7 +5,7 @@ import { formatRuntime, formatRemaining } from '../theme/format';
 import { useWatched } from '../../domain/bridge/useWatched';
 import type { Movie } from '../../domain/models';
 import { movieVM } from '../../domain/viewModels/MovieViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
@@ -18,7 +18,7 @@ import type { HeroTweaks } from './ShowPage';
 type PageProps = { movieId: string; navigate: Navigate; hero?: HeroTweaks };
 
 export function MoviePage({ movieId, navigate, hero }: PageProps) {
-    useViewModel(movieVM);
+    useVmSignals(movieVM, (vm) => [vm.movie, vm.error]);
     useEffect(() => {
         void movieVM.load(movieId);
     }, [movieId]);
@@ -90,8 +90,8 @@ function MovieHero({
             <div style={{
                 position: 'absolute', inset: 0, padding: pos.pad,
                 display: 'flex', flexDirection: 'column',
-                alignItems: pos.align as any, justifyContent: pos.justify as any,
-                textAlign: pos.text as any
+                alignItems: pos.align, justifyContent: pos.justify,
+                textAlign: pos.text
             }}>
                 <div style={{
                     display: 'flex', flexDirection: 'column',

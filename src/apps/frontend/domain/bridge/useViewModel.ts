@@ -56,6 +56,33 @@ export function useViewModel<T extends object>(vm: T): T {
 }
 
 /**
+ * Suscripción selectiva: como useViewModel pero solo a los signals que la
+ * View realmente lee. Evita re-renders por signals ajenos (p.ej. el hero de
+ * la Home no debe re-pintarse cuando termina de cargar la biblioteca).
+ * `pick` debe devolver siempre la misma lista para un call-site dado.
+ */
+export function useVmSignals<T extends object>(
+    vm: T,
+    pick: (vm: T) => Signal<unknown>[]
+): T {
+    const version = useRef(0);
+    const subscribe = useCallback((onChange: () => void) => {
+        const unsubs = pick(vm).map((s) =>
+            s.subscribe(() => {
+                version.current++;
+                onChange();
+            })
+        );
+        return () => unsubs.forEach((u) => { u(); });
+    // `pick` es una arrow inline distinta por render pero elige los mismos
+    // signals; incluirla en deps re-suscribiría en cada render sin ganar nada.
+    }, [vm]);
+
+    useSyncExternalStore(subscribe, () => version.current, () => version.current);
+    return vm;
+}
+
+/**
  * Suscribe el componente a un único signal y devuelve su valor actual.
  * Útil cuando la View solo depende de una propiedad del ViewModel.
  */
