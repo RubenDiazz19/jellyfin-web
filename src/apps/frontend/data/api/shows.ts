@@ -131,14 +131,28 @@ function mapEpisode(item: JFItem): Episode {
     const watched = played ? 1 : pct != null ? pct / 100 : 0;
     const source = item.MediaSources?.[0];
     const streams = source?.MediaStreams ?? [];
+    // Thumb (16:9, encuadre pensado para miniatura) > Primary del episodio >
+    // backdrop de la serie como último recurso.
+    const epImage = (maxWidth: number) =>
+        (item.ImageTags?.Thumb ?
+            imageUrl(item.Id, 'Thumb', { tag: item.ImageTags.Thumb, maxWidth }) :
+            undefined)
+        ?? (item.ImageTags?.Primary ?
+            imageUrl(item.Id, 'Primary', { tag: item.ImageTags.Primary, maxWidth }) :
+            undefined)
+        ?? (item.ParentBackdropItemId && item.ParentBackdropImageTags?.[0] ?
+            imageUrl(item.ParentBackdropItemId, 'Backdrop', {
+                tag: item.ParentBackdropImageTags[0], maxWidth
+            }) :
+            undefined);
     return {
         n: item.IndexNumber ?? 0,
         title: item.Name,
         date: item.PremiereDate,
         runtime: ticksToMinutes(item.RunTimeTicks),
         synopsis: item.Overview,
-        thumb: imageUrl(item.Id, 'Primary', { maxWidth: 720 }),
-        thumbHD: imageUrl(item.Id, 'Primary', { maxWidth: 1920 }),
+        thumb: epImage(720),
+        thumbHD: epImage(1920),
         watched,
         jfId: item.Id,
         video: summarizeVideo(streams),
@@ -199,16 +213,30 @@ export async function getShow(id: string): Promise<Show> {
 async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
-    const seasonData = await apiFetch<{ Items: JFItem[] }>(
-        `/Shows/${showId}/Seasons?userId=${session.userId}&Fields=Overview,ImageTags`
-    );
+    // Dos peticiones fijas (temporadas + TODOS los episodios) en vez de
+    // 1 + N por temporada; los episodios se agrupan por ParentIndexNumber.
+    const [seasonData, epData] = await Promise.all([
+        apiFetch<{ Items: JFItem[] }>(
+            `/Shows/${showId}/Seasons?userId=${session.userId}&Fields=Overview,ImageTags`
+        ),
+        apiFetch<{ Items: JFItem[] }>(
+            `/Shows/${showId}/Episodes?userId=${session.userId}&Fields=Overview,ImageTags,RunTimeTicks,PremiereDate,MediaSources,MediaStreams`
+        )
+    ]);
+
+    const bySeason = new Map<number, Episode[]>();
+    for (const item of epData.Items ?? []) {
+        const seasonN = item.ParentIndexNumber;
+        if (typeof seasonN !== 'number') continue;
+        const list = bySeason.get(seasonN) ?? [];
+        list.push(mapEpisode(item));
+        bySeason.set(seasonN, list);
+    }
+
     const seasons: Season[] = [];
     for (const s of seasonData.Items ?? []) {
         if (typeof s.IndexNumber !== 'number') continue;
-        const epData = await apiFetch<{ Items: JFItem[] }>(
-            `/Shows/${showId}/Episodes?userId=${session.userId}&seasonId=${s.Id}&Fields=Overview,ImageTags,RunTimeTicks,PremiereDate,MediaSources,MediaStreams`
-        );
-        const eps = (epData.Items ?? []).map(mapEpisode).sort((a, b) => a.n - b.n);
+        const eps = (bySeason.get(s.IndexNumber) ?? []).sort((a, b) => a.n - b.n);
         seasons.push({
             n: s.IndexNumber,
             jfId: s.Id,
