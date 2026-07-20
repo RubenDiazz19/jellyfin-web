@@ -42,3 +42,19 @@ export {
 } from './remote-images';
 export { searchSubtitles, downloadSubtitle, type RemoteSubtitle } from './subtitles';
 export { getSystemInfo, refreshLibrary, dashboardUrl, type SystemInfo } from './admin';
+export { getMaxStreamingBitrate, setMaxStreamingBitrate } from './playback';
+export {
+    getCurrentUser,
+    updateUserConfig,
+    changePassword,
+    avatarUrl,
+    uploadAvatar,
+    deleteAvatar,
+    getUserViews,
+    getUsers,
+    type CurrentUser,
+    type UserConfig,
+    type SubtitleMode,
+    type UserView,
+    type UserListEntry
+} from './users';

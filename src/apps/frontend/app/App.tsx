@@ -106,8 +106,8 @@ function AuthedApp() {
                 <Suspense fallback={<PageFallback />}>
                     {route.page === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
                     {route.page === 'person' && <PersonPage name={route.name} navigate={navigate} />}
-                    {route.page === 'settings' && <SettingsPage navigate={navigate} />}
-                    {route.page === 'profile' && <SettingsPage navigate={navigate} />}
+                    {route.page === 'settings' && <SettingsPage navigate={navigate} initial='reproduccion' />}
+                    {route.page === 'profile' && <SettingsPage navigate={navigate} initial='perfil' />}
                 </Suspense>
             </div>
             <TweaksPanel title='Tweaks'>

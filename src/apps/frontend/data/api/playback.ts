@@ -27,12 +27,26 @@ export type PlaybackDecision = {
     activeSubtitleIndex?: number;
 };
 
+// Calidad máxima de streaming, configurable desde Ajustes → Reproducción.
+const BITRATE_KEY = 'jfp-max-bitrate';
+const DEFAULT_BITRATE = 20_000_000;
+
+export function getMaxStreamingBitrate(): number {
+    const raw = Number(localStorage.getItem(BITRATE_KEY));
+    return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_BITRATE;
+}
+
+export function setMaxStreamingBitrate(bps: number): void {
+    if (bps === DEFAULT_BITRATE) localStorage.removeItem(BITRATE_KEY);
+    else localStorage.setItem(BITRATE_KEY, String(bps));
+}
+
 // Device profile: which containers/codecs the browser can decode. The server
 // uses it to decide DirectPlay/DirectStream/HLS transcode.
 function browserDeviceProfile() {
     return {
-        MaxStreamingBitrate: 20_000_000,
-        MaxStaticBitrate: 20_000_000,
+        MaxStreamingBitrate: getMaxStreamingBitrate(),
+        MaxStaticBitrate: getMaxStreamingBitrate(),
         MusicStreamingTranscodingBitrate: 384_000,
         DirectPlayProfiles: [
             { Container: 'mp4,m4v', Type: 'Video', VideoCodec: 'h264,vp9,av1', AudioCodec: 'aac,mp3,opus' },

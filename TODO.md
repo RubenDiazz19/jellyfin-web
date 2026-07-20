@@ -319,6 +319,34 @@ mostraban.
 
 ---
 
+## Fase 18 — Panel de ajustes completo contra Jellyfin ✓
+
+El placeholder de Ajustes solo mostraba la sesión; el resto de opciones eran
+toasts «pendiente de conectar». Ahora todo va contra la API real (idea: no
+tener que abrir el web nativo para el día a día).
+
+- [x] `data/api/users.ts`: getCurrentUser (`/Users/Me`), updateUserConfig
+      (merge + POST Configuration), changePassword, avatar (subir/borrar/URL),
+      getUserViews, getUsers (admin)
+- [x] **Perfil** (`/profile` abre aquí): avatar con subida/borrado, datos de la
+      sesión, cambio de contraseña, cerrar sesión
+- [x] **Reproducción** (`/settings` abre aquí): idioma de audio preferido,
+      pista por defecto, recordar audio/subtítulos, autoplay del siguiente
+      episodio (todo persiste en el server con parche optimista + revert), y
+      calidad máxima de streaming (localStorage `jfp-max-bitrate`, la lee el
+      device profile del reproductor)
+- [x] **Subtítulos**: modo (Por defecto/Inteligente/Solo forzados/Siempre/Nunca)
+      e idioma preferido
+- [x] **Bibliotecas**: vistas del usuario con carátula y tipo; escaneo global y
+      acceso al panel de administración (admin)
+- [x] **Servidor**: nombre/versión/SO/id + abrir panel de administración
+- [x] **Usuarios** (solo admin): listado con rol y última actividad
+- [x] E2E contra el server: el toggle cambia `RememberSubtitleSelections` en el
+      server y revierte; el idioma de subtítulos llega como `spa`; secciones de
+      bibliotecas/servidor/usuarios cargan datos reales
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |

@@ -53,6 +53,16 @@ import {
 } from './remote-images';
 import { searchSubtitles, downloadSubtitle } from './subtitles';
 import { getSystemInfo, refreshLibrary, dashboardUrl } from './admin';
+import {
+    getCurrentUser,
+    updateUserConfig,
+    changePassword,
+    avatarUrl,
+    uploadAvatar,
+    deleteAvatar,
+    getUserViews,
+    getUsers
+} from './users';
 
 export type { Session };
 
@@ -106,6 +116,17 @@ const subtitleService = { searchSubtitles, downloadSubtitle };
 
 const adminService = { getSystemInfo, refreshLibrary, dashboardUrl };
 
+const userService = {
+    getCurrentUser,
+    updateUserConfig,
+    changePassword,
+    avatarUrl,
+    uploadAvatar,
+    deleteAvatar,
+    getUserViews,
+    getUsers
+};
+
 export type SessionService = typeof sessionService;
 export type AuthService = typeof authService;
 export type CatalogService = typeof catalogService;
@@ -116,6 +137,7 @@ export type MetadataService = typeof metadataService;
 export type RemoteImageService = typeof remoteImageService;
 export type SubtitleService = typeof subtitleService;
 export type AdminService = typeof adminService;
+export type UserService = typeof userService;
 
 export class ApiService {
     // eslint-disable-next-line max-params -- DI por constructor con defaults
@@ -129,7 +151,8 @@ export class ApiService {
         readonly metadata: MetadataService = metadataService,
         readonly remoteImages: RemoteImageService = remoteImageService,
         readonly subtitles: SubtitleService = subtitleService,
-        readonly admin: AdminService = adminService
+        readonly admin: AdminService = adminService,
+        readonly users: UserService = userService
     ) {}
 }
 
