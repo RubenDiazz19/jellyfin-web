@@ -416,6 +416,34 @@ capturas:
 
 ---
 
+## Fase 22 — Menú depurado, OSD recuperable en fullscreen y play de «visto» ✓
+
+- [x] **Menú «más opciones» sin entradas redundantes.** Fuera «Reproducir»,
+      «Marcar como reproducido», «Añadir a favoritos» y «Compartir» en los tres
+      menús (película/serie/episodio): el play ya está en el hero y el corazón
+      y el tick viven en el Nav. Se conserva «Reproducir desde el principio»
+      porque no es alcanzable de otra forma cuando hay progreso. Limpiados los
+      handlers y hooks que quedaron sin uso (useWatched/useFav en MoreButton) y
+      simplificado el menú del modo prototipo.
+- [x] **El OSD se puede recuperar en pantalla completa.** El «despertador» del
+      OSD escuchaba solo `onPointerMove` del contenedor; en fullscreen el
+      elemento que recibe el puntero puede no ser ese, y los controles se
+      quedaban ocultos sin forma de sacarlos. Ahora cualquier actividad
+      (pointermove/mousemove/touch/wheel/tecla) a nivel de `document` los
+      despierta, y también se muestran al entrar o salir de fullscreen. Además
+      dejan de ocultarse mientras el ratón está encima de la barra (antes
+      desaparecía justo al ir a pulsar un botón).
+      Verificado E2E en fullscreen: auto-oculta → vuelve al mover el ratón y
+      también con una tecla.
+- [x] **Play con estado «visto».** Nueva prop `watched` en PlayBtn: círculo
+      blanco suave (0.78, 0.88 al hover) con tick negro y aro más marcado;
+      sin ver vuelve al play traslúcido de siempre. Conectado en la ficha del
+      episodio (lee el store local, así el tick del Nav lo actualiza al
+      instante), en la tarjeta de «siguiente episodio» y en la temporada
+      (cuando están todos los episodios vistos).
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |

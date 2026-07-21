@@ -137,6 +137,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                         size={104}
                         onClick={startPlay}
                         progress={inProgress ? nextEp.watched : null}
+                        watched={season.watched >= season.total && season.total > 0}
                     />
                 </div>
                 <div style={{

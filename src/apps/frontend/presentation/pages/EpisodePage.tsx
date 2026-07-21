@@ -5,6 +5,7 @@ import { formatDateLong } from '../theme/format';
 import { PROTO_DATA, findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { showVM } from '../../domain/viewModels/ShowViewModel';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
+import { useWatched } from '../../domain/bridge/useWatched';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
@@ -67,6 +68,10 @@ function EpisodeHero({
     show: Show; season: Season; ep: Episode; navigate: Navigate;
 }) {
     const { play } = usePlayer();
+    // El tick del Nav escribe en el store local; leerlo aquí mantiene el play
+    // en sincronía al instante (sin esperar a que se recargue la serie).
+    const [localWatched] = useWatched(`${show.id}-s${season.n}-e${ep.n}`);
+    const watched = localWatched || ep.watched >= 1;
     const startPlay = () => {
         if (!ep.jfId) return;
         play({
@@ -102,7 +107,8 @@ function EpisodeHero({
             }}>
                 <PlayBtn
                     size={108} onClick={startPlay}
-                    progress={ep.watched > 0 && ep.watched < 1 ? ep.watched : null}
+                    progress={!watched && ep.watched > 0 && ep.watched < 1 ? ep.watched : null}
+                    watched={watched}
                 />
 
                 <div style={{
@@ -300,7 +306,10 @@ function EpisodeDetail({
                                         position: 'absolute', inset: 0,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                                     }}>
-                                        <PlayBtn size={52} />
+                                        <NextEpPlay
+                                            id={`${show.id}-s${season.n}-e${nextEp.n}`}
+                                            dataWatched={nextEp.watched}
+                                        />
                                     </div>
                                     <div
                                         onClick={(e) => e.stopPropagation()}
@@ -339,4 +348,11 @@ function EpisodeDetail({
             </div>
         </section>
     );
+}
+
+// Play de la tarjeta "siguiente episodio": el estado visto sale del store
+// local para que el tick de al lado lo actualice al instante.
+function NextEpPlay({ id, dataWatched }: { id: string; dataWatched: number }) {
+    const [local] = useWatched(id);
+    return <PlayBtn size={52} watched={local || dataWatched >= 1} />;
 }

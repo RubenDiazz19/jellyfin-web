@@ -2,13 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
-import { useFav } from '../../../domain/bridge/useFav';
-import { useWatched } from '../../../domain/bridge/useWatched';
 import { IconButton } from './IconButton';
 import { useToast } from '../toast/ToastProvider';
 import { useSession } from '../../../domain/bridge/useSession';
 import {
-    markPlayed, toggleFavorite as apiToggleFavorite,
     refreshItemMetadata, deleteItem,
     downloadUrl, nativeItemUrl
 } from '../../../domain/api';
@@ -44,12 +41,6 @@ export function MoreButton({
         top?: number; bottom?: number; right: number; maxHeight: number;
     } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
-    // `id` es SIEMPRE el id real del server (lo usan descarga, metadata,
-    // imágenes, borrado…). Los stores locales de visto/favorito usan la
-    // clave con prefijo para películas — la misma que el resto de botones.
-    const localKey = type === 'movie' ? `movie-${id}` : id;
-    const [w, toggleW] = useWatched(localKey);
-    const [fav, toggleFav] = useFav(localKey);
     const toast = useToast();
     const { session } = useSession();
     const { play } = usePlayer();
@@ -97,30 +88,6 @@ export function MoreButton({
     // -------- handlers reales --------
     const label = itemTitle ? ` · ${itemTitle}` : '';
 
-    const doMarkPlayed = async () => {
-        const next = !w;
-        toggleW();
-        try {
-            await markPlayed(id, next);
-            toast(next ? `Marcado como visto${label}` : `Marcado como no visto${label}`, 'success');
-        } catch (e) {
-            toggleW();
-            toast((e as Error).message, 'warn');
-        }
-    };
-
-    const doToggleFav = async () => {
-        const next = !fav;
-        toggleFav();
-        try {
-            await apiToggleFavorite(id, next);
-            toast(next ? `Añadido a favoritos${label}` : `Quitado de favoritos${label}`, 'success');
-        } catch (e) {
-            toggleFav();
-            toast((e as Error).message, 'warn');
-        }
-    };
-
     const doRefresh = async () => {
         try {
             await refreshItemMetadata(id);
@@ -162,32 +129,14 @@ export function MoreButton({
         a.remove();
     };
 
-    const doShare = async () => {
-        const url = nativeItemUrl(id);
-        if (!url) return toast('URL no disponible', 'warn');
-        try {
-            await navigator.clipboard.writeText(url);
-            toast('Enlace copiado al portapapeles', 'success');
-        } catch {
-            toast(url, 'info');
-        }
-    };
-
     // -------- construcción de menús --------
     const menuByType: Record<'movie' | 'show' | 'episode', MenuItem[]> = {
         movie: [
-            { label: 'Reproducir', fn: () => doPlay() },
             { label: 'Reproducir desde el principio', fn: () => doPlay({ fromStart: true }) },
-            { isDivider: true },
-            { label: w ? 'Marcar como no reproducido' : 'Marcar como reproducido',
-                fn: doMarkPlayed },
-            { label: fav ? 'Quitar de favoritos' : 'Añadir a favoritos',
-                fn: doToggleFav },
             { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
             { label: 'Añadir a colección', fn: () => setAddTo('collection') },
             { isDivider: true },
             { label: 'Descargar', fn: doDownload },
-            { label: 'Compartir', fn: doShare },
             { isDivider: true },
             { label: 'Identificar…', fn: () => setEditor('identify') },
             { label: 'Actualizar metadatos', fn: doRefresh },
@@ -204,14 +153,8 @@ export function MoreButton({
             ] : []),
             { label: 'Reproducción aleatoria', fn: () => openNative(undefined, '&shuffle=true') },
             { isDivider: true },
-            { label: w ? 'Marcar serie como no vista' : 'Marcar serie como vista',
-                fn: doMarkPlayed },
-            { label: fav ? 'Quitar de favoritos' : 'Añadir a favoritos',
-                fn: doToggleFav },
             { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
             { label: 'Añadir a colección', fn: () => setAddTo('collection') },
-            { isDivider: true },
-            { label: 'Compartir', fn: doShare },
             { isDivider: true },
             { label: 'Identificar…', fn: () => setEditor('identify') },
             { label: 'Actualizar metadatos', fn: doRefresh },
@@ -221,17 +164,10 @@ export function MoreButton({
             { label: 'Eliminar', fn: doDelete, danger: true }
         ],
         episode: [
-            { label: 'Reproducir', fn: () => doPlay() },
             { label: 'Reproducir desde el principio', fn: () => doPlay({ fromStart: true }) },
-            { isDivider: true },
-            { label: w ? 'Marcar como no reproducido' : 'Marcar como reproducido',
-                fn: doMarkPlayed },
-            { label: fav ? 'Quitar de favoritos' : 'Añadir a favoritos',
-                fn: doToggleFav },
             { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
             { isDivider: true },
             { label: 'Descargar', fn: doDownload },
-            { label: 'Compartir', fn: doShare },
             { isDivider: true },
             { label: 'Identificar…', fn: () => setEditor('identify') },
             { label: 'Actualizar metadatos', fn: doRefresh },
@@ -242,7 +178,7 @@ export function MoreButton({
         ]
     };
 
-    const menu = items ?? (isReal ? menuByType[type] : legacyMenu(type, w, fav, toggleW, toggleFav, toast, label));
+    const menu = items ?? (isReal ? menuByType[type] : legacyMenu(toast));
 
     return (
         <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
@@ -317,24 +253,9 @@ export function MoreButton({
 
 // Menú antiguo (modo prototipo sin sesión Jellyfin) — solo toasts. Se
 // mantiene para no romper demos sin backend.
-function legacyMenu(
-    type: 'movie' | 'show' | 'episode',
-    w: boolean, fav: boolean,
-    toggleW: () => void, toggleFav: () => void,
-    toast: ReturnType<typeof useToast>, label: string
-): MenuItem[] {
+function legacyMenu(toast: ReturnType<typeof useToast>): MenuItem[] {
     const notImpl = (l: string) => toast(`«${l}» — sin conexión con Jellyfin`, 'info');
-    const commonToggles: MenuItem[] = [
-        { label: w ? 'Marcar como no reproducido' : 'Marcar como reproducido',
-            fn: () => { toggleW(); toast(w ? `Marcado como no visto${label}` : `Marcado como visto${label}`); } },
-        { label: fav ? 'Quitar de favoritos' : 'Añadir a favoritos',
-            fn: () => { toggleFav(); toast(fav ? `Quitado de favoritos${label}` : `Añadido a favoritos${label}`); } }
-    ];
     return [
-        { label: 'Reproducir', fn: () => notImpl('Reproducir') },
-        { isDivider: true },
-        ...commonToggles,
-        { isDivider: true },
         { label: 'Descargar', fn: () => notImpl('Descargar') }
     ];
 }

@@ -41,13 +41,42 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
         if (hideTimer.current) clearTimeout(hideTimer.current);
         hideTimer.current = setTimeout(() => {
             // En pausa los controles no se ocultan.
-            if (videoPlayerVM.playing.peek()) setControlsVisible(false);
+            if (!videoPlayerVM.playing.peek()) return;
+            // Tampoco con el ratón encima de la barra: ocultarla justo cuando
+            // vas a pulsar un botón es lo que la hacía inalcanzable.
+            if (containerRef.current?.querySelector('.jfp-video-controls:hover')) return;
+            setControlsVisible(false);
         }, HIDE_CONTROLS_MS);
     }, []);
 
     // Al pausar, muestra los controles; al reanudar, rearma el temporizador.
     const playing = videoPlayerVM.playing.value;
     useEffect(() => { showControls(); }, [playing, showControls]);
+
+    // Cualquier actividad del usuario saca el OSD, escuchando en `document`
+    // en vez de solo en el contenedor: en pantalla completa el elemento que
+    // recibe el puntero puede no ser el nuestro (el <video>, el chrome del
+    // navegador o la capa superior), y entonces los controles se quedaban
+    // ocultos sin forma de recuperarlos. También lo mostramos al entrar o
+    // salir de fullscreen para que siempre haya un punto de partida visible.
+    useEffect(() => {
+        const wake = () => showControls();
+        const opts = { passive: true } as const;
+        document.addEventListener('pointermove', wake, opts);
+        document.addEventListener('mousemove', wake, opts);
+        document.addEventListener('touchstart', wake, opts);
+        document.addEventListener('wheel', wake, opts);
+        document.addEventListener('keydown', wake, opts);
+        document.addEventListener('fullscreenchange', wake);
+        return () => {
+            document.removeEventListener('pointermove', wake);
+            document.removeEventListener('mousemove', wake);
+            document.removeEventListener('touchstart', wake);
+            document.removeEventListener('wheel', wake);
+            document.removeEventListener('keydown', wake);
+            document.removeEventListener('fullscreenchange', wake);
+        };
+    }, [showControls]);
 
     useEffect(() => () => {
         if (hideTimer.current) clearTimeout(hideTimer.current);
