@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { formatDateLong } from '../theme/format';
+import { formatDateLong, formatRemainingCompact } from '../theme/format';
 import { PROTO_DATA, findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { showVM } from '../../domain/viewModels/ShowViewModel';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
@@ -72,6 +72,15 @@ function EpisodeHero({
     // en sincronía al instante (sin esperar a que se recargue la serie).
     const [localWatched] = useWatched(`${show.id}-s${season.n}-e${ep.n}`);
     const watched = localWatched || ep.watched >= 1;
+    const inProgress = !watched && ep.watched > 0 && ep.watched < 1;
+    // Texto que sale SOLO al pasar el ratón por el círculo: «Ver de nuevo» si
+    // está visto, minutos restantes si está a medias. El resto del tiempo el
+    // botón muestra el tick / el play, sin ningún texto suelto debajo.
+    const hoverText = watched ?
+        'Ver de nuevo' :
+        inProgress && ep.runtime ?
+            formatRemainingCompact(Math.round((1 - ep.watched) * ep.runtime)) :
+            null;
     const startPlay = () => {
         if (!ep.jfId) return;
         play({
@@ -107,8 +116,9 @@ function EpisodeHero({
             }}>
                 <PlayBtn
                     size={108} onClick={startPlay}
-                    progress={!watched && ep.watched > 0 && ep.watched < 1 ? ep.watched : null}
+                    progress={inProgress ? ep.watched : null}
                     watched={watched}
+                    hoverText={hoverText}
                 />
 
                 <div style={{
@@ -168,14 +178,6 @@ function EpisodeHero({
                         )}
                         {ep.video && <span>{ep.video}</span>}
                     </div>
-
-                    {ep.watched > 0 && ep.watched < 1 && (
-                        <div style={{
-                            fontFamily: T.ui, fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2
-                        }}>
-                            Reanudar · {Math.round((1 - ep.watched) * (ep.runtime || 0))} min restantes
-                        </div>
-                    )}
                 </div>
             </div>
 

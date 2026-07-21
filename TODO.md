@@ -465,6 +465,24 @@ capturas:
 
 ---
 
+## Fase 24 — Ficha de episodio: play de «visto» con hover y OSD en fullscreen ✓
+
+- [x] Eliminado el texto suelto «Reanudar · N min restantes» de la ficha del
+      episodio (aparecía incluso en episodios marcados como vistos, porque
+      leía el progreso del server en crudo). Ahora no aparece nunca.
+- [x] El tiempo/estado solo se ve al pasar el ratón por el círculo del play,
+      vía el `hoverText` del PlayBtn: visto → «Ver de nuevo»; a medias →
+      minutos restantes (formato compacto). Al quitar el ratón vuelve al tick
+      / al aro de progreso. Verificado E2E: sin hover el botón no muestra
+      texto; con hover dice «Ver de nuevo»; el texto «Reanudar … restantes» ya
+      no existe en la página.
+- [x] Refuerzo del OSD en pantalla completa: además de los listeners a nivel de
+      `document`, un efecto sobre el signal `fullscreen` del VM muestra los
+      controles al entrar/salir de fullscreen (fuente de verdad más fiable que
+      el evento del document en algunos navegadores).
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |

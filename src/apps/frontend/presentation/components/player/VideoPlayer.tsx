@@ -58,6 +58,12 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
     const playing = videoPlayerVM.playing.value;
     useEffect(() => { showControls(); }, [playing, showControls]);
 
+    // Entrar/salir de pantalla completa siempre deja el OSD visible (vía el
+    // signal del VM, que es la fuente de verdad del estado fullscreen — más
+    // fiable que el evento del document en algunos navegadores).
+    const isFullscreen = videoPlayerVM.fullscreen.value;
+    useEffect(() => { showControls(); }, [isFullscreen, showControls]);
+
     // Cualquier actividad del usuario saca el OSD, escuchando en `document`
     // en vez de solo en el contenedor: en pantalla completa el elemento que
     // recibe el puntero puede no ser el nuestro (el <video>, el chrome del
