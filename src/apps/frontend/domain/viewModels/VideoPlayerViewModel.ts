@@ -13,6 +13,11 @@ const TICKS_PER_SECOND = 10_000_000;
 const PROGRESS_REPORT_MS = 10_000;
 const VOLUME_KEY = 'jfp-volume';
 
+// Modos de relación de aspecto que ofrece el OSD. 'auto' = tal cual (contain),
+// 'cover' = rellena la pantalla recortando, 'fill' = estira ignorando la
+// proporción; el resto fuerza esa proporción de display.
+export type AspectRatio = 'auto' | 'cover' | 'fill' | '16:9' | '4:3' | '21:9';
+
 export type { MediaStreamInfo };
 
 export class VideoPlayerViewModel {
@@ -37,6 +42,8 @@ export class VideoPlayerViewModel {
     subtitleUrl = signal<string | null>(null);
     /** Velocidad de reproducción actual (1 = normal). */
     playbackRate = signal(1);
+    /** Relación de aspecto elegida para el <video>. La View la traduce a CSS. */
+    aspectRatio = signal<AspectRatio>('auto');
     /** El navegador soporta Picture-in-Picture (Firefox no expone la API). */
     pipAvailable = signal(false);
     pipActive = signal(false);
@@ -183,6 +190,10 @@ export class VideoPlayerViewModel {
         v.defaultPlaybackRate = r;
         v.playbackRate = r;
         this.playbackRate.value = r;
+    };
+
+    setAspectRatio = (mode: AspectRatio) => {
+        this.aspectRatio.value = mode;
     };
 
     toggleFullscreen = () => {

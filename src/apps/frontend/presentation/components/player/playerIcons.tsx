@@ -124,6 +124,19 @@ export const PlayerIc = {
             <circle cx='12' cy='16.5' r='1' fill='currentColor' />
         </svg>
     ),
+    AspectRatio: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <rect
+                x='3' y='6' width='18' height='12' rx='1.5'
+                stroke='currentColor' strokeWidth={sw}
+            />
+            <path
+                d='M7 10v4M17 10v4'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+                opacity='0.55'
+            />
+        </svg>
+    ),
     Spinner: ({ size = 54 }: IconProps): ReactElement => (
         <svg width={size} height={size} viewBox='0 0 50 50' className='jfp-video-spinner'>
             <circle

@@ -1,13 +1,24 @@
-// Menús de pistas del reproductor, divididos en tres botones independientes:
-// subtítulos, audio y velocidad. Solo un panel abierto a la vez.
+// Menús de pistas del reproductor, en botones independientes: subtítulos,
+// audio, velocidad y relación de aspecto. Solo un panel abierto a la vez.
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
+import {
+    videoPlayerVM, type AspectRatio
+} from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-type MenuId = 'subs' | 'audio' | 'speed';
+const ASPECTS: { id: AspectRatio; label: string }[] = [
+    { id: 'auto', label: 'Automático' },
+    { id: 'cover', label: 'Rellenar (recortar)' },
+    { id: 'fill', label: 'Estirar' },
+    { id: '16:9', label: '16:9' },
+    { id: '4:3', label: '4:3' },
+    { id: '21:9', label: '21:9' }
+];
+
+type MenuId = 'subs' | 'audio' | 'speed' | 'aspect';
 
 export function VideoSettingsMenu() {
     useViewModel(videoPlayerVM);
@@ -27,6 +38,7 @@ export function VideoSettingsMenu() {
     const audio = videoPlayerVM.audioTracks.value;
     const subs = videoPlayerVM.subtitleTracks.value;
     const rate = videoPlayerVM.playbackRate.value;
+    const aspect = videoPlayerVM.aspectRatio.value;
     const toggle = (id: MenuId) => setOpen((v) => (v === id ? null : id));
 
     return (
@@ -76,6 +88,19 @@ export function VideoSettingsMenu() {
                         label={r === 1 ? 'Normal' : `${r}×`}
                         active={rate === r}
                         onSelect={() => videoPlayerVM.setPlaybackRate(r)}
+                    />
+                ))}
+            </TrackMenu>
+            <TrackMenu
+                id='aspect' label='Relación de aspecto' icon={<PlayerIc.AspectRatio />}
+                open={open === 'aspect'} onToggle={toggle}
+            >
+                {ASPECTS.map((a) => (
+                    <MenuOption
+                        key={a.id}
+                        label={a.label}
+                        active={aspect === a.id}
+                        onSelect={() => videoPlayerVM.setAspectRatio(a.id)}
                     />
                 ))}
             </TrackMenu>

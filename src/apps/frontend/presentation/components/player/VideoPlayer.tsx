@@ -1,7 +1,7 @@
 // Reproductor de vídeo del frontend: <video> nativo controlado por
 // VideoPlayerViewModel + OSD propio (controles, ajustes, atajos de teclado).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
+import { videoPlayerVM, type AspectRatio } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
 import { VideoControls } from './VideoControls';
@@ -42,9 +42,14 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
         hideTimer.current = setTimeout(() => {
             // En pausa los controles no se ocultan.
             if (!videoPlayerVM.playing.peek()) return;
-            // Tampoco con el ratón encima de la barra: ocultarla justo cuando
-            // vas a pulsar un botón es lo que la hacía inalcanzable.
-            if (containerRef.current?.querySelector('.jfp-video-controls:hover')) return;
+            const root = containerRef.current;
+            // Con un panel de ajustes abierto (subtítulos/audio/velocidad/
+            // aspecto) NO ocultamos: si no, el OSD se desvanecía mientras
+            // elegías una pista y el click caía en el vacío. El panel solo
+            // existe en el DOM cuando está abierto.
+            if (root?.querySelector('.jfp-video-settings-menu')) return;
+            // Tampoco con el ratón encima de la barra.
+            if (root?.querySelector('.jfp-video-controls:hover')) return;
             setControlsVisible(false);
         }, HIDE_CONTROLS_MS);
     }, []);
@@ -145,6 +150,7 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
     const buffering = videoPlayerVM.buffering.value;
     const error = videoPlayerVM.error.value;
     const idle = !controlsVisible && !error;
+    const videoStyle = aspectRatioStyle(videoPlayerVM.aspectRatio.value);
 
     return (
         <div
@@ -156,7 +162,10 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
         >
             {/* Los subtítulos se montan como <track> dinámico según la pista elegida. */}
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video ref={videoRef} className='jfp-video-el' playsInline crossOrigin='anonymous'>
+            <video
+                ref={videoRef} className='jfp-video-el' playsInline crossOrigin='anonymous'
+                style={videoStyle}
+            >
                 {subtitleUrl && (
                     // key fuerza el remount: si solo cambia el src, el navegador
                     // no recarga el VTT y siguen apareciendo los subtítulos
@@ -203,4 +212,28 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
             <VideoControls />
         </div>
     );
+}
+
+// Traduce el modo de aspecto elegido a estilos del <video>. Los modos con
+// proporción fija dan a la caja del vídeo esa relación (centrada, con barras
+// donde haga falta) y estiran el contenido para llenarla.
+function aspectRatioStyle(mode: AspectRatio): React.CSSProperties {
+    switch (mode) {
+        case 'cover':
+            return { width: '100%', height: '100%', objectFit: 'cover' };
+        case 'fill':
+            return { width: '100%', height: '100%', objectFit: 'fill' };
+        case '16:9':
+        case '4:3':
+        case '21:9': {
+            const [w, h] = mode.split(':');
+            return {
+                position: 'absolute', inset: 0, margin: 'auto',
+                width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: '100%',
+                aspectRatio: `${w} / ${h}`, objectFit: 'fill'
+            };
+        }
+        default:
+            return { width: '100%', height: '100%', objectFit: 'contain' };
+    }
 }

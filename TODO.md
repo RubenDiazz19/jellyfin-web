@@ -444,6 +444,27 @@ capturas:
 
 ---
 
+## Fase 23 — Fix de selección de pistas y relación de aspecto en el reproductor ✓
+
+- [x] **La elección de subtítulos/audio ya no «hace cosas raras».** Causa: con
+      el vídeo reproduciéndose el OSD se auto-oculta a los 3 s; si abrías el
+      panel y tardabas en elegir, se desvanecía (opacity 0 + pointer-events
+      none) y el click caía en el vacío o pausaba el vídeo. Ahora, mientras
+      hay un panel de ajustes abierto (existe `.jfp-video-settings-menu` en el
+      DOM) el OSD NO se oculta; tampoco con el ratón sobre la barra. Verificado
+      E2E: el menú sigue visible tras 4 s quieto y la opción se selecciona
+      (subtítulos: Desactivados → track «ninguno»; Japanese → Subtitles/21;
+      audio: japonés → inglés, con is-active correcto).
+- [x] **Relación de aspecto configurable.** Signal `aspectRatio` + comando
+      `setAspectRatio` en VideoPlayerViewModel (persiste durante la sesión);
+      cuarto botón en el OSD (icono nuevo) con: Automático (contain), Rellenar
+      (cover, recorta), Estirar (fill), 16:9, 4:3 y 21:9. Los modos de
+      proporción fija dan a la caja del vídeo esa relación centrada y estiran
+      el contenido a ella. Verificado E2E: 4:3 → 1440×1080, 21:9 → 1920×823,
+      Rellenar → object-fit cover, y vuelta a Automático → contain.
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |
