@@ -32,6 +32,8 @@ import { ErrorBoundary } from '../presentation/components/layout/ErrorBoundary';
 import { ToastProvider } from '../presentation/components/toast/ToastProvider';
 import { useSession } from '../domain/bridge/useSession';
 import { PlayerProvider } from '../presentation/components/player/PlayerProvider';
+import { useMobileTheme } from '../presentation/theme/MobileThemeProvider';
+import { SCROLL_MEMORY } from '../shared/scrollMemory';
 
 type TweakDefaults = {
     heroPos: HeroPosKey;
@@ -61,6 +63,9 @@ function AuthedApp() {
     const location = useLocation();
     const rrNavigate = useNavigate();
     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+    // mobile/tablet: transición slide y scroll por tab. En desktop layout es
+    // null y todo lo de abajo conserva el comportamiento actual.
+    const mobileLayout = useMobileTheme().layout !== null;
 
     // La URL activa (bajo el HashRouter raíz, useLocation().pathname devuelve
     // el path detrás del `#`). Este frontend vive en la raíz sin prefijo, así
@@ -107,11 +112,23 @@ function AuthedApp() {
         window.addEventListener('touchstart', release, opts);
         window.addEventListener('keydown', release, opts);
 
+        // En mobile/tablet los destinos de la navegación recuerdan su scroll
+        // (SCROLL_MEMORY); el resto de rutas — y desktop siempre — entran
+        // arriba (target 0, el comportamiento de siempre).
+        const target = mobileLayout ? SCROLL_MEMORY.get(location.pathname) : 0;
+
+        // La posición a recordar se sigue en vivo: en el cleanup el DOM de
+        // la página nueva ya reemplazó al de la vieja y window.scrollY puede
+        // haber quedado clampeado por el cambio de altura del documento.
+        let lastY = target;
+        const onScroll = () => { lastY = window.scrollY; };
+        window.addEventListener('scroll', onScroll, opts);
+
         const reset = () => {
-            window.scrollTo(0, 0);
-            if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
+            window.scrollTo(0, target);
+            if (document.scrollingElement) document.scrollingElement.scrollTop = target;
+            document.documentElement.scrollTop = target;
+            document.body.scrollTop = target;
         };
         reset();
         pageRef.current?.focus();
@@ -124,12 +141,15 @@ function AuthedApp() {
         });
 
         return () => {
+            // Guarda la posición del tab saliente antes del cambio de ruta.
+            if (mobileLayout) SCROLL_MEMORY.save(location.pathname, lastY);
             cancelAnimationFrame(raf);
+            window.removeEventListener('scroll', onScroll);
             window.removeEventListener('wheel', release);
             window.removeEventListener('touchstart', release);
             window.removeEventListener('keydown', release);
         };
-    }, [location.pathname]);
+    }, [location.pathname, mobileLayout]);
 
     return (
         <>
@@ -137,7 +157,16 @@ function AuthedApp() {
                 key={location.pathname}
                 ref={pageRef}
                 tabIndex={-1}
-                style={{ animation: 'jfp-fade-in 0.65s ease', outline: 'none' }}
+                // Mobile/tablet: slide corto M3. El transform solo existe
+                // durante los ~280 ms de animación (termina en `none`), así
+                // que la ventana de riesgo del containing-block para menús
+                // fixed (ver global.css) queda acotada. Desktop: fade actual.
+                style={{
+                    animation: mobileLayout ?
+                        'jfp-slide-in 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both' :
+                        'jfp-fade-in 0.65s ease',
+                    outline: 'none'
+                }}
             >
                 {/* key por ruta también en la barrera: navegar resetea el error. */}
                 <ErrorBoundary>

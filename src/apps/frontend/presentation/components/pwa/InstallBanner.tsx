@@ -58,9 +58,12 @@ export function InstallBanner() {
             aria-label='Instalar aplicación'
             style={{
                 position: 'fixed',
-                left: 16,
+                // Deja libre la bottom bar (móvil) o el rail (tablet).
+                left: layout === 'tablet' ? 104 : 16,
                 right: 16,
-                bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+                bottom: layout === 'mobile' ?
+                    'calc(96px + env(safe-area-inset-bottom, 0px))' :
+                    'calc(16px + env(safe-area-inset-bottom, 0px))',
                 zIndex: 150,
                 maxWidth: 480,
                 margin: '0 auto',

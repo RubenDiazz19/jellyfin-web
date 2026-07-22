@@ -6,7 +6,10 @@ import { installFocusPreventScrollPatch } from '../shared/focusPatch';
 import { MobileThemeProvider } from '../presentation/theme/MobileThemeProvider';
 import { InstallBanner } from '../presentation/components/pwa/InstallBanner';
 import { OfflineIndicator } from '../presentation/components/pwa/OfflineIndicator';
+import { MobileNav } from '../presentation/components/nav/MobileNav';
 import { initPwa, registerServiceWorker, watchStandalone } from '../shared/pwa';
+import { initAdaptiveLayout } from '../shared/adaptiveLayout';
+import { initSwipeBack } from '../shared/swipeBack';
 import '../presentation/styles/global.css';
 
 // Entry point del frontend dentro de jellyfin-web. El RootAppRouter oficial
@@ -32,6 +35,11 @@ export const Component = () => {
         void registerServiceWorker();
         cleanupRefs.current.push(watchStandalone());
 
+        // Shell responsive: clase layout-tablet según viewport (solo sobre
+        // layout-mobile) y gesto swipe-back desde el borde izquierdo.
+        cleanupRefs.current.push(initAdaptiveLayout());
+        cleanupRefs.current.push(initSwipeBack());
+
         // Interceptamos F11: algunos navegadores derivados de Chromium tienen
         // implementación rota (sólo maximizan la ventana) y dejan un borde
         // blanco visible. La Fullscreen API da fullscreen real a nivel de OS.
@@ -55,6 +63,7 @@ export const Component = () => {
     return (
         <MobileThemeProvider>
             <App />
+            <MobileNav />
             <OfflineIndicator />
             <InstallBanner />
         </MobileThemeProvider>

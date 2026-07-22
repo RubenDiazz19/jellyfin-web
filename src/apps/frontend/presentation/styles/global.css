@@ -105,6 +105,17 @@ body.jf-frontend-active ::backdrop {
 
 body.jf-frontend-active button { font-family: inherit; }
 
+/* Hueco para la navegación M3 (la clase jfp-has-nav la pone MobileNav al
+   montarse, solo con sesión y layout táctil). Desktop: sin clases, cero
+   efecto. Móvil: bottom bar de 80px; tablet: rail de 88px a la izquierda. */
+html.layout-tablet body.jf-frontend-active.jfp-has-nav {
+    padding-left: calc(88px + env(safe-area-inset-left, 0px)) !important;
+}
+
+html.layout-mobile:not(.layout-tablet) body.jf-frontend-active.jfp-has-nav {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
 /* Animaciones globales del prototipo — se dejan sin scope: son sólo @keyframes
    y no aplican estilos hasta que los referencia una clase, así que no
    interfieren con el resto de la app. */
@@ -119,6 +130,22 @@ body.jf-frontend-active button { font-family: inherit; }
 @keyframes jfp-fade-in {
     from { opacity: 0; }
     to { opacity: 1; }
+}
+
+/* Entrada de página en mobile/tablet (App.tsx la elige solo con layout
+   táctil): slide corto tipo shared-axis M3. Termina en `transform: none`,
+   así el wrapper deja de ser containing block de los `position: fixed`
+   en cuanto acaba la animación (ver nota de jfp-fade-in arriba). */
+@keyframes jfp-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(28px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
 }
 
 @keyframes jfp-bob {
