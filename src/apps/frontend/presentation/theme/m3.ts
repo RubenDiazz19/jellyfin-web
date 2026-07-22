@@ -106,6 +106,26 @@ export const M3_ELEVATION: readonly string[] = [
     '0 4px 4px 0 rgba(0, 0, 0, 0.3), 0 8px 12px 6px rgba(0, 0, 0, 0.15)'
 ];
 
+// ── md-sys-motion (easing + duración del spec M3) ──────────────────────
+
+export const M3_EASING: Readonly<Record<string, string>> = {
+    'standard': 'cubic-bezier(0.2, 0, 0, 1)',
+    'standard-accelerate': 'cubic-bezier(0.3, 0, 1, 1)',
+    'standard-decelerate': 'cubic-bezier(0, 0, 0, 1)',
+    'emphasized': 'cubic-bezier(0.2, 0, 0, 1)',
+    'emphasized-accelerate': 'cubic-bezier(0.3, 0, 0.8, 0.15)',
+    'emphasized-decelerate': 'cubic-bezier(0.05, 0.7, 0.1, 1)'
+};
+
+export const M3_DURATION: Readonly<Record<string, string>> = {
+    'short2': '100ms',
+    'short4': '200ms',
+    'medium1': '250ms',
+    'medium2': '300ms',
+    'medium4': '400ms',
+    'long2': '500ms'
+};
+
 // ── md-sys-shape (corner tokens) ────────────────────────────────────────
 
 export const M3_SHAPE: Readonly<Record<string, string>> = {
@@ -166,6 +186,13 @@ export function buildM3Css(seedHex: string, scheme: M3SchemeName): string {
 
     for (const [k, v] of Object.entries(M3_SHAPE)) {
         lines.push(`--md-sys-shape-corner-${k}: ${v};`);
+    }
+
+    for (const [k, v] of Object.entries(M3_EASING)) {
+        lines.push(`--md-sys-motion-easing-${k}: ${v};`);
+    }
+    for (const [k, v] of Object.entries(M3_DURATION)) {
+        lines.push(`--md-sys-motion-duration-${k}: ${v};`);
     }
 
     for (const [role, t] of Object.entries(M3_TYPESCALE)) {

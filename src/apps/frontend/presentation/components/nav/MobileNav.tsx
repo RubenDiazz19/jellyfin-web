@@ -23,6 +23,7 @@ import {
 } from '../../../app/router';
 import { useSession } from '../../../domain/bridge/useSession';
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
+import { haptic } from '../../../shared/haptics';
 
 export const NAV_CLASS = 'jfp-has-nav';
 
@@ -105,8 +106,12 @@ export function MobileNav() {
                 return (
                     <button
                         key={tab.id}
+                        data-ripple
                         aria-current={isActive ? 'page' : undefined}
-                        onClick={() => navigate(toAppPath(routeToPath(tab.route)))}
+                        onClick={() => {
+                            if (!isActive) haptic('select');
+                            navigate(toAppPath(routeToPath(tab.route)));
+                        }}
                         style={{
                             display: 'flex',
                             flexDirection: 'column',

@@ -11,6 +11,7 @@ import {
     promptInstall
 } from '../../../shared/pwa';
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
+import { haptic } from '../../../shared/haptics';
 
 const DISMISS_KEY = 'jfp-install-dismissed';
 const DISMISS_DAYS = 14;
@@ -31,6 +32,7 @@ export function InstallBanner() {
     );
 
     const install = useCallback(() => {
+        haptic('select');
         void promptInstall().then(() => setPromptReady(hasInstallPrompt()));
     }, []);
 
@@ -102,6 +104,7 @@ export function InstallBanner() {
                 </button>
                 <button
                     onClick={install}
+                    data-ripple
                     style={{
                         ...buttonBase,
                         background: 'var(--md-sys-color-primary, #8ecff2)',

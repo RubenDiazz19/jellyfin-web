@@ -163,7 +163,7 @@ function AuthedApp() {
                 // fixed (ver global.css) queda acotada. Desktop: fade actual.
                 style={{
                     animation: mobileLayout ?
-                        'jfp-slide-in 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both' :
+                        'jfp-slide-in var(--md-sys-motion-duration-medium1, 0.28s) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1)) both' :
                         'jfp-fade-in 0.65s ease',
                     outline: 'none'
                 }}

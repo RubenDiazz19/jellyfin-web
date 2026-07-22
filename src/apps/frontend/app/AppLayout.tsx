@@ -10,6 +10,7 @@ import { MobileNav } from '../presentation/components/nav/MobileNav';
 import { initPwa, registerServiceWorker, watchStandalone } from '../shared/pwa';
 import { initAdaptiveLayout } from '../shared/adaptiveLayout';
 import { initSwipeBack } from '../shared/swipeBack';
+import { initRipple } from '../shared/ripple';
 import '../presentation/styles/global.css';
 
 // Entry point del frontend dentro de jellyfin-web. El RootAppRouter oficial
@@ -39,6 +40,9 @@ export const Component = () => {
         // layout-mobile) y gesto swipe-back desde el borde izquierdo.
         cleanupRefs.current.push(initAdaptiveLayout());
         cleanupRefs.current.push(initSwipeBack());
+
+        // Ripple M3 delegado (no-op en desktop).
+        cleanupRefs.current.push(initRipple());
 
         // Interceptamos F11: algunos navegadores derivados de Chromium tienen
         // implementación rota (sólo maximizan la ventana) y dejan un borde

@@ -105,6 +105,42 @@ body.jf-frontend-active ::backdrop {
 
 body.jf-frontend-active button { font-family: inherit; }
 
+/* touch-action: manipulation en los controles táctiles (Fase 7): elimina el
+   retardo de 300 ms y el doble-tap-zoom del navegador. Solo mobile/tablet;
+   desktop no lleva estas clases y sus botones quedan igual. */
+html.layout-mobile body.jf-frontend-active button,
+html.layout-tablet body.jf-frontend-active button,
+html.layout-mobile body.jf-frontend-active [role='button'],
+html.layout-tablet body.jf-frontend-active [role='button'] {
+    touch-action: manipulation;
+}
+
+/* Ripple M3 (Fase 7): los elementos con [data-ripple] recortan el ink y le
+   dan un contenedor posicionado. Solo activo en táctil (ripple.ts únicamente
+   corre y añade data-ripple bajo mobile/tablet). */
+html.layout-mobile body.jf-frontend-active [data-ripple],
+html.layout-tablet body.jf-frontend-active [data-ripple] {
+    position: relative;
+    overflow: hidden;
+}
+
+.jfp-ripple-ink {
+    position: absolute;
+    border-radius: 50%;
+    background: currentcolor;
+    opacity: 0.24;
+    transform: scale(0);
+    pointer-events: none;
+    animation: jfp-ripple 0.5s var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1)) forwards;
+}
+
+@keyframes jfp-ripple {
+    to {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
 /* Hueco para la navegación M3 (la clase jfp-has-nav la pone MobileNav al
    montarse, solo con sesión y layout táctil). Desktop: sin clases, cero
    efecto. Móvil: bottom bar de 80px; tablet: rail de 88px a la izquierda. */

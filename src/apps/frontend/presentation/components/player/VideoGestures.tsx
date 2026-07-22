@@ -13,6 +13,7 @@
 import { useRef, useState } from 'react';
 
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
+import { haptic } from '../../../shared/haptics';
 import {
     classifySwipe,
     clamp01,
@@ -198,7 +199,7 @@ export function VideoGestures({ onClose, onWake }: Props) {
             return;
         }
         if (s.axis === 'vertical') {
-            if (s.closing) { onClose(); return; }
+            if (s.closing) { haptic('select'); onClose(); return; }
             // El feedback de brillo/volumen se auto-oculta.
             if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
             feedbackTimer.current = setTimeout(() => setFeedback(null), 500);
@@ -219,9 +220,11 @@ export function VideoGestures({ onClose, onWake }: Props) {
             if (singleTapTimer.current) { clearTimeout(singleTapTimer.current); singleTapTimer.current = null; }
             g.current.lastTapTime = 0;
             if (zone === 'left') {
+                haptic('tick');
                 videoPlayerVM.seekBy(-10);
                 flashFeedback({ kind: 'double', dir: 'back' }, 550);
             } else if (zone === 'right') {
+                haptic('tick');
                 videoPlayerVM.seekBy(10);
                 flashFeedback({ kind: 'double', dir: 'forward' }, 550);
             } else {

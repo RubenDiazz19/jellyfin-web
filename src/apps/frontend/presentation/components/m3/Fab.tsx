@@ -15,6 +15,7 @@ export function Fab({ icon, label, onClick, ariaLabel, style }: Props) {
     return (
         <button
             type='button'
+            data-ripple
             onClick={onClick}
             aria-label={ariaLabel}
             style={{

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { videoPlayerVM, type AspectRatio } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
+import { haptic } from '../../../shared/haptics';
 import { PlayerIc } from './playerIcons';
 import { VideoControls } from './VideoControls';
 import { VideoGestures } from './VideoGestures';
@@ -284,7 +285,7 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                     <button
                         type='button'
                         className='jfp-video-btn jfp-video-top-lock'
-                        onClick={() => setLocked(true)}
+                        onClick={() => { haptic('select'); setLocked(true); }}
                         aria-label='Bloquear controles'
                     >
                         <PlayerIc.LockOpen />
@@ -297,7 +298,7 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                 <button
                     type='button'
                     className='jfp-video-unlock'
-                    onClick={() => setLocked(false)}
+                    onClick={() => { haptic('select'); setLocked(false); }}
                     aria-label='Desbloquear controles'
                 >
                     <PlayerIc.Lock />

@@ -56,6 +56,10 @@ describe('m3: stylesheet generado', () => {
             expect(css).toContain(`--md-sys-shape-corner-${corner}:`);
         }
 
+        // Tokens de movimiento M3 (Fase 7).
+        expect(css).toContain('--md-sys-motion-easing-emphasized-decelerate:');
+        expect(css).toContain('--md-sys-motion-duration-medium2:');
+
         expect(Object.keys(M3_TYPESCALE)).toHaveLength(15);
         for (const role of Object.keys(M3_TYPESCALE)) {
             expect(css).toContain(`--md-sys-typescale-${role}-size:`);

@@ -54,7 +54,7 @@ export function BottomSheet({ title, onClose, children }: Props) {
                     color: 'var(--md-sys-color-on-surface, #fff)',
                     borderRadius: 'var(--md-sys-shape-corner-extra-large, 28px) var(--md-sys-shape-corner-extra-large, 28px) 0 0',
                     boxShadow: 'var(--md-sys-elevation-level3, 0 -8px 24px rgba(0,0,0,0.5))',
-                    animation: 'jfp-sheet-in 0.25s cubic-bezier(0.2, 0.7, 0.3, 1) both'
+                    animation: 'jfp-sheet-in var(--md-sys-motion-duration-medium2, 0.25s) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1)) both'
                 }}
             >
                 <div style={{

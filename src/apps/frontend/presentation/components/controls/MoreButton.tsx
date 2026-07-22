@@ -205,6 +205,7 @@ export function MoreButton({
                         ) : (
                             <button
                                 key={i}
+                                data-ripple
                                 onClick={(e) => { e.stopPropagation(); it.fn(); setOpen(false); }}
                                 disabled={it.disabled}
                                 style={{

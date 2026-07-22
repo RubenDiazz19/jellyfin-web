@@ -41,6 +41,7 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
 
     const item = (label: string, onClick: () => void, danger = false) => (
         <button
+            data-ripple={r.touch ? '' : undefined}
             onClick={() => { setOpen(false); onClick(); }}
             style={r.touch ? {
                 display: 'block', width: '100%', textAlign: 'left',
