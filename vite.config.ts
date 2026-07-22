@@ -254,6 +254,14 @@ export default defineConfig(({ command }) => ({
             include: ['**']
         },
         environment: 'jsdom',
-        restoreMocks: true
+        restoreMocks: true,
+        server: {
+            deps: {
+                // material-color-utilities publica ESM con imports sin
+                // extensión; Node no los resuelve al externalizar — inline
+                // para que pasen por el resolver de Vite.
+                inline: ['@material/material-color-utilities']
+            }
+        }
     }
 }));

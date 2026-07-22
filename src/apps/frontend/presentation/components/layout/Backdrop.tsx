@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useImageStorage } from '../../../domain/bridge/useImageStorage';
+import { useMobileTheme } from '../../theme/MobileThemeProvider';
 
 type Props = {
     src: string;
@@ -37,6 +38,13 @@ export function Backdrop({
     }, [pool.length, intervalMs, customBackdrop]);
 
     const current = customBackdrop || pool[Math.min(idx, pool.length - 1)] || src;
+
+    // Dynamic color M3: la seed del tema sigue al backdrop visible. En
+    // desktop applyImageSeed es un no-op (el provider queda inerte).
+    const { applyImageSeed } = useMobileTheme();
+    useEffect(() => {
+        if (current) applyImageSeed(current);
+    }, [current, applyImageSeed]);
 
     // La hero image es el LCP de la página y via background-image el
     // navegador la pide con prioridad baja: un preload hint la adelanta.

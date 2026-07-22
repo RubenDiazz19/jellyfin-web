@@ -23,14 +23,18 @@ body.jf-frontend-active #reactRoot {
     min-height: 100vh !important;
 }
 
+/* Colores via tokens M3 con fallback: las custom properties --md-sys-* solo
+   existen bajo html.layout-mobile / html.layout-tablet (las inyecta
+   MobileThemeProvider), así que en desktop el var() resuelve al fallback y
+   el look actual queda EXACTAMENTE igual. */
 body.jf-frontend-active {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
     border: none !important;
-    background: #000 !important;
-    color: #fff;
-    color-scheme: dark;
+    background: var(--md-sys-color-background, #000) !important;
+    color: var(--md-sys-color-on-background, #fff);
+    color-scheme: var(--md-sys-color-scheme, dark);
     font-family: 'Noto Sans', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
@@ -47,8 +51,8 @@ body.jf-frontend-active {
    además el salto horizontal ya no existe porque no hay scrollbar que
    aparezca/desaparezca. */
 html:has(body.jf-frontend-active) {
-    color-scheme: dark;
-    background: #000 !important;
+    color-scheme: var(--md-sys-color-scheme, dark);
+    background: var(--md-sys-color-background, #000) !important;
     margin: 0 !important;
     padding: 0 !important;
     scrollbar-width: none;
@@ -645,6 +649,7 @@ html body.jf-video-active .dialogBackdropOpened {
     max-height: 60vh;
     padding: 16px 8px;
     overflow-y: auto;
+
     /* El scroll de la lista no se propaga fuera al llegar al tope. */
     overscroll-behavior: contain;
     background: rgba(16, 16, 18, 0.92);

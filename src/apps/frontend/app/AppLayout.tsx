@@ -3,6 +3,7 @@ import loading from 'components/loading/loading';
 import App from './App';
 import { toggleFullscreen } from '../shared/fullscreen';
 import { installFocusPreventScrollPatch } from '../shared/focusPatch';
+import { MobileThemeProvider } from '../presentation/theme/MobileThemeProvider';
 import '../presentation/styles/global.css';
 
 // Entry point del frontend dentro de jellyfin-web. El RootAppRouter oficial
@@ -39,7 +40,12 @@ export const Component = () => {
             cleanupRefs.current = [];
         };
     }, []);
-    return <App />;
+    // MobileThemeProvider: tokens M3 en mobile/tablet; passthrough en desktop.
+    return (
+        <MobileThemeProvider>
+            <App />
+        </MobileThemeProvider>
+    );
 };
 
 export default Component;

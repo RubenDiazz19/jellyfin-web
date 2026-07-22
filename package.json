@@ -54,6 +54,7 @@
     "@emotion/styled": "11.14.1",
     "@jellyfin/sdk": "0.0.0-unstable.202607090422",
     "@jellyfin/ux-web": "1.0.0",
+    "@material/material-color-utilities": "0.4.0",
     "@mui/icons-material": "6.5.0",
     "@mui/material": "6.5.0",
     "@mui/x-date-pickers": "7.29.4",
