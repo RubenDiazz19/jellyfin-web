@@ -45,6 +45,12 @@ export class VideoPlayerViewModel {
     playbackRate = signal(1);
     /** Relación de aspecto elegida para el <video>. La View la traduce a CSS. */
     aspectRatio = signal<AspectRatio>('auto');
+    /**
+     * Brillo del vídeo (0.15–1): gesto vertical izquierdo en táctil. Es un
+     * filtro CSS sobre el <video>; no toca el brillo real del dispositivo
+     * (el navegador no lo expone). La View lo traduce a filter: brightness().
+     */
+    brightness = signal(1);
     /** El navegador soporta Picture-in-Picture (Firefox no expone la API). */
     pipAvailable = signal(false);
     pipActive = signal(false);
@@ -203,6 +209,11 @@ export class VideoPlayerViewModel {
 
     setAspectRatio = (mode: AspectRatio) => {
         this.aspectRatio.value = mode;
+    };
+
+    /** Ajusta el brillo del vídeo (filtro CSS). No baja de 0.15 (negro total). */
+    setBrightness = (value: number) => {
+        this.brightness.value = Math.min(Math.max(value, 0.15), 1);
     };
 
     toggleFullscreen = () => {
@@ -413,6 +424,7 @@ export class VideoPlayerViewModel {
         this.selectedSubtitle.value = null;
         this.subtitleUrl.value = null;
         this.playbackRate.value = 1;
+        this.brightness.value = 1;
         this.pipActive.value = false;
         this.castAvailable.value = false;
         this.castState.value = 'disconnected';

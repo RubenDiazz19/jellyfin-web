@@ -807,3 +807,251 @@ html body.jf-video-active .dialogBackdropOpened {
     border-radius: 999px;
     cursor: pointer;
 }
+
+/* ============================================================
+   Reproductor táctil (Fase 5) — SOLO mobile/tablet.
+   Todo lo de esta sección exige `.jfp-video.is-touch`, que solo se
+   añade cuando el layout es táctil. En desktop el OSD no lleva esa
+   clase y estas reglas no matchean: el reproductor de ratón + teclado
+   queda EXACTAMENTE igual.
+   ============================================================ */
+
+/* Capa de captura de gestos: cubre el vídeo, por debajo de las barras
+   (z-index 3) para no robarles los toques. `touch-action: none` evita el
+   scroll/zoom del navegador durante los swipes verticales. Solo se monta
+   en táctil (VideoGestures), así que no hace falta prefijo is-touch. */
+.jfp-video-gestures {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    touch-action: none;
+}
+
+/* Feedback de gestos: píldora central (seek / brillo / volumen). */
+.jfp-gesture-pill {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 18px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 16px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: jfp-fade-in 0.12s ease-out both;
+}
+
+.jfp-gesture-seek-time {
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.jfp-gesture-seek-delta {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    font-variant-numeric: tabular-nums;
+}
+
+.jfp-gesture-bar-icon,
+.jfp-gesture-bar-pct {
+    display: flex;
+    align-items: center;
+}
+
+.jfp-gesture-bar-pct {
+    min-width: 30px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    justify-content: flex-end;
+}
+
+.jfp-gesture-bar {
+    width: 120px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.jfp-gesture-bar-fill {
+    height: 100%;
+    background: #fff;
+    border-radius: 2px;
+}
+
+/* Doble tap: círculo con el icono ±10 s en el lado correspondiente. */
+.jfp-gesture-double {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    width: 128px;
+    height: 128px;
+    justify-content: center;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    animation: jfp-fade-in 0.15s ease-out both;
+}
+
+.jfp-gesture-double-back { left: 8%; }
+.jfp-gesture-double-forward { right: 8%; }
+
+.jfp-gesture-double-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Botón de bloqueo (arriba, empuja a la derecha) y candado de desbloqueo. */
+.jfp-video-top-lock {
+    margin-left: auto;
+}
+
+.jfp-video-unlock {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+}
+
+/* Con los controles bloqueados, se oculta todo el OSD. */
+.jfp-video.is-locked .jfp-video-top,
+.jfp-video.is-locked .jfp-video-controls {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Sugerencia de landscape. */
+.jfp-video-rotate-hint {
+    position: absolute;
+    top: calc(50% - 96px);
+    left: 50%;
+    z-index: 4;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    max-width: 78%;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 999px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    animation: jfp-fade-in 0.3s ease-out both;
+}
+
+/* Overlay de hints de primer uso. */
+.jfp-gesture-hints {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.72);
+    animation: jfp-fade-in 0.25s ease-out both;
+}
+
+.jfp-gesture-hints-card {
+    max-width: 340px;
+    padding: 22px 24px;
+    color: #fff;
+    background: rgba(24, 24, 26, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+}
+
+.jfp-gesture-hints-title {
+    margin-bottom: 14px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.jfp-gesture-hints-list {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 14px;
+    line-height: 1.9;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.jfp-gesture-hints-dismiss {
+    margin-top: 16px;
+    font-size: 12px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── OSD responsive (spec 5.2) ── */
+
+/* Targets táctiles más grandes y seek bar más gruesa. */
+.jfp-video.is-touch .jfp-video-btn {
+    width: 48px;
+    height: 48px;
+}
+
+.jfp-video.is-touch .jfp-video-btn-play {
+    width: 54px;
+    height: 54px;
+}
+
+.jfp-video.is-touch .jfp-video-progress-track {
+    height: 4px;
+}
+
+.jfp-video.is-touch .jfp-video-progress-thumb {
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* El volumen es un gesto vertical: se oculta el slider hover del OSD. */
+.jfp-video.is-touch .jfp-video-volume {
+    display: none;
+}
+
+/* Vertical (portrait): controles esenciales, tiempo grande. */
+.jfp-video.is-touch.is-portrait .jfp-video-controls {
+    padding: 16px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+.jfp-video.is-touch.is-portrait .jfp-video-time {
+    font-size: 15px;
+}
+
+/* El OSD portrait esconde PiP (poco útil en móvil vertical). */
+.jfp-video.is-touch.is-portrait .jfp-video-btn[aria-label*='Picture'] {
+    display: none;
+}
+
+/* Horizontal (landscape): controles compactos y respeto de notch lateral. */
+.jfp-video.is-touch.is-landscape .jfp-video-top {
+    padding: 14px calc(20px + env(safe-area-inset-right, 0px)) 14px calc(20px + env(safe-area-inset-left, 0px));
+}
+
+.jfp-video.is-touch.is-landscape .jfp-video-controls {
+    padding: 10px calc(20px + env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) calc(20px + env(safe-area-inset-left, 0px));
+}

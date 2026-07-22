@@ -3,10 +3,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { videoPlayerVM, type AspectRatio } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
 import { PlayerIc } from './playerIcons';
 import { VideoControls } from './VideoControls';
+import { VideoGestures } from './VideoGestures';
 
 const HIDE_CONTROLS_MS = 3000;
+const HINTS_KEY = 'jfp-gesture-hints-seen';
+
+// Detección de reproductor táctil. El reproductor se monta fuera de
+// AppLayout (sin MobileThemeProvider), así que el modo se lee de las clases
+// de <html> directamente. `portrait` alterna el OSD compacto/esencial.
+function useTouchPlayback(): { touch: boolean; portrait: boolean } {
+    const [touch, setTouch] = useState(() => currentMobileLayout() !== null);
+    const [portrait, setPortrait] = useState(
+        () => typeof window.matchMedia === 'function'
+            && window.matchMedia('(orientation: portrait)').matches
+    );
+    useEffect(() => observeLayoutMode(() => setTouch(currentMobileLayout() !== null)), []);
+    useEffect(() => {
+        if (typeof window.matchMedia !== 'function') return;
+        const mq = window.matchMedia('(orientation: portrait)');
+        const apply = () => setPortrait(mq.matches);
+        apply();
+        mq.addEventListener('change', apply);
+        return () => mq.removeEventListener('change', apply);
+    }, []);
+    return { touch, portrait };
+}
 
 type Props = {
     itemId: string;
@@ -21,6 +45,12 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [controlsVisible, setControlsVisible] = useState(true);
+    const { touch, portrait } = useTouchPlayback();
+    // Controles bloqueados (solo táctil): oculta OSD e ignora gestos hasta
+    // desbloquear. Overlay de hints de primer uso.
+    const [locked, setLocked] = useState(false);
+    const [showHints, setShowHints] = useState(false);
+    const [suggestLandscape, setSuggestLandscape] = useState(false);
 
     // startTicks/title solo importan al abrir; un cambio de itemId re-monta
     // la reproducción y captura los valores actuales.
@@ -93,6 +123,34 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
         if (hideTimer.current) clearTimeout(hideTimer.current);
     }, []);
 
+    // Hints de gestos en el primer uso táctil (una vez, persistido).
+    useEffect(() => {
+        if (!touch) return;
+        if (localStorage.getItem(HINTS_KEY)) return;
+        setShowHints(true);
+        const t = setTimeout(() => {
+            setShowHints(false);
+            localStorage.setItem(HINTS_KEY, '1');
+        }, 4200);
+        return () => clearTimeout(t);
+    }, [touch]);
+
+    const dismissHints = useCallback(() => {
+        setShowHints(false);
+        localStorage.setItem(HINTS_KEY, '1');
+    }, []);
+
+    // Sugerencia de landscape: chip breve al reproducir en vertical (una vez
+    // por sesión, y solo si no está ya en horizontal).
+    const suggestedRef = useRef(false);
+    useEffect(() => {
+        if (!touch || !portrait || suggestedRef.current) return;
+        suggestedRef.current = true;
+        setSuggestLandscape(true);
+        const t = setTimeout(() => setSuggestLandscape(false), 3800);
+        return () => clearTimeout(t);
+    }, [touch, portrait]);
+
     // Atajos de teclado del OSD.
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -155,16 +213,34 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
     const loading = videoPlayerVM.loading.value;
     const buffering = videoPlayerVM.buffering.value;
     const error = videoPlayerVM.error.value;
+    const brightness = videoPlayerVM.brightness.value;
     const idle = !controlsVisible && !error;
     const videoStyle = aspectRatioStyle(videoPlayerVM.aspectRatio.value);
+    // El brillo (gesto táctil) es un filtro CSS; en desktop siempre es 1 y no
+    // altera el render.
+    if (touch && brightness < 1) videoStyle.filter = `brightness(${brightness})`;
+
+    const rootClass = [
+        'jfp-video',
+        idle ? 'is-idle' : '',
+        touch ? 'is-touch' : '',
+        touch ? (portrait ? 'is-portrait' : 'is-landscape') : '',
+        locked ? 'is-locked' : ''
+    ].filter(Boolean).join(' ');
+
+    // En táctil los gestos gobiernan el toque; el onClick/onDoubleClick del
+    // ratón se desactiva para no duplicar acciones. En desktop, intactos.
+    const mouseHandlers = touch ? {} : {
+        onClick: () => { videoPlayerVM.togglePlay(); showControls(); },
+        onDoubleClick: videoPlayerVM.toggleFullscreen
+    };
 
     return (
         <div
             ref={containerRef}
-            className={`jfp-video${idle ? ' is-idle' : ''}`}
+            className={rootClass}
             onPointerMove={showControls}
-            onClick={() => { videoPlayerVM.togglePlay(); showControls(); }}
-            onDoubleClick={videoPlayerVM.toggleFullscreen}
+            {...mouseHandlers}
         >
             {/* Los subtítulos se montan como <track> dinámico según la pista elegida. */}
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -186,6 +262,12 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                 )}
             </video>
 
+            {/* Gestos táctiles: solo mobile/tablet y con los controles
+                desbloqueados. En desktop no se monta nada. */}
+            {touch && !locked && (
+                <VideoGestures onClose={onClose} onWake={showControls} />
+            )}
+
             <div className='jfp-video-top' onClick={(e) => e.stopPropagation()}>
                 <button
                     type='button'
@@ -198,7 +280,54 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                 {videoPlayerVM.title.value && (
                     <div className='jfp-video-title'>{videoPlayerVM.title.value}</div>
                 )}
+                {touch && (
+                    <button
+                        type='button'
+                        className='jfp-video-btn jfp-video-top-lock'
+                        onClick={() => setLocked(true)}
+                        aria-label='Bloquear controles'
+                    >
+                        <PlayerIc.LockOpen />
+                    </button>
+                )}
             </div>
+
+            {/* Bloqueo (táctil): oculta OSD y gestos, deja solo el candado. */}
+            {touch && locked && (
+                <button
+                    type='button'
+                    className='jfp-video-unlock'
+                    onClick={() => setLocked(false)}
+                    aria-label='Desbloquear controles'
+                >
+                    <PlayerIc.Lock />
+                </button>
+            )}
+
+            {/* Sugerencia de landscape (táctil, vertical, una vez). */}
+            {touch && suggestLandscape && !locked && (
+                <div className='jfp-video-rotate-hint' onClick={(e) => e.stopPropagation()}>
+                    <PlayerIc.Rotate size={18} />
+                    Gira el dispositivo para pantalla completa
+                </div>
+            )}
+
+            {/* Hints de gestos en el primer uso. */}
+            {touch && showHints && !locked && (
+                <div className='jfp-gesture-hints' onClick={dismissHints}>
+                    <div className='jfp-gesture-hints-card'>
+                        <div className='jfp-gesture-hints-title'>Gestos del reproductor</div>
+                        <ul className='jfp-gesture-hints-list'>
+                            <li>Toca para reproducir o pausar</li>
+                            <li>Doble toque a los lados: ±10 s</li>
+                            <li>Desliza horizontal para avanzar</li>
+                            <li>Vertical: brillo (izq.) y volumen (der.)</li>
+                            <li>Pellizca para ajustar el encuadre</li>
+                        </ul>
+                        <div className='jfp-gesture-hints-dismiss'>Toca para cerrar</div>
+                    </div>
+                </div>
+            )}
 
             {(loading || buffering) && !error && (
                 <div className='jfp-video-loading' aria-label='Cargando'>

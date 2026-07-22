@@ -253,4 +253,21 @@ describe('VideoPlayerViewModel', () => {
         expect(vm.error.value).toBe('Sin fuentes reproducibles');
         expect(vm.loading.value).toBe(false);
     });
+
+    test('setBrightness acota a [0.15, 1] (gesto táctil de brillo)', () => {
+        expect(vm.brightness.value).toBe(1);
+        vm.setBrightness(0.5);
+        expect(vm.brightness.value).toBe(0.5);
+        vm.setBrightness(-1);
+        expect(vm.brightness.value).toBe(0.15);
+        vm.setBrightness(2);
+        expect(vm.brightness.value).toBe(1);
+    });
+
+    test('close() restablece el brillo a 1', async () => {
+        await vm.open('item1');
+        vm.setBrightness(0.4);
+        vm.close();
+        expect(vm.brightness.value).toBe(1);
+    });
 });

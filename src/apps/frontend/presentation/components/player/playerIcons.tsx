@@ -137,6 +137,33 @@ export const PlayerIc = {
             />
         </svg>
     ),
+    Brightness: ({ size = 22, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <circle cx='12' cy='12' r='4' stroke='currentColor' strokeWidth={sw} />
+            <path
+                d='M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+            />
+        </svg>
+    ),
+    Lock: ({ size = 22, sw = 1.6 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <rect x='5' y='10.5' width='14' height='9.5' rx='2' stroke='currentColor' strokeWidth={sw} />
+            <path d='M8 10.5V7.5a4 4 0 018 0v3' stroke='currentColor' strokeWidth={sw} strokeLinecap='round' />
+        </svg>
+    ),
+    LockOpen: ({ size = 22, sw = 1.6 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <rect x='5' y='10.5' width='14' height='9.5' rx='2' stroke='currentColor' strokeWidth={sw} />
+            <path d='M8 10.5V7.5a4 4 0 017.5-1.9' stroke='currentColor' strokeWidth={sw} strokeLinecap='round' />
+        </svg>
+    ),
+    Rotate: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <rect x='3' y='7' width='11' height='14' rx='2' stroke='currentColor' strokeWidth={sw} />
+            <path d='M17 5a4 4 0 014 4M17 5V3M17 5h2' stroke='currentColor' strokeWidth={sw} strokeLinecap='round' strokeLinejoin='round' />
+        </svg>
+    ),
     Spinner: ({ size = 54 }: IconProps): ReactElement => (
         <svg width={size} height={size} viewBox='0 0 50 50' className='jfp-video-spinner'>
             <circle
