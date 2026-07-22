@@ -31,6 +31,7 @@ import {
     buildM3Css,
     M3_ANIM_CLASS,
     M3_DEFAULT_SEED,
+    makeColorTokens,
     type M3SchemeName
 } from './m3';
 import { seedFromImage } from './dynamicColor';
@@ -96,6 +97,18 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         }
         el.textContent = buildM3Css(seed ?? M3_DEFAULT_SEED, scheme);
         return () => { document.getElementById(STYLE_ID)?.remove(); };
+    }, [active, seed, scheme]);
+
+    // theme-color dinámico: la barra de estado del sistema sigue al surface
+    // del tema. Solo mobile/tablet; al salir se restaura el valor original.
+    useEffect(() => {
+        if (!active) return;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (!(meta instanceof HTMLMetaElement)) return;
+        const prev = meta.content;
+        const surface = makeColorTokens(seed ?? M3_DEFAULT_SEED, scheme)['--md-sys-color-surface'];
+        if (surface) meta.content = surface;
+        return () => { meta.content = prev; };
     }, [active, seed, scheme]);
 
     // Transición suave al cambiar de tema (no en el primer render).

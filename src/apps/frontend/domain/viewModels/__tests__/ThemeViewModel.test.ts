@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ThemePrefs } from '../../../data/stores/themeStore';
 import { ThemeViewModel } from '../ThemeViewModel';
 
+// El módulo real de sync importa la cadena legacy (jellyfin-apiclient,
+// playbackmanager) con efectos a nivel de módulo: se corta aquí. Los tests
+// inyectan su propio sync por constructor.
+vi.mock('../../../data/api/theme', () => ({
+    getServerThemePrefs: () => Promise.resolve(null),
+    saveServerThemePrefs: () => Promise.resolve()
+}));
+
 type RemotePrefs = { mode?: string; seed?: string } | null;
 
 function makeVm(initial?: Partial<ThemePrefs>, remote: RemotePrefs = null) {

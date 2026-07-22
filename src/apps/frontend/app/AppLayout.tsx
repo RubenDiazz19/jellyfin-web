@@ -4,6 +4,9 @@ import App from './App';
 import { toggleFullscreen } from '../shared/fullscreen';
 import { installFocusPreventScrollPatch } from '../shared/focusPatch';
 import { MobileThemeProvider } from '../presentation/theme/MobileThemeProvider';
+import { InstallBanner } from '../presentation/components/pwa/InstallBanner';
+import { OfflineIndicator } from '../presentation/components/pwa/OfflineIndicator';
+import { initPwa, registerServiceWorker, watchStandalone } from '../shared/pwa';
 import '../presentation/styles/global.css';
 
 // Entry point del frontend dentro de jellyfin-web. El RootAppRouter oficial
@@ -21,6 +24,13 @@ export const Component = () => {
         loading.hide();
 
         cleanupRefs.current.push(installFocusPreventScrollPatch());
+
+        // PWA (solo actúa en mobile/tablet; en desktop todo esto es no-op):
+        // captura del prompt de instalación, service worker y clase
+        // jfp-standalone cuando corre instalada.
+        initPwa();
+        void registerServiceWorker();
+        cleanupRefs.current.push(watchStandalone());
 
         // Interceptamos F11: algunos navegadores derivados de Chromium tienen
         // implementación rota (sólo maximizan la ventana) y dejan un borde
@@ -41,9 +51,12 @@ export const Component = () => {
         };
     }, []);
     // MobileThemeProvider: tokens M3 en mobile/tablet; passthrough en desktop.
+    // Los overlays PWA se auto-ocultan en desktop (layout null en contexto).
     return (
         <MobileThemeProvider>
             <App />
+            <OfflineIndicator />
+            <InstallBanner />
         </MobileThemeProvider>
     );
 };

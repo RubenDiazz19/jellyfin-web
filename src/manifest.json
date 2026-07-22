@@ -1,7 +1,7 @@
 {
     "name": "Jellyfin",
     "description": "The Free Software Media System",
-    "lang": "en-US",
+    "lang": "es",
     "short_name": "Jellyfin",
     "start_url": "index.html#/home",
     "theme_color": "#101010",
@@ -28,5 +28,16 @@
             "src": "favicons/touchicon512.png",
             "type": "image/png"
         }
+    ],
+    "id": "./",
+    "scope": "./",
+    "orientation": "any",
+    "display_override": [
+        "standalone",
+        "minimal-ui"
+    ],
+    "categories": [
+        "entertainment",
+        "video"
     ]
 }

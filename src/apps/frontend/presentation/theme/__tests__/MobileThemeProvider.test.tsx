@@ -4,9 +4,16 @@
 
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MobileThemeProvider } from '../MobileThemeProvider';
+
+// El sync remoto del tema arrastra la cadena legacy (jellyfin-apiclient,
+// playbackmanager) al entorno de test: se corta aquí.
+vi.mock('../../../data/api/theme', () => ({
+    getServerThemePrefs: () => Promise.resolve(null),
+    saveServerThemePrefs: () => Promise.resolve()
+}));
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 

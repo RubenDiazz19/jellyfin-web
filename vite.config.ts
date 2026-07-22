@@ -100,6 +100,23 @@ function workerImports(): Plugin {
     };
 }
 
+// Emits serviceworker.js (sin hash, en la raíz) into the build output. Vite
+// only bundles modules reachable from index.html, and the SW must keep a
+// stable URL for navigator.serviceWorker.register('/serviceworker.js').
+function emitServiceWorker(): Plugin {
+    return {
+        name: 'jf-emit-serviceworker',
+        apply: 'build',
+        generateBundle() {
+            this.emitFile({
+                type: 'asset',
+                fileName: 'serviceworker.js',
+                source: fs.readFileSync(path.join(SRC_DIR, 'serviceworker.js'), 'utf-8')
+            });
+        }
+    };
+}
+
 // Injects the entry <script> into src/index.html. The HTML on disk only
 // declares #reactRoot; the runtime module is added here so index.html stays
 // framework-agnostic.
@@ -187,6 +204,7 @@ export default defineConfig(({ command }) => ({
         tsconfigPaths(),
         ...htmlTemplates(),
         workerImports(),
+        emitServiceWorker(),
         injectApp(),
         devStaticAssets(),
         devThemes()

@@ -8,6 +8,7 @@ import { signal } from '@preact/signals-core';
 import type Hls from 'hls.js';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import type { MediaStreamInfo, PlaybackDecision } from '../../data/api/playback';
+import { currentMobileLayout } from '../../shared/layoutMode';
 
 const TICKS_PER_SECOND = 10_000_000;
 const PROGRESS_REPORT_MS = 10_000;
@@ -114,6 +115,13 @@ export class VideoPlayerViewModel {
         on('ended', () => { this.playing.value = false; void this.reportProgress(); });
         on('ratechange', () => { this.playbackRate.value = video.playbackRate; });
 
+        // Media Session (mobile/tablet): controles del sistema sincronizados.
+        on('play', () => this.syncMediaSessionPlayback());
+        on('pause', () => this.syncMediaSessionPlayback());
+        on('timeupdate', () => this.updateMediaSessionPosition());
+        on('durationchange', () => this.updateMediaSessionPosition());
+        on('ratechange', () => this.updateMediaSessionPosition());
+
         this.pipAvailable.value =
             typeof video.requestPictureInPicture === 'function'
             // eslint-disable-next-line compat/compat -- esta línea ES el feature-detect de PiP
@@ -148,6 +156,7 @@ export class VideoPlayerViewModel {
         await this.loadSource({});
         void this.api.playback.reportPlaybackStart(itemId);
         this.startProgressTimer();
+        this.setupMediaSession();
     }
 
     // ── Comandos ────────────────────────────────────────────────────────────
@@ -275,12 +284,92 @@ export class VideoPlayerViewModel {
             this.video.removeAttribute('src');
             this.video.load();
         }
+        this.teardownMediaSession();
         this.detachFns.forEach((fn) => { fn(); });
         this.detachFns = [];
         this.video = null;
         this.container = null;
         this.decision = null;
         this.reset();
+    }
+
+    // ── Media Session (controles del sistema: lock screen, notificación) ──
+    // Solo se activa en mobile/tablet; en desktop el OSD actual manda y no
+    // se toca nada del comportamiento presente.
+
+    private static readonly msActions: MediaSessionAction[] = [
+        'play', 'pause', 'seekbackward', 'seekforward', 'seekto'
+    ];
+
+    private mediaSessionActive = false;
+
+    private setupMediaSession() {
+        if (!('mediaSession' in navigator) || !currentMobileLayout()) return;
+        const ms = navigator.mediaSession;
+
+        const artwork = ([192, 512] as const).flatMap((size) => {
+            const src = this.api.images.imageUrl(this.itemId, 'Primary', { maxWidth: size });
+            return src ? [{ src, sizes: `${size}x${size}`, type: 'image/webp' }] : [];
+        });
+        try {
+            ms.metadata = new MediaMetadata({
+                title: this.title.value || 'Jellyfin',
+                artwork
+            });
+        } catch { /* MediaMetadata no disponible: seguimos sin carátula */ }
+
+        const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+            try {
+                ms.setActionHandler(action, handler);
+            } catch { /* acción no soportada por este navegador */ }
+        };
+        set('play', () => {
+            const v = this.video;
+            if (v?.paused) void v.play().catch(() => { /* autoplay denegado */ });
+        });
+        set('pause', () => { this.video?.pause(); });
+        set('seekbackward', (d) => this.seekBy(-(d.seekOffset ?? 10)));
+        set('seekforward', (d) => this.seekBy(d.seekOffset ?? 10));
+        set('seekto', (d) => {
+            if (d.seekTime != null) this.seek(d.seekTime);
+        });
+
+        this.mediaSessionActive = true;
+        this.syncMediaSessionPlayback();
+        this.updateMediaSessionPosition();
+    }
+
+    private syncMediaSessionPlayback() {
+        if (!this.mediaSessionActive) return;
+        navigator.mediaSession.playbackState = this.video?.paused ? 'paused' : 'playing';
+    }
+
+    private updateMediaSessionPosition() {
+        if (!this.mediaSessionActive) return;
+        const ms = navigator.mediaSession;
+        if (typeof ms.setPositionState !== 'function') return;
+        const duration = this.duration.value;
+        if (!Number.isFinite(duration) || duration <= 0) return;
+        try {
+            ms.setPositionState({
+                duration,
+                position: Math.min(this.currentTime.value, duration),
+                playbackRate: this.playbackRate.value || 1
+            });
+        } catch { /* valores transitorios inválidos durante un cambio de fuente */ }
+    }
+
+    private teardownMediaSession() {
+        if (!this.mediaSessionActive) return;
+        this.mediaSessionActive = false;
+        const ms = navigator.mediaSession;
+        ms.metadata = null;
+        ms.playbackState = 'none';
+        for (const action of VideoPlayerViewModel.msActions) {
+            try {
+                ms.setActionHandler(action, null);
+            } catch { /* ignorar */ }
+        }
     }
 
     // ── Interno ─────────────────────────────────────────────────────────────
