@@ -3,6 +3,7 @@
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
 import { apiFetch, apiSend } from './http';
+import { emitItemMutated } from './mutations';
 
 export type ItemMetadataPatch = {
     Name?: string;
@@ -36,6 +37,7 @@ export async function updateItemMetadata(itemId: string, patch: ItemMetadataPatc
     const merged = { ...current, ...patch };
     await apiSend(`/Items/${itemId}`, 'POST', merged);
     clearShowCache();
+    emitItemMutated(itemId);
 }
 
 export async function remoteSearch(
@@ -62,4 +64,5 @@ export async function applyRemoteSearchResult(
 ): Promise<void> {
     await apiSend(`/Items/RemoteSearch/Apply/${itemId}?replaceAllImages=true`, 'POST', result);
     clearShowCache();
+    emitItemMutated(itemId);
 }

@@ -10,6 +10,7 @@
 
 import {
     loadSession,
+    restoreSession,
     clearSession,
     setSessionDisplayName,
     notifySessionChanged,
@@ -68,6 +69,7 @@ export type { Session };
 
 const sessionService = {
     load: loadSession,
+    restore: restoreSession,
     clear: clearSession,
     setDisplayName: setSessionDisplayName,
     notifyChanged: notifySessionChanged,

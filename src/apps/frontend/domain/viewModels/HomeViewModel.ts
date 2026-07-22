@@ -3,6 +3,7 @@
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
+import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import type { CarouselSlide, Movie, Show } from '../../data/models';
 
 export class HomeViewModel {
@@ -21,8 +22,11 @@ export class HomeViewModel {
     // Token de carga: si el usuario navega y vuelve antes de que termine un
     // load() anterior, solo la última llamada escribe estado.
     private seq = 0;
+    private subscribed = false;
 
-    constructor(private api: ApiService) {}
+    constructor(private api: ApiService) {
+        this.subscribeToMutations();
+    }
 
     async load() {
         const seq = ++this.seq;
@@ -66,6 +70,18 @@ export class HomeViewModel {
                 this.showsReady.value = true;
             }
         }
+    }
+
+    // Cualquier mutación de item recarga la Home si ya hay datos: la lista
+    // de series/películas y el hero pueden contener el item afectado y no
+    // queremos que el usuario tenga que recargar para verlo.
+    private subscribeToMutations() {
+        if (this.subscribed || typeof window === 'undefined') return;
+        this.subscribed = true;
+        window.addEventListener(ITEM_MUTATED_EVENT, () => {
+            if (!this.showsReady.value) return;
+            void this.load();
+        });
     }
 }
 

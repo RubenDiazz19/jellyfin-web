@@ -5,6 +5,7 @@ import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
 import { apiFetch, apiSend, authHeader, trimSlash } from './http';
 import type { ImageType } from './images';
+import { emitItemMutated } from './mutations';
 
 export type JFRemoteImage = {
     Url: string;
@@ -24,11 +25,13 @@ export async function setImageByUrl(itemId: string, type: ImageType, url: string
         'POST'
     );
     clearShowCache();
+    emitItemMutated(itemId);
 }
 
 export async function deleteImage(itemId: string, type: ImageType, index = 0): Promise<void> {
     await apiSend(`/Items/${itemId}/Images/${type}/${index}`, 'DELETE');
     clearShowCache();
+    emitItemMutated(itemId);
 }
 
 // Jellyfin expects the body as base64 with the image Content-Type. Format is
@@ -57,6 +60,7 @@ export async function uploadImageFile(itemId: string, type: ImageType, file: Fil
         throw new Error(`Upload falló: HTTP ${res.status} ${text}`);
     }
     clearShowCache();
+    emitItemMutated(itemId);
 }
 
 export async function getRemoteImages(

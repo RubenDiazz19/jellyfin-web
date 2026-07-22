@@ -6,6 +6,23 @@ import events from 'utils/events';
 
 export const SESSION_EVENT = 'jfp-session-change';
 
+// Restaura las credenciales guardadas (localStorage) llamando al connect() del
+// ConnectionManager: valida el AccessToken contra /System/Info y, si es válido,
+// hace setAuthenticationInfo en el ApiClient. Sin esto, initApiClient() del
+// bootstrap crea un cliente sin token → apiClient.accessToken() = undefined y
+// el usuario acaba en LoginPage aunque su sesión siga viva en storage.
+export async function restoreSession(): Promise<Session | null> {
+    try {
+        await ServerConnections.connect();
+    } catch {
+        // Sin red / servidor caído: seguimos con lo que haya (posiblemente
+        // nada). El propio ApiClient volverá a intentarlo cuando el usuario
+        // haga una acción, y mientras tanto la UI puede seguir mostrando el
+        // login sin pantalla en blanco.
+    }
+    return readFromServerConnections();
+}
+
 export type Session = {
     serverUrl: string;
     username: string;

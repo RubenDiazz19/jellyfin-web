@@ -19,6 +19,11 @@ config.json
 # local media library (dev server test content)
 media/
 
+# docker persistent data
+docker-config/
+docker-cache/
+docker-media/
+
 # direnv
 .direnv/
 

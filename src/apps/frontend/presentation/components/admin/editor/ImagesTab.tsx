@@ -128,7 +128,7 @@ function SingleImageSection({
         <div>
             <SectionHeader label={label} onSearch={openAlternatives} loading={alt === 'loading'} />
             <ImageEditor
-                src={src} wide={wide}
+                src={src} wide={wide} fit={type === 'Logo' ? 'contain' : 'cover'}
                 onUploadFile={doUploadFile}
                 onApplyUrl={doApplyUrl}
                 onDelete={src ? doDelete : undefined}
@@ -136,6 +136,7 @@ function SingleImageSection({
             {alt === 'results' && (
                 <RemoteImagesGrid
                     images={images} thumbAspect={type === 'Primary' ? '2/3' : '16/9'}
+                    fit={type === 'Logo' ? 'contain' : 'cover'}
                     onPick={applyRemote} applying={applying}
                     onClose={() => setAlt('idle')}
                 />
@@ -291,9 +292,9 @@ function BackdropSection({
 
 // Reusable dropzone + URL + delete triplet.
 function ImageEditor({
-    src, wide, onUploadFile, onApplyUrl, onDelete
+    src, wide, fit = 'cover', onUploadFile, onApplyUrl, onDelete
 }: {
-    src?: string; wide?: boolean;
+    src?: string; wide?: boolean; fit?: 'cover' | 'contain';
     onUploadFile: (file: File) => void;
     onApplyUrl: (url: string) => void;
     onDelete?: () => void;
@@ -326,10 +327,12 @@ function ImageEditor({
                 style={{
                     ...previewStyle,
                     borderRadius: 6, cursor: 'pointer',
-                    background: 'rgba(255,255,255,0.05)',
+                    // El logo (fit: 'contain') es un PNG con aspect ratio propio: con
+                    // 'cover' se recortaba dentro de la caja 16/9 y no se veía entero.
+                    background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.05)',
                     border: `1px dashed ${dragOver ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.16)'}`,
                     backgroundImage: src ? `url(${src})` : undefined,
-                    backgroundSize: 'cover', backgroundPosition: 'center',
+                    backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
                     position: 'relative', transition: 'border-color .15s, transform .15s',
                     transform: dragOver ? 'scale(1.02)' : 'scale(1)'
                 }}
@@ -371,9 +374,9 @@ function ImageEditor({
 
 // Grid of alternatives fetched from remote providers.
 function RemoteImagesGrid({
-    images, thumbAspect, onPick, applying, onClose
+    images, thumbAspect, fit = 'cover', onPick, applying, onClose
 }: {
-    images: JFRemoteImage[]; thumbAspect: string;
+    images: JFRemoteImage[]; thumbAspect: string; fit?: 'cover' | 'contain';
     onPick: (url: string) => void; applying: string | null;
     onClose: () => void;
 }) {
@@ -445,8 +448,9 @@ function RemoteImagesGrid({
                         >
                             <div style={{
                                 width: '100%', aspectRatio: thumbAspect,
+                                background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : undefined,
                                 backgroundImage: `url(${im.ThumbnailUrl || im.Url})`,
-                                backgroundSize: 'cover', backgroundPosition: 'center'
+                                backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
                             }} />
                             <div style={{
                                 padding: '6px 8px', fontSize: 10, color: T.dim,

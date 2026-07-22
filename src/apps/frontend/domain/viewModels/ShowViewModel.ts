@@ -4,6 +4,7 @@
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
+import { ITEM_MUTATED_EVENT, type ItemMutatedDetail } from '../../data/api/mutations';
 import type { Show } from '../../data/models';
 
 export class ShowViewModel {
@@ -12,8 +13,11 @@ export class ShowViewModel {
     error = signal<string | null>(null);
 
     private seq = 0;
+    private subscribed = false;
 
-    constructor(private api: ApiService) {}
+    constructor(private api: ApiService) {
+        this.subscribeToMutations();
+    }
 
     async load(id: string) {
         const seq = ++this.seq;
@@ -42,6 +46,21 @@ export class ShowViewModel {
     showFor(id: string): Show | null {
         const s = this.show.value;
         return s && s.id === id ? s : null;
+    }
+
+    // Refresca la serie actual si alguien mutó ese mismo item (edición de
+    // imagen, metadatos, played, favorito). Las mutaciones ya limpian el
+    // showCache, así que el getShow siguiente pega al servidor.
+    private subscribeToMutations() {
+        if (this.subscribed || typeof window === 'undefined') return;
+        this.subscribed = true;
+        window.addEventListener(ITEM_MUTATED_EVENT, (e: Event) => {
+            const detail = (e as CustomEvent<ItemMutatedDetail>).detail;
+            const current = this.show.value;
+            if (!current) return;
+            if (detail?.itemId && detail.itemId !== current.id) return;
+            void this.load(current.id);
+        });
     }
 }
 

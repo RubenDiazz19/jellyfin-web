@@ -239,7 +239,10 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                     }}
                 >
                     {slides.map((s) => (
-                        <HeroSlide key={s.id} slide={s} width={`${100 / slideCount}%`} onPlay={onPlay} />
+                        <HeroSlide
+                            key={s.id} slide={s} width={`${100 / slideCount}%`}
+                            navigate={navigate} onPlay={onPlay}
+                        />
                     ))}
                 </div>
 
@@ -270,18 +273,42 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     );
 }
 
+// Botón "de texto": mismo reset que los géneros clicables de ShowPage, para
+// que T1/E1 y el logo del hero se vean como el resto del texto pero
+// naveguen al pulsarlos.
+const textBtnStyle: React.CSSProperties = {
+    background: 'none', border: 'none', padding: 0,
+    font: 'inherit', color: 'inherit',
+    letterSpacing: 'inherit', textTransform: 'inherit',
+    cursor: 'pointer'
+};
+
 const HeroSlide = React.memo(function HeroSlideBase({
     slide,
     width,
+    navigate,
     onPlay
 }: {
     slide: CarouselSlide;
     width: string;
+    navigate: Navigate;
     onPlay: () => void;
 }) {
     const isContinue = slide.type === 'continue';
     const showData = PROTO_DATA.shows[slide.id] || PROTO_DATA.movies[slide.id];
     const logo = slide.logo ?? showData?.logo;
+    const goDetail = () => {
+        if (slide.kind === 'movie') navigate({ page: 'movie', movieId: slide.id });
+        else navigate({ page: 'show', showId: slide.id });
+    };
+    const goSeason = () => {
+        if (slide.season == null) return;
+        navigate({ page: 'season', showId: slide.id, seasonN: slide.season });
+    };
+    const goEpisode = () => {
+        if (slide.season == null || slide.episode == null) return;
+        navigate({ page: 'episode', showId: slide.id, seasonN: slide.season, epN: slide.episode });
+    };
     return (
         <div style={{ width, height: '100%', position: 'relative', flexShrink: 0 }}>
             {/* itemId: aplica el fondo personalizado guardado en local para
@@ -299,24 +326,36 @@ const HeroSlide = React.memo(function HeroSlideBase({
                 textAlign: 'center'
             }}>
                 {logo ? (
-                    <img
-                        src={logo}
-                        alt={slide.title}
-                        decoding='async'
-                        style={{
-                            maxWidth: 520, maxHeight: 180, width: 'auto', height: 'auto',
-                            objectFit: 'contain', filter: 'drop-shadow(0 4px 50px rgba(0,0,0,0.6))',
-                            marginBottom: 18
-                        }}
-                    />
+                    <button
+                        onClick={goDetail}
+                        onMouseDown={(e) => e.preventDefault()}
+                        aria-label={slide.title}
+                        style={{ ...textBtnStyle, display: 'block', marginBottom: 18 }}
+                    >
+                        <img
+                            src={logo}
+                            alt={slide.title}
+                            decoding='async'
+                            style={{
+                                maxWidth: 520, maxHeight: 180, width: 'auto', height: 'auto',
+                                objectFit: 'contain', filter: 'drop-shadow(0 4px 50px rgba(0,0,0,0.6))'
+                            }}
+                        />
+                    </button>
                 ) : (
-                    <h1 style={{
-                        fontFamily: T.display, fontSize: 'clamp(64px, 8vw, 130px)', lineHeight: 0.92,
-                        margin: '0 0 18px', fontWeight: 250, letterSpacing: -2,
-                        textShadow: '0 4px 50px rgba(0,0,0,0.55)', textWrap: 'balance'
-                    }}>
-                        {slide.title}
-                    </h1>
+                    <button
+                        onClick={goDetail}
+                        onMouseDown={(e) => e.preventDefault()}
+                        style={{ ...textBtnStyle, display: 'block', marginBottom: 18 }}
+                    >
+                        <h1 style={{
+                            fontFamily: T.display, fontSize: 'clamp(64px, 8vw, 130px)', lineHeight: 0.92,
+                            margin: 0, fontWeight: 250, letterSpacing: -2,
+                            textShadow: '0 4px 50px rgba(0,0,0,0.55)', textWrap: 'balance'
+                        }}>
+                            {slide.title}
+                        </h1>
+                    </button>
                 )}
 
                 {isContinue ? (
@@ -331,7 +370,29 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                 display: 'inline-block', animation: 'jfp-pulse 1.8s ease-in-out infinite'
                             }} />
                             {/* Películas: no hay T·E, solo la etiqueta de continuar. */}
-                            {slide.season != null ? `T${slide.season} · E${slide.episode}` : 'Continuar viendo'}
+                            {slide.season != null ? (
+                                <>
+                                    <button
+                                        onClick={goSeason}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        style={textBtnStyle}
+                                        onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+                                    >
+                                        {`T${slide.season}`}
+                                    </button>
+                                    {' · '}
+                                    <button
+                                        onClick={goEpisode}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        style={textBtnStyle}
+                                        onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+                                    >
+                                        {`E${slide.episode}`}
+                                    </button>
+                                </>
+                            ) : 'Continuar viendo'}
                         </span>
                         {slide.episodeTitle && (
                             <>

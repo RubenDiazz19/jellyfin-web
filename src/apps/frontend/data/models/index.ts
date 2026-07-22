@@ -74,6 +74,7 @@ export type Movie = {
     watched?: number;
     remaining?: string;
     backdrop?: string;
+    backdrops?: string[];
     poster?: string;
     logo?: string | null;
 };

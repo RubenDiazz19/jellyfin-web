@@ -7,6 +7,9 @@ import { apiService, type ApiService, type Session } from '../../data/api/ApiSer
 
 export class SessionViewModel {
     session = signal<Session | null>(null);
+    // true mientras se está restaurando la sesión desde storage; la vista
+    // Root usa esto para no pintar LoginPage un frame antes del auto-login.
+    hydrating = signal(true);
 
     private started = false;
     private hydrated = false;
@@ -14,14 +17,20 @@ export class SessionViewModel {
     constructor(private api: ApiService) {}
 
     /**
-     * Lee la sesión actual de ServerConnections. Idempotente; se llama en el
-     * primer render para evitar el flash de LoginPage al recargar autenticado
-     * (en el eval del módulo ServerConnections aún no tiene ApiClient).
+     * Restaura la sesión guardada (localStorage) llamando al connect() del
+     * ConnectionManager, que valida el AccessToken y hace setAuthenticationInfo
+     * en el ApiClient. Idempotente. La primera lectura sincrónica sirve para
+     * dejar la sesión disponible cuanto antes si el ApiClient ya tenía token
+     * (p. ej. tras un login en la misma pestaña).
      */
     hydrate() {
         if (this.hydrated) return;
         this.hydrated = true;
         this.refresh();
+        void this.api.session.restore().then((session) => {
+            this.session.value = session ?? this.api.session.load();
+            this.hydrating.value = false;
+        });
     }
 
     /** Engancha los eventos de cambio de sesión. Devuelve el cleanup. */

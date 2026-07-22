@@ -52,7 +52,12 @@ function mapShow(item: JFItem): Show {
         seasons: [],
         backdrop: backdrops[0] ?? '',
         backdrops,
-        poster: imageUrl(item.Id, 'Primary', { maxHeight: 900 }) ?? '',
+        // El tag es el etag de esa imagen concreta: sin él, cambiar el póster
+        // en el editor no invalida el cache del navegador porque la URL sigue
+        // siendo la misma.
+        poster: imageUrl(item.Id, 'Primary', {
+            tag: item.ImageTags?.Primary, maxHeight: 900
+        }) ?? '',
         logo: item.ImageTags?.Logo ?
             imageUrl(item.Id, 'Logo', { tag: item.ImageTags.Logo, maxHeight: 400 }) ?? null :
             null
@@ -246,7 +251,9 @@ async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
             synopsis: s.Overview,
             // Seasons usually have their own Primary (poster) and no backdrop;
             // reuse the poster as the SeasonCard background.
-            backdrop: imageUrl(s.Id, 'Primary', { maxHeight: 900 }),
+            backdrop: imageUrl(s.Id, 'Primary', {
+                tag: s.ImageTags?.Primary, maxHeight: 900
+            }),
             episodes: eps
         });
     }

@@ -105,6 +105,22 @@ body.jf-frontend-active ::backdrop {
 
 body.jf-frontend-active button { font-family: inherit; }
 
+/* Popup nativo de los <select>. El desplegable NO hereda los estilos del
+   control: Chromium lo pinta partiendo del `background` del propio select,
+   y los nuestros son rgba blanca translúcida → el popup salía blanco (y con
+   el texto de las opciones casi invisible). `color-scheme` hace que el
+   navegador lo dibuje con su paleta oscura, y el fondo/color explícitos en
+   <option> cubren a los navegadores que ignoran lo anterior.
+   Se hace aquí, global, para que valga también para los selects futuros. */
+body.jf-frontend-active select {
+    color-scheme: var(--md-sys-color-scheme, dark);
+}
+
+body.jf-frontend-active option {
+    background: var(--md-sys-color-surface-container-high, #141416);
+    color: var(--md-sys-color-on-surface, #fff);
+}
+
 /* touch-action: manipulation en los controles táctiles (Fase 7): elimina el
    retardo de 300 ms y el doble-tap-zoom del navegador. Solo mobile/tablet;
    desktop no lleva estas clases y sus botones quedan igual. */

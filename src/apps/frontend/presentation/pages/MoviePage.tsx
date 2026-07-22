@@ -101,7 +101,10 @@ function MovieHero({
                 actionId={`movie-${movie.id}`}
                 actionData={{ type: 'movie', movie }}
             />
-            <Backdrop src={movie.backdrop || ''} fadeBottom={0.92} itemId={movie.id} sharp />
+            <Backdrop
+                src={movie.backdrop || ''} srcs={movie.backdrops}
+                fadeBottom={0.92} itemId={movie.id} sharp
+            />
             <div style={{
                 position: 'absolute', inset: 0, pointerEvents: 'none',
                 background: `linear-gradient(to top, rgba(0,0,0,${scrim}) 0%, rgba(0,0,0,${(scrim * 0.45).toFixed(2)}) 24%, transparent 56%)`

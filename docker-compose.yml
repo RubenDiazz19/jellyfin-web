@@ -1,0 +1,22 @@
+services:
+  jellyfin-backend:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin-backend
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://localhost:8080
+    volumes:
+      - ./docker-config:/config
+      - ./docker-cache:/cache
+      - ./docker-media:/media
+    ports:
+      - "8096:8096"
+    restart: unless-stopped
+
+  jellyfin-web:
+    build: .
+    container_name: jellyfin-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - jellyfin-backend
+    restart: unless-stopped

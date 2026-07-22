@@ -210,8 +210,12 @@ function AuthedApp() {
 }
 
 function Root() {
-    const { session } = useSession();
+    const { session, hydrating } = useSession();
     const authed = !!session?.accessToken;
+    // Sin sesión sincrónica y aún restaurando desde storage: no pintamos el
+    // login (sería un flash molesto cada recarga). Cuando `hydrating` pasa a
+    // false, entra AuthedApp o LoginPage según el resultado del connect().
+    if (!authed && hydrating) return <PageFallback />;
     return authed ? <AuthedApp /> : <LoginPage />;
 }
 

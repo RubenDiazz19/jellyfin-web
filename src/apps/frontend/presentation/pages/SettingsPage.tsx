@@ -883,16 +883,13 @@ function SelectBox({
                 background: 'rgba(255,255,255,0.06)', color: T.fg,
                 border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
                 padding: '9px 12px', fontFamily: T.ui, fontSize: 13,
-                cursor: 'pointer', minWidth: 220, colorScheme: 'dark'
+                cursor: 'pointer', minWidth: 220
             }}
         >
+            {/* El popup nativo lo tiñe global.css (select/option): inline se
+                quedaba fijo en oscuro incluso con el tema claro de móvil. */}
             {options.map(([v, l]) => (
-                // El popup nativo del select no hereda los estilos del control:
-                // sin fondo/color explícitos, algunos Chromium pintan blanco
-                // sobre blanco (texto invisible).
-                <option key={v} value={v} style={{ background: '#141416', color: '#fff' }}>
-                    {l}
-                </option>
+                <option key={v} value={v}>{l}</option>
             ))}
         </select>
     );

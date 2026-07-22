@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+media
+docker-config
+docker-cache
+docker-media
+.git
+.direnv
+.idea
+.vs
+*.sw?

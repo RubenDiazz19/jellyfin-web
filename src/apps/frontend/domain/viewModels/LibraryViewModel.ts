@@ -4,6 +4,7 @@
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
+import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 
 export type LibraryKind = 'series' | 'movies';
@@ -16,8 +17,11 @@ export class LibraryViewModel {
     error = signal<string | null>(null);
 
     private seq = 0;
+    private subscribed = false;
 
-    constructor(private api: ApiService) {}
+    constructor(private api: ApiService) {
+        this.subscribeToMutations();
+    }
 
     async load(kind: LibraryKind) {
         const seq = ++this.seq;
@@ -49,6 +53,21 @@ export class LibraryViewModel {
         } finally {
             if (seq === this.seq) this.loading.value = false;
         }
+    }
+
+    // Cualquier mutación de item recarga la biblioteca activa: no sabemos si
+    // el item afectado está en la lista visible, y una lista de N pósters es
+    // barata frente a la fricción de recargar la página a mano.
+    private subscribeToMutations() {
+        if (this.subscribed || typeof window === 'undefined') return;
+        this.subscribed = true;
+        window.addEventListener(ITEM_MUTATED_EVENT, () => {
+            // Solo refetcheamos si la lista ya se pintó (no en montaje inicial
+            // sin datos, para no forzar cargas concurrentes).
+            const hasData = this.shows.value.length > 0 || this.movies.value.length > 0;
+            if (!hasData) return;
+            void this.load(this.kind.value);
+        });
     }
 }
 

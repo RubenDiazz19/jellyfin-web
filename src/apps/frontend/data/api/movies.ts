@@ -46,7 +46,13 @@ function mapMovie(item: JFItem): Movie {
         watched: played ? 1 : pct != null ? pct / 100 : 0,
         remaining: '',
         backdrop: backdrops[0] ?? '',
-        poster: imageUrl(item.Id, 'Primary', { maxHeight: 900 }) ?? '',
+        backdrops,
+        // El tag es el etag de esa imagen concreta: sin él, cambiar el póster
+        // en el editor no invalida el cache del navegador porque la URL sigue
+        // siendo la misma.
+        poster: imageUrl(item.Id, 'Primary', {
+            tag: item.ImageTags?.Primary, maxHeight: 900
+        }) ?? '',
         logo: item.ImageTags?.Logo ?
             imageUrl(item.Id, 'Logo', { tag: item.ImageTags.Logo, maxHeight: 400 }) ?? null :
             null
