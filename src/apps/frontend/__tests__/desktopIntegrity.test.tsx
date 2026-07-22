@@ -15,7 +15,7 @@ import { MobileNav } from '../presentation/components/nav/MobileNav';
 import { InstallBanner } from '../presentation/components/pwa/InstallBanner';
 import { OfflineIndicator } from '../presentation/components/pwa/OfflineIndicator';
 import { MobileThemeProvider } from '../presentation/theme/MobileThemeProvider';
-import { initAdaptiveLayout } from '../shared/adaptiveLayout';
+import { initAdaptiveLayout, resetAdaptiveLayout } from '../shared/adaptiveLayout';
 import { initPwa, registerServiceWorker, resetPwaForTests, watchStandalone } from '../shared/pwa';
 import { initRipple } from '../shared/ripple';
 
@@ -89,6 +89,10 @@ function renderShell() {
 describe('integridad desktop (regla cardinal)', () => {
     beforeEach(() => {
         resetPwaForTests();
+        resetAdaptiveLayout();
+        // Ancho de escritorio por defecto: el layout adaptativo por viewport
+        // solo entra por debajo de 1024px.
+        Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
         localStorage.clear();
         themeVM.setMode('dark');
         themeVM.setSeed(null);
@@ -108,6 +112,7 @@ describe('integridad desktop (regla cardinal)', () => {
         host = null;
         cleanups.forEach((fn) => { fn(); });
         cleanups.length = 0;
+        resetAdaptiveLayout();
         meta.remove();
         themeVM.setMode('dark');
         themeVM.setSeed(null);

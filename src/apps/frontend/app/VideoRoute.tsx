@@ -4,6 +4,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import loading from 'components/loading/loading';
 
 import { VideoPlayer } from '../presentation/components/player/VideoPlayer';
+import { initAdaptiveLayout } from '../shared/adaptiveLayout';
 // Si el usuario entra directo a /video (F5 o URL directa) esta ruta se monta
 // sin pasar por AppLayout — importar aquí garantiza que los estilos del
 // reproductor estén cargados sin depender del orden de navegación.
@@ -26,6 +27,10 @@ export const Component = () => {
         // bootstrap si se entra directo a /video.
         document.body.classList.add('jf-video-active');
         loading.hide();
+        // El layout táctil se deriva del viewport (los gestos del reproductor
+        // dependen de layout-mobile/tablet); imprescindible si se entra
+        // directo a /video sin pasar por AppLayout.
+        initAdaptiveLayout();
         return () => document.body.classList.remove('jf-video-active');
     }, []);
 
