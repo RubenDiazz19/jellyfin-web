@@ -145,9 +145,12 @@ function isApiRequest(request) {
 // ── Ciclo de vida ───────────────────────────────────────────────────────
 
 sw.addEventListener('install', (event) => {
+    // Solo '/': el manifest va hasheado a /assets/ en el build (vite
+    // reescribe el <link>), y addAll es atómico — un 404 tumbaría también
+    // el precache del shell.
     event.waitUntil(
         caches.open(SHELL_CACHE)
-            .then((cache) => cache.addAll(['/', '/manifest.json']))
+            .then((cache) => cache.addAll(['/']))
             .catch(() => null) // instalable aunque el precache falle
             .then(() => sw.skipWaiting())
     );

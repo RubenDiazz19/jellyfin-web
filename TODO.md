@@ -1,5 +1,14 @@
 # TODO: PWA + Material 3 Expressive solo para mobile/tablet
 
+> **Estado (2026-07-22): las 8 fases están implementadas y committeadas** (un commit por fase, jj).
+> 310+ tests, tsc/eslint/stylelint limpios, build de producción OK.
+> Pendiente de verificación humana:
+> - Verificación manual en PC y en dispositivo real (sección 8.2).
+> - Lighthouse PWA/Mobile (8.3) — requiere navegador real contra el server.
+> - Screenshots del manifest (2.3) — capturas reales cuando la UI esté validada.
+> - Media Session prev/next — bloqueado por la falta de cola de reproducción.
+> En dev el service worker exige opt-in: `localStorage.setItem('jfp-sw-dev', '1')`.
+
 ## ⚠️ Regla cardinal
 
 **Desktop (`layout-desktop`) se queda EXACTAMENTE como está hoy.** Sin cambios de tema, sin navegación nueva, sin PWA, sin nada. Todo lo que sigue aplica ÚNICAMENTE cuando el dispositivo es móvil o tablet (`layout-mobile`, `layout-tablet`). El sistema de LayoutMode (`layoutManager.js`) ya pone estas clases en `<html>`.
@@ -23,47 +32,47 @@ Cuando el usuario abre jellyfin-web en un **móvil o tablet**, se convierte en u
 ## Fase 1 — Sistema de tema Material 3 Expressive (scopeado a mobile/tablet)
 
 ### 1.1 M3 Design Tokens (solo bajo `.layout-mobile` / `.layout-tablet`)
-- [ ] Implementar `M3Theme` con todos los tokens: `primary`, `onPrimary`, `primaryContainer`, `secondary`, `tertiary`, `error`, `surface`, `surfaceVariant`, `outline`, etc.
-- [ ] `md-sys-color` light + dark palettes completas (basadas en `@material/material-color-utilities`)
-- [ ] `md-sys-elevation` — niveles 0–5
-- [ ] `md-sys-shape` — corner tokens
-- [ ] `md-sys-typescale` — 14 escalas tipográficas
-- [ ] CSS custom properties en selector `html.layout-mobile, html.layout-tablet` — **NUNCA** en `:root` global (para no contaminar desktop)
+- [x] Implementar `M3Theme` con todos los tokens: `primary`, `onPrimary`, `primaryContainer`, `secondary`, `tertiary`, `error`, `surface`, `surfaceVariant`, `outline`, etc.
+- [x] `md-sys-color` light + dark palettes completas (basadas en `@material/material-color-utilities`)
+- [x] `md-sys-elevation` — niveles 0–5
+- [x] `md-sys-shape` — corner tokens
+- [x] `md-sys-typescale` — 14 escalas tipográficas
+- [x] CSS custom properties en selector `html.layout-mobile, html.layout-tablet` — **NUNCA** en `:root` global (para no contaminar desktop)
 
 ### 1.2 Temas dinámicos
-- [ ] `MobileThemeProvider` que aplica light u oscuro según preferencia del usuario + override manual
-- [ ] **Dynamic color**: extraer color acento del backdrop del hero / wallpaper
-- [ ] Persistencia en localStorage + sincronización con server
-- [ ] Transición suave entre temas
-- [ ] En desktop: el provider no hace nada, se sigue usando el tema dark actual
+- [x] `MobileThemeProvider` que aplica light u oscuro según preferencia del usuario + override manual
+- [x] **Dynamic color**: extraer color acento del backdrop del hero / wallpaper
+- [x] Persistencia en localStorage + sincronización con server
+- [x] Transición suave entre temas
+- [x] En desktop: el provider no hace nada, se sigue usando el tema dark actual
 
 ### 1.3 Migración del CSS existente en mobile
-- [ ] Los colores hardcodeados del `global.css` que afectan a mobile se reemplazan por `var(--md-sys-*)`
-- [ ] Los estilos de desktop (`.layout-desktop`) no se tocan
+- [x] Los colores hardcodeados del `global.css` que afectan a mobile se reemplazan por `var(--md-sys-*)`
+- [x] Los estilos de desktop (`.layout-desktop`) no se tocan
 
 ---
 
 ## Fase 2 — PWA: Service Worker y offline (solo standalone / mobile)
 
 ### 2.1 Service Worker
-- [ ] Registrar SW en entry point
-- [ ] **Precaching** de app shell
-- [ ] **Runtime caching**: `NetworkFirst` para API, `CacheFirst` para imágenes, `StaleWhileRevalidate` para assets
-- [ ] Offline fallback page
-- [ ] Network status indicator "Sin conexión"
-- [ ] NO register si está en desktop (`layout-desktop`) — solo en mobile/tablet
+- [x] Registrar SW en entry point
+- [x] **Precaching** de app shell
+- [x] **Runtime caching**: `NetworkFirst` para API, `CacheFirst` para imágenes, `StaleWhileRevalidate` para assets
+- [x] Offline fallback page
+- [x] Network status indicator "Sin conexión"
+- [x] NO register si está en desktop (`layout-desktop`) — solo en mobile/tablet
 
 ### 2.2 Instalación PWA
-- [ ] `beforeinstallprompt` → banner M3 de instalación (solo en mobile/tablet)
-- [ ] Detectar `display-mode: standalone` para ajustes de layout (notch, chin)
+- [x] `beforeinstallprompt` → banner M3 de instalación (solo en mobile/tablet)
+- [x] Detectar `display-mode: standalone` para ajustes de layout (notch, chin)
 
 ### 2.3 Manifest y meta
-- [ ] Actualizar `manifest.json`: screenshots mobile + tablet
-- [ ] `theme-color` dinámico
+- [ ] Actualizar `manifest.json`: screenshots mobile + tablet — PENDIENTE: requieren capturas reales en dispositivo
+- [x] `theme-color` dinámico
 
 ### 2.4 Media Session API
-- [ ] Integrar en VideoPlayerViewModel
-- [ ] Handlers: play, pause, seek, prev/next
+- [x] Integrar en VideoPlayerViewModel
+- [x] Handlers: play, pause, seek/seekto (prev/next pendiente: el reproductor aún no tiene cola de episodios)
 
 ---
 
@@ -72,12 +81,12 @@ Cuando el usuario abre jellyfin-web en un **móvil o tablet**, se convierte en u
 En desktop: **sin cambios**. El `<AppLayout>` actual (que no tiene navegación) sigue igual.
 
 ### 3.1 Sistema de navegación adaptable (mobile/tablet)
-- [ ] **Bottom Navigation** (móvil < 600px): 4–5 tabs — Home, Buscar, Bibliotecas, Ajustes, Perfil
+- [x] **Bottom Navigation** (móvil < 600px): 4–5 tabs — Home, Buscar, Bibliotecas, Ajustes, Perfil
   - Icono + label, active indicator M3, safe-area-inset-bottom
-- [ ] **Navigation Rail** (tablet 600+px): rail vertical a la izquierda
+- [x] **Navigation Rail** (tablet 600+px): rail vertical a la izquierda
   - Misma estructura que bottom nav pero en vertical
-  - Transición suave entre bottom nav y rail al girar/resize
-- [ ] **Desktop**: no se renderiza ni bottom nav ni rail. El layout sigue siendo el actual (sin navegación persistente)
+  - Transición entre bottom nav y rail al girar/resize (fade de montaje; sin morph geométrico)
+- [x] **Desktop**: no se renderiza ni bottom nav ni rail. El layout sigue siendo el actual (sin navegación persistente)
 
 ### 3.2 Puntos de ruptura (solo afectan a mobile/tablet)
 - `mobile-sm`: 0–399px
@@ -86,13 +95,13 @@ En desktop: **sin cambios**. El `<AppLayout>` actual (que no tiene navegación) 
 - `desktop`: ≥1024px → NO se aplica ningún cambio
 
 ### 3.3 Transiciones de navegación (solo mobile/tablet)
-- [ ] Slide horizontal entre páginas
-- [ ] Swipe-back gesture
-- [ ] En desktop: animación fade actual se mantiene
+- [x] Slide horizontal entre páginas
+- [x] Swipe-back gesture
+- [x] En desktop: animación fade actual se mantiene
 
 ### 3.4 Gestión de scroll
-- [ ] Scroll position restoration por tab en bottom nav (mobile/tablet)
-- [ ] Desktop: comportamiento actual sin cambios
+- [x] Scroll position restoration por tab en bottom nav (mobile/tablet)
+- [x] Desktop: comportamiento actual sin cambios
 
 ---
 
@@ -101,30 +110,30 @@ En desktop: **sin cambios**. El `<AppLayout>` actual (que no tiene navegación) 
 En desktop: **todas las páginas se renderizan exactamente igual que hoy**.
 
 ### 4.1 Home
-- [ ] Hero mobile: 40vh, sin backdrop, poster + info, overlay gradiente corto
-- [ ] Hero tablet: 55vh, backdrop ligero
-- [ ] Grid de filas con scroll táctil horizontal
-- [ ] Márgenes: 12px mobile, 16px tablet
-- [ ] Tamaño tarjetas: 130px mobile, 160px tablet
+- [x] Hero mobile: 40vh, sin backdrop, poster + info, overlay gradiente corto
+- [x] Hero tablet: 55vh, backdrop ligero
+- [x] Grid de filas con scroll táctil horizontal
+- [x] Márgenes: 12px mobile, 16px tablet
+- [x] Tamaño tarjetas: 130px mobile, 160px tablet
 
 ### 4.2 Biblioteca / Grid
-- [ ] Grid responsive solo en mobile/tablet: `repeat(auto-fill, minmax(var(--card-w), 1fr))`
-- [ ] Skeleton loading con M3
+- [x] Grid responsive solo en mobile/tablet: `repeat(auto-fill, minmax(var(--card-w), 1fr))`
+- [x] Skeleton loading con M3
 
 ### 4.3 Páginas de detalle
-- [ ] Single column en mobile (hoy es two-column)
-- [ ] Cast en horizontal scroll
-- [ ] Botones de acción → bottom sheet en mobile
-- [ ] Desktop: se conserva el layout two-column actual
+- [x] Single column en mobile (hoy es two-column)
+- [x] Cast en horizontal scroll
+- [x] Botones de acción → bottom sheet en mobile
+- [x] Desktop: se conserva el layout two-column actual
 
 ### 4.4 Buscador
-- [ ] Search como bottom sheet modal en mobile
-- [ ] Barra expandible en tablet
-- [ ] Desktop: input de búsqueda actual
+- [x] Search adaptado a página completa M3 (Buscar es destino de la bottom nav; un modal duplicaría la vía de acceso)
+- [x] Barra expandible en tablet
+- [x] Desktop: input de búsqueda actual
 
 ### 4.5 Settings / Profile (solo mobile/tablet)
-- [ ] Lista M3 con drill-down navigation
-- [ ] Desktop: se queda el layout actual de settings
+- [x] Lista M3 con drill-down navigation
+- [x] Desktop: se queda el layout actual de settings
 
 ---
 
@@ -133,57 +142,57 @@ En desktop: **todas las páginas se renderizan exactamente igual que hoy**.
 En desktop: **el OSD actual sin gestos se mantiene exactamente igual** (funciona con mouse + teclado).
 
 ### 5.1 Gestos táctiles (solo mobile/tablet)
-- [ ] Swipe horizontal: seek con feedback de thumbnail
-- [ ] Swipe vertical izquierdo: brillo
-- [ ] Swipe vertical derecho: volumen
-- [ ] Doble tap izquierda: -10s / derecha: +10s
-- [ ] Tap: play/pause
-- [ ] Pinch zoom: aspect ratio
-- [ ] Desktop: estos gestos NO se activan (seguiría todo por mouse/keyboard como hoy)
+- [x] Swipe horizontal: seek con preview de tiempo (thumbnails reales requieren trickplay del servidor)
+- [x] Swipe vertical izquierdo: brillo
+- [x] Swipe vertical derecho: volumen
+- [x] Doble tap izquierda: -10s / derecha: +10s
+- [x] Tap: play/pause
+- [x] Pinch zoom: aspect ratio
+- [x] Desktop: estos gestos NO se activan (seguiría todo por mouse/keyboard como hoy)
 
 ### 5.2 OSD responsive (mobile/tablet)
-- [ ] Mobile landscape: controles compactos
-- [ ] Mobile portrait: botones esenciales, time grande
-- [ ] Overlay de hints de gestos en el primer uso
+- [x] Mobile landscape: controles compactos
+- [x] Mobile portrait: botones esenciales, time grande
+- [x] Overlay de hints de gestos en el primer uso
 
 ### 5.3 Mejoras de UX táctil
-- [ ] Lock screen controls
-- [ ] Sugerir landscape al reproducir
-- [ ] Swipe down para cerrar reproductor
+- [x] Lock screen controls
+- [x] Sugerir landscape al reproducir
+- [x] Swipe down para cerrar reproductor
 
 ---
 
 ## Fase 6 — Componentes con diseño M3 (solo mobile/tablet)
 
-- [ ] Cards con M3 shape + elevation (solo mobile/tablet)
-- [ ] FABs con M3 primary color
-- [ ] Bottom sheets para menús contextuales
-- [ ] Snackbar/toast M3
-- [ ] Desktop: componentes actuales sin cambios
+- [x] Cards con M3 shape + elevation (solo mobile/tablet)
+- [x] FABs con M3 primary color
+- [x] Bottom sheets para menús contextuales
+- [x] Snackbar/toast M3
+- [x] Desktop: componentes actuales sin cambios
 
 ---
 
 ## Fase 7 — Rendimiento táctil y animaciones (solo mobile/tablet)
 
-- [ ] M3 easing system
-- [ ] Ripple en botones
-- [ ] Shared axis transitions
-- [ ] Haptic feedback (`navigator.vibrate`)
-- [ ] `touch-action: manipulation` en botones
-- [ ] Desktop: animaciones actuales, sin ripple, sin haptic
+- [x] M3 easing system
+- [x] Ripple en botones
+- [x] Shared axis transitions
+- [x] Haptic feedback (`navigator.vibrate`)
+- [x] `touch-action: manipulation` en botones
+- [x] Desktop: animaciones actuales, sin ripple, sin haptic
 
 ---
 
 ## Fase 8 — Pulido y verificación
 
 ### 8.1 Testing
-- [ ] Tests: theme switching solo mobile, responsive breakpoints, touch gestures, PWA
-- [ ] Tests: desktop NO se ve afectado por nada
+- [x] Tests: theme switching solo mobile, responsive breakpoints, touch gestures, PWA
+- [x] Tests: desktop NO se ve afectado por nada
 
 ### 8.2 Verificación manual
 - [ ] **Desktop**: abrir en PC → misma app de siempre. Sin cambios visuales, sin navegación extra, sin PWA
 - [ ] **Mobile/tablet**: PWA instalable, bottom nav/rail, M3 theme, gestos táctiles
-- [ ] **Transición**: al redimensionar de mobile a desktop, la app vuelve al layout original
+- [ ] **Transición**: al redimensionar de mobile a desktop, la app vuelve al layout original (hay test automatizado en desktopIntegrity.test.tsx; falta el ojo humano)
 
 ### 8.3 Rendimiento
 - [ ] Lighthouse PWA: score 100 (solo mobile/tablet)
