@@ -483,6 +483,27 @@ capturas:
 
 ---
 
+## Fase 25 — Fix: el menú de pistas se movía bajo el cursor ✓
+
+Síntoma: elegir subtítulos/audio funcionaba «a veces sí, a veces no»; el menú
+parecía moverse al pulsar una pista y el click fallaba. Causa: el panel se
+anclaba (`position: absolute; right: 0`) al botón de ajustes, y ese botón se
+desplaza horizontalmente cuando aparecen/desaparecen los botones condicionales
+del OSD (Cast cuando hay un Chromecast en la red, PiP). Al parpadear la
+disponibilidad de Cast justo durante el click, el menú saltaba y el puntero
+quedaba sobre otra pista. En headless no se reproducía porque sin Chromecast el
+botón Cast nunca aparece.
+
+- [x] El panel se ancla ahora a `.jfp-video-controls` (la barra, estable) en
+      vez de al botón: quitado `position: relative` de `.jfp-video-settings` y
+      el menú se posiciona `right: 24px; bottom: 68px` respecto a la barra.
+- [x] Verificado E2E: inyectando botones a izquierda/derecha del cluster
+      (simulando que aparece Cast) el borde del menú se mantiene a 24 px del
+      borde de la barra (antes se desplazaba), y la selección de subtítulos/
+      audio sigue aplicándose correctamente.
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |

@@ -625,13 +625,18 @@ html body.jf-video-active .dialogBackdropOpened {
 }
 
 .jfp-video-settings {
-    position: relative;
+    /* Sin `position: relative` a propósito: el panel se ancla a
+       `.jfp-video-controls` (la barra, estable) y NO a este botón, que se
+       desplaza cuando aparecen/desaparecen botones condicionales (Cast/PiP).
+       Si se anclara al botón, el menú se movía bajo el cursor y el click en
+       una pista fallaba de forma intermitente. */
+    display: inline-flex;
 }
 
 .jfp-video-settings-menu {
     position: absolute;
-    right: 0;
-    bottom: 56px;
+    right: 24px;
+    bottom: 68px;
     z-index: 4;
     display: flex;
     flex-direction: column;
