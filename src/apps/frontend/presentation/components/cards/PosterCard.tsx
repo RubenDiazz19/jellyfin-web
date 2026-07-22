@@ -6,6 +6,7 @@ import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
 import { PROTO_DATA } from '../../../domain/models';
+import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
 
 // El "slide" mínimo que necesita esta card. Encaja tanto con un show
@@ -19,10 +20,18 @@ type Slide = {
     backdrop?: string;
 };
 
-type Props = { slide: Slide; navigate: Navigate };
+type Props = {
+    slide: Slide;
+    navigate: Navigate;
+    /** En grids (librería touch) la card llena su columna en vez de fijar ancho. */
+    fluid?: boolean;
+};
 
 // Póster vertical de serie (fila de home y librería).
-export const PosterCard = React.memo(function PosterCardBase({ slide, navigate }: Props) {
+export const PosterCard = React.memo(function PosterCardBase({ slide, navigate, fluid }: Props) {
+    const r = useResponsive();
+    // 130/160 en mobile/tablet (spec 4.1); desktop conserva 230.
+    const w = r.touch ? r.cardW : 230;
     useWatchedVersion();
     const show = PROTO_DATA.shows[slide.id];
     const seasons = show?.seasons || [];
@@ -37,7 +46,9 @@ export const PosterCard = React.memo(function PosterCardBase({ slide, navigate }
     return (
         <div
             onClick={() => navigate({ page: 'show', showId: slide.id })}
-            style={{ width: 230, flex: '0 0 230px', cursor: 'pointer' }}
+            style={fluid ?
+                { width: '100%', cursor: 'pointer' } :
+                { width: w, flex: `0 0 ${w}px`, cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
             <div

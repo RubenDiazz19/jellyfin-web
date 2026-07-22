@@ -4,6 +4,7 @@ import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
 import { EmptyState } from '../components/skeleton/Skeleton';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type Props = { name: string; navigate: Navigate };
@@ -12,6 +13,7 @@ type Props = { name: string; navigate: Navigate };
 // los datos locales — todo item cuyo `cast[]` contenga a esa persona.
 // El "papel" que se muestra en la ficha es el primer role encontrado.
 export function PersonPage({ name, navigate }: Props) {
+    const r = useResponsive();
     const shows: { show: Show; role: string; photo?: string | null }[] = [];
     const movies: { movie: Movie; role: string; photo?: string | null }[] = [];
 
@@ -32,8 +34,8 @@ export function PersonPage({ name, navigate }: Props) {
         <>
             <Nav navigate={navigate} breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: name }]} />
             <section style={{
-                background: '#000', color: '#fff', minHeight: '100vh',
-                padding: '120px 56px 96px', fontFamily: T.ui
+                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
+                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
             }}>
                 <div style={{
                     display: 'grid', gridTemplateColumns: '260px 1fr', gap: 56, marginBottom: 72

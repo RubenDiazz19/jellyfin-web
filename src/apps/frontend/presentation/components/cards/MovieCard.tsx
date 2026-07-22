@@ -4,6 +4,7 @@ import { formatRuntime } from '../../theme/format';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
+import { useResponsive } from '../../theme/responsive';
 import type { Movie } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 
@@ -11,12 +12,14 @@ type Props = { movie: Movie; navigate: Navigate };
 
 // Póster vertical de película para las filas de la home.
 export const MovieCard = React.memo(function MovieCardBase({ movie, navigate }: Props) {
+    const r = useResponsive();
+    const w = r.touch ? r.cardW : 230;
     const inProgress = (movie.watched ?? 0) > 0 && (movie.watched ?? 0) < 1;
     const cover = movie.poster || movie.backdrop;
     return (
         <div
             onClick={() => navigate({ page: 'movie', movieId: movie.id })}
-            style={{ width: 230, flex: '0 0 230px', cursor: 'pointer' }}
+            style={{ width: w, flex: `0 0 ${w}px`, cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
             <div style={{

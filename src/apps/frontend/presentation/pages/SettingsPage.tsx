@@ -13,6 +13,9 @@ import {
     type CurrentUser, type UserConfig, type SubtitleMode,
     type UserView, type UserListEntry, type SystemInfo
 } from '../../domain/api';
+import { MC, useResponsive } from '../theme/responsive';
+import { useMobileTheme } from '../theme/MobileThemeProvider';
+import type { ThemeMode } from '../../domain/viewModels/ThemeViewModel';
 import type { Navigate } from '../../app/router';
 
 // Ajustes de usuario contra la API real de Jellyfin: la idea es no tener que
@@ -22,6 +25,9 @@ import type { Navigate } from '../../app/router';
 // propia app (#/dashboard).
 
 type SectionId = 'perfil' | 'reproduccion' | 'subtitulos' | 'bibliotecas' | 'servidor' | 'usuarios';
+
+// En móvil hay una sección extra (tema M3) que en desktop no existe.
+type MobileSectionId = SectionId | 'apariencia';
 
 type GoDashboard = (sub?: string) => void;
 
@@ -62,8 +68,14 @@ const BITRATES: [number, string][] = [
 export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navigate; initial?: SectionId }) {
     const { session, logout } = useSession();
     const toast = useToast();
+    const r = useResponsive();
     const isReal = !!session?.accessToken;
     const [section, setSection] = useState<SectionId>(initial);
+    // Drill-down móvil: null = lista de secciones. Entrar por /profile abre
+    // Perfil directamente; entrar por /settings muestra la lista.
+    const [mobileOpen, setMobileOpen] = useState<MobileSectionId | null>(
+        initial === 'perfil' ? 'perfil' : null
+    );
     const [user, setUser] = useState<CurrentUser | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     // useNavigate del router raíz: el dashboard embebido (apps/dashboard) vive
@@ -104,6 +116,109 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
         ...(user?.isAdmin ? [{ id: 'usuarios' as SectionId, label: 'Usuarios' }] : [])
     ];
 
+    // Panel de una sección — compartido por el layout de escritorio (dos
+    // columnas) y el drill-down móvil.
+    const renderPanel = (id: SectionId) => (
+        <>
+            {id === 'perfil' && (
+                <ProfileSection
+                    user={user as CurrentUser}
+                    serverUrl={session?.serverUrl ?? ''}
+                    onAvatarChange={() => {
+                        getCurrentUser().then(setUser).catch(() => {});
+                    }}
+                    logout={logout}
+                />
+            )}
+            {id === 'reproduccion' && (
+                <PlaybackSection config={(user as CurrentUser).config} patch={patchConfig} />
+            )}
+            {id === 'subtitulos' && (
+                <SubtitleSection config={(user as CurrentUser).config} patch={patchConfig} />
+            )}
+            {id === 'bibliotecas' && (
+                <LibrariesSection isAdmin={!!user?.isAdmin} goDashboard={goDashboard} />
+            )}
+            {id === 'servidor' && (
+                <ServerSection isAdmin={!!user?.isAdmin} goDashboard={goDashboard} />
+            )}
+            {id === 'usuarios' && user?.isAdmin && (
+                <UsersSection goDashboard={goDashboard} />
+            )}
+        </>
+    );
+
+    // Estado de carga común (sesión/errores) — null cuando ya hay usuario.
+    const status = !isReal ? (
+        <div style={{ color: T.dim, fontSize: 14 }}>
+            Inicia sesión en un servidor Jellyfin para gestionar tus ajustes.
+        </div>
+    ) : loadError ? (
+        <div style={{ color: '#ff6b6b', fontSize: 14 }}>{loadError}</div>
+    ) : !user ? (
+        <div style={{
+            color: T.dim, fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
+        }}>
+            Cargando…
+        </div>
+    ) : null;
+
+    // ── Layout móvil/tablet: lista M3 con drill-down (spec 4.5) ─────────
+    if (r.touch) {
+        return (
+            <>
+                <Nav navigate={navigate} breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: 'Ajustes' }]} />
+                <section style={{
+                    background: MC.bg, color: MC.fg, minHeight: '100vh',
+                    padding: `76px ${r.pagePad + 4}px 48px`, fontFamily: T.ui
+                }}>
+                    {mobileOpen === null ? (
+                        <>
+                            <h1 style={{
+                                fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
+                                fontSize: 32, margin: '0 0 18px', letterSpacing: -0.5
+                            }}>
+                                Ajustes
+                            </h1>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <MobileSettingsItem
+                                    label='Apariencia'
+                                    hint='Tema claro / oscuro y color dinámico'
+                                    onClick={() => setMobileOpen('apariencia')}
+                                />
+                                {sections.map((item) => (
+                                    <MobileSettingsItem
+                                        key={item.id}
+                                        label={item.label}
+                                        onClick={() => setMobileOpen(item.id)}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => setMobileOpen(null)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    margin: '0 0 20px', padding: '8px 0',
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    color: 'var(--md-sys-color-primary, #fff)',
+                                    fontFamily: T.ui, fontSize: 14, fontWeight: 500
+                                }}
+                            >
+                                ‹ Ajustes
+                            </button>
+                            {mobileOpen === 'apariencia' ?
+                                <AppearanceSection /> :
+                                (status ?? renderPanel(mobileOpen))}
+                        </>
+                    )}
+                </section>
+            </>
+        );
+    }
+
     return (
         <>
             <Nav navigate={navigate} breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: 'Ajustes' }]} />
@@ -142,47 +257,7 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
                     </nav>
 
                     <div>
-                        {!isReal ? (
-                            <div style={{ color: T.dim, fontSize: 14 }}>
-                                Inicia sesión en un servidor Jellyfin para gestionar tus ajustes.
-                            </div>
-                        ) : loadError ? (
-                            <div style={{ color: '#ff6b6b', fontSize: 14 }}>{loadError}</div>
-                        ) : !user ? (
-                            <div style={{
-                                color: T.dim, fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
-                            }}>
-                                Cargando…
-                            </div>
-                        ) : (
-                            <>
-                                {section === 'perfil' && (
-                                    <ProfileSection
-                                        user={user}
-                                        serverUrl={session?.serverUrl ?? ''}
-                                        onAvatarChange={() => {
-                                            getCurrentUser().then(setUser).catch(() => {});
-                                        }}
-                                        logout={logout}
-                                    />
-                                )}
-                                {section === 'reproduccion' && (
-                                    <PlaybackSection config={user.config} patch={patchConfig} />
-                                )}
-                                {section === 'subtitulos' && (
-                                    <SubtitleSection config={user.config} patch={patchConfig} />
-                                )}
-                                {section === 'bibliotecas' && (
-                                    <LibrariesSection isAdmin={user.isAdmin} goDashboard={goDashboard} />
-                                )}
-                                {section === 'servidor' && (
-                                    <ServerSection isAdmin={user.isAdmin} goDashboard={goDashboard} />
-                                )}
-                                {section === 'usuarios' && user.isAdmin && (
-                                    <UsersSection goDashboard={goDashboard} />
-                                )}
-                            </>
-                        )}
+                        {status ?? renderPanel(section)}
                     </div>
                 </div>
             </section>
@@ -640,7 +715,95 @@ function UsersSection({ goDashboard }: { goDashboard: GoDashboard }) {
     );
 }
 
+// ── Apariencia (solo móvil/tablet): tema M3 ─────────────────────────────────
+
+function AppearanceSection() {
+    const { mode, setMode } = useMobileTheme();
+    const options: [ThemeMode, string, string][] = [
+        ['system', 'Según el sistema', 'Sigue el tema claro/oscuro del dispositivo'],
+        ['dark', 'Oscuro', 'El aspecto clásico de la app'],
+        ['light', 'Claro', 'El pulido de componentes en claro llega en próximas fases']
+    ];
+    return (
+        <div>
+            <SectionTitle>Apariencia</SectionTitle>
+            <div role='radiogroup' aria-label='Tema'>
+                {options.map(([value, label, hint]) => {
+                    const active = mode === value;
+                    return (
+                        <button
+                            key={value}
+                            role='radio'
+                            aria-checked={active}
+                            onClick={() => setMode(value)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                                textAlign: 'left', padding: '14px 4px',
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                borderBottom: `1px solid ${MC.outlineVariant}`,
+                                color: 'inherit', fontFamily: T.ui
+                            }}
+                        >
+                            <span style={{
+                                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                                border: `2px solid ${active ? MC.primary : MC.onSurfaceVariant}`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                {active && (
+                                    <span style={{
+                                        width: 10, height: 10, borderRadius: '50%',
+                                        background: MC.primary
+                                    }} />
+                                )}
+                            </span>
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 15 }}>{label}</div>
+                                <div style={{ fontSize: 12, color: MC.onSurfaceVariant, marginTop: 2 }}>
+                                    {hint}
+                                </div>
+                            </span>
+                        </button>
+                    );
+                })}
+            </div>
+            <div style={{ fontSize: 12, color: MC.onSurfaceVariant, marginTop: 18, lineHeight: 1.5 }}>
+                El tema solo se aplica en móvil y tablet. El color de acento se
+                adapta solo a la imagen del título en pantalla (dynamic color).
+            </div>
+        </div>
+    );
+}
+
 // ── Piezas de UI compartidas ────────────────────────────────────────────────
+
+function MobileSettingsItem({
+    label, hint, onClick
+}: {
+    label: string; hint?: string; onClick: () => void;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            style={{
+                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                textAlign: 'left', padding: '16px 4px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: `1px solid ${MC.outlineVariant}`,
+                color: 'inherit', fontFamily: T.ui
+            }}
+        >
+            <span style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15 }}>{label}</div>
+                {hint && (
+                    <div style={{ fontSize: 12, color: MC.onSurfaceVariant, marginTop: 2 }}>
+                        {hint}
+                    </div>
+                )}
+            </span>
+            <span aria-hidden='true' style={{ color: MC.onSurfaceVariant, fontSize: 18 }}>›</span>
+        </button>
+    );
+}
 
 function SectionTitle({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
     return (

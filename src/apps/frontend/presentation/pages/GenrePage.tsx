@@ -4,6 +4,7 @@ import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
 import { EmptyState } from '../components/skeleton/Skeleton';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type Props = { genre: string; navigate: Navigate };
@@ -11,6 +12,7 @@ type Props = { genre: string; navigate: Navigate };
 // Página de género: agrupa series y películas cuyo `genres` contiene el género.
 // Se muestra en dos secciones (series primero, películas después).
 export function GenrePage({ genre, navigate }: Props) {
+    const r = useResponsive();
     const g = genre.toLowerCase();
     const shows = Object.values(PROTO_DATA.shows).filter((s) =>
         s.genres.some((x) => x.toLowerCase() === g)
@@ -23,8 +25,8 @@ export function GenrePage({ genre, navigate }: Props) {
         <>
             <Nav navigate={navigate} breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: `Género · ${genre}` }]} />
             <section style={{
-                background: '#000', color: '#fff', minHeight: '100vh',
-                padding: '120px 56px 96px', fontFamily: T.ui
+                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
+                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
             }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 44 }}>
                     <h1 style={{

@@ -7,6 +7,7 @@ import {
     searchVM, type StateFilter, type TypeFilter
 } from '../../domain/viewModels/SearchViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 const TYPE_TABS: { id: TypeFilter; label: string }[] = [
@@ -25,6 +26,7 @@ const STATE_TABS: { id: StateFilter; label: string }[] = [
 export function SearchPage({ navigate }: { navigate: Navigate }) {
     // Todo el filtrado vive en SearchViewModel; la página solo pinta signals.
     useViewModel(searchVM);
+    const r = useResponsive();
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -47,19 +49,24 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
     const anyFilterActive = searchVM.anyFilterActive.value;
 
     return (
-        <div style={{ minHeight: '100vh', background: '#0a0a0b', color: T.fg, fontFamily: T.ui }}>
+        <div style={{
+            minHeight: '100vh',
+            background: r.touch ? MC.bg : '#0a0a0b',
+            color: r.touch ? MC.fg : T.fg,
+            fontFamily: T.ui
+        }}>
             <Nav
                 navigate={navigate}
                 breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: 'Buscar' }]}
             />
 
-            <div style={{ padding: '80px 64px 0' }}>
-                <div style={{ position: 'relative', maxWidth: 720 }}>
+            <div style={{ padding: r.touch ? `72px ${r.pagePad}px 0` : '80px 64px 0' }}>
+                <div style={{ position: 'relative', maxWidth: r.touch ? undefined : 720 }}>
                     <div style={{
                         position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)',
                         color: T.dim, pointerEvents: 'none'
                     }}>
-                        <Ic.Search size={20} />
+                        <Ic.Search size={r.touch ? 18 : 20} />
                     </div>
                     <input
                         ref={inputRef}
@@ -68,10 +75,14 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                         placeholder='Buscar series, películas, actores…'
                         style={{
                             width: '100%', boxSizing: 'border-box',
-                            background: 'rgba(255,255,255,0.06)',
-                            border: '1px solid rgba(255,255,255,0.12)',
-                            borderRadius: 12, padding: '18px 20px 18px 52px',
-                            color: T.fg, fontFamily: T.ui, fontSize: 18, outline: 'none',
+                            background: r.touch ?
+                                'var(--md-sys-color-surface-container-high, rgba(255,255,255,0.06))' :
+                                'rgba(255,255,255,0.06)',
+                            border: r.touch ? 'none' : '1px solid rgba(255,255,255,0.12)',
+                            borderRadius: r.touch ? 'var(--md-sys-shape-corner-full, 28px)' : 12,
+                            padding: r.touch ? '15px 18px 15px 50px' : '18px 20px 18px 52px',
+                            color: 'inherit', fontFamily: T.ui,
+                            fontSize: r.touch ? 16 : 18, outline: 'none',
                             transition: 'border-color .2s'
                         }}
                         onFocus={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.35)')}
@@ -105,7 +116,7 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                 />
             </div>
 
-            <div style={{ padding: '36px 64px 80px' }}>
+            <div style={{ padding: r.touch ? `24px ${r.pagePad}px 56px` : '36px 64px 80px' }}>
                 {filtered.length === 0 ? (
                     q ? (
                         <EmptyState
@@ -138,8 +149,8 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                         </div>
                         <div style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                            gap: '28px 20px'
+                            gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? (r.mobile ? 110 : 140) : 160}px, 1fr))`,
+                            gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'
                         }}>
                             {filtered.map((item) => (
                                 <div
@@ -215,15 +226,23 @@ function FilterRow<T extends string>({
     active: T;
     onChange: (v: T) => void;
 }) {
+    const r = useResponsive();
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
-            <span style={{
-                fontSize: 10, letterSpacing: 3, textTransform: 'uppercase',
-                color: T.dim, minWidth: 60
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: r.touch ? 14 : 20 }}>
+            {!r.mobile && (
+                <span style={{
+                    fontSize: 10, letterSpacing: 3, textTransform: 'uppercase',
+                    color: T.dim, minWidth: 60
+                }}>
+                    {label}
+                </span>
+            )}
+            <div style={{
+                display: 'flex', gap: 8,
+                overflowX: r.touch ? 'auto' : undefined,
+                scrollbarWidth: r.touch ? 'none' : undefined,
+                paddingBottom: r.touch ? 2 : undefined
             }}>
-                {label}
-            </span>
-            <div style={{ display: 'flex', gap: 8 }}>
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}

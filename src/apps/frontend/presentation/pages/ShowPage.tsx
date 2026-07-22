@@ -15,6 +15,7 @@ import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 export type HeroTweaks = {
@@ -83,6 +84,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     const pos = HERO_POS[hero?.heroPos ?? 'Esquina'];
     const minimal = hero?.heroInfo === 'Mínima';
     const scrim = HERO_SCRIM[hero?.heroScrim ?? 'Media'];
+    const r = useResponsive();
     const { play } = usePlayer();
     const targetEp = show.seasons
         .find((s) => s.n === target.seasonN)
@@ -103,7 +105,10 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     };
     return (
         <section style={{
-            position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', background: '#000'
+            position: 'relative',
+            height: r.touch ? (r.mobile ? '68vh' : '78vh') : '100vh',
+            minHeight: r.touch ? 420 : undefined,
+            width: '100%', overflow: 'hidden', background: '#000'
         }}>
             <Nav
                 navigate={navigate}
@@ -125,7 +130,8 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             }} />
 
             <div style={{
-                position: 'absolute', inset: 0, padding: pos.pad,
+                position: 'absolute', inset: 0,
+                padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : pos.pad,
                 display: 'flex', flexDirection: 'column',
                 alignItems: pos.align, justifyContent: pos.justify,
                 textAlign: pos.text
@@ -164,14 +170,18 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                         alt={show.title}
                         decoding='async'
                         style={{
-                            maxWidth: 500, maxHeight: 170, width: 'auto', height: 'auto',
+                            maxWidth: r.touch ? 'min(78vw, 340px)' : 500,
+                            maxHeight: r.touch ? 110 : 170,
+                            width: 'auto', height: 'auto',
                             filter: 'drop-shadow(0 4px 60px rgba(0,0,0,0.5))', objectFit: 'contain'
                         }}
                     />
                 ) : (
                     <h1 style={{
-                        fontFamily: T.display, fontSize: 'clamp(76px, 9vw, 134px)', lineHeight: 0.92,
-                        margin: 0, fontWeight: 250, letterSpacing: -3,
+                        fontFamily: T.display,
+                        fontSize: r.touch ? 'clamp(36px, 9vw, 68px)' : 'clamp(76px, 9vw, 134px)',
+                        lineHeight: 0.92,
+                        margin: 0, fontWeight: 250, letterSpacing: r.touch ? -1 : -3,
                         textShadow: '0 4px 60px rgba(0,0,0,0.6)'
                     }}>
                         {show.title}
@@ -199,7 +209,10 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                     </div>
                 )}
 
-                <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{
+                    marginTop: r.touch ? 20 : 28, display: 'flex', alignItems: 'center',
+                    gap: r.touch ? 12 : 16, flexWrap: 'wrap'
+                }}>
                     <button
                         onClick={startPlay}
                         // Mismo motivo que PlayBtn: sin bloquear el focus nativo, Chrome
@@ -244,15 +257,21 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                             )}
                         </span>
                     </button>
-                    <button style={{
-                        display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px',
-                        background: 'transparent', color: '#fff',
-                        border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
-                        fontFamily: T.ui, fontSize: 12, fontWeight: 500, cursor: 'pointer'
-                    }}>
-                        <Ic.Plus size={14} /> Mi lista
-                    </button>
-                    <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
+                    {/* "Mi lista" es decorativo; en touch se oculta (las
+                        acciones reales van al bottom sheet de más opciones). */}
+                    {!r.touch && (
+                        <>
+                            <button style={{
+                                display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px',
+                                background: 'transparent', color: '#fff',
+                                border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
+                                fontFamily: T.ui, fontSize: 12, fontWeight: 500, cursor: 'pointer'
+                            }}>
+                                <Ic.Plus size={14} /> Mi lista
+                            </button>
+                            <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
+                        </>
+                    )}
                     <MoreButton
                         id={show.id} size={18} type='show' itemTitle={show.title}
                         nextEpisodeId={
@@ -270,13 +289,22 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
 }
 
 function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
+    const r = useResponsive();
     return (
         <section style={{
-            background: '#000', color: '#fff', padding: '32px 56px 96px', fontFamily: T.ui
+            background: r.touch ? MC.bg : '#000',
+            color: r.touch ? MC.fg : '#fff',
+            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px',
+            fontFamily: T.ui
         }}>
             {/* minmax(0,…) evita el grid blowout: sin él el track 1fr no baja
-                del min-content del reparto y la rejilla desborda el viewport. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 64 }}>
+                del min-content del reparto y la rejilla desborda el viewport.
+                En touch la ficha es single column (spec 4.3). */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: r.touch ? 'minmax(0, 1fr)' : 'minmax(0, 1.6fr) minmax(0, 1fr)',
+                gap: r.touch ? 36 : 64
+            }}>
                 <div>
                     <div style={{
                         fontFamily: T.ui, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
@@ -334,8 +362,8 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                 </div>
             </div>
 
-            <div style={{ marginTop: 88 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 32 }}>
+            <div style={{ marginTop: r.touch ? 44 : 88 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: r.touch ? 18 : 32 }}>
                     <h3 style={{
                         fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
                     }}>
@@ -346,7 +374,7 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 22 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: r.touch ? r.gap : 22 }}>
                     {show.seasons.map((s) => (
                         <SeasonCard key={s.n} show={show} season={s} navigate={navigate} />
                     ))}

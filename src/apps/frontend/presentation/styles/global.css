@@ -188,6 +188,12 @@ html.layout-mobile:not(.layout-tablet) body.jf-frontend-active.jfp-has-nav {
     100% { background-position: 200% 0; }
 }
 
+/* Entrada del bottom sheet M3 (BottomSheet.tsx, solo mobile/tablet). */
+@keyframes jfp-sheet-in {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+}
+
 .jfp-fade-in { animation: jfp-fade-in 0.6s ease-out both; }
 
 .jfp-hoverlift {
@@ -221,6 +227,20 @@ body.jf-frontend-active * { scrollbar-width: none; }
     background-size: 200% 100%;
     animation: jfp-skeleton 1.6s ease-in-out infinite;
     border-radius: 4px;
+}
+
+/* Skeleton con tonos surface M3 en mobile/tablet (desktop: reglas de arriba). */
+html.layout-mobile body.jf-frontend-active .jfp-skeleton,
+html.layout-tablet body.jf-frontend-active .jfp-skeleton {
+    background:
+        linear-gradient(
+            90deg,
+            var(--md-sys-color-surface-container, rgba(255, 255, 255, 0.04)) 25%,
+            var(--md-sys-color-surface-container-high, rgba(255, 255, 255, 0.1)) 50%,
+            var(--md-sys-color-surface-container, rgba(255, 255, 255, 0.04)) 75%
+        );
+    background-size: 200% 100%;
+    border-radius: var(--md-sys-shape-corner-small, 4px);
 }
 
 /* ---------------------------------------------------------------

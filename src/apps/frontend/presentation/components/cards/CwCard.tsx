@@ -5,6 +5,7 @@ import { WatchedButton } from '../controls/WatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { PlayBtn } from '../controls/PlayBtn';
 import { Progress } from '../controls/Progress';
+import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
 import type { CarouselSlide } from '../../../domain/models';
 
@@ -12,15 +13,19 @@ type Props = { slide: CarouselSlide; navigate: Navigate };
 
 // Tarjeta de "continuar viendo" (apaisada, con miniatura del episodio).
 export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props) {
+    const r = useResponsive();
+    // Apaisada 16:9 aprox — 380x214 en desktop; compacta en touch.
+    const w = r.touch ? (r.mobile ? 250 : 300) : 380;
+    const h = Math.round(w * 214 / 380);
     return (
         <div
             onClick={() => navigate({ page: 'show', showId: slide.id })}
-            style={{ width: 380, flex: '0 0 380px', cursor: 'pointer' }}
+            style={{ width: w, flex: `0 0 ${w}px`, cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
             <div
                 style={{
-                    height: 214, borderRadius: 4, overflow: 'hidden', position: 'relative',
+                    height: h, borderRadius: 4, overflow: 'hidden', position: 'relative',
                     backgroundImage: `url(${slide.backdrop})`, backgroundSize: 'cover', backgroundPosition: 'center'
                 }}
             >

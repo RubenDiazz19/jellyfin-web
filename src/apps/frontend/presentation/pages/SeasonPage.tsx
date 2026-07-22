@@ -9,6 +9,7 @@ import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type PageProps = { showId: string; seasonN: number; navigate: Navigate };
@@ -55,6 +56,7 @@ export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
 }
 
 function SeasonHero({ show, season, navigate }: { show: Show; season: Season; navigate: Navigate }) {
+    const r = useResponsive();
     const nextEp = season.episodes.find((e) => e.watched < 1) || season.episodes[0];
     const inProgress = nextEp && nextEp.watched > 0 && nextEp.watched < 1;
     const { play } = usePlayer();
@@ -96,7 +98,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1 }} />
 
             <div style={{
-                position: 'absolute', inset: 0, padding: '0 48px 110px',
+                position: 'absolute', inset: 0, padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : '0 48px 110px',
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
                 textAlign: 'center', zIndex: 2
@@ -157,9 +159,11 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
 }
 
 function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; navigate: Navigate }) {
+    const r = useResponsive();
     return (
         <section style={{
-            background: '#000', color: '#fff', padding: '32px 56px 96px', fontFamily: T.ui
+            background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
+            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px', fontFamily: T.ui
         }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 28 }}>
                 <h3 style={{

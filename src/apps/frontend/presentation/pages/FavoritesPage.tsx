@@ -9,11 +9,13 @@ import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { favoritesVM } from '../../domain/viewModels/FavoritesViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
 import { useFavListener } from '../../domain/bridge/useFav';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type Props = { navigate: Navigate };
 
 export function FavoritesPage({ navigate }: Props) {
+    const r = useResponsive();
     useViewModel(favoritesVM);
 
     useEffect(() => {
@@ -29,8 +31,8 @@ export function FavoritesPage({ navigate }: Props) {
         <>
             <Nav navigate={navigate} active='favorites' />
             <section style={{
-                background: '#000', color: '#fff', minHeight: '100vh',
-                padding: '120px 56px 96px', fontFamily: T.ui
+                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
+                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
             }}>
                 <h1 style={{
                     fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,

@@ -12,6 +12,8 @@ import {
 import { MetadataEditor, type EditorKind } from '../admin/editor';
 import { AddToDialog } from './AddToDialog';
 import { usePlayer } from '../player/PlayerProvider';
+import { BottomSheet } from '../m3/BottomSheet';
+import { useResponsive } from '../../theme/responsive';
 
 type MenuItem =
   | { isDivider: true }
@@ -44,6 +46,7 @@ export function MoreButton({
     const toast = useToast();
     const { session } = useSession();
     const { play } = usePlayer();
+    const r = useResponsive();
     const isReal = !!session?.accessToken;
 
     const doPlay = (opts: { fromStart?: boolean } = {}) => {
@@ -70,17 +73,20 @@ export function MoreButton({
 
     const openMenu = () => {
         if (open) { setOpen(false); return; }
-        const r = ref.current?.getBoundingClientRect();
-        if (r) {
-            const MENU_H = 540;
-            const GAP = 8;
-            const dropUp = r.bottom + MENU_H + GAP > window.innerHeight;
-            setMenuPos({
-                top: dropUp ? undefined : r.bottom + GAP,
-                bottom: dropUp ? window.innerHeight - r.top + GAP : undefined,
-                right: Math.max(12, window.innerWidth - r.right),
-                maxHeight: dropUp ? r.top - GAP - 12 : window.innerHeight - r.bottom - GAP - 12
-            });
+        // En touch el menú es un bottom sheet: no hay que anclar nada.
+        if (!r.touch) {
+            const rect = ref.current?.getBoundingClientRect();
+            if (rect) {
+                const MENU_H = 540;
+                const GAP = 8;
+                const dropUp = rect.bottom + MENU_H + GAP > window.innerHeight;
+                setMenuPos({
+                    top: dropUp ? undefined : rect.bottom + GAP,
+                    bottom: dropUp ? window.innerHeight - rect.top + GAP : undefined,
+                    right: Math.max(12, window.innerWidth - rect.right),
+                    maxHeight: dropUp ? rect.top - GAP - 12 : window.innerHeight - rect.bottom - GAP - 12
+                });
+            }
         }
         setOpen(true);
     };
@@ -185,7 +191,41 @@ export function MoreButton({
             <IconButton onClick={openMenu} ariaLabel='Más opciones' active={open}>
                 <Ic.Dots size={size} />
             </IconButton>
-            {open && menuPos && ReactDOM.createPortal(
+            {/* Touch: bottom sheet M3 (spec 4.3). Desktop: popup anclado. */}
+            {open && r.touch && (
+                <BottomSheet title={itemTitle} onClose={() => setOpen(false)}>
+                    {menu.map((it, i) =>
+                        'isDivider' in it ? (
+                            <div key={i} style={{
+                                height: 1, margin: '6px 16px',
+                                background: 'var(--md-sys-color-outline-variant, rgba(255,255,255,0.08))'
+                            }} />
+                        ) : 'isCustom' in it ? (
+                            <div key={i}>{it.component}</div>
+                        ) : (
+                            <button
+                                key={i}
+                                onClick={(e) => { e.stopPropagation(); it.fn(); setOpen(false); }}
+                                disabled={it.disabled}
+                                style={{
+                                    display: 'block', width: '100%', textAlign: 'left',
+                                    background: 'none', border: 'none',
+                                    color: it.disabled ? 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.35))' :
+                                        it.danger ? 'var(--md-sys-color-error, #ff6b6b)' :
+                                            'var(--md-sys-color-on-surface, #fff)',
+                                    cursor: it.disabled ? 'not-allowed' : 'pointer',
+                                    minHeight: 48, padding: '12px 16px',
+                                    fontSize: 15, fontFamily: T.ui,
+                                    borderRadius: 'var(--md-sys-shape-corner-large, 16px)'
+                                }}
+                            >
+                                {it.label}
+                            </button>
+                        )
+                    )}
+                </BottomSheet>
+            )}
+            {open && !r.touch && menuPos && ReactDOM.createPortal(
                 <div
                     style={{
                         position: 'fixed',

@@ -6,11 +6,13 @@ import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { libraryVM } from '../../domain/viewModels/LibraryViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type Props = { kind: 'series' | 'movies'; navigate: Navigate };
 
 export function LibraryPage({ kind, navigate }: Props) {
+    const r = useResponsive();
     useViewModel(libraryVM);
     useEffect(() => {
         void libraryVM.load(kind);
@@ -26,13 +28,19 @@ export function LibraryPage({ kind, navigate }: Props) {
         <>
             <Nav navigate={navigate} active={isSeries ? 'series' : 'movies'} />
             <section style={{
-                background: '#000', color: '#fff', minHeight: '100vh',
-                padding: '120px 56px 96px', fontFamily: T.ui
+                background: r.touch ? MC.bg : '#000',
+                color: r.touch ? MC.fg : '#fff',
+                minHeight: '100vh',
+                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px',
+                fontFamily: T.ui
             }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 44 }}>
+                <div style={{
+                    display: 'flex', alignItems: 'baseline', gap: 16,
+                    marginBottom: r.touch ? 22 : 44
+                }}>
                     <h1 style={{
                         fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
-                        fontSize: 52, margin: 0, letterSpacing: -0.5
+                        fontSize: r.touch ? 32 : 52, margin: 0, letterSpacing: -0.5
                     }}>
                         {title}
                     </h1>
@@ -53,10 +61,14 @@ export function LibraryPage({ kind, navigate }: Props) {
                     />
                 ) : (
                     <div style={{
-                        display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 28
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? r.cardW : 200}px, 1fr))`,
+                        gap: r.touch ? r.gap : 28
                     }}>
                         {isSeries ?
-                            libraryVM.shows.value.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />) :
+                            libraryVM.shows.value.map((s) => (
+                                <PosterCard key={s.id} slide={s} navigate={navigate} fluid={r.touch} />
+                            )) :
                             libraryVM.movies.value.map((m) => <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />)}
                     </div>
                 )}

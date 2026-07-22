@@ -13,6 +13,7 @@ import { MoreButton } from '../components/controls/MoreButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import type { HeroTweaks } from './ShowPage';
 
@@ -72,6 +73,7 @@ function MovieHero({
     const pos = HERO_POS[hero?.heroPos ?? 'Esquina'];
     const minimal = hero?.heroInfo === 'Mínima';
     const scrim = HERO_SCRIM[hero?.heroScrim ?? 'Media'];
+    const r = useResponsive();
     const { play } = usePlayer();
     const startPlay = () => {
         play({
@@ -84,7 +86,10 @@ function MovieHero({
     };
     return (
         <section style={{
-            position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', background: '#000'
+            position: 'relative',
+            height: r.touch ? (r.mobile ? '68vh' : '78vh') : '100vh',
+            minHeight: r.touch ? 420 : undefined,
+            width: '100%', overflow: 'hidden', background: '#000'
         }}>
             <Nav
                 navigate={navigate}
@@ -103,7 +108,8 @@ function MovieHero({
             }} />
 
             <div style={{
-                position: 'absolute', inset: 0, padding: pos.pad,
+                position: 'absolute', inset: 0,
+                padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : pos.pad,
                 display: 'flex', flexDirection: 'column',
                 alignItems: pos.align, justifyContent: pos.justify,
                 textAlign: pos.text
@@ -145,14 +151,18 @@ function MovieHero({
                             alt={movie.title}
                             decoding='async'
                             style={{
-                                maxWidth: 580, maxHeight: 200, width: 'auto', height: 'auto',
+                                maxWidth: r.touch ? 'min(78vw, 360px)' : 580,
+                                maxHeight: r.touch ? 120 : 200,
+                                width: 'auto', height: 'auto',
                                 filter: 'drop-shadow(0 4px 60px rgba(0,0,0,0.6))', objectFit: 'contain'
                             }}
                         />
                     ) : (
                         <h1 style={{
-                            fontFamily: T.display, fontSize: 'clamp(82px, 10vw, 150px)', lineHeight: 0.92,
-                            margin: 0, fontWeight: 250, letterSpacing: -2,
+                            fontFamily: T.display,
+                            fontSize: r.touch ? 'clamp(38px, 10vw, 72px)' : 'clamp(82px, 10vw, 150px)',
+                            lineHeight: 0.92,
+                            margin: 0, fontWeight: 250, letterSpacing: r.touch ? -1 : -2,
                             textShadow: '0 4px 60px rgba(0,0,0,0.6)', textWrap: 'balance'
                         }}>
                             {movie.title}
@@ -183,7 +193,10 @@ function MovieHero({
                         </div>
                     )}
 
-                    <div style={{ marginTop: 36, display: 'flex', alignItems: 'center', gap: 18 }}>
+                    <div style={{
+                        marginTop: r.touch ? 22 : 36, display: 'flex', alignItems: 'center',
+                        gap: r.touch ? 12 : 18, flexWrap: 'wrap', justifyContent: 'center'
+                    }}>
                         <button
                             onClick={startPlay}
                             // Mismo motivo que el hero de series: sin bloquear el focus
@@ -220,15 +233,22 @@ function MovieHero({
                                 {inProgress ? (btnHover ? remaining : 'Continuar viendo') : watched ? 'Visto' : 'Reproducir'}
                             </span>
                         </button>
-                        <button style={{
-                            display: 'flex', alignItems: 'center', gap: 8, padding: '13px 22px',
-                            background: 'transparent', color: '#fff',
-                            border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
-                            fontFamily: T.ui, fontSize: 13, fontWeight: 500, cursor: 'pointer'
-                        }}>
-                            <Ic.Plus size={14} /> Mi lista
-                        </button>
-                        <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
+                        {/* "Mi lista" es decorativo (sin handler); en touch se
+                            oculta para dejar sitio — sus acciones reales viven
+                            en el bottom sheet del botón de más opciones. */}
+                        {!r.touch && (
+                            <>
+                                <button style={{
+                                    display: 'flex', alignItems: 'center', gap: 8, padding: '13px 22px',
+                                    background: 'transparent', color: '#fff',
+                                    border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
+                                    fontFamily: T.ui, fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                                }}>
+                                    <Ic.Plus size={14} /> Mi lista
+                                </button>
+                                <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
+                            </>
+                        )}
                         {/* id real del server: descarga/metadata/imágenes lo
                             necesitan; el prefijo movie- es solo de los stores
                             locales y lo aplica MoreButton internamente. */}
@@ -243,13 +263,22 @@ function MovieHero({
 }
 
 function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) {
+    const r = useResponsive();
     return (
         <section style={{
-            background: '#000', color: '#fff', padding: '32px 56px 96px', fontFamily: T.ui
+            background: r.touch ? MC.bg : '#000',
+            color: r.touch ? MC.fg : '#fff',
+            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px',
+            fontFamily: T.ui
         }}>
             {/* minmax(0,…) evita el grid blowout: sin él el track 1fr no baja
-                del min-content del reparto y la rejilla desborda el viewport. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)', gap: 64 }}>
+                del min-content del reparto y la rejilla desborda el viewport.
+                En touch la ficha es single column (spec 4.3). */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: r.touch ? 'minmax(0, 1fr)' : 'minmax(0, 1.6fr) minmax(0, 1fr)',
+                gap: r.touch ? 36 : 64
+            }}>
                 <div>
                     <div style={{
                         fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',

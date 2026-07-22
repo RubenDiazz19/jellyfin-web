@@ -16,11 +16,14 @@ import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { SkeletonRow } from '../components/skeleton/Skeleton';
+import { MobileHero } from '../components/home/MobileHero';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 export function HomePage({ navigate }: { navigate: Navigate }) {
     const { session } = useSession();
     const { play } = usePlayer();
+    const r = useResponsive();
     const jellyfinMode = !!session?.accessToken;
     // En modo Jellyfin el carrusel se construye con datos reales (continuar
     // viendo + últimas series); en modo prototipo, con PROTO_DATA.
@@ -165,8 +168,10 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         return (
             <>
                 <section style={{
-                    position: 'relative', height: '100vh', width: '100%',
-                    overflow: 'hidden', background: '#000'
+                    position: 'relative',
+                    height: r.touch ? (r.tablet ? '55vh' : '40vh') : '100vh',
+                    width: '100%',
+                    overflow: 'hidden', background: r.touch ? MC.surface : '#000'
                 }}>
                     <Nav navigate={navigate} active='home' />
                 </section>
@@ -184,6 +189,24 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                 <div style={{ height: 80 }} />
                 <HomeLibrary navigate={navigate} />
             </div>
+        );
+    }
+
+    // Mobile/tablet: hero compacto propio (40vh/55vh). El estado del
+    // carrusel (idx, autoplay, goSlide) es el mismo que usa el de desktop.
+    if (r.touch) {
+        return (
+            <>
+                <Nav navigate={navigate} active='home' />
+                <MobileHero
+                    slides={slides}
+                    idx={idx}
+                    tablet={r.tablet}
+                    goSlide={goSlide}
+                    onPlay={onPlay}
+                />
+                <HomeLibrary navigate={navigate} />
+            </>
         );
     }
 
@@ -351,6 +374,14 @@ const HomeLibrary = React.memo(function HomeLibraryBase({ navigate }: { navigate
 });
 
 function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
+    const r = useResponsive();
+    const rowGap = r.touch ? r.gap : 24;
+    const sectionStyle = {
+        background: r.touch ? MC.bg : '#000',
+        color: r.touch ? MC.fg : '#fff',
+        paddingBottom: r.touch ? 48 : 96,
+        fontFamily: T.ui
+    } as const;
     // homeVM.load() lo dispara HomePage al montar; aquí solo se leen signals.
     useVmSignals(homeVM, (vm) => [
         vm.shows, vm.movies, vm.showsLoading, vm.showsReady, vm.showsError
@@ -359,7 +390,7 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     const movies = homeVM.movies.value;
     if (homeVM.showsLoading.value || !homeVM.showsReady.value) {
         return (
-            <section style={{ background: '#000', color: '#fff', paddingBottom: 96, fontFamily: T.ui }}>
+            <section style={sectionStyle}>
                 <SkeletonRow title='Series' />
                 <SkeletonRow title='Películas' />
             </section>
@@ -368,29 +399,31 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     if (homeVM.showsError.value) {
         return (
             <section style={{
-                background: '#000', color: '#ff6b6b', padding: '80px 56px', fontFamily: T.ui, fontSize: 14
+                background: r.touch ? MC.bg : '#000', color: '#ff6b6b',
+                padding: r.touch ? `48px ${r.pagePad}px` : '80px 56px',
+                fontFamily: T.ui, fontSize: 14
             }}>
                 {homeVM.showsError.value}
             </section>
         );
     }
     return (
-        <section style={{ background: '#000', color: '#fff', paddingBottom: 96, fontFamily: T.ui }}>
+        <section style={sectionStyle}>
             <Row title='Series'>
                 {series.length === 0 ? (
-                    <div style={{ padding: '0 56px', color: T.dim, fontSize: 14 }}>
+                    <div style={{ padding: r.touch ? `0 ${r.pagePad}px` : '0 56px', color: T.dim, fontSize: 14 }}>
                         No hay series en la biblioteca. Añade contenido y lanza un rescan desde
                         el panel de administración (avatar arriba a la derecha).
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
+                    <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                         {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
                     </div>
                 )}
             </Row>
             {movies.length > 0 && (
                 <Row title='Películas'>
-                    <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
+                    <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                         {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
                     </div>
                 </Row>
@@ -404,6 +437,8 @@ function HomeLibraryProto({
 }: {
     data: typeof PROTO_DATA; navigate: Navigate;
 }) {
+    const r = useResponsive();
+    const rowGap = r.touch ? r.gap : 24;
     const cw = data.carousel.filter((s) => s.type === 'continue');
     const movies = Object.values(data.movies);
     const series = Object.values(data.shows);
@@ -413,7 +448,10 @@ function HomeLibraryProto({
     const hydrated = [...series, ...movies].some((x) => x.poster || x.backdrop);
     if (!hydrated) {
         return (
-            <section style={{ background: '#000', color: '#fff', paddingBottom: 96, fontFamily: T.ui }}>
+            <section style={{
+                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
+                paddingBottom: r.touch ? 48 : 96, fontFamily: T.ui
+            }}>
                 <SkeletonRow title='Continuar viendo' />
                 <SkeletonRow title='Recién añadidos' />
                 <SkeletonRow title='Películas' />
@@ -422,14 +460,17 @@ function HomeLibraryProto({
         );
     }
     return (
-        <section style={{ background: '#000', color: '#fff', paddingBottom: 96, fontFamily: T.ui }}>
+        <section style={{
+            background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
+            paddingBottom: r.touch ? 48 : 96, fontFamily: T.ui
+        }}>
             <Row title='Continuar viendo'>
-                <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
+                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {cw.map((s) => <CwCard key={s.id} slide={s} navigate={navigate} />)}
                 </div>
             </Row>
             <Row title='Recién añadidos'>
-                <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
+                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {recent.map((item) =>
                         'seasons' in item ?
                             <PosterCard key={`s-${item.id}`} slide={item} navigate={navigate} /> :
@@ -438,12 +479,12 @@ function HomeLibraryProto({
                 </div>
             </Row>
             <Row title='Películas'>
-                <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
+                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
                 </div>
             </Row>
             <Row title='Series'>
-                <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
+                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
                 </div>
             </Row>

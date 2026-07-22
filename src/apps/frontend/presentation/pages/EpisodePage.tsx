@@ -15,6 +15,7 @@ import { MoreButton } from '../components/controls/MoreButton';
 import { FavButton } from '../components/controls/FavButton';
 import { WatchedButton } from '../components/controls/WatchedButton';
 import { CastList } from '../components/cast/CastList';
+import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type PageProps = { showId: string; seasonN: number; epN: number; navigate: Navigate };
@@ -67,6 +68,7 @@ function EpisodeHero({
 }: {
     show: Show; season: Season; ep: Episode; navigate: Navigate;
 }) {
+    const r = useResponsive();
     const { play } = usePlayer();
     // El tick del Nav escribe en el store local; leerlo aquí mantiene el play
     // en sincronía al instante (sin esperar a que se recargue la serie).
@@ -109,7 +111,7 @@ function EpisodeHero({
             <Backdrop src={ep.thumbHD || ep.thumb || ''} fadeBottom={0.92} sharp />
 
             <div style={{
-                position: 'absolute', inset: 0, padding: '0 56px 100px',
+                position: 'absolute', inset: 0, padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : '0 56px 100px',
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'flex-end',
                 textAlign: 'center'
@@ -191,9 +193,11 @@ function EpisodeDetail({
 }: {
     show: Show; season: Season; ep: Episode; nextEp?: Episode; navigate: Navigate;
 }) {
+    const r = useResponsive();
     return (
         <section style={{
-            background: '#000', color: '#fff', padding: '32px 56px 96px', fontFamily: T.ui
+            background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
+            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px', fontFamily: T.ui
         }}>
             {/* minmax(0,…): sin él los tracks 1fr valen minmax(auto,1fr) y su
                 mínimo es el min-content del hijo (la fila de reparto, muy

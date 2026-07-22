@@ -1,11 +1,14 @@
 import { T } from '../../theme/tokens';
+import { useResponsive } from '../../theme/responsive';
 
 // Animated placeholders shown while a title is still loading its
 // poster/backdrop from the Jellyfin API.
 
 export function SkeletonPoster() {
+    const r = useResponsive();
+    const w = r.touch ? r.cardW : 230;
     return (
-        <div style={{ width: 230, flex: '0 0 230px' }}>
+        <div style={{ width: w, flex: `0 0 ${w}px` }}>
             <div className='jfp-skeleton' style={{ aspectRatio: '2/3', borderRadius: 4 }} />
             <div className='jfp-skeleton' style={{ height: 12, marginTop: 12, width: '60%' }} />
         </div>
@@ -13,19 +16,24 @@ export function SkeletonPoster() {
 }
 
 export function SkeletonRow({ count = 6, title }: { count?: number; title?: string }) {
+    const r = useResponsive();
     return (
-        <div style={{ marginTop: 64, padding: '0 56px' }}>
+        <div style={{
+            marginTop: r.touch ? 28 : 64,
+            padding: r.touch ? `0 ${r.pagePad}px` : '0 56px'
+        }}>
             {title && (
-                <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: r.touch ? 12 : 24 }}>
                     <h3 style={{
-                        fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300,
+                        fontFamily: T.display, fontStyle: 'italic',
+                        fontSize: r.touch ? 21 : 30, fontWeight: 300,
                         margin: 0, letterSpacing: -0.3, color: T.dim
                     }}>
                         {title}
                     </h3>
                 </div>
             )}
-            <div style={{ display: 'flex', gap: 24, overflowX: 'hidden' }}>
+            <div style={{ display: 'flex', gap: r.touch ? r.gap : 24, overflowX: 'hidden' }}>
                 {Array.from({ length: count }).map((_, i) => <SkeletonPoster key={i} />)}
             </div>
         </div>
