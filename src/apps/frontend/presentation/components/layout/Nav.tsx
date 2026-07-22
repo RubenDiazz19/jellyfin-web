@@ -18,7 +18,7 @@ type ActionData =
 
 type NavProps = {
     navigate: (r: Route) => void;
-    active?: 'home' | 'series' | 'movies';
+    active?: 'home' | 'series' | 'movies' | 'favorites';
     breadcrumb?: Crumb[];
     actionId?: string;
     actionData?: ActionData;
@@ -27,7 +27,8 @@ type NavProps = {
 const NAV_LINKS = [
     { id: 'home', label: 'Inicio' },
     { id: 'series', label: 'Series' },
-    { id: 'movies', label: 'Películas' }
+    { id: 'movies', label: 'Películas' },
+    { id: 'favorites', label: 'Favoritos' }
 ] as const;
 
 // Reset para que un <button> real (accesible con teclado) se vea como los

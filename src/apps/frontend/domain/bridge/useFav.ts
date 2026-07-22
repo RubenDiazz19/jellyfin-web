@@ -22,3 +22,14 @@ export function useFavVersion() {
         return () => window.removeEventListener(FAVS.event, update);
     }, []);
 }
+
+// Ejecuta `onChange` cada vez que cambia cualquier favorito (toggle en
+// cualquier tarjeta). Para vistas que necesitan reaccionar con lógica propia
+// en vez de solo re-renderizar (p.ej. podar la lista de la pantalla de
+// Favoritos cuando se desmarca un item).
+export function useFavListener(onChange: () => void) {
+    useEffect(() => {
+        window.addEventListener(FAVS.event, onChange);
+        return () => window.removeEventListener(FAVS.event, onChange);
+    }, [onChange]);
+}

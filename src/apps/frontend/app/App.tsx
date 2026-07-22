@@ -21,6 +21,7 @@ import { LoginPage } from '../presentation/pages/LoginPage';
 // Páginas de acceso puntual: se cargan bajo demanda para no engordar el
 // bundle inicial. React.lazy + Suspense hace el split automáticamente.
 const GenrePage = lazy(() => import('../presentation/pages/GenrePage').then(m => ({ default: m.GenrePage })));
+const FavoritesPage = lazy(() => import('../presentation/pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
 const PersonPage = lazy(() => import('../presentation/pages/PersonPage').then(m => ({ default: m.PersonPage })));
 const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
@@ -149,6 +150,7 @@ function AuthedApp() {
                     {route.page === 'movie' && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
                     {route.page === 'search' && <SearchPage navigate={navigate} />}
                     <Suspense fallback={<PageFallback />}>
+                        {route.page === 'favorites' && <FavoritesPage navigate={navigate} />}
                         {route.page === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
                         {route.page === 'person' && <PersonPage name={route.name} navigate={navigate} />}
                         {route.page === 'settings' && <SettingsPage navigate={navigate} initial='reproduccion' />}

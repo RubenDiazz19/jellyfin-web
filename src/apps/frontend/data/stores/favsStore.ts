@@ -37,5 +37,8 @@ export const FAVS = {
         if (s.has(id)) s.delete(id);
         else s.add(id);
         persist();
+    },
+    all(): string[] {
+        return [...ensure()];
     }
 };

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
+import { LibraryCardMenu } from '../components/admin/LibraryCardMenu';
 import { useSession } from '../../domain/bridge/useSession';
 import { useToast } from '../components/toast/ToastProvider';
 import {
@@ -492,12 +493,22 @@ function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; goDashbo
                             borderRadius: 10, overflow: 'hidden',
                             border: `1px solid ${T.hairline}`, background: 'rgba(255,255,255,0.03)'
                         }}>
-                            <div style={{
-                                aspectRatio: '16/9',
-                                backgroundImage: v.image ? `url(${v.image})` : undefined,
-                                backgroundColor: 'rgba(255,255,255,0.05)',
-                                backgroundSize: 'cover', backgroundPosition: 'center'
-                            }} />
+                            <div style={{ position: 'relative' }}>
+                                <div style={{
+                                    aspectRatio: '16/9',
+                                    backgroundImage: v.image ? `url(${v.image})` : undefined,
+                                    backgroundColor: 'rgba(255,255,255,0.05)',
+                                    backgroundSize: 'cover', backgroundPosition: 'center'
+                                }} />
+                                {isAdmin && (
+                                    <div style={{
+                                        position: 'absolute', top: 6, right: 6,
+                                        background: 'rgba(0,0,0,0.5)', borderRadius: 8
+                                    }}>
+                                        <LibraryCardMenu libraryId={v.id} libraryName={v.name} />
+                                    </div>
+                                )}
+                            </div>
                             <div style={{ padding: '12px 14px' }}>
                                 <div style={{ fontSize: 15, fontWeight: 500 }}>{v.name}</div>
                                 <div style={{ fontSize: 12, color: T.dim, marginTop: 3 }}>

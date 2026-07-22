@@ -61,8 +61,8 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
                 )}
 
                 {inProgress && (
-                    <div style={{ position: 'absolute', left: 8, right: 8, bottom: 8 }}>
-                        <Progress value={ep.watched} height={2} />
+                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+                        <Progress value={ep.watched} height={3} />
                     </div>
                 )}
             </div>

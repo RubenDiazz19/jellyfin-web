@@ -125,6 +125,22 @@ const Tick = ({ size = 18, filled = false }: { size?: number; filled?: boolean }
     </svg>
 );
 
+const Refresh = ({ size = 16, stroke = 'currentColor', sw = 1.7 }: IconProps) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke={stroke}
+        strokeWidth={sw}
+        strokeLinecap='round'
+        strokeLinejoin='round'
+    >
+        <path d='M21 12a9 9 0 1 1-3-6.7' />
+        <path d='M21 3v6h-6' />
+    </svg>
+);
+
 const Dots = ({ size = 18 }: { size?: number }) => (
     <svg
         width={size}
@@ -139,4 +155,4 @@ const Dots = ({ size = 18 }: { size?: number }) => (
     </svg>
 );
 
-export const Ic = { Play, Plus, Check, Search, Arrow, Tomato, Imdb, Dot, Heart, Tick, Dots };
+export const Ic = { Play, Plus, Check, Search, Arrow, Tomato, Imdb, Dot, Heart, Tick, Dots, Refresh };

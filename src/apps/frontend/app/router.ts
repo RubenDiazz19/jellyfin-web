@@ -16,6 +16,7 @@ export type Route =
   | { page: 'home' }
   | { page: 'series' }
   | { page: 'movies' }
+  | { page: 'favorites' }
   | { page: 'show'; showId: string }
   | { page: 'season'; showId: string; seasonN: number }
   | { page: 'episode'; showId: string; seasonN: number; epN: number }
@@ -34,6 +35,7 @@ export function routeToPath(r: Route): string {
         case 'home': return '/';
         case 'series': return '/series';
         case 'movies': return '/movies';
+        case 'favorites': return '/favorites';
         case 'show': return `/show/${encodeURIComponent(r.showId)}`;
         case 'season': return `/show/${encodeURIComponent(r.showId)}/season/${r.seasonN}`;
         case 'episode': return `/show/${encodeURIComponent(r.showId)}/season/${r.seasonN}/episode/${r.epN}`;
@@ -57,6 +59,7 @@ export function pathToRoute(pathname: string): Route {
     switch (head) {
         case 'series': return { page: 'series' };
         case 'movies': return { page: 'movies' };
+        case 'favorites': return { page: 'favorites' };
         case 'search': return { page: 'search' };
         case 'settings': return { page: 'settings' };
         case 'profile': return { page: 'profile' };

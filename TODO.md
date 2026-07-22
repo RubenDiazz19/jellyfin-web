@@ -1,539 +1,206 @@
-# TODO: MVVM, limpieza y optimización de jellyfin-web
+# TODO: PWA + Material 3 Expressive solo para mobile/tablet
 
-## Estrategia general (ya implementada)
+## ⚠️ Regla cardinal
 
-MVVM clásico con Signals:
-
-```
-data/    → Model  (API, sesión, stores, caché en memoria)
-domain/viewModels/ → ViewModel (clase @observable, comandos, 0 imports de React)
-presentation/ → View (componentes React, solo render + binding)
-domain/bridge/  → Hooks puente (único lugar con React hooks)
-```
-
-Reglas:
-- **ViewModel es una clase**, nunca un hook.
-- **ViewModel no importa nada de React ni de presentation/**.
-- **View no importa nada de data/** — solo ve ViewModels a través del bridge.
-- **Bridge** es el único sitio con hooks (`useViewModel()` suscribe signals → React).
-- **Signals** (`@preact/signals-core`) para reactividad: propiedades observables sin decoradores.
+**Desktop (`layout-desktop`) se queda EXACTAMENTE como está hoy.** Sin cambios de tema, sin navegación nueva, sin PWA, sin nada. Todo lo que sigue aplica ÚNICAMENTE cuando el dispositivo es móvil o tablet (`layout-mobile`, `layout-tablet`). El sistema de LayoutMode (`layoutManager.js`) ya pone estas clases en `<html>`.
 
 ---
 
-## ✅ Fases completadas
+## Visión
 
-- **Fase 0** — Signals + estructura MVVM + ApiService + ViewModels (Home, Show, Movie, Search, Library, Login, Session, VideoPlayer) + ESLint MVVM rules + tests
-- **Fase 1** — Dependencias compartidas movidas (DrawerHeaderLink, playback constants)
-- **Fase 2** — Eliminados `apps/legacy`, `apps/modern`, `apps/wizard`, `src/plugins`, `elements/`, scripts legacy, estilos huérfanos
-- **Fase 3** — Eliminados ~40 componentes legacy no usados; conservados los que necesita dashboard
-- **Fase 4** — Reproductor de vídeo propio (VideoPlayerViewModel + VideoPlayer.tsx + OSD completo con seek, volumen, subs, audio, fullscreen, auto-ocultar, atajos de teclado)
-- **Fase 5** — Entry point limpio (sin polyfills, sin auto-imports legacy, sin plugins)
-- **Fase 6** — RootAppRouter simplificado (solo dashboard + frontend)
-- **Fase 7** — package.json limpio (sin webpack/babel/polyfills, build con Vite)
-- **Fase 8.1–8.4** — TypeScript, lint, tests y build de producción verificados
-- **Fase 9.1–9.7** — Mejoras post-revisión: releasePointerCapture en el carrusel, ShowViewModel con refresco optimista + fix del caché (`clearShowCache()` en toda mutación), MoviePage con loading/error, MovieViewModel con API real + tests, `useSignalValue` en VideoControls, reset de wheelAccum
+Cuando el usuario abre jellyfin-web en un **móvil o tablet**, se convierte en una **PWA instalable** con Material 3 Expressive (dark/light), navegación adaptativa, gestos táctiles y experiencia nativa-símil. En desktop no se entera de nada.
 
----
+## Stack de diseño (solo mobile/tablet)
 
-## Fase 8.5 — Verificación manual (pendiente)
-
-- [ ] Navegación completa: home → serie → temporada → episodio
-- [ ] Búsqueda
-- [ ] Reproducción: play, pausa, seek, volumen, fullscreen, audio/subs
-- [ ] Dashboard: usuarios, plugins, librerías, tareas
-- [ ] Login / logout / cambio de usuario
-- [ ] Tema oscuro
-- [ ] Responsive / móvil / TV
+- **Material 3 Expressive tokens** — CSS custom properties inyectadas solo cuando `.layout-mobile` o `.layout-tablet` están activos
+- **Dark + Light theme** — conmutable por el usuario, persiste en localStorage
+- **MUI v6** como base de componentes con theme M3
+- **Service Worker** — Workbox o manual, solo útil cuando la app está instalada (standalone)
+- **Signals + MVVM** — arquitectura existente intacta
 
 ---
 
-## Fase 9 — Pendientes menores
+## Fase 1 — Sistema de tema Material 3 Expressive (scopeado a mobile/tablet)
 
-### 9.8 CSS specificity (pendiente)
+### 1.1 M3 Design Tokens (solo bajo `.layout-mobile` / `.layout-tablet`)
+- [ ] Implementar `M3Theme` con todos los tokens: `primary`, `onPrimary`, `primaryContainer`, `secondary`, `tertiary`, `error`, `surface`, `surfaceVariant`, `outline`, etc.
+- [ ] `md-sys-color` light + dark palettes completas (basadas en `@material/material-color-utilities`)
+- [ ] `md-sys-elevation` — niveles 0–5
+- [ ] `md-sys-shape` — corner tokens
+- [ ] `md-sys-typescale` — 14 escalas tipográficas
+- [ ] CSS custom properties en selector `html.layout-mobile, html.layout-tablet` — **NUNCA** en `:root` global (para no contaminar desktop)
 
-Los selectores de actionSheet (`html body.jf-frontend-active .dialog.actionSheet` = 0,4,2) funcionan pero son frágiles.
-- [ ] Evaluar migrar a `@layer` para evitar dependencia del orden de carga
+### 1.2 Temas dinámicos
+- [ ] `MobileThemeProvider` que aplica light u oscuro según preferencia del usuario + override manual
+- [ ] **Dynamic color**: extraer color acento del backdrop del hero / wallpaper
+- [ ] Persistencia en localStorage + sincronización con server
+- [ ] Transición suave entre temas
+- [ ] En desktop: el provider no hace nada, se sigue usando el tema dark actual
 
-### 9.9 Fullscreen API en Safari (pendiente)
-
-Safari requiere `webkitEnterFullscreen` en `<video>` para ciertos casos. El `VideoPlayerViewModel` solo usa `element.requestFullscreen()`.
-- [ ] Verificar comportamiento en Safari y añadir fallback si es necesario
-
----
-
-## Fase 10 — Reproductor: nuevas funcionalidades
-
-### 10.1 Velocidad de reproducción y menú de pistas siempre accesible ✓
-
-- [x] Signal `playbackRate` + comando `setPlaybackRate` en VideoPlayerViewModel (persiste al recargar la fuente por cambio de pista vía `defaultPlaybackRate`)
-- [x] Sección «Velocidad» (0.5×–2×) en VideoSettingsMenu
-- [x] El menú de ajustes se muestra siempre (antes solo con >1 audio o subtítulos); la pista de audio se lista aunque solo haya una
-- [x] Tests del comando en VideoPlayerViewModel.test
-
-### 10.2 Picture-in-Picture ✓
-
-- [x] Signals `pipAvailable`/`pipActive` + comando `togglePip` (con feature-detect: oculto en navegadores sin API)
-- [x] Botón PiP en el OSD + salida limpia en `close()`
-- [x] Atajo de teclado `p`
-- [x] Tests
-
-### 10.3 Enviar a TV (Chromecast / AirPlay) ✓
-
-- [x] Remote Playback API (`video.remote`): signals `castAvailable`/`castState` + comando `promptCast` (sin SDK externo; Chrome → Cast, Safari → AirPlay)
-- [x] Botón en el OSD, visible solo cuando hay receptores en la red; estado activo mientras se emite
-- [x] Nota: con transcode HLS (MSE) Chrome no permite remoting — el botón solo aparece en DirectPlay
-- [x] Tests
-
-### 10.4 Saltos de ±10 s en el OSD ✓
-
-- [x] Botones retroceder/avanzar 10 s junto al play (los atajos ← → ya existían)
+### 1.3 Migración del CSS existente en mobile
+- [ ] Los colores hardcodeados del `global.css` que afectan a mobile se reemplazan por `var(--md-sys-*)`
+- [ ] Los estilos de desktop (`.layout-desktop`) no se tocan
 
 ---
 
-## Fase 11 — Hero: tiempo restante al hacer hover en play ✓
+## Fase 2 — PWA: Service Worker y offline (solo standalone / mobile)
 
-- [x] `formatRemainingCompact()`: `<60 min` → «42 min»; `≥60` → «1 h 12 min» (60 exacto → «1 h»)
-- [x] El PlayBtn del hero usa el formato compacto en el hoverText (slides «continuar viendo»)
-- [x] Tests del formateador
+### 2.1 Service Worker
+- [ ] Registrar SW en entry point
+- [ ] **Precaching** de app shell
+- [ ] **Runtime caching**: `NetworkFirst` para API, `CacheFirst` para imágenes, `StaleWhileRevalidate` para assets
+- [ ] Offline fallback page
+- [ ] Network status indicator "Sin conexión"
+- [ ] NO register si está en desktop (`layout-desktop`) — solo en mobile/tablet
 
----
+### 2.2 Instalación PWA
+- [ ] `beforeinstallprompt` → banner M3 de instalación (solo en mobile/tablet)
+- [ ] Detectar `display-mode: standalone` para ajustes de layout (notch, chin)
 
-## Fase 12 — Progreso actualizado al instante al salir del reproductor ✓
+### 2.3 Manifest y meta
+- [ ] Actualizar `manifest.json`: screenshots mobile + tablet
+- [ ] `theme-color` dinámico
 
-Bug: al salir de un episodio/película, la página de destino (home/serie) hacía fetch en paralelo con el `reportPlaybackStop` aún en vuelo → el servidor respondía con la posición vieja y el progreso no se veía hasta recargar.
-
-- [x] Barrera `settlePlaybackReports()` en data/api/playback.ts: los fetch de catálogo (home carousel, shows, movie) esperan al último stop en vuelo (con timeout de seguridad de 2 s)
-- [x] `clearShowCache()` dentro de la barrera; el DELETE de ActiveEncodings sale del camino crítico
-- [x] Tests de la barrera (orden stop → fetch, timeout)
-
----
-
-## Fase 13 — Reproductor: fix de cambio de audio y menús divididos
-
-### 13.1 Fix: el cambio de pista de audio no surtía efecto ✓
-
-Causa raíz (verificada contra el servidor con curl): Jellyfin ignora `audioStreamIndex` en PlaybackInfo **si no va acompañado de `mediaSourceId`** — la TranscodingUrl volvía siempre con `AudioStreamIndex=1` (el default).
-
-- [x] `getPlaybackDecision` acepta `mediaSourceId` y lo envía como query param
-- [x] `reload()` (cambio de audio / subtítulo quemado) pasa el `mediaSourceId` de la decisión vigente
-- [x] Test: setAudioTrack repide PlaybackInfo con `audioStreamIndex` + `mediaSourceId`
-- [x] Verificación E2E: la TranscodingUrl trae el AudioStreamIndex elegido y el `<video>` cambia de sesión conservando la posición
-
-### 13.2 Menús divididos: subtítulos, audio y velocidad ✓
-
-El menú único de ajustes era demasiado grande.
-
-- [x] Tres botones independientes en el OSD, cada uno con su icono y su panel: Subtítulos (visible si hay pistas), Audio (visible si hay pistas), Velocidad (siempre)
-- [x] Solo un panel abierto a la vez; click fuera cierra
-- [x] Iconos nuevos: subtítulos (CC), audio (ecualizador), velocidad (velocímetro)
+### 2.4 Media Session API
+- [ ] Integrar en VideoPlayerViewModel
+- [ ] Handlers: play, pause, seek, prev/next
 
 ---
 
-## Fase 14 — ShowPage: tiempo restante expandible en el play del hero ✓
+## Fase 3 — App Shell responsive (solo mobile/tablet)
 
-El botón píldora del hero sustituía el texto al hacer hover (`T1 E05` → restante), y en modo Jellyfin `cont.remaining` venía vacío (hover mostraba una cadena vacía).
+En desktop: **sin cambios**. El `<AppLayout>` actual (que no tiene navegación) sigue igual.
 
-- [x] `getShow()` rellena `cont.remaining` desde el runtime × progreso del episodio en curso
-- [x] Hover: el botón se expande solo en horizontal con «· 12 min» (formato compacto), misma altura, animado; al quitar el ratón vuelve a su estado (verificado E2E: 129→187 px de ancho, altura constante 44 px)
-- [x] La barra de progreso interna del botón se mantiene
+### 3.1 Sistema de navegación adaptable (mobile/tablet)
+- [ ] **Bottom Navigation** (móvil < 600px): 4–5 tabs — Home, Buscar, Bibliotecas, Ajustes, Perfil
+  - Icono + label, active indicator M3, safe-area-inset-bottom
+- [ ] **Navigation Rail** (tablet 600+px): rail vertical a la izquierda
+  - Misma estructura que bottom nav pero en vertical
+  - Transición suave entre bottom nav y rail al girar/resize
+- [ ] **Desktop**: no se renderiza ni bottom nav ni rail. El layout sigue siendo el actual (sin navegación persistente)
 
----
+### 3.2 Puntos de ruptura (solo afectan a mobile/tablet)
+- `mobile-sm`: 0–399px
+- `mobile-lg`: 400–599px  
+- `tablet`: 600–1023px
+- `desktop`: ≥1024px → NO se aplica ningún cambio
 
-## Fase 15 — Fixes: subtítulos, marcar como visto y layout del menú
+### 3.3 Transiciones de navegación (solo mobile/tablet)
+- [ ] Slide horizontal entre páginas
+- [ ] Swipe-back gesture
+- [ ] En desktop: animación fade actual se mantiene
 
-### 15.1 Fix: el cambio de subtítulos no surtía efecto ✓
-
-El `<track>` VTT solo cambiaba de `src`; el navegador no recarga un track ya
-montado al mutar su atributo, así que seguían viéndose los subtítulos viejos.
-
-- [x] `key={subtitleUrl}` en el `<track>` fuerza el remount → el navegador
-      carga el nuevo VTT
-- [x] Verificación E2E: al cambiar de pista el `<track>.src` pasa de
-      `Subtitles/17` a `Subtitles/16` y el modo sigue en `showing`
-
-### 15.2 Marcar como visto contra Jellyfin ✓
-
-Los botones agregados solo tocaban el store local; no se propagaban al server.
-
-- [x] `WATCHED.sync(scope, watched)` sincroniza el subconjunto de una serie/
-      película con la verdad del server (un único evento)
-- [x] `getShow()` / `getMovie()` hidratan el store desde `UserData.Played`
-- [x] `ShowNavWatchedButton` → `markPlayed(showId)` (el server propaga a todos
-      los episodios/temporadas); `SeasonWatchedButton` → `markPlayed(seasonId)`;
-      `MovieWatchedButton` → `markPlayed(movieId)`; `WatchedButton` acepta
-      `serverId` (jfId del episodio) y marca en el server si hay sesión
-- [x] Estado agregado (serie/temporada completas) se deriva de los episodios:
-      marcar todos ⇒ marcado; desmarcar uno ⇒ desmarcado. Revert local si el
-      server falla
-- [x] Verificación E2E contra el server real: 7 no vistos → 0 → 7
-
-### 15.3 Fix: columna negra a la derecha al abrir el menú «más opciones» ✓
-
-Grid blowout: las rejillas de dos columnas de las páginas de detalle
-(`1.5fr 1fr` / `1.6fr 1fr`) usaban tracks `1fr` = `minmax(auto, 1fr)`, cuyo
-mínimo es el min-content del hijo (la fila de reparto, muy ancha) → la rejilla
-desbordaba el viewport (`scrollWidth` 2263 > 1920). En pantalla completa del
-navegador ese sobrante se veía como una franja negra a la derecha al abrir
-cualquier menú.
-
-- [x] `minmax(0, Nfr)` en ShowDetail / EpisodeDetail / MoviePage → los tracks
-      pueden encogerse y la `CastList` scrollea dentro de su `overflow-x: auto`
-- [x] Red de seguridad: `overflow-x: clip` en `html:has(body.jf-frontend-active)`
-      (clip, no hidden: no crea contenedor de scroll ni rompe los `position:
-      fixed` de los menús flotantes)
-- [x] Verificación E2E: `scrollWidth == clientWidth` en show/episode antes y
-      después de abrir el menú, y en pantalla completa (1999px) sin franja negra
+### 3.4 Gestión de scroll
+- [ ] Scroll position restoration por tab en bottom nav (mobile/tablet)
+- [ ] Desktop: comportamiento actual sin cambios
 
 ---
 
----
+## Fase 4 — Layout responsive de páginas (solo mobile/tablet)
 
-## Fase 16 — Optimizaciones de rendimiento y mejora del código ✓
+En desktop: **todas las páginas se renderizan exactamente igual que hoy**.
 
-### 🟥 Alto impacto
+### 4.1 Home
+- [ ] Hero mobile: 40vh, sin backdrop, poster + info, overlay gradiente corto
+- [ ] Hero tablet: 55vh, backdrop ligero
+- [ ] Grid de filas con scroll táctil horizontal
+- [ ] Márgenes: 12px mobile, 16px tablet
+- [ ] Tamaño tarjetas: 130px mobile, 160px tablet
 
-#### 16.1 N+1 queries al cargar serie
-**Archivo:** `data/api/shows.ts:getSeasonsWithEpisodes()`
+### 4.2 Biblioteca / Grid
+- [ ] Grid responsive solo en mobile/tablet: `repeat(auto-fill, minmax(var(--card-w), 1fr))`
+- [ ] Skeleton loading con M3
 
-Por cada temporada hace 1 request → para 10 temporadas son 11 requests secuenciales. Jellyfin permite obtener todos los episodios de golpe.
+### 4.3 Páginas de detalle
+- [ ] Single column en mobile (hoy es two-column)
+- [ ] Cast en horizontal scroll
+- [ ] Botones de acción → bottom sheet en mobile
+- [ ] Desktop: se conserva el layout two-column actual
 
-- [x] Una sola llamada a `/Shows/{id}/Episodes` + Seasons en paralelo; episodios agrupados por `ParentIndexNumber` (E2E: 1 request donde antes había N+1)
+### 4.4 Buscador
+- [ ] Search como bottom sheet modal en mobile
+- [ ] Barra expandible en tablet
+- [ ] Desktop: input de búsqueda actual
 
-#### 16.2 Hero image de episodios usa `Primary` en vez de `Thumb`
-**Archivo:** `data/api/shows.ts:140-141`, usado en `EpisodePage.tsx:94`
-
-```ts
-thumbHD: imageUrl(item.Id, 'Primary', { maxWidth: 1920 })
-```
-
-Jellyfin tiene tipo `Thumb` específico para thumbnails de episodio, normalmente 16:9 y con mejor encuadre. También se puede caer a `ParentBackdropImageTags` (backdrop de la serie) cuando no hay thumbnail.
-
-- [x] Cadena `Thumb` (si hay tag) → `Primary` → backdrop de la serie, con el tag correcto en la URL
-
-#### 16.3 Sin negociación de formato de imagen
-**Archivo:** `data/api/images.ts:imageUrl()`
-
-Todas las imágenes se piden sin `format`. Jellyfin soporta `format=webp` y `format=avif` — reducirían el peso de imágenes 50-70%. Crítico para hero images de 1920px que son LCP.
-
-- [x] `format=webp` en `imageUrl()` y `getItemBackdrops()` (sin feature-detect: todo navegador que soporta el resto del frontend decodifica webp; verificado E2E: todas las respuestas llegan `image/webp`)
-
-### 🟧 Medio impacto
-
-#### 16.4 `useViewModel` re-renderiza todo el componente por cualquier cambio
-**Archivo:** `domain/bridge/useViewModel.ts`
-
-Suscribe a todos los signals del ViewModel. En ShowPage, cambiar `loading` o `error` re-renderiza la página completa aunque solo haya cambiado el estado de carga.
-
-- [x] Nuevo `useVmSignals(vm, pick)` de suscripción selectiva; aplicado en Home (hero ya no re-renderiza al cargar la biblioteca), Show/Season/Episode (sin suscripción a `loading`) y Movie
-
-#### 16.5 Backdrop renderiza TODAS las imágenes del crossfade en el DOM
-**Archivo:** `presentation/components/layout/Backdrop.tsx:29-39`
-
-```tsx
-pool.map((url, i) => (
-    <div style={{ opacity: i === idx ? 1 : 0 }} />
-))
-```
-
-Si una serie tiene 5 backdrops, hay 5 divs con `background-image` en el DOM. Las imágenes ocultas (opacity 0) igual se descargan.
-
-- [x] Doble búfer (activa + saliente durante el fade) y precarga de la siguiente con `new Image()` (E2E: 1 capa en DOM donde antes había N)
-
-#### 16.6 Sin preload para hero images (LCP)
-La hero image se carga via CSS `background-image` → prioridad baja. Debería tener `<link rel="preload">` o un `<img fetchpriority="high">` oculto.
-
-- [x] `<link rel="preload" as="image" fetchpriority="high">` del backdrop activo, gestionado por el propio Backdrop
-
-#### 16.7 Sin error boundaries
-Cualquier error en render de una página crashea toda la app.
-
-- [x] `ErrorBoundary` con fallback (recargar / volver al inicio) montado con key por ruta en App.tsx
-
-#### 16.8 `as any` en props de alineación
-**Archivo:** `ShowPage.tsx`, `MoviePage.tsx`
-
-```tsx
-alignItems: pos.align as any,
-```
-
-Hero position tokens tienen tipos literales que no casan con `CSSProperties`.
-
-- [x] `HERO_POS` tipado con `CSSProperties[...]`; eliminados los `as any` de ShowPage/MoviePage
-
-#### 16.9 Cache de shows sin invalidación por tiempo
-**Archivo:** `data/api/cache.ts`
-
-`showCache` solo se limpia en mutaciones (watched, playback stop). Los datos pueden estar stale indefinidamente.
-
-- [x] TTL de 5 min en showCache (API compatible con Map; tests con fake timers)
-
-### 🟩 Bajo impacto
-
-#### 16.10 Date formatting sin memo
-```tsx
-new Date(ep.date).toLocaleDateString('es-ES', { ... })
-```
-Se ejecuta en cada render, a veces 2-3 veces por página.
-
-- [x] `formatDateLong()` con caché por fecha en theme/format.ts; EpisodePage lo usa en sus 3 sitios
-
-#### 16.11 Muchos divs con onClick en vez de `<button>`
-Géneros, breadcrumbs, etc. usan `<span onClick>` → no funcionan con teclado.
-
-- [x] Nav (logo, tabs, breadcrumbs, lupa) y géneros de Show/Movie (hero y detalle) son `<button>` con reset heredado
-
-#### 16.12 Sin manejo de foco en navegación
-Al cambiar de página, el foco no se gestiona. Usuarios de teclado pierden la posición.
-
-- [x] Al cambiar de ruta el foco se mueve al contenedor de la página (`tabIndex=-1`, sin outline; preventScroll vía focusPatch)
-
-#### 16.13 `target: ES5` en tsconfig
-Vite transpila igual, pero es confuso. Podría ser `ES2017+` para bundles más pequeños.
-
-- [x] `target: ES2020` + `lib ES2020` (typecheck y build de producción verificados)
-
-#### 16.14 Baja cobertura de tests
-6 tests para 92 archivos. Sin tests de componentes ni integración.
-
-- [x] +17 tests: watchedStore (toggle/setMany/sync y eventos), showCache TTL, formatDateLong, LibraryViewModel (películas, proto, error, carreras) — 223 en total
+### 4.5 Settings / Profile (solo mobile/tablet)
+- [ ] Lista M3 con drill-down navigation
+- [ ] Desktop: se queda el layout actual de settings
 
 ---
 
-## Fase 17 — Películas con API real ✓
+## Fase 5 — Video player táctil (solo mobile/tablet)
 
-Antes las películas solo existían en el catálogo proto; con sesión Jellyfin la
-biblioteca `/movies` salía vacía y ni la home ni el hero ni la búsqueda las
-mostraban.
+En desktop: **el OSD actual sin gestos se mantiene exactamente igual** (funciona con mouse + teclado).
 
-- [x] `getMovies()` en data/api/movies.ts (listado con `IncludeItemTypes=Movie`
-      + hidratación del store «visto» desde `UserData.Played`)
-- [x] `LibraryViewModel.load('movies')` usa la API real con sesión
-- [x] `HomeViewModel` carga series y películas en paralelo (películas opcionales:
-      si fallan, las series siguen); fila «Películas» en la home Jellyfin
-- [x] Hero: películas a medias desde `/Items/Resume` (etiqueta «Continuar
-      viendo» sin T·E, reanuda directo en el reproductor) + últimas películas
-      intercaladas con las series en los slides «nuevo»
-- [x] `SearchViewModel` busca también sobre las películas del server
-- [x] Tests del HomeViewModel actualizados (getMovies en mocks + caso de fallo
-      parcial); E2E: biblioteca con contador, ficha con logo/play, hero con 2 slides
+### 5.1 Gestos táctiles (solo mobile/tablet)
+- [ ] Swipe horizontal: seek con feedback de thumbnail
+- [ ] Swipe vertical izquierdo: brillo
+- [ ] Swipe vertical derecho: volumen
+- [ ] Doble tap izquierda: -10s / derecha: +10s
+- [ ] Tap: play/pause
+- [ ] Pinch zoom: aspect ratio
+- [ ] Desktop: estos gestos NO se activan (seguiría todo por mouse/keyboard como hoy)
 
----
+### 5.2 OSD responsive (mobile/tablet)
+- [ ] Mobile landscape: controles compactos
+- [ ] Mobile portrait: botones esenciales, time grande
+- [ ] Overlay de hints de gestos en el primer uso
 
-## Fase 18 — Panel de ajustes completo contra Jellyfin ✓
-
-El placeholder de Ajustes solo mostraba la sesión; el resto de opciones eran
-toasts «pendiente de conectar». Ahora todo va contra la API real (idea: no
-tener que abrir el web nativo para el día a día).
-
-- [x] `data/api/users.ts`: getCurrentUser (`/Users/Me`), updateUserConfig
-      (merge + POST Configuration), changePassword, avatar (subir/borrar/URL),
-      getUserViews, getUsers (admin)
-- [x] **Perfil** (`/profile` abre aquí): avatar con subida/borrado, datos de la
-      sesión, cambio de contraseña, cerrar sesión
-- [x] **Reproducción** (`/settings` abre aquí): idioma de audio preferido,
-      pista por defecto, recordar audio/subtítulos, autoplay del siguiente
-      episodio (todo persiste en el server con parche optimista + revert), y
-      calidad máxima de streaming (localStorage `jfp-max-bitrate`, la lee el
-      device profile del reproductor)
-- [x] **Subtítulos**: modo (Por defecto/Inteligente/Solo forzados/Siempre/Nunca)
-      e idioma preferido
-- [x] **Bibliotecas**: vistas del usuario con carátula y tipo; escaneo global y
-      acceso al panel de administración (admin)
-- [x] **Servidor**: nombre/versión/SO/id + abrir panel de administración
-- [x] **Usuarios** (solo admin): listado con rol y última actividad
-- [x] E2E contra el server: el toggle cambia `RememberSubtitleSelections` en el
-      server y revierte; el idioma de subtítulos llega como `spa`; secciones de
-      bibliotecas/servidor/usuarios cargan datos reales
+### 5.3 Mejoras de UX táctil
+- [ ] Lock screen controls
+- [ ] Sugerir landscape al reproducir
+- [ ] Swipe down para cerrar reproductor
 
 ---
 
-## Fase 19 — Menú «más opciones» de películas arreglado ✓
+## Fase 6 — Componentes con diseño M3 (solo mobile/tablet)
 
-Causa raíz: MoviePage pasaba al MoreButton el id con prefijo `movie-` (clave
-de los stores locales) — todas las llamadas al server iban con un id inválido:
-la descarga no arrancaba, el editor de imágenes no encontraba las aplicadas,
-marcar visto/borrar/metadata fallaban.
-
-- [x] MoreButton recibe SIEMPRE el id real; el prefijo `movie-` de los stores
-      locales (visto/favorito) lo aplica internamente según `type`
-- [x] Descargar funciona (E2E: evento download con «Obsession.mp4»)
-- [x] «Editar imágenes» muestra póster/fondos/logo actuales (E2E: Primary
-      visible y «Fondos (1)»)
-- [x] «Añadir a lista de reproducción» y «Añadir a colección» nativos:
-      data/api/lists.ts (getPlaylists/getCollections, add, create) + diálogo
-      AddToDialog con listado, carátulas y creación — sin saltar al web nativo
-      (también en series y episodios)
-- [x] E2E contra el server: crear playlist desde el diálogo aparece en
-      /Items?IncludeItemTypes=Playlist; marcar reproducido cambia
-      UserData.Played
+- [ ] Cards con M3 shape + elevation (solo mobile/tablet)
+- [ ] FABs con M3 primary color
+- [ ] Bottom sheets para menús contextuales
+- [ ] Snackbar/toast M3
+- [ ] Desktop: componentes actuales sin cambios
 
 ---
 
-## Fase 20 — Play de películas, selects legibles y admin centralizado ✓
+## Fase 7 — Rendimiento táctil y animaciones (solo mobile/tablet)
 
-Tres correcciones sobre la ficha de película y los ajustes reportadas con
-capturas:
-
-- [x] El botón «Reproducir/Continuar viendo» de la película no hacía nada (no
-      tenía `onClick`) y provocaba el micro-scroll al enfocar. Ahora abre el
-      reproductor con el id real y `startTicks` del progreso; `preventDefault`
-      en mousedown elimina el scroll (E2E: navega a `/video?item=…&start=…`)
-- [x] Las `<option>` de los desplegables de Ajustes salían blanco-sobre-blanco
-      (el popup nativo no hereda estilos): fondo `#141416` + texto blanco
-      explícitos en cada opción
-- [x] Eliminado el modal «Panel de administración» (y su componente AdminPanel):
-      toda la administración se centraliza en Ajustes. Bibliotecas/Servidor/
-      Usuarios enlazan al **dashboard embebido** (`/dashboard`, `/dashboard/
-      libraries`, `/dashboard/users`) vía `useNavigate` del router raíz —
-      `window.location.hash` no bastaba porque el data-router no reevalúa rutas
-      con un cambio de hash manual (verificado E2E: carga «Panel de control»)
+- [ ] M3 easing system
+- [ ] Ripple en botones
+- [ ] Shared axis transitions
+- [ ] Haptic feedback (`navigator.vibrate`)
+- [ ] `touch-action: manipulation` en botones
+- [ ] Desktop: animaciones actuales, sin ripple, sin haptic
 
 ---
 
-## Fase 21 — Hero con las imágenes reales del item y scroll siempre arriba ✓
+## Fase 8 — Pulido y verificación
 
-- [x] **Hero de la home con las imágenes del contenido.** Tres causas: el
-      `<Backdrop>` del hero no recibía `itemId` (así que ignoraba el fondo
-      personalizado guardado en local, que sí aplicaba la ficha), varias URLs
-      de fondo se construían **sin `tag`** (el navegador las cacheaba para
-      siempre y seguía mostrando la imagen vieja tras cambiarla), y el hero
-      solo usaba una imagen. Ahora: helper `backdropsOf()` construye TODOS los
-      fondos con su tag (con fallback al póster, también con tag), el carrusel
-      los expone en `CarouselSlide.backdrops`, el endpoint `/Items/Resume`
-      pide explícitamente `ImageTags,BackdropImageTags,ParentBackdropImageTags`
-      y el hero recibe `itemId` + `srcs` para rotar entre ellos.
-      Verificado E2E: los 4 slides usan imágenes de su propio item, todas con
-      `tag` y en webp; un fondo personalizado en local aparece en el hero (antes
-      solo en la ficha).
-- [x] **El scroll siempre arranca arriba.** `history.scrollRestoration` pasa a
-      `'manual'` (el navegador restauraba la posición al moverse por el
-      historial, pisando el reset) y el reset se mantiene ~500 ms en vez de un
-      solo frame, para sobrevivir a la inercia del ratón y al crecimiento del
-      documento cuando llegan datos/imágenes. Cede en cuanto el usuario
-      scrollea a propósito (wheel/touch/teclado) para no pelearse con él.
-      Verificado E2E: y=0 en todo el muestreo (0,3 s → 5 s), también con
-      atrás/adelante, y el scroll manual posterior sigue funcionando.
+### 8.1 Testing
+- [ ] Tests: theme switching solo mobile, responsive breakpoints, touch gestures, PWA
+- [ ] Tests: desktop NO se ve afectado por nada
 
----
+### 8.2 Verificación manual
+- [ ] **Desktop**: abrir en PC → misma app de siempre. Sin cambios visuales, sin navegación extra, sin PWA
+- [ ] **Mobile/tablet**: PWA instalable, bottom nav/rail, M3 theme, gestos táctiles
+- [ ] **Transición**: al redimensionar de mobile a desktop, la app vuelve al layout original
 
-## Fase 22 — Menú depurado, OSD recuperable en fullscreen y play de «visto» ✓
-
-- [x] **Menú «más opciones» sin entradas redundantes.** Fuera «Reproducir»,
-      «Marcar como reproducido», «Añadir a favoritos» y «Compartir» en los tres
-      menús (película/serie/episodio): el play ya está en el hero y el corazón
-      y el tick viven en el Nav. Se conserva «Reproducir desde el principio»
-      porque no es alcanzable de otra forma cuando hay progreso. Limpiados los
-      handlers y hooks que quedaron sin uso (useWatched/useFav en MoreButton) y
-      simplificado el menú del modo prototipo.
-- [x] **El OSD se puede recuperar en pantalla completa.** El «despertador» del
-      OSD escuchaba solo `onPointerMove` del contenedor; en fullscreen el
-      elemento que recibe el puntero puede no ser ese, y los controles se
-      quedaban ocultos sin forma de sacarlos. Ahora cualquier actividad
-      (pointermove/mousemove/touch/wheel/tecla) a nivel de `document` los
-      despierta, y también se muestran al entrar o salir de fullscreen. Además
-      dejan de ocultarse mientras el ratón está encima de la barra (antes
-      desaparecía justo al ir a pulsar un botón).
-      Verificado E2E en fullscreen: auto-oculta → vuelve al mover el ratón y
-      también con una tecla.
-- [x] **Play con estado «visto».** Nueva prop `watched` en PlayBtn: círculo
-      blanco suave (0.78, 0.88 al hover) con tick negro y aro más marcado;
-      sin ver vuelve al play traslúcido de siempre. Conectado en la ficha del
-      episodio (lee el store local, así el tick del Nav lo actualiza al
-      instante), en la tarjeta de «siguiente episodio» y en la temporada
-      (cuando están todos los episodios vistos).
-
----
-
-## Fase 23 — Fix de selección de pistas y relación de aspecto en el reproductor ✓
-
-- [x] **La elección de subtítulos/audio ya no «hace cosas raras».** Causa: con
-      el vídeo reproduciéndose el OSD se auto-oculta a los 3 s; si abrías el
-      panel y tardabas en elegir, se desvanecía (opacity 0 + pointer-events
-      none) y el click caía en el vacío o pausaba el vídeo. Ahora, mientras
-      hay un panel de ajustes abierto (existe `.jfp-video-settings-menu` en el
-      DOM) el OSD NO se oculta; tampoco con el ratón sobre la barra. Verificado
-      E2E: el menú sigue visible tras 4 s quieto y la opción se selecciona
-      (subtítulos: Desactivados → track «ninguno»; Japanese → Subtitles/21;
-      audio: japonés → inglés, con is-active correcto).
-- [x] **Relación de aspecto configurable.** Signal `aspectRatio` + comando
-      `setAspectRatio` en VideoPlayerViewModel (persiste durante la sesión);
-      cuarto botón en el OSD (icono nuevo) con: Automático (contain), Rellenar
-      (cover, recorta), Estirar (fill), 16:9, 4:3 y 21:9. Los modos de
-      proporción fija dan a la caja del vídeo esa relación centrada y estiran
-      el contenido a ella. Verificado E2E: 4:3 → 1440×1080, 21:9 → 1920×823,
-      Rellenar → object-fit cover, y vuelta a Automático → contain.
-
----
-
-## Fase 24 — Ficha de episodio: play de «visto» con hover y OSD en fullscreen ✓
-
-- [x] Eliminado el texto suelto «Reanudar · N min restantes» de la ficha del
-      episodio (aparecía incluso en episodios marcados como vistos, porque
-      leía el progreso del server en crudo). Ahora no aparece nunca.
-- [x] El tiempo/estado solo se ve al pasar el ratón por el círculo del play,
-      vía el `hoverText` del PlayBtn: visto → «Ver de nuevo»; a medias →
-      minutos restantes (formato compacto). Al quitar el ratón vuelve al tick
-      / al aro de progreso. Verificado E2E: sin hover el botón no muestra
-      texto; con hover dice «Ver de nuevo»; el texto «Reanudar … restantes» ya
-      no existe en la página.
-- [x] Refuerzo del OSD en pantalla completa: además de los listeners a nivel de
-      `document`, un efecto sobre el signal `fullscreen` del VM muestra los
-      controles al entrar/salir de fullscreen (fuente de verdad más fiable que
-      el evento del document en algunos navegadores).
-
----
-
-## Fase 25 — Fix: el menú de pistas se movía bajo el cursor ✓
-
-Síntoma: elegir subtítulos/audio funcionaba «a veces sí, a veces no»; el menú
-parecía moverse al pulsar una pista y el click fallaba. Causa: el panel se
-anclaba (`position: absolute; right: 0`) al botón de ajustes, y ese botón se
-desplaza horizontalmente cuando aparecen/desaparecen los botones condicionales
-del OSD (Cast cuando hay un Chromecast en la red, PiP). Al parpadear la
-disponibilidad de Cast justo durante el click, el menú saltaba y el puntero
-quedaba sobre otra pista. En headless no se reproducía porque sin Chromecast el
-botón Cast nunca aparece.
-
-- [x] El panel se ancla ahora a `.jfp-video-controls` (la barra, estable) en
-      vez de al botón: quitado `position: relative` de `.jfp-video-settings` y
-      el menú se posiciona `right: 24px; bottom: 68px` respecto a la barra.
-- [x] Verificado E2E: inyectando botones a izquierda/derecha del cluster
-      (simulando que aparece Cast) el borde del menú se mantiene a 24 px del
-      borde de la barra (antes se desplazaba), y la selección de subtítulos/
-      audio sigue aplicándose correctamente.
-
----
-
-## Fase 26 — Fix (2ª parte): el menú de pistas «trasladaba la vista» al pulsar ✓
-
-Seguía fallando la selección de subtítulos: al pulsar una pista, «a veces no se
-selecciona sino que traslada la vista a eso». Causa real (la de la Fase 25 era
-complementaria): al pulsar un `<button>` de una lista con scroll (62
-subtítulos), Chrome lo enfoca y **desplaza el contenedor** para dejarlo visible
-si estaba parcialmente cortado; la lista se movía entre el mousedown y el
-mouseup y el click caía en otra pista. Es el mismo comportamiento de Chrome que
-ya se neutraliza en PlayBtn/IconButton.
-
-- [x] `onMouseDown={preventDefault}` en cada opción del menú: no se enfoca al
-      pulsar, así Chrome no hace scroll-al-enfocar; el click sigue disparándose
-      y el Tab conserva la accesibilidad.
-- [x] `overscroll-behavior: contain` en el panel (el scroll de la lista no se
-      propaga al llegar al tope).
-- [x] Verificado E2E: pulsando opciones parcialmente cortadas por el borde
-      inferior, el `scrollTop` del menú no cambia y la pista queda seleccionada
-      (6/6). Nota: `headless_shell` no reproduce el scroll-al-enfocar del Chrome
-      real, pero el fix es el estándar del proyecto para ese caso.
+### 8.3 Rendimiento
+- [ ] Lighthouse PWA: score 100 (solo mobile/tablet)
+- [ ] Lighthouse Mobile: score > 90
+- [ ] Desktop: sin regresión de rendimiento
 
 ---
 
 ## Resumen de impacto
 
-| Métrica | Antes | Después |
-|---------|-------|---------|
-| Directorios `apps/` | 5 (legacy, modern, dashboard, wizard, frontend) | 2 (dashboard, frontend) |
-| Componentes en `components/` | ~107 | ~40-50 |
-| Líneas de JS/TS eliminadas | — | ~58.000 |
-| Dependencias npm | ~75 | ~53-58 |
-| ViewModels testeables sin React | 0 | 8 |
-| Errores ESLint | ~500 | 0 |
-| Warnings ESLint | ~200 | 71 (sonar + exhaustive-deps) |
+| Aspecto | Desktop | Mobile / Tablet |
+|---------|---------|----------------|
+| Tema | Dark actual (sin cambios) | M3 Expressive light/dark |
+| Navegación | Sin navegación persistente | Bottom nav / Rail |
+| Layout | Two-column, full width | Single column, responsive |
+| Video player | Mouse + teclado | Gestos táctiles + OSD responsive |
+| PWA | No | Sí (instalable, offline, SW) |
+| Service Worker | No se registra | Sí |
+| Media Session | No | Sí |
+| Material 3 | No | Sí (CSS vars scopeadas) |
