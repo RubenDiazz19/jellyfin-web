@@ -504,6 +504,28 @@ botón Cast nunca aparece.
 
 ---
 
+## Fase 26 — Fix (2ª parte): el menú de pistas «trasladaba la vista» al pulsar ✓
+
+Seguía fallando la selección de subtítulos: al pulsar una pista, «a veces no se
+selecciona sino que traslada la vista a eso». Causa real (la de la Fase 25 era
+complementaria): al pulsar un `<button>` de una lista con scroll (62
+subtítulos), Chrome lo enfoca y **desplaza el contenedor** para dejarlo visible
+si estaba parcialmente cortado; la lista se movía entre el mousedown y el
+mouseup y el click caía en otra pista. Es el mismo comportamiento de Chrome que
+ya se neutraliza en PlayBtn/IconButton.
+
+- [x] `onMouseDown={preventDefault}` en cada opción del menú: no se enfoca al
+      pulsar, así Chrome no hace scroll-al-enfocar; el click sigue disparándose
+      y el Tab conserva la accesibilidad.
+- [x] `overscroll-behavior: contain` en el panel (el scroll de la lista no se
+      propaga al llegar al tope).
+- [x] Verificado E2E: pulsando opciones parcialmente cortadas por el borde
+      inferior, el `scrollTop` del menú no cambia y la pista queda seleccionada
+      (6/6). Nota: `headless_shell` no reproduce el scroll-al-enfocar del Chrome
+      real, pero el fix es el estándar del proyecto para ese caso.
+
+---
+
 ## Resumen de impacto
 
 | Métrica | Antes | Después |

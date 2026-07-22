@@ -150,6 +150,13 @@ function MenuOption({
         <button
             type='button'
             className={`jfp-video-settings-option${active ? ' is-active' : ''}`}
+            // preventDefault en mousedown = no enfocar al pulsar. Sin esto, en
+            // una lista larga con scroll (62 subtítulos), Chrome desplaza el
+            // contenedor para dejar visible el botón que acaba de enfocar; la
+            // lista se movía entre el mousedown y el mouseup y el click caía en
+            // otra pista («traslada la vista en vez de seleccionar»). El click
+            // se sigue disparando y el Tab conserva la accesibilidad.
+            onMouseDown={(e) => e.preventDefault()}
             onClick={onSelect}
         >
             <span className='jfp-video-settings-dot' aria-hidden />

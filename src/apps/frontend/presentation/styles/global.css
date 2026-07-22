@@ -645,6 +645,8 @@ html body.jf-video-active .dialogBackdropOpened {
     max-height: 60vh;
     padding: 16px 8px;
     overflow-y: auto;
+    /* El scroll de la lista no se propaga fuera al llegar al tope. */
+    overscroll-behavior: contain;
     background: rgba(16, 16, 18, 0.92);
     backdrop-filter: blur(18px);
     border: 1px solid rgba(255, 255, 255, 0.08);
