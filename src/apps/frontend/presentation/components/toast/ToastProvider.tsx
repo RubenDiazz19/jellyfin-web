@@ -3,6 +3,7 @@ import {
     type ReactNode
 } from 'react';
 import { T } from '../../theme/tokens';
+import { useResponsive } from '../../theme/responsive';
 
 type ToastKind = 'info' | 'success' | 'warn';
 type Toast = { id: number; message: string; kind: ToastKind };
@@ -43,27 +44,69 @@ export function useToast(): ToastContextValue['toast'] {
 }
 
 function Toaster({ toasts }: { toasts: Toast[] }) {
+    const r = useResponsive();
+    // En táctil el snackbar se apila abajo, por encima de la bottom nav (o
+    // del rail, que no ocupa la franja inferior). En desktop, centrado como
+    // hasta ahora.
+    const wrapStyle = r.touch ? {
+        position: 'fixed' as const,
+        left: r.pagePad, right: r.pagePad,
+        bottom: `calc(${r.mobile ? 92 : 16}px + env(safe-area-inset-bottom, 0px))`,
+        display: 'flex', flexDirection: 'column-reverse' as const, gap: 8,
+        alignItems: 'stretch' as const,
+        zIndex: 9998, pointerEvents: 'none' as const
+    } : {
+        position: 'fixed' as const, left: '50%', bottom: 32, transform: 'translateX(-50%)',
+        display: 'flex', flexDirection: 'column-reverse' as const, gap: 10,
+        zIndex: 9998, pointerEvents: 'none' as const
+    };
     return (
-        <div
-            style={{
-                position: 'fixed', left: '50%', bottom: 32, transform: 'translateX(-50%)',
-                display: 'flex', flexDirection: 'column-reverse', gap: 10,
-                zIndex: 9998, pointerEvents: 'none'
-            }}
-        >
+        <div style={wrapStyle}>
             {toasts.map((t) => (
-                <ToastItem key={t.id} toast={t} />
+                <ToastItem key={t.id} toast={t} touch={r.touch} />
             ))}
         </div>
     );
 }
 
-function ToastItem({ toast }: { toast: Toast }) {
+function ToastItem({ toast, touch }: { toast: Toast; touch: boolean }) {
     const [visible, setVisible] = useState(false);
     useEffect(() => {
         const raf = requestAnimationFrame(() => setVisible(true));
         return () => cancelAnimationFrame(raf);
     }, []);
+
+    if (touch) {
+        // Snackbar M3: superficie inversa, esquina extra-small, elevación 3.
+        // El acento (warn/info) va en una barra lateral para no perder el
+        // contraste del texto sobre inverse-surface.
+        const accent =
+            toast.kind === 'warn' ? 'var(--md-sys-color-error, #ffb4ab)' :
+                toast.kind === 'info' ? 'var(--md-sys-color-primary, #a8c8ff)' :
+                    'transparent';
+        return (
+            <div
+                role='status'
+                style={{
+                    pointerEvents: 'auto',
+                    display: 'flex', alignItems: 'center',
+                    background: 'var(--md-sys-color-inverse-surface, #2f3033)',
+                    color: 'var(--md-sys-color-inverse-on-surface, #f1f0f4)',
+                    borderLeft: `4px solid ${accent}`,
+                    borderRadius: 'var(--md-sys-shape-corner-extra-small, 4px)',
+                    padding: '14px 16px',
+                    fontFamily: T.ui,
+                    fontSize: 'var(--md-sys-typescale-body-medium-size, 14px)',
+                    boxShadow: 'var(--md-sys-elevation-level3, 0 8px 24px rgba(0,0,0,0.5))',
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? 'translateY(0)' : 'translateY(12px)',
+                    transition: 'opacity .25s ease, transform .25s ease'
+                }}
+            >
+                {toast.message}
+            </div>
+        );
+    }
 
     const border =
     toast.kind === 'warn' ? 'rgba(255,180,80,0.55)' :

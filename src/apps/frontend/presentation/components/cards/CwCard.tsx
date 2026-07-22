@@ -24,6 +24,7 @@ export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props)
             className='jfp-hoverlift'
         >
             <div
+                className='jfp-card-m3'
                 style={{
                     height: h, borderRadius: 4, overflow: 'hidden', position: 'relative',
                     backgroundImage: `url(${slide.backdrop})`, backgroundSize: 'cover', backgroundPosition: 'center'

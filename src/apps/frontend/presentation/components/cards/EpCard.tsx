@@ -22,7 +22,7 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
             style={{ position: 'relative', cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
-            <div style={{
+            <div className='jfp-card-m3' style={{
                 aspectRatio: '16/9', borderRadius: 4, overflow: 'hidden', position: 'relative',
                 background: '#0b0b0b',
                 outline: ep.current ? '1px solid rgba(255,255,255,0.95)' : 'none',

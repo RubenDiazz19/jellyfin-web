@@ -243,6 +243,17 @@ html.layout-tablet body.jf-frontend-active .jfp-skeleton {
     border-radius: var(--md-sys-shape-corner-small, 4px);
 }
 
+/* Tarjetas con shape + elevation M3 (Fase 6, solo mobile/tablet). Los
+   contenedores de imagen de las cards llevan `jfp-card-m3`; en desktop la
+   clase existe pero no tiene regla asociada, así que conservan su
+   borderRadius: 4 inline y sin sombra. El !important gana al estilo inline
+   solo dentro del scope táctil. */
+html.layout-mobile body.jf-frontend-active .jfp-card-m3,
+html.layout-tablet body.jf-frontend-active .jfp-card-m3 {
+    border-radius: var(--md-sys-shape-corner-medium, 12px) !important;
+    box-shadow: var(--md-sys-elevation-level1, 0 1px 3px rgba(0, 0, 0, 0.3));
+}
+
 /* ---------------------------------------------------------------
    Fixes para la ruta /video (OSD del legacy video controller).
    Estos estilos NO van scopeados a jf-frontend-active porque el

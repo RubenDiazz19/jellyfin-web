@@ -22,7 +22,7 @@ export const LibraryMovieCard = React.memo(function LibraryMovieCardBase({ movie
             style={{ cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
-            <div style={{
+            <div className='jfp-card-m3' style={{
                 aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden', position: 'relative',
                 backgroundImage: `url(${poster})`, backgroundSize: 'cover', backgroundPosition: 'center'
             }}>

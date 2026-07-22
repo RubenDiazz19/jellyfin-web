@@ -4,6 +4,7 @@ import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
+import { ScrollTopFab } from '../components/m3/ScrollTopFab';
 import { libraryVM } from '../../domain/viewModels/LibraryViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
 import { MC, useResponsive } from '../theme/responsive';
@@ -73,6 +74,7 @@ export function LibraryPage({ kind, navigate }: Props) {
                     </div>
                 )}
             </section>
+            <ScrollTopFab />
         </>
     );
 }

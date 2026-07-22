@@ -16,7 +16,7 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
             style={{ cursor: 'pointer', width: 230, flex: '0 0 230px' }}
             className='jfp-hoverlift'
         >
-            <div style={{
+            <div className='jfp-card-m3' style={{
                 aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden', position: 'relative',
                 backgroundImage: `url(${season.backdrop})`, backgroundSize: 'cover', backgroundPosition: 'center'
             }}>
