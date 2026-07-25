@@ -31,6 +31,17 @@ import stylistic from '@stylistic/eslint-plugin';
 // eslint-disable-next-line import/no-unresolved
 import tseslint from 'typescript-eslint';
 
+/**
+ * Por qué no React.FC: no aporta nada que no dé tipar el parámetro de props
+ * (el tipo de retorno se infiere), obliga a un genérico para las props, no
+ * admite componentes genéricos sin rodeos y arrastra el `children` implícito
+ * que React 18 ya quitó, lo que hace que un componente acepte hijos aunque no
+ * los pinte. Es también lo que recomiendan los tipos oficiales de React.
+ */
+const FC_MESSAGE = 'No uses React.FC: declara el componente como función normal '
+    + 'y tipa las props en el parámetro — `function Foo({ a }: Props)`. '
+    + 'Si necesita hijos, decláralos en Props (`children: ReactNode`).';
+
 export default tseslint.config(
     eslint.configs.recommended,
     tseslint.configs.recommended,
@@ -60,7 +71,14 @@ export default tseslint.config(
             'coverage',
             'dist',
             '.idea',
-            '.vscode'
+            '.vscode',
+            // Datos persistentes del docker-compose de desarrollo (config del
+            // servidor, caché y biblioteca). Están en .gitignore, pero eslint
+            // no lo lee: sin esto intenta parsear los .js que el propio
+            // Jellyfin escribe ahí y `bun run lint` falla entero.
+            'docker-config',
+            'docker-cache',
+            'docker-media'
         ]
     },
 
@@ -412,7 +430,19 @@ export default tseslint.config(
             'react/jsx-no-useless-fragment': 'error',
             'react/no-array-index-key': 'error',
             'react-hooks/rules-of-hooks': 'error',
-            'react-hooks/exhaustive-deps': 'warn'
+            'react-hooks/exhaustive-deps': 'warn',
+            // Convención: los componentes se tipan por sus props, no con
+            // React.FC (ver CONTRIBUTING). En `warn` porque queda código
+            // legacy sin migrar; en src/apps/frontend, que ya está limpio,
+            // se sube a error más abajo.
+            '@typescript-eslint/no-restricted-types': ['warn', {
+                types: {
+                    'React.FC': { message: FC_MESSAGE },
+                    'React.FunctionComponent': { message: FC_MESSAGE },
+                    FC: { message: FC_MESSAGE },
+                    FunctionComponent: { message: FC_MESSAGE }
+                }
+            }]
         }
     },
 
@@ -473,7 +503,16 @@ export default tseslint.config(
             '@typescript-eslint/no-explicit-any': 'off',
             'jsx-a11y/no-static-element-interactions': 'off',
             'jsx-a11y/click-events-have-key-events': 'off',
-            'jsx-a11y/no-autofocus': 'off'
+            'jsx-a11y/no-autofocus': 'off',
+            // Aquí no hay ni un React.FC: se blinda para que no entre.
+            '@typescript-eslint/no-restricted-types': ['error', {
+                types: {
+                    'React.FC': { message: FC_MESSAGE },
+                    'React.FunctionComponent': { message: FC_MESSAGE },
+                    FC: { message: FC_MESSAGE },
+                    FunctionComponent: { message: FC_MESSAGE }
+                }
+            }]
         }
     },
     {

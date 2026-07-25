@@ -31,14 +31,15 @@ function installMatchMedia(initial: Record<string, boolean> = {}) {
         const existing = mqls.get(query);
         if (existing) return existing;
         const listeners = new Set<() => void>();
+        const state = { matches: initial[query] ?? false };
         const mql = {
             media: query,
-            matches: initial[query] ?? false,
+            get matches() { return state.matches; },
             addEventListener: (_: string, fn: () => void) => { listeners.add(fn); },
             removeEventListener: (_: string, fn: () => void) => { listeners.delete(fn); },
-            _set(matches: boolean) {
-                this.matches = matches;
-                listeners.forEach((fn) => fn());
+            _set: (matches: boolean) => {
+                state.matches = matches;
+                listeners.forEach((fn) => { fn(); });
             }
         } as unknown as FakeMql;
         mqls.set(query, mql);

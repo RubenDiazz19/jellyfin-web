@@ -196,11 +196,26 @@
 - [ ] Convertir a componentes React con JSX
 - [ ] Eliminar archivos `.html` originales
 
-### G3. Estandarizar uso de `React.FC`
+### G3. Estandarizar uso de `React.FC` ✅
 > ~13 archivos lo usan, otros no. Decidir convención.
+> **Corrección del inventario:** no son ~13 sino **114 archivos** (125 usos),
+> todos en `src/components`, `src/elements` y `src/apps/dashboard`.
+> `src/apps/frontend` no lo usa ni una vez.
 
-- [ ] Decidir si se usa o no `React.FC`
-- [ ] Configurar regla de ESLint para enforcing
+- [x] Decidir: **no se usa `React.FC`**. Se declara función normal y se tipan
+      las props en el parámetro. No aporta nada (el retorno se infiere), fuerza
+      un genérico, estorba en componentes genéricos y arrastra el `children`
+      implícito que React 18 quitó.
+- [x] Configurar regla de ESLint para enforcing —
+      `@typescript-eslint/no-restricted-types` con mensaje propio: `error` en
+      `src/apps/frontend` (ya limpio, así se blinda) y `warn` en el resto,
+      donde quedan los 125 usos legacy. Documentado en `CONTRIBUTING.md`.
+- [ ] Migrar los 125 usos legacy — pendiente, es una pasada mecánica aparte
+      (encaja con E1/E2); la regla ya impide que crezca
+
+> De paso: `eslint` intentaba parsear `docker-config/` (datos del servidor que
+> escribe el docker-compose) y `bun run lint` fallaba entero con 14 errores de
+> parseo. Añadido a los ignores; ahora la suite queda en **0 errores**.
 
 ### G4. Reducir uso de `any` (165+ apariciones)
 - [ ] Auditar usos de `any` (priorizar código moderno)

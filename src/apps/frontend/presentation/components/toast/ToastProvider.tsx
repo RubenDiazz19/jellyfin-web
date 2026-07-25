@@ -43,7 +43,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     // Limpia timers pendientes si el provider se desmonta.
     useEffect(() => {
         const map = timers.current;
-        return () => { map.forEach((t) => clearTimeout(t)); map.clear(); };
+        return () => {
+            map.forEach((t) => { clearTimeout(t); });
+            map.clear();
+        };
     }, []);
 
     return (

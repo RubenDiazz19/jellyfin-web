@@ -13,9 +13,12 @@ const indexHtml = read('src/index.html');
 const appHost = read('src/components/apphost.js');
 const globalCss = read('src/apps/frontend/presentation/styles/global.css');
 
+const VIEWPORT_META = /<meta\s+name="viewport"\s+content="([^"]*)"/;
+const MAX_SCALE = /maximum-scale\s*=\s*([\d.]+)/;
+
 /** Contenido del <meta name="viewport"> del documento principal. */
 function viewportContent(html: string): string {
-    const m = html.match(/<meta\s+name="viewport"\s+content="([^"]*)"/);
+    const m = VIEWPORT_META.exec(html);
     if (!m) throw new Error('No hay <meta name="viewport"> en index.html');
     return m[1];
 }
@@ -28,7 +31,7 @@ describe('viewport (zoom permitido)', () => {
     });
 
     it('index.html permite ampliar al menos 5x', () => {
-        const max = viewportContent(indexHtml).match(/maximum-scale\s*=\s*([\d.]+)/);
+        const max = MAX_SCALE.exec(viewportContent(indexHtml));
         // Sin maximum-scale el navegador no impone techo: también vale.
         if (max) expect(Number(max[1])).toBeGreaterThanOrEqual(5);
     });

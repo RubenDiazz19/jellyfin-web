@@ -19,6 +19,20 @@ If you have any questions, please join one of our [development chat rooms](https
 * **SHOULD NOT** reference browser globals. Globals exist for plugins/legacy compatibility. Use direct imports for any dependencies instead.
 * You **MAY** add your GitHub username to the list of contributors in [CONTRIBUTORS.md](./CONTRIBUTORS.md).
 
+### Components
+
+* Components **MUST NOT** be typed with `React.FC` / `FunctionComponent`. Declare
+  a plain function and type the props parameter — `function Foo({ a }: Props)`.
+  If the component renders children, declare them in `Props`
+  (`children: ReactNode`) so the signature says so.
+* Rationale: `React.FC` adds nothing over typing the parameter (the return type
+  is inferred), forces a generic for props, gets in the way of generic
+  components, and carries the implicit `children` that React 18 removed — a
+  component ends up accepting children it never renders.
+* Enforced by `@typescript-eslint/no-restricted-types`: `error` under
+  `src/apps/frontend` (already clean) and `warn` elsewhere, where legacy usages
+  are still being migrated. New code **MUST NOT** add warnings.
+
 ### Formatting
 
 * This project does **NOT** use Prettier. Formatting is owned by the `@stylistic`
