@@ -222,10 +222,24 @@
 - [ ] Reemplazar con tipos concretos o genéricos
 - [ ] Configurar regla `no-explicit-any` como warning
 
-### G5. Eliminar dependencias legacy innecesarias
-- [ ] `webcomponents.js` v0.7.24 (prehistorico, v1 salió en 2016)
-- [ ] `@uupaa/dynamic-import-polyfill`
-- [ ] `lodash-es` si no se usa extensivamente
+### G5. Eliminar dependencias legacy innecesarias 🟡 (2 de 3 resueltas)
+- [ ] `webcomponents.js` v0.7.24 — **no se puede quitar todavía: lo bloquea G1.**
+      No es un polyfill "de más": los 18 `emby-*` están escritos contra Custom
+      Elements **v0** (`document.registerElement`, `createdCallback`,
+      `attachedCallback`), API que ningún navegador moderno implementa —
+      Chrome la retiró en la v80. Quien la aporta es justamente
+      `webcomponents-lite`. Quitarla hoy rompe el dashboard entero.
+      **Orden correcto: G1 (reescribir los `emby-*`) → luego esta dependencia
+      se cae sola.** Está importada en 16 archivos.
+- [x] `@uupaa/dynamic-import-polyfill` — eliminada. Tenía un único uso
+      (`viewContainer.js`, carga de controladores de plugin desde el servidor);
+      se sustituye por `import()` nativo con `/* @vite-ignore */`, que resuelve
+      al mismo namespace del módulo. Build de producción verificado.
+- [x] `lodash-es` — **se queda.** Sí se usa: 10 importaciones en rutas
+      importantes (`playbackmanager`, `globalize`, los tres temas, `backdrop`,
+      `filterdialog`, `AppTabs`, `Lists`) de `merge`, `isEqual`, `isEmpty`,
+      `debounce`, `union` y `groupBy`. Se importa hoja a hoja
+      (`lodash-es/merge`), así que entra en el bundle solo lo usado.
 
 ### G6. Configurar Prettier ✅ (decisión: no)
 > El formateo se delega a ESLint stylistic, sin Prettier.

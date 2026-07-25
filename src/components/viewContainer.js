@@ -1,4 +1,3 @@
-import { importModule } from '@uupaa/dynamic-import-polyfill';
 import './viewManager/viewContainer.scss';
 import Dashboard from '../utils/dashboard';
 
@@ -20,7 +19,12 @@ function setControllerClass(view, options) {
 
         controllerUrl = Dashboard.getPluginUrl(controllerUrl);
         const apiUrl = ApiClient.getUrl('/web/' + controllerUrl);
-        return importModule(apiUrl).then((ControllerFactory) => {
+        // Plugin controllers live on the server, so the specifier is only known
+        // at runtime: @vite-ignore keeps the bundler from trying to resolve it.
+        // Native dynamic import resolves to the module namespace, exactly like
+        // the old @uupaa/dynamic-import-polyfill did — viewManager accepts both
+        // a bare function and a namespace with a `default` export.
+        return import(/* @vite-ignore */ apiUrl).then((ControllerFactory) => {
             options.controllerFactory = ControllerFactory;
         });
     }
