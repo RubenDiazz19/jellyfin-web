@@ -260,6 +260,40 @@ html.layout-mobile:not(.layout-tablet) body.jf-frontend-active.jfp-has-nav {
 }
 .jfp-hoverlift:hover .jfp-playover { opacity: 1; }
 
+/* Movimiento reducido (A11y): si el sistema pide menos animación, se
+   neutraliza TODA la animación y transición del frontend (incluida la ruta
+   /video, que se monta sin AppLayout). La regla equivalente para el resto de
+   la app (dashboard y vistas legacy) vive en styles/site.scss.
+
+   Por qué 0.01ms en vez de `animation: none`: los keyframes de entrada usan
+   `both` como fill-mode y su estado final ES el estilo definitivo del
+   elemento (jfp-sheet-in acaba en `transform: none`, jfp-fade-in en
+   `opacity: 1`). Con `none` el elemento se quedaría en su estilo base —
+   invisible o desplazado. Con una duración imperceptible la animación
+   corre, salta al frame final y el resultado visual es correcto sin
+   movimiento. Por lo mismo `animation-iteration-count: 1`: los bucles
+   infinitos (skeleton, pulse) se detienen en vez de repetirse a 0.01ms.
+
+   Esto NO altera el desktop por defecto: solo se activa si el usuario ha
+   pedido movimiento reducido en su sistema. */
+@media (prefers-reduced-motion: reduce) {
+    body.jf-frontend-active,
+    body.jf-frontend-active *,
+    body.jf-frontend-active *::before,
+    body.jf-frontend-active *::after,
+    body.jf-video-active,
+    body.jf-video-active *,
+    body.jf-video-active *::before,
+    body.jf-video-active *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 /* Scrollbars discretas — sólo dentro del app. */
 body.jf-frontend-active ::-webkit-scrollbar {
     width: 0;

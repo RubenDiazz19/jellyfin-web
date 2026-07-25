@@ -60,6 +60,29 @@ describe('ScrollTopFab', () => {
         expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
     });
 
+    it('con movimiento reducido salta arriba en vez de deslizar', () => {
+        document.documentElement.classList.add('layout-mobile');
+        const scrollTo = vi.fn();
+        window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+        const realMatchMedia = window.matchMedia;
+        window.matchMedia = vi.fn((query: string) => ({
+            matches: query.includes('prefers-reduced-motion: reduce'),
+            media: query,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn()
+        })) as unknown as typeof window.matchMedia;
+
+        try {
+            render();
+            setScrollY(800);
+            act(() => { window.dispatchEvent(new Event('scroll')); });
+            act(() => { host?.querySelector('button')?.click(); });
+            expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'auto' });
+        } finally {
+            window.matchMedia = realMatchMedia;
+        }
+    });
+
     it('desktop: no se renderiza aunque haya scroll', () => {
         document.documentElement.classList.add('layout-desktop');
         render();

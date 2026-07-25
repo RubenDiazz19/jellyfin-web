@@ -4,6 +4,8 @@
 
 import { useEffect, useState } from 'react';
 
+import { scrollBehavior } from 'utils/motion';
+
 import { useResponsive } from '../../theme/responsive';
 import { Fab } from './Fab';
 
@@ -47,7 +49,7 @@ export function ScrollTopFab() {
             <Fab
                 icon={<ArrowUp />}
                 ariaLabel='Volver arriba'
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                onClick={() => window.scrollTo({ top: 0, behavior: scrollBehavior() })}
             />
         </div>
     );

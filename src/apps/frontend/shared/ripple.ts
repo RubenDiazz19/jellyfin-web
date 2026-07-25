@@ -5,6 +5,7 @@
 // dispara nada.
 
 import { currentMobileLayout } from './layoutMode';
+import { prefersReducedMotion } from 'utils/motion';
 
 const INK_CLASS = 'jfp-ripple-ink';
 
@@ -31,6 +32,9 @@ function spawnInk(target: HTMLElement, clientX: number, clientY: number): void {
 export function initRipple(): () => void {
     const onDown = (e: PointerEvent) => {
         if (currentMobileLayout() === null) return;
+        // Con movimiento reducido no se crea el ink: el CSS lo dejaría en
+        // 0.01ms (un parpadeo), mejor no pintarlo.
+        if (prefersReducedMotion()) return;
         const target = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-ripple]');
         if (!target) return;
         spawnInk(target, e.clientX, e.clientY);

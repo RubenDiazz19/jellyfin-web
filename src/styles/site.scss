@@ -4,6 +4,30 @@
     height: 100%;
 }
 
+/* Movimiento reducido (A11y, WCAG 2.3.3) — regla global de toda la app:
+   dashboard, vistas legacy y el frontend. Solo se activa si el usuario lo ha
+   pedido en su sistema, así que la experiencia por defecto no cambia.
+
+   No se usa `animation: none` porque muchos keyframes de entrada llevan
+   fill-mode `both` y su fotograma final ES el estado visible del elemento
+   (fadein acaba en `opacity: 1`); con `none` se quedarían invisibles. Con una
+   duración imperceptible la animación corre, salta al último fotograma y el
+   resultado visual es el correcto, sin movimiento. `animation-iteration-count`
+   corta los bucles infinitos (spinners, skeletons) en vez de repetirlos a
+   0.01ms. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
 @keyframes fadein {
     from {
         opacity: 0;

@@ -4,6 +4,7 @@
  */
 
 import dom from '../utils/dom';
+import { prefersReducedMotion } from '../utils/motion';
 import appSettings from 'scripts/settings/appSettings';
 import layoutManager from './layoutManager';
 
@@ -473,9 +474,13 @@ function doScroll(xScroller, scrollX, yScroller, scrollY, smooth) {
 
 /**
      * Returns true if smooth scroll must be used.
+     *
+     * `prefers-reduced-motion` wins over the user setting: the CSS rule in
+     * site.scss cannot reach this path, because both the animated scroll below
+     * and `behavior: 'smooth'` are driven from JS.
      */
 function useSmoothScroll() {
-    return appSettings.enableSmoothScroll();
+    return !prefersReducedMotion() && appSettings.enableSmoothScroll();
 }
 
 /**

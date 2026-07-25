@@ -43,9 +43,17 @@
       (reescribía el meta con `user-scalable=no` y perdía `viewport-fit=cover`)
 - [ ] Probar en dispositivo real — **requiere verificación humana**
 
-### A2. Soporte `prefers-reduced-motion`
-- [ ] Añadir regla CSS global para `@media (prefers-reduced-motion: reduce)`
-- [ ] Verificar que keyframes existentes se respetan
+### A2. Soporte `prefers-reduced-motion` ✅
+- [x] Añadir regla CSS global para `@media (prefers-reduced-motion: reduce)` —
+      `styles/site.scss` (toda la app: dashboard + legacy) y el `global.css`
+      del frontend (incluye la ruta `/video`, que se monta sin AppLayout)
+- [x] Verificar que keyframes existentes se respetan — se acorta la duración a
+      0.01ms en vez de usar `animation: none`, que dejaría invisibles los
+      keyframes con fill-mode `both`; `animation-iteration-count: 1` corta los
+      bucles infinitos. Fijado en `a11yMotion.test.ts`.
+- [x] Cubrir el movimiento que el CSS no alcanza: `utils/motion.ts`
+      (`prefersReducedMotion` / `scrollBehavior`), usado por `scrollManager.js`,
+      el ripple M3 y `ScrollTopFab`
 
 ### A3. Soporte `prefers-contrast`
 - [ ] Leer `prefers-contrast: more` en el theme provider
