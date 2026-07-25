@@ -19,6 +19,17 @@ If you have any questions, please join one of our [development chat rooms](https
 * **SHOULD NOT** reference browser globals. Globals exist for plugins/legacy compatibility. Use direct imports for any dependencies instead.
 * You **MAY** add your GitHub username to the list of contributors in [CONTRIBUTORS.md](./CONTRIBUTORS.md).
 
+### Formatting
+
+* This project does **NOT** use Prettier. Formatting is owned by the `@stylistic`
+  rules in [eslint.config.mjs](./eslint.config.mjs) — a single formatter means a
+  single source of truth and a single command in CI.
+* Run `bun run lint --fix` to format. Do **NOT** add a Prettier config, an editor
+  format-on-save that uses Prettier, or `eslint-config-prettier`: they would
+  disable the stylistic rules this repo relies on.
+* Dependencies are installed with **bun** (`bun install`). There is no
+  `package-lock.json`; `npm` and `yarn` are blocked in `engines`.
+
 ### Localization
 
 * Translation changes or additions **MUST** be made via the [Jellyfin Weblate instance](https://translate.jellyfin.org/) except for the source language (`en-us`).

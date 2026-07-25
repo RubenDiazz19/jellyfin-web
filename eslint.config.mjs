@@ -1,4 +1,20 @@
 // @ts-check
+//
+// Formateo: este proyecto NO usa Prettier. El estilo lo fija @stylistic desde
+// aquí (indentación, comillas, comas, saltos, espaciado de JSX…) y se aplica
+// con `bun run lint --fix`.
+//
+// La decisión es deliberada, no un pendiente: Prettier reformatearía sus
+// propias reglas sobre las de @stylistic y habría que desactivar la mitad de
+// este bloque (eslint-config-prettier) para que no se peleen, con lo que se
+// perdería el control fino que ya está afinado aquí — por ejemplo el operador
+// ternario multilínea o el espaciado de los genéricos, que Prettier impone a
+// su manera. Con un solo formateador hay una sola fuente de verdad y un solo
+// comando en CI.
+//
+// Si algún día se cambia de idea: añadir prettier + eslint-config-prettier al
+// final de la lista de configs, y borrar de aquí las reglas @stylistic
+// puramente tipográficas.
 
 import eslint from '@eslint/js';
 import comments from '@eslint-community/eslint-plugin-eslint-comments/configs';

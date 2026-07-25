@@ -212,11 +212,16 @@
 - [ ] `@uupaa/dynamic-import-polyfill`
 - [ ] `lodash-es` si no se usa extensivamente
 
-### G6. Configurar Prettier
+### G6. Configurar Prettier ✅ (decisión: no)
 > El formateo se delega a ESLint stylistic, sin Prettier.
 
-- [ ] Decidir si añadir Prettier o mantener ESLint stylistic
-- [ ] En cualquier caso, documentar la decisión
+- [x] Decidir: **se mantiene ESLint stylistic, no se añade Prettier**. Prettier
+      reformatearía por encima de `@stylistic` y obligaría a desactivar media
+      configuración (`eslint-config-prettier`) para que no se peleen, perdiendo
+      el control fino ya afinado (ternarios multilínea, espaciado de genéricos).
+      Un solo formateador = una sola fuente de verdad y un solo comando en CI.
+- [x] Documentar la decisión — en la cabecera de `eslint.config.mjs` (con la
+      receta por si se cambia de idea) y en `CONTRIBUTING.md`
 
 ---
 
