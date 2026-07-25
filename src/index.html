@@ -2,7 +2,14 @@
 <html class="preload" dir="ltr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <!-- El zoom queda habilitado (accesibilidad): `user-scalable=no` /
+         `maximum-scale=1` impedían ampliar la interfaz a quien lo necesita.
+         El retardo de 300 ms del doble-tap ya no depende de esto: lo elimina
+         `touch-action: manipulation` en los controles táctiles (global.css).
+         Sin `interactive-widget`: con el valor por defecto (resizes-visual)
+         el teclado virtual no encoge el viewport de layout, así que la
+         bottom nav se queda detrás del teclado en vez de flotar sobre él. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, viewport-fit=cover">
     <link rel="manifest" href="manifest.json">
     <meta name="format-detection" content="telephone=no">
     <meta name="msapplication-tap-highlight" content="no">

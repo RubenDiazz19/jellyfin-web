@@ -31,12 +31,17 @@
 
 ## 🎯 Prioridad Alta — Accesibilidad
 
-### A1. Permitir zoom en viewport
+### A1. Permitir zoom en viewport ✅
 > `src/index.html` — Reemplazar `user-scalable=no, maximum-scale=1` por `maximum-scale=5`.
 
-- [ ] Editar viewport meta tag
-- [ ] Verificar que no hay regresiones de layout
-- [ ] Probar en dispositivo real
+- [x] Editar viewport meta tag
+- [x] Verificar que no hay regresiones de layout — el retardo de 300 ms lo
+      cubre `touch-action: manipulation`; la capa de gestos del reproductor
+      mantiene `touch-action: none` (el doble-tap no se lo lleva el zoom).
+      Fijado con tests en `a11yViewport.test.ts`.
+- [x] `appHost.setUserScalable()` ya no puede volver a bloquear el zoom
+      (reescribía el meta con `user-scalable=no` y perdía `viewport-fit=cover`)
+- [ ] Probar en dispositivo real — **requiere verificación humana**
 
 ### A2. Soporte `prefers-reduced-motion`
 - [ ] Añadir regla CSS global para `@media (prefers-reduced-motion: reduce)`

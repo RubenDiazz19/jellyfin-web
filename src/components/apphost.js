@@ -403,10 +403,22 @@ export const appHost = {
     getPushTokenInfo: function () {
         return {};
     },
+    /**
+     * Part of the public AppHost API (native shells call it). It used to write
+     * `user-scalable=no, maximum-scale=1` when asked to lock the viewport,
+     * which silently undid the zoom allowed by index.html — blocking pinch
+     * zoom is a WCAG 1.4.4 failure, so zoom now stays available either way.
+     * The parameter is kept for callers and only widens the zoom ceiling.
+     * `viewport-fit=cover` is preserved: dropping it breaks the safe-area
+     * insets the mobile layout relies on.
+     */
     setUserScalable: function (scalable) {
         if (!browser.tv) {
-            const att = scalable ? 'width=device-width, initial-scale=1, minimum-scale=1, user-scalable=yes' : 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no';
-            document.querySelector('meta[name=viewport]').setAttribute('content', att);
+            const maxScale = scalable ? 10 : 5;
+            document.querySelector('meta[name=viewport]').setAttribute(
+                'content',
+                `width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=${maxScale}, viewport-fit=cover`
+            );
         }
     },
     screen: () => {
