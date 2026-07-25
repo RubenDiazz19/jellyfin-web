@@ -117,9 +117,12 @@
 - [x] Compatibilidad con scroll interior — el gesto solo se apropia si el
       contenido está arriba del todo; si no, el dedo mueve la lista
 
-### B2. Swipe-to-dismiss en toasts mobile
-- [ ] Añadir swipe gesture horizontal al toast
-- [ ] Animar salida y dismiss
+### B2. Swipe-to-dismiss en toasts mobile ✅
+- [x] Añadir swipe gesture horizontal al toast — solo en el snackbar táctil;
+      `touch-action: pan-y` deja el scroll vertical al navegador
+- [x] Animar salida y dismiss — sigue al dedo, la opacidad cae con el
+      recorrido y sale por el lado del gesto; el descarte manual cancela el
+      timer de auto-cierre
 
 ### B3. Extender `touch-action: manipulation`
 > Actualmente solo en botones.
