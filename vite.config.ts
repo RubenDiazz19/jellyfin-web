@@ -269,7 +269,39 @@ export default defineConfig(({ command }) => ({
 
     test: {
         coverage: {
-            include: ['**']
+            include: ['**'],
+            // Umbrales como TRINQUETE, no como meta (H2). El global sale bajo
+            // a propósito: `include: ['**']` mide también las ~110 unidades
+            // legacy sin tests, así que la cifra real hoy es ~5.6% de líneas.
+            // Ponerlos justo por debajo de lo medido hace que una regresión
+            // grande rompa el build, sin bloquear a nadie por el legacy.
+            //
+            // Los globs suben el listón donde el código sí está cubierto: el
+            // frontend propio y utils/. **Al subir la cobertura de verdad,
+            // subid estos números** — si no, el trinquete deja de servir.
+            //
+            // Medido el 2026-07-26 con `bun run test --coverage`:
+            //   global            líneas 5.64  ramas 72.3  funciones 53.3
+            //   apps/frontend     líneas 23.8  ramas 78.8  funciones 66.3
+            //   utils             líneas 16.4  ramas 90.6  funciones 34.6
+            thresholds: {
+                lines: 5,
+                statements: 5,
+                branches: 70,
+                functions: 50,
+                '**/src/apps/frontend/**': {
+                    lines: 22,
+                    statements: 22,
+                    branches: 75,
+                    functions: 64
+                },
+                '**/src/utils/**': {
+                    lines: 15,
+                    statements: 15,
+                    branches: 88,
+                    functions: 32
+                }
+            }
         },
         environment: 'jsdom',
         restoreMocks: true,

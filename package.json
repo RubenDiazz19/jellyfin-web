@@ -108,6 +108,7 @@
     "build:check": "tsc --noEmit",
     "lint": "eslint",
     "test": "vitest --watch=false --config vite.config.ts",
+    "test:coverage": "vitest --watch=false --coverage --config vite.config.ts",
     "test:watch": "vitest --config vite.config.ts",
     "stylelint": "stylelint \"src/**/*.{css,scss}\""
   },

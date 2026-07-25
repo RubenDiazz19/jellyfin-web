@@ -19,6 +19,22 @@ If you have any questions, please join one of our [development chat rooms](https
 * **SHOULD NOT** reference browser globals. Globals exist for plugins/legacy compatibility. Use direct imports for any dependencies instead.
 * You **MAY** add your GitHub username to the list of contributors in [CONTRIBUTORS.md](./CONTRIBUTORS.md).
 
+### Tests
+
+* A file migrated from JS to TypeScript **MUST** ship with a test in the same
+  commit. The migration is the only moment when someone has the file's behaviour
+  fresh in their head, and a type annotation is not a behavioural check — the
+  test is what proves the migration did not change what the code does.
+  * Cover at minimum the exported surface and whatever branch the migration
+    touched (null handling, defaults, early returns).
+  * If a unit is genuinely untestable without a rewrite (legacy view/controller
+    code bound to the DOM), say so in the PR and split the rewrite out.
+* New non-legacy files **SHOULD** be covered by unit tests.
+* Coverage thresholds live in `vite.config.ts` and act as a **ratchet**, not a
+  target: they sit just below the measured numbers so a big regression fails the
+  build. When coverage genuinely goes up, raise them in the same PR.
+* Run `bun run test` (add `--coverage` for the report).
+
 ### Components
 
 * Components **MUST NOT** be typed with `React.FC` / `FunctionComponent`. Declare

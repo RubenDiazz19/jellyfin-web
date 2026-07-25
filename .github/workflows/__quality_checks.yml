@@ -39,7 +39,9 @@ jobs:
           - lint
           - stylelint
           - build:check
-          - test
+          # Con cobertura para que los umbrales-trinquete de vite.config.ts
+          # se apliquen de verdad: `test` a secas no los evalúa.
+          - test:coverage
 
     steps:
       - name: Checkout ⬇️

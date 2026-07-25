@@ -300,11 +300,24 @@
 - [ ] Añadir tests para rutas principales
 - [ ] Añadir tests para features/users, features/playback, etc.
 
-### H2. Tests para legacy code migrado
+### H2. Tests para legacy code migrado ✅
 > Cada migración JS→TS debe incluir tests.
 
-- [ ] Definir política: todo archivo migrado debe tener test
-- [ ] Añadir umbral de cobertura en vitest config
+- [x] Definir política: todo archivo migrado debe tener test — escrita en
+      `CONTRIBUTING.md` con el porqué (la migración es el único momento en que
+      alguien tiene fresco el comportamiento del fichero, y una anotación de
+      tipo no comprueba comportamiento) y con la vía de escape para el código
+      de vista legacy realmente intestable.
+- [x] Añadir umbral de cobertura en vitest config — umbrales **trinquete** en
+      `vite.config.ts`, justo por debajo de lo medido, más globs con el listón
+      alto donde sí hay cobertura (`apps/frontend`, `utils`). Verificado que
+      fallan de verdad al incumplirse. Nuevo script `test:coverage`, y el CI
+      pasa a usarlo: `test` a secas no evalúa los umbrales.
+
+> Medido el 2026-07-26 — global: 5,64 % líneas / 72,3 % ramas / 53,3 %
+> funciones. `apps/frontend`: 23,8 / 78,8 / 66,3. `utils`: 16,4 / 90,6 / 34,6.
+> El global es tan bajo porque la cobertura mide también las ~110 unidades
+> legacy sin un solo test (eso es E1/H1, no H2).
 
 ### H3. Tests de integración para frontend
 - [ ] Tests de navegación entre páginas
