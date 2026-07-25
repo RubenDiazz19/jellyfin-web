@@ -107,11 +107,15 @@
 
 ## 🟠 Prioridad Media — UX e Interacción
 
-### B1. Swipe-down para cerrar BottomSheet
-- [ ] Añadir event listeners táctiles en BottomSheet
-- [ ] Animar seguimiento del arrastre
-- [ ] Dismiss al superar threshold vertical
-- [ ] Compatibilidad con scroll interior
+### B1. Swipe-down para cerrar BottomSheet ✅
+- [x] Añadir event listeners táctiles en BottomSheet — nativos, porque
+      `touchmove` tiene que ser no pasivo para frenar el scroll del documento
+- [x] Animar seguimiento del arrastre — el sheet sigue al dedo y el scrim se
+      atenúa con el recorrido; al soltar, transición de vuelta o de salida
+- [x] Dismiss al superar threshold vertical — por recorrido (96px) o por
+      velocidad (flick), medida entre las dos últimas muestras
+- [x] Compatibilidad con scroll interior — el gesto solo se apropia si el
+      contenido está arriba del todo; si no, el dedo mueve la lista
 
 ### B2. Swipe-to-dismiss en toasts mobile
 - [ ] Añadir swipe gesture horizontal al toast
