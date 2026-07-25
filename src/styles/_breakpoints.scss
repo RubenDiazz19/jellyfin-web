@@ -1,0 +1,41 @@
+// Escala de breakpoints del proyecto — espejo SCSS de `utils/breakpoints.ts`
+// (F1). Los dos ficheros tienen que decir lo mismo; lo comprueba
+// `utils/breakpoints.test.ts`.
+//
+// Se expresan en `em` a propósito: una media query en `em` escala con el
+// tamaño de fuente del navegador, así que quien agranda la letra del sistema
+// entra antes en el layout compacto. A tamaño por defecto 1em = 16px, de modo
+// que los números son los mismos que en TS.
+//
+// Uso:
+//   @use '../styles/breakpoints' as bp;
+//   @include bp.up('md') { … }
+//   @include bp.down('md') { … }
+
+@use 'sass:map';
+
+$sm: 37.5em; // 600px — móvil grande en vertical
+$md: 56.25em; // 900px — tablet en vertical
+$lg: 75em; // 1200px — escritorio
+$xl: 96em; // 1536px — escritorio ancho
+
+$breakpoints: (
+    'sm': $sm,
+    'md': $md,
+    'lg': $lg,
+    'xl': $xl
+);
+
+/// A partir de este ancho (incluido).
+@mixin up($key) {
+    @media (min-width: map.get($breakpoints, $key)) {
+        @content;
+    }
+}
+
+/// Por debajo de este ancho, sin solaparse con `up` del mismo corte.
+@mixin down($key) {
+    @media (max-width: calc(#{map.get($breakpoints, $key)} - 0.0625em)) {
+        @content;
+    }
+}

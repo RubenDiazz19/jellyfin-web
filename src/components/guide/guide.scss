@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as bp;
+
 .tvguide {
     display: flex;
     flex-direction: column;
@@ -100,7 +102,7 @@
     width: 1800vw;
 }
 
-@media all and (min-width: 37.5em) {
+@include bp.up('sm') {
     .channelPrograms,
     .timeslotHeadersInner {
         width: 1400vw;
@@ -182,7 +184,7 @@
     }
 }
 
-@media all and (min-width: 37.5em) {
+@include bp.up('sm') {
     .channelsContainer,
     .guide-channelTimeslotHeader {
         width: 16vw;

@@ -146,13 +146,33 @@
 
 ## 🟠 Prioridad Media — Unificación de sistemas
 
-### F1. Armonizar 3 sistemas de breakpoints
+### F1. Armonizar 3 sistemas de breakpoints 🟡 (fuente única creada; queda migrar el SCSS raro)
 > Frontend: 600/1024 | MUI: 600/900/1200/1536 | SCSS legacy: 800/1000/1280
 
-- [ ] Evaluar alinear frontend con MUI (sm=600, md=900, lg=1200)
-- [ ] Migrar SCSS legacy a variables MUI
-- [ ] Documentar decisión en el código
-- [ ] Consolidar breakpoints de `card.scss` (25+ → menos pasos)
+- [x] Evaluar alinear frontend con MUI — **sí en los nombres y valores, con una
+      excepción**: la escala canónica pasa a ser la de MUI (600/900/1200/1536),
+      pero el corte de escritorio del frontend propio se queda en **1024**.
+      Subirlo a `lg` (1200) metería los portátiles de 1024–1199 px en el layout
+      táctil (rompe la regla cardinal) y bajarlo a `md` (900) dejaría fuera al
+      iPad en horizontal. Queda documentado y con test.
+- [x] Documentar decisión en el código — `utils/breakpoints.ts` (TS/MUI) y
+      `styles/_breakpoints.scss` (mixins `up`/`down`), con un test que impide
+      que las dos copias se separen. El tema MUI declara ahora la escala
+      explícitamente en vez de heredarla, y `adaptiveLayout.ts` ya no define la
+      suya (tenía un `lg: 840` que no usaba nadie y nombres que chocaban con
+      los de MUI).
+- [ ] Migrar SCSS legacy a variables MUI — hecho solo donde el corte ya
+      coincidía exactamente con la escala (4 media queries en `guide.scss` y
+      `card.scss`): renombrado puro, mismo CSS emitido. **El resto NO se toca
+      todavía a propósito**: los cortes legacy (50em, 48.125em, 43.75em,
+      62.5em…) no equivalen a ningún corte canónico, así que migrarlos es
+      mover el layout de las vistas legacy, no renombrar. Además están en `em`,
+      que es mejor para accesibilidad que px (escalan con la fuente del
+      sistema), así que la escala SCSS se mantiene en `em`.
+- [ ] Consolidar breakpoints de `card.scss` (25+ → menos pasos) — 27 media
+      queries con 14 cortes distintos que deciden cuántas tarjetas caben por
+      fila. Consolidarlos cambia la rejilla a muchos anchos y es justo el
+      renderer que E2/G1 van a reescribir; hacerlo ahora sería trabajo tirado.
 
 ### F2. Unificar 3 sistemas de imágenes 🟡 (React unificado; el legacy lo bloquea G1/F4)
 > `Image.tsx`, `common/Image.tsx`, `images/imageLoader.js`

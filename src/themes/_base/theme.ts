@@ -1,6 +1,8 @@
 import type { ColorSystemOptions, ThemeOptions } from '@mui/material/styles';
 import type {} from '@mui/material/themeCssVarsAugmentation';
 
+import { BREAKPOINTS } from 'utils/breakpoints';
+
 const LIST_ICON_WIDTH = 36;
 
 /** The default "Dark" color scheme. */
@@ -34,6 +36,19 @@ export const DEFAULT_COLOR_SCHEME: ColorSystemOptions = {
 
 /** The default customizations to the default MUI theme. */
 export const DEFAULT_THEME_OPTIONS: ThemeOptions = {
+    // Escala de breakpoints explícita en vez de heredar la de MUI (F1): son
+    // los mismos valores, pero declarándolos aquí el tema, el SCSS
+    // (styles/_breakpoints.scss) y el TS (utils/breakpoints.ts) beben de una
+    // sola fuente y no pueden separarse sin que salte el test.
+    breakpoints: {
+        values: {
+            xs: 0,
+            sm: BREAKPOINTS.sm,
+            md: BREAKPOINTS.md,
+            lg: BREAKPOINTS.lg,
+            xl: BREAKPOINTS.xl
+        }
+    },
     typography: {
         fontFamily: '"Noto Sans", sans-serif',
         button: {

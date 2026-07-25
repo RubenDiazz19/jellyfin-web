@@ -18,19 +18,19 @@
 // layoutManager para no alterar esas áreas. En dispositivos TV no se toca
 // nada.
 
-export const BREAKPOINTS = {
-    /** mobile-sm: 0–399px */
-    sm: 400,
-    /** mobile-lg: 400–599px */
-    md: 600,
-    /** tablet: 600–1023px */
-    lg: 840,
-    /** desktop: ≥1024px → sin cambios */
-    xl: 1024
-} as const;
+// Los cortes salen de la escala única del proyecto (utils/breakpoints).
+// Este módulo ya no define la suya: antes tenía una tabla propia con un `lg`
+// de 840px que no usaba nadie y unos nombres que no coincidían con los de
+// MUI, así que "md" significaba cosas distintas según el fichero.
+import {
+    FRONTEND_DESKTOP_MIN_WIDTH,
+    FRONTEND_TABLET_MIN_WIDTH
+} from 'utils/breakpoints';
 
-export const TABLET_MIN_WIDTH = BREAKPOINTS.md;
-export const DESKTOP_MIN_WIDTH = BREAKPOINTS.xl;
+/** Tablet desde 600px (`sm` de la escala). */
+export const TABLET_MIN_WIDTH = FRONTEND_TABLET_MIN_WIDTH;
+/** Escritorio desde 1024px — excepción documentada en utils/breakpoints. */
+export const DESKTOP_MIN_WIDTH = FRONTEND_DESKTOP_MIN_WIDTH;
 
 type BaseLayout = 'mobile' | 'desktop' | 'tv';
 
