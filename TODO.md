@@ -55,10 +55,14 @@
       (`prefersReducedMotion` / `scrollBehavior`), usado por `scrollManager.js`,
       el ripple M3 y `ScrollTopFab`
 
-### A3. Soporte `prefers-contrast`
-- [ ] Leer `prefers-contrast: more` en el theme provider
-- [ ] Ajustar `contrastLevel` en `SchemeTonalSpot` en `m3.ts`
-- [ ] Probar cambio entre modos
+### A3. Soporte `prefers-contrast` ✅
+- [x] Leer `prefers-contrast: more` en el theme provider — y también `less`;
+      `custom` / `no-preference` caen en el estándar
+- [x] Ajustar `contrastLevel` en `SchemeTonalSpot` en `m3.ts` — constantes en
+      `M3_CONTRAST`, recortadas a −1…1 para no degenerar la paleta, y el nivel
+      activo se emite como `--md-sys-contrast`
+- [x] Probar cambio entre modos — tests del provider: estándar, `more`, `less`,
+      cambio en caliente y ausencia de rastro en desktop
 
 ---
 

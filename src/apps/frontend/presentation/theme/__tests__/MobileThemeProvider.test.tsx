@@ -19,6 +19,40 @@ vi.mock('../../../data/api/theme', () => ({
 
 const STYLE_ID = 'jfp-m3-tokens';
 
+// matchMedia controlable: guarda los listeners de cada query para poder
+// simular que el usuario cambia la preferencia con la app abierta.
+type FakeMql = MediaQueryList & { _set: (matches: boolean) => void };
+
+function installMatchMedia(initial: Record<string, boolean> = {}) {
+    const mqls = new Map<string, FakeMql>();
+    const real = window.matchMedia;
+
+    window.matchMedia = ((query: string) => {
+        const existing = mqls.get(query);
+        if (existing) return existing;
+        const listeners = new Set<() => void>();
+        const mql = {
+            media: query,
+            matches: initial[query] ?? false,
+            addEventListener: (_: string, fn: () => void) => { listeners.add(fn); },
+            removeEventListener: (_: string, fn: () => void) => { listeners.delete(fn); },
+            _set(matches: boolean) {
+                this.matches = matches;
+                listeners.forEach((fn) => fn());
+            }
+        } as unknown as FakeMql;
+        mqls.set(query, mql);
+        return mql;
+    }) as unknown as typeof window.matchMedia;
+
+    return {
+        get: (query: string) => mqls.get(query),
+        restore: () => { window.matchMedia = real; }
+    };
+}
+
+const tokensCss = () => document.getElementById(STYLE_ID)?.textContent ?? '';
+
 function renderProvider(): { root: Root; host: HTMLElement } {
     const host = document.createElement('div');
     document.body.appendChild(host);
@@ -71,6 +105,94 @@ describe('MobileThemeProvider', () => {
         document.documentElement.classList.add('layout-tablet');
         const { root, host } = renderProvider();
         expect(document.getElementById(STYLE_ID)).not.toBeNull();
+        act(() => { root.unmount(); });
+        host.remove();
+    });
+});
+
+describe('MobileThemeProvider: prefers-contrast', () => {
+    let mm: ReturnType<typeof installMatchMedia>;
+
+    beforeEach(() => {
+        localStorage.clear();
+        document.documentElement.className = '';
+    });
+
+    afterEach(() => {
+        mm?.restore();
+        document.documentElement.className = '';
+        document.getElementById(STYLE_ID)?.remove();
+    });
+
+    it('sin preferencia usa el contraste estándar', () => {
+        document.documentElement.classList.add('layout-mobile');
+        mm = installMatchMedia();
+        const { root, host } = renderProvider();
+
+        expect(tokensCss()).toContain('--md-sys-contrast: 0;');
+
+        act(() => { root.unmount(); });
+        host.remove();
+    });
+
+    it('con prefers-contrast: more sube el contraste y cambia la paleta', () => {
+        document.documentElement.classList.add('layout-mobile');
+        mm = installMatchMedia();
+        const { root: base, host: baseHost } = renderProvider();
+        const standard = tokensCss();
+        act(() => { base.unmount(); });
+        baseHost.remove();
+        document.getElementById(STYLE_ID)?.remove();
+
+        mm.restore();
+        mm = installMatchMedia({ '(prefers-contrast: more)': true });
+        const { root, host } = renderProvider();
+
+        const css = tokensCss();
+        expect(css).toContain('--md-sys-contrast: 1;');
+        // No basta con emitir el nivel: la paleta tiene que responder.
+        expect(css).not.toBe(standard);
+
+        act(() => { root.unmount(); });
+        host.remove();
+    });
+
+    it('con prefers-contrast: less baja el contraste', () => {
+        document.documentElement.classList.add('layout-mobile');
+        mm = installMatchMedia({ '(prefers-contrast: less)': true });
+        const { root, host } = renderProvider();
+
+        expect(tokensCss()).toContain('--md-sys-contrast: -0.5;');
+
+        act(() => { root.unmount(); });
+        host.remove();
+    });
+
+    it('cambiar la preferencia con la app abierta repinta los tokens', () => {
+        document.documentElement.classList.add('layout-mobile');
+        mm = installMatchMedia();
+        const { root, host } = renderProvider();
+        expect(tokensCss()).toContain('--md-sys-contrast: 0;');
+
+        act(() => { mm.get('(prefers-contrast: more)')?._set(true); });
+        expect(tokensCss()).toContain('--md-sys-contrast: 1;');
+
+        act(() => { mm.get('(prefers-contrast: more)')?._set(false); });
+        expect(tokensCss()).toContain('--md-sys-contrast: 0;');
+
+        act(() => { root.unmount(); });
+        host.remove();
+    });
+
+    it('desktop: prefers-contrast no deja rastro (regla cardinal)', () => {
+        document.documentElement.classList.add('layout-desktop');
+        mm = installMatchMedia({ '(prefers-contrast: more)': true });
+        const { root, host } = renderProvider();
+
+        expect(document.getElementById(STYLE_ID)).toBeNull();
+        // Ni siquiera se suscribe a la query.
+        expect(mm.get('(prefers-contrast: more)')).toBeUndefined();
+
         act(() => { root.unmount(); });
         host.remove();
     });

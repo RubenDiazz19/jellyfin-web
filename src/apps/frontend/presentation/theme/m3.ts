@@ -31,9 +31,31 @@ export const M3_SCOPE = 'html.layout-mobile, html.layout-tablet';
 /** Clase transitoria que suaviza el cambio de tema (la pone el provider). */
 export const M3_ANIM_CLASS = 'jfp-theme-anim';
 
+/**
+ * Niveles de contraste de M3 (el tercer argumento de los Scheme*). El rango
+ * útil es −1 … 1: 0 es el estándar del spec y 1 el "high contrast" (sube el
+ * ratio de on-* contra sus superficies y oscurece/aclara los outlines).
+ * Los mapea MobileThemeProvider desde `prefers-contrast`.
+ */
+export const M3_CONTRAST = {
+    /** `no-preference` — el spec tal cual. */
+    standard: 0,
+    /** `prefers-contrast: more` — máximo del spec. */
+    more: 1,
+    /** `prefers-contrast: less` — el spec admite negativo; no bajamos de −0.5
+     *  para no perder legibilidad en superficies grandes. */
+    less: -0.5
+} as const;
+
 // ── md-sys-color ────────────────────────────────────────────────────────
 
 type ColorGetter = (s: DynamicScheme) => number;
+
+/** Fuera de −1…1 material-color-utilities produce colores degenerados. */
+function clampContrast(level: number): number {
+    if (!Number.isFinite(level)) return M3_CONTRAST.standard;
+    return Math.min(1, Math.max(-1, level));
+}
 
 const COLOR_TOKENS: ReadonlyArray<readonly [string, ColorGetter]> = [
     ['primary', (s) => s.primary],
@@ -77,16 +99,18 @@ const COLOR_TOKENS: ReadonlyArray<readonly [string, ColorGetter]> = [
 
 /**
  * Deriva la paleta md-sys-color completa (37 tokens) desde un seed #rrggbb.
+ * `contrast` es el nivel M3 (ver M3_CONTRAST); por defecto, el estándar.
  * Devuelve `{ '--md-sys-color-primary': '#rrggbb', … }`.
  */
 export function makeColorTokens(
     seedHex: string,
-    scheme: M3SchemeName
+    scheme: M3SchemeName,
+    contrast: number = M3_CONTRAST.standard
 ): Record<string, string> {
     const dyn = new SchemeTonalSpot(
         Hct.fromInt(argbFromHex(seedHex)),
         scheme === 'dark',
-        0 // contraste estándar
+        clampContrast(contrast)
     );
     const out: Record<string, string> = {};
     for (const [token, get] of COLOR_TOKENS) {
@@ -174,10 +198,17 @@ const M3_TYPE_FONT = T.ui;
  * activo + elevation + shape + typescale, todo scopeado a M3_SCOPE, más la
  * regla de transición suave activada por M3_ANIM_CLASS.
  */
-export function buildM3Css(seedHex: string, scheme: M3SchemeName): string {
-    const lines: string[] = [`--md-sys-color-scheme: ${scheme};`];
+export function buildM3Css(
+    seedHex: string,
+    scheme: M3SchemeName,
+    contrast: number = M3_CONTRAST.standard
+): string {
+    const lines: string[] = [
+        `--md-sys-color-scheme: ${scheme};`,
+        `--md-sys-contrast: ${clampContrast(contrast)};`
+    ];
 
-    const colors = makeColorTokens(seedHex, scheme);
+    const colors = makeColorTokens(seedHex, scheme, contrast);
     for (const [k, v] of Object.entries(colors)) lines.push(`${k}: ${v};`);
 
     M3_ELEVATION.forEach((shadow, level) => {

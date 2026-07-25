@@ -30,6 +30,7 @@ import {
 import {
     buildM3Css,
     M3_ANIM_CLASS,
+    M3_CONTRAST,
     M3_DEFAULT_SEED,
     makeColorTokens,
     type M3SchemeName
@@ -43,6 +44,8 @@ type MobileThemeValue = {
     layout: MobileLayout | null;
     scheme: M3SchemeName;
     mode: ThemeMode;
+    /** Nivel de contraste M3 activo (derivado de `prefers-contrast`). */
+    contrast: number;
     setMode: (mode: ThemeMode) => void;
     /** Dynamic color: alimenta la seed desde la URL del backdrop visible. */
     applyImageSeed: (url: string) => void;
@@ -54,6 +57,7 @@ const INERT: MobileThemeValue = {
     layout: null,
     scheme: 'dark',
     mode: 'dark',
+    contrast: M3_CONTRAST.standard,
     setMode: noop,
     applyImageSeed: noop
 };
@@ -79,6 +83,30 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         return () => mq.removeEventListener('change', apply);
     }, [active]);
 
+    // prefers-contrast → nivel de contraste M3. Se consultan las dos queries
+    // (more/less) porque no hay una sola con valor; `custom` y
+    // `no-preference` caen en el estándar.
+    const [contrast, setContrast] = useState<number>(M3_CONTRAST.standard);
+    useEffect(() => {
+        if (!active || typeof window.matchMedia !== 'function') return;
+        const more = window.matchMedia('(prefers-contrast: more)');
+        const less = window.matchMedia('(prefers-contrast: less)');
+        const apply = () => {
+            setContrast(
+                more.matches ? M3_CONTRAST.more :
+                    less.matches ? M3_CONTRAST.less :
+                        M3_CONTRAST.standard
+            );
+        };
+        apply();
+        more.addEventListener('change', apply);
+        less.addEventListener('change', apply);
+        return () => {
+            more.removeEventListener('change', apply);
+            less.removeEventListener('change', apply);
+        };
+    }, [active]);
+
     // Preferencia remota (DisplayPreferences) al activarse en mobile/tablet.
     // Si no hay sesión aún, el pull falla en silencio y manda la local.
     useEffect(() => {
@@ -95,9 +123,9 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
             el.id = STYLE_ID;
             document.head.appendChild(el);
         }
-        el.textContent = buildM3Css(seed ?? M3_DEFAULT_SEED, scheme);
+        el.textContent = buildM3Css(seed ?? M3_DEFAULT_SEED, scheme, contrast);
         return () => { document.getElementById(STYLE_ID)?.remove(); };
-    }, [active, seed, scheme]);
+    }, [active, seed, scheme, contrast]);
 
     // theme-color dinámico: la barra de estado del sistema sigue al surface
     // del tema. Solo mobile/tablet; al salir se restaura el valor original.
@@ -106,10 +134,10 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         const meta = document.querySelector('meta[name="theme-color"]');
         if (!(meta instanceof HTMLMetaElement)) return;
         const prev = meta.content;
-        const surface = makeColorTokens(seed ?? M3_DEFAULT_SEED, scheme)['--md-sys-color-surface'];
+        const surface = makeColorTokens(seed ?? M3_DEFAULT_SEED, scheme, contrast)['--md-sys-color-surface'];
         if (surface) meta.content = surface;
         return () => { meta.content = prev; };
-    }, [active, seed, scheme]);
+    }, [active, seed, scheme, contrast]);
 
     // Transición suave al cambiar de tema (no en el primer render).
     const firstScheme = useRef(true);
@@ -141,9 +169,9 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
 
     const value = useMemo<MobileThemeValue>(() => (
         active ?
-            { layout, scheme, mode, setMode, applyImageSeed } :
+            { layout, scheme, mode, contrast, setMode, applyImageSeed } :
             INERT
-    ), [active, layout, scheme, mode, setMode, applyImageSeed]);
+    ), [active, layout, scheme, mode, contrast, setMode, applyImageSeed]);
 
     return (
         <MobileThemeContext.Provider value={value}>

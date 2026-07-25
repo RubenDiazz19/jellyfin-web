@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     buildM3Css,
+    M3_CONTRAST,
     M3_DEFAULT_SEED,
     M3_ELEVATION,
     M3_SHAPE,
@@ -31,6 +32,20 @@ describe('m3: paletas md-sys-color', () => {
 
         const otherSeed = makeColorTokens('#a03040', 'dark');
         expect(otherSeed['--md-sys-color-primary']).not.toBe(dark['--md-sys-color-primary']);
+    });
+
+    it('el contraste alto cambia la paleta y sigue dando hex válidos', () => {
+        const std = makeColorTokens(M3_DEFAULT_SEED, 'dark', M3_CONTRAST.standard);
+        const more = makeColorTokens(M3_DEFAULT_SEED, 'dark', M3_CONTRAST.more);
+        // Sube el contraste de on-surface contra su superficie → cambia el token.
+        expect(more['--md-sys-color-on-surface']).not.toBe(std['--md-sys-color-on-surface']);
+        for (const value of Object.values(more)) expect(value).toMatch(HEX);
+    });
+
+    it('un contraste fuera de rango se recorta en vez de degenerar', () => {
+        const clamped = makeColorTokens(M3_DEFAULT_SEED, 'dark', 99);
+        const max = makeColorTokens(M3_DEFAULT_SEED, 'dark', 1);
+        expect(clamped).toEqual(max);
     });
 });
 
@@ -68,5 +83,10 @@ describe('m3: stylesheet generado', () => {
         }
 
         expect(css).toContain('--md-sys-color-scheme: light;');
+    });
+
+    it('emite el nivel de contraste activo como custom property', () => {
+        expect(buildM3Css(M3_DEFAULT_SEED, 'dark')).toContain('--md-sys-contrast: 0;');
+        expect(buildM3Css(M3_DEFAULT_SEED, 'dark', M3_CONTRAST.more)).toContain('--md-sys-contrast: 1;');
     });
 });
