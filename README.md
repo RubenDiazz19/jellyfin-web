@@ -16,7 +16,10 @@ reproductor integrado, y múltiples optimizaciones de rendimiento.
 ## Stack
 
 - **Runtime**: Bun + Node.js
-- **Build**: Vite (dev) / webpack (prod)
+- **Gestor de paquetes**: **Bun** (`bun.lock`) — es el único; no hay
+  `package-lock.json` y `npm`/`yarn` están bloqueados en `engines` para que no
+  se cuelen lockfiles paralelos. El CI instala con `bun install --frozen-lockfile`.
+- **Build**: Vite (dev y producción)
 - **UI**: React + React Router + CSS Modules
 
 ## Desarrollo local
@@ -29,7 +32,13 @@ bun start
 Build de producción:
 
 ```sh
-bun run build:production
+bun run build
+```
+
+Comprobaciones (las mismas que corre el CI):
+
+```sh
+bun run lint && bun run stylelint && bun run build:check && bun run test
 ```
 
 ## Despliegue

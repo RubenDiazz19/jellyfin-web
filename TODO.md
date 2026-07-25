@@ -96,12 +96,18 @@
 - [ ] Resolver los de `appRouter.js` (4)
 - [ ] Eliminar comentarios obsoletos
 
-### E4. Unificar lockfiles (bun vs npm)
+### E4. Unificar lockfiles (bun vs npm) ✅
 > Conviven `bun.lock` y `package-lock.json`.
 
-- [ ] Decidir gestor definitivo (bun recomendado por ser más rápido)
-- [ ] Eliminar lockfile redundante
-- [ ] Actualizar CI/CD y docs si es necesario
+- [x] Decidir gestor definitivo: **bun**. `package-lock.json` estaba congelado
+      desde antes de quitar webpack (14/07) mientras `bun.lock` sigue vivo, y
+      el Dockerfile ya instalaba con bun. `engines` bloquea npm y yarn con el
+      mismo truco que ya había para yarn.
+- [x] Eliminar lockfile redundante — fuera `package-lock.json`
+- [x] Actualizar CI/CD y docs — los tres workflows pasan a `setup-bun` +
+      `bun install --frozen-lockfile`; se corrigen dos scripts que ya no
+      existían (`build:production` → `build`, y fuera `build:es-check`, que se
+      cayó con webpack). README documenta la decisión y los comandos reales.
 
 ---
 
