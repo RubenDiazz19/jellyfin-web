@@ -1,0 +1,9 @@
+# El reporte de cobertura se escribe dentro del root de Vite (src/), no en la
+# raíz del repo, así que el glob "src/**/*.css" del script lo pilla. El CSS lo
+# genera Istanbul y no cumple —ni tiene por qué— el estilo del proyecto.
+coverage/**
+src/coverage/**
+
+# Artefactos de build
+dist/**
+node_modules/**

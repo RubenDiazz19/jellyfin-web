@@ -1,8 +1,23 @@
 # TODO: Refactorización, modernización y mejoras
 
-> **Estado (2026-07-25):** Auditoría completa del código. Pendiente:
-> descomposición de módulos legacy, migración JS→TS, unificación de
-> sistemas duplicados, y mejoras de accesibilidad/UX.
+> **Estado (2026-07-26).** Un commit por tarea. Verificación tras cada uno:
+> `tsc` limpio, `bun run lint` en **0 errores**, stylelint limpio, **396 tests**
+> en verde (eran 334) y build de producción OK.
+>
+> **Cerradas (11):** A1, A2, A3 · B1, B2, B3 · E4 · F2 (parcial) · G3, G4, G5
+> (parcial), G6 · H2.
+> **Parciales, con el bloqueo anotado dentro:** F1, F2, G5.
+> **Sin empezar:** D1, D2, E1, E2, E3, F3, F4, F5, G1, G2, H1, H3.
+>
+> Tres inventarios del TODO original estaban mal y se han corregido en su
+> sección: `React.FC` no son ~13 archivos sino 114; los `any` no son 165+ sino
+> 20; y `webcomponents.js` no es un polyfill sobrante, es lo que sostiene a
+> los 18 `emby-*`.
+>
+> **Orden recomendado para seguir:** G1 (reescribir los `emby-*` a Custom
+> Elements v1) desbloquea de golpe G5, G2 y F2; E1/E2 conviene atacarlas por
+> el mismo sitio. D1 y D2 son las de más riesgo: pide una rama propia y tests
+> de caracterización antes de tocar `playbackmanager.js`.
 
 ---
 
