@@ -77,7 +77,19 @@ function isTextSubtitle(codec?: string): boolean {
     return c === 'subrip' || c === 'srt' || c === 'ass' || c === 'ssa' || c === 'vtt' || c === 'webvtt';
 }
 
-function mapMediaStream(s: any): MediaStreamInfo {
+/** Pista tal cual la describe MediaSources[].MediaStreams del servidor. */
+type JFMediaStream = {
+    Index: number;
+    Type?: string;
+    Language?: string;
+    DisplayTitle?: string;
+    Title?: string;
+    IsDefault?: boolean;
+    IsForced?: boolean;
+    Codec?: string;
+};
+
+function mapMediaStream(s: JFMediaStream): MediaStreamInfo {
     return {
         index: s.Index,
         language: s.Language,
@@ -116,7 +128,7 @@ export async function getPlaybackDecision(
     const src = (data.MediaSources ?? [])[0];
     if (!src) throw new Error('Sin fuentes reproducibles');
     const server = trimSlash(session.serverUrl);
-    const streams: any[] = src.MediaStreams ?? [];
+    const streams: JFMediaStream[] = src.MediaStreams ?? [];
     const audioStreams = streams.filter((s) => s.Type === 'Audio').map(mapMediaStream);
     const subtitleStreams = streams.filter((s) => s.Type === 'Subtitle').map(mapMediaStream);
     const activeAudioIndex = src.DefaultAudioStreamIndex ?? opts.audioStreamIndex;

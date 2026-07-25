@@ -20,6 +20,47 @@ export type UserConfig = {
     [key: string]: unknown;
 };
 
+/** El usuario tal cual lo devuelve /Users/Me y /Users (solo lo que se lee). */
+type JFUser = {
+    Id: string;
+    Name: string;
+    HasPassword?: boolean;
+    LastLoginDate?: string;
+    LastActivityDate?: string;
+    PrimaryImageTag?: string;
+    Policy?: { IsAdministrator?: boolean; IsDisabled?: boolean };
+    Configuration?: Partial<UserConfig>;
+};
+
+/** Una biblioteca del usuario tal cual la devuelve /Users/{id}/Views. */
+type JFUserView = {
+    Id: string;
+    Name: string;
+    CollectionType?: string;
+    ImageTags?: Record<string, string>;
+};
+
+/**
+ * Valores por defecto del servidor. Hacen falta porque `UserConfig` declara
+ * esos campos como obligatorios y el servidor puede no enviarlos: antes se
+ * devolvía `{}` tal cual y el `any` tapaba que la promesa no se cumplía —
+ * quien leyera `config.SubtitleMode` se encontraba `undefined`.
+ */
+const DEFAULT_USER_CONFIG: UserConfig = {
+    PlayDefaultAudioTrack: true,
+    SubtitleLanguagePreference: '',
+    SubtitleMode: 'Default',
+    DisplayMissingEpisodes: false,
+    HidePlayedInLatest: true,
+    RememberAudioSelections: true,
+    RememberSubtitleSelections: true,
+    EnableNextEpisodeAutoPlay: true
+};
+
+function withDefaults(config: Partial<UserConfig> | undefined): UserConfig {
+    return { ...DEFAULT_USER_CONFIG, ...config };
+}
+
 export type CurrentUser = {
     id: string;
     name: string;
@@ -31,7 +72,7 @@ export type CurrentUser = {
 };
 
 export async function getCurrentUser(): Promise<CurrentUser> {
-    const data = await apiFetch<any>('/Users/Me');
+    const data = await apiFetch<JFUser>('/Users/Me');
     return {
         id: data.Id,
         name: data.Name,
@@ -39,7 +80,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
         hasPassword: !!data.HasPassword,
         lastLogin: data.LastLoginDate,
         avatarTag: data.PrimaryImageTag,
-        config: data.Configuration ?? {}
+        config: withDefaults(data.Configuration)
     };
 }
 
@@ -51,8 +92,8 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 export async function updateUserConfig(patch: Partial<UserConfig>): Promise<UserConfig> {
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
-    const current = (await apiFetch<any>('/Users/Me')).Configuration ?? {};
-    const merged = { ...current, ...patch };
+    const current = (await apiFetch<JFUser>('/Users/Me')).Configuration;
+    const merged: UserConfig = { ...withDefaults(current), ...patch };
     await apiSend(`/Users/${session.userId}/Configuration`, 'POST', merged);
     return merged;
 }
@@ -117,7 +158,7 @@ export type UserView = {
 export async function getUserViews(): Promise<UserView[]> {
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
-    const data = await apiFetch<{ Items: any[] }>(`/Users/${session.userId}/Views`);
+    const data = await apiFetch<{ Items: JFUserView[] }>(`/Users/${session.userId}/Views`);
     const server = trimSlash(session.serverUrl);
     return (data.Items ?? []).map((v) => ({
         id: v.Id,
@@ -139,7 +180,7 @@ export type UserListEntry = {
 
 /** Listado de usuarios del servidor (requiere admin; 403 si no lo es). */
 export async function getUsers(): Promise<UserListEntry[]> {
-    const data = await apiFetch<any[]>('/Users');
+    const data = await apiFetch<JFUser[]>('/Users');
     return (data ?? []).map((u) => ({
         id: u.Id,
         name: u.Name,

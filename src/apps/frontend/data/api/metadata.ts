@@ -24,10 +24,31 @@ export type RemoteSearchResult = {
     ProviderIds?: Record<string, string>;
 };
 
-export async function getItemRaw(itemId: string): Promise<any> {
+/**
+ * El item tal cual lo devuelve el servidor. Se tipan los campos que lee el
+ * editor y se deja el resto abierto a propósito: al guardar se reenvía el
+ * objeto entero (POST /Items/{id} espera el item completo), así que perder
+ * los campos no listados borraría datos.
+ */
+export type JFRawItem = {
+    Id?: string;
+    Name?: string;
+    OriginalTitle?: string;
+    ProductionYear?: number;
+    Overview?: string;
+    Taglines?: string[];
+    Genres?: string[];
+    OfficialRating?: string;
+    ImageTags?: Record<string, string>;
+    BackdropImageTags?: string[];
+    ProviderIds?: Record<string, string>;
+    [field: string]: unknown;
+};
+
+export async function getItemRaw(itemId: string): Promise<JFRawItem> {
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
-    return apiFetch<any>(
+    return apiFetch<JFRawItem>(
         `/Users/${session.userId}/Items/${itemId}?Fields=Overview,Genres,Taglines,ProductionYear,OfficialRating,OriginalTitle,ProviderIds`
     );
 }

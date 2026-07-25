@@ -35,11 +35,17 @@ export async function authenticate(
     let auth;
     try {
         auth = await apiClient.authenticateUserByName(username, password);
-    } catch (err: any) {
+    } catch (err) {
+        // El ApiClient legacy rechaza con un objeto suelto (a veces un
+        // XHR, a veces un Error con `status`), no con algo tipado: se lee
+        // el código con una comprobación en vez de con un cast.
+        const status = err !== null && typeof err === 'object' && 'status' in err ?
+            (err as { status?: unknown }).status :
+            undefined;
         throw new Error(
-            err?.status === 401 ?
+            status === 401 ?
                 'Usuario o contraseña incorrectos' :
-                `Error del servidor (${err?.status ?? '?'})`
+                `Error del servidor (${typeof status === 'number' ? status : '?'})`
         );
     }
     const displayName = auth?.User?.Name ?? username;

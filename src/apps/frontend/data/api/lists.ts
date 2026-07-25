@@ -12,7 +12,15 @@ export type ListEntry = {
     image?: string;
 };
 
-function mapEntry(i: any): ListEntry {
+/** Campos que devuelve el listado de playlists/colecciones y aquí se usan. */
+type JFListItem = {
+    Id: string;
+    Name: string;
+    ChildCount?: number;
+    ImageTags?: Record<string, string>;
+};
+
+function mapEntry(i: JFListItem): ListEntry {
     return {
         id: i.Id,
         name: i.Name,
@@ -26,7 +34,7 @@ function mapEntry(i: any): ListEntry {
 export async function getPlaylists(): Promise<ListEntry[]> {
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
-    const data = await apiFetch<{ Items: any[] }>(
+    const data = await apiFetch<{ Items: JFListItem[] }>(
         `/Users/${session.userId}/Items?IncludeItemTypes=Playlist&Recursive=true&SortBy=SortName&Fields=ChildCount`
     );
     return (data.Items ?? []).map(mapEntry);
@@ -52,7 +60,7 @@ export async function createPlaylist(name: string, itemId: string): Promise<void
 export async function getCollections(): Promise<ListEntry[]> {
     const session = loadSession();
     if (!session?.userId) throw new Error('Sin sesión');
-    const data = await apiFetch<{ Items: any[] }>(
+    const data = await apiFetch<{ Items: JFListItem[] }>(
         `/Users/${session.userId}/Items?IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&Fields=ChildCount`
     );
     return (data.Items ?? []).map(mapEntry);

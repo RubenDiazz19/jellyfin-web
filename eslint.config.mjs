@@ -68,7 +68,11 @@ export default tseslint.config(
     {
         ignores: [
             'node_modules',
+            // El reporte de cobertura se escribe dentro del root de Vite
+            // (src/), no en la raíz del repo: hay que ignorar las dos rutas o
+            // eslint acaba analizando el HTML/JS que genera Istanbul.
             'coverage',
+            'src/coverage',
             'dist',
             '.idea',
             '.vscode',
@@ -500,7 +504,11 @@ export default tseslint.config(
             // no-floating-promises exige void; void-use lo prohíbe — gana TS.
             'sonarjs/void-use': 'off',
             '@stylistic/max-statements-per-line': 'off',
-            '@typescript-eslint/no-explicit-any': 'off',
+            // `no-explicit-any` estaba apagado aquí (prototipado rápido) y era
+            // el único sitio del repo con `any` explícitos: 20, todos ya
+            // sustituidos por tipos concretos. Se deja como warning —no error—
+            // para no frenar un prototipo, pero que se vea al escribirlo.
+            '@typescript-eslint/no-explicit-any': 'warn',
             'jsx-a11y/no-static-element-interactions': 'off',
             'jsx-a11y/click-events-have-key-events': 'off',
             'jsx-a11y/no-autofocus': 'off',

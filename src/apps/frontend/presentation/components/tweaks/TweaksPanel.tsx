@@ -49,13 +49,17 @@ type Setter<T> = {
 // Único punto de verdad para los valores de los tweaks. Cuando cambian, se
 // notifica al host (edit-mode) por postMessage y a suscriptores locales
 // mediante un CustomEvent, para que otros paneles reaccionen sin recargar.
-export function useTweaks<T extends Record<string, any>>(defaults: T): [T, Setter<T>] {
+export function useTweaks<T extends Record<string, unknown>>(defaults: T): [T, Setter<T>] {
     const [values, setValues] = useState<T>(defaults);
-    const setTweak = useCallback((keyOrEdits: any, val?: any) => {
-        const edits =
-      typeof keyOrEdits === 'object' && keyOrEdits !== null ?
-          keyOrEdits :
-          { [keyOrEdits]: val };
+    // Sobrecarga: acepta un objeto de ediciones o un par clave/valor. La
+    // firma pública la fija `Setter<T>`; aquí dentro el parámetro es la
+    // unión de las dos formas.
+    const setTweak = useCallback((keyOrEdits: Partial<T> | keyof T, val?: T[keyof T]) => {
+        // Las claves son string/number/symbol, así que `typeof === 'object'`
+        // ya distingue las dos formas de llamada.
+        const edits: Partial<T> = typeof keyOrEdits === 'object' ?
+            keyOrEdits :
+            { [keyOrEdits]: val } as Partial<T>;
         setValues((prev) => ({ ...prev, ...edits }));
         try {
             // eslint-disable-next-line sonarjs/post-message -- host de edición con origen desconocido a propósito
@@ -105,7 +109,10 @@ export function TweaksPanel({ title = 'Tweaks', children }: PanelProps) {
 
     useEffect(() => {
         const onMsg = (e: MessageEvent) => {
-            const t = (e?.data as any)?.type;
+            const data: unknown = e?.data;
+            const t = data !== null && typeof data === 'object' && 'type' in data ?
+                (data as { type?: unknown }).type :
+                undefined;
             if (t === '__activate_edit_mode') setOpen(true);
             else if (t === '__deactivate_edit_mode') setOpen(false);
         };

@@ -255,10 +255,29 @@
 > escribe el docker-compose) y `bun run lint` fallaba entero con 14 errores de
 > parseo. Añadido a los ignores; ahora la suite queda en **0 errores**.
 
-### G4. Reducir uso de `any` (165+ apariciones)
-- [ ] Auditar usos de `any` (priorizar código moderno)
-- [ ] Reemplazar con tipos concretos o genéricos
-- [ ] Configurar regla `no-explicit-any` como warning
+### G4. Reducir uso de `any` (165+ apariciones) ✅
+> **Corrección del inventario:** no eran 165+. El grep contaba también la
+> palabra dentro de comentarios y cadenas. `any` explícitos de verdad: **20**,
+> y 19 de ellos en `src/apps/frontend`, el único sitio donde la regla estaba
+> apagada. En el resto del repo ya no quedaba ninguno.
+
+- [x] Auditar usos de `any` — 20, en 8 ficheros
+- [x] Reemplazar con tipos concretos o genéricos — **cero `any` explícitos en
+      todo `src`**. Se han tipado las respuestas del servidor que se usaban en
+      crudo (`JFSystemInfo`, `JFListItem`, `JFRawItem`, `JFMediaStream`,
+      `JFUser`, `JFUserView`), el `catch (err: any)` pasa a comprobación en vez
+      de cast, `useTweaks` usa `unknown` y su unión real, y las APIs con
+      prefijo `webkit` se declaran en vez de castearse.
+- [x] Configurar regla `no-explicit-any` como warning — estaba en `off` para
+      `src/apps/frontend`; ahora `warn` allí y sigue en `error` (vía
+      `tseslint.recommended`) en el resto.
+
+> Dos fallos reales que el `any` estaba tapando y se han corregido:
+> - `getCurrentUser()` prometía un `UserConfig` completo pero devolvía `{}` si
+>   el servidor omitía la configuración: quien leyera `config.SubtitleMode`
+>   recibía `undefined`. Ahora se parte de defaults explícitos.
+> - Una promesa colgante en `ViewManagerPage`: la cadena venía de un paquete
+>   sin tipos y `no-floating-promises` no podía verla.
 
 ### G5. Eliminar dependencias legacy innecesarias 🟡 (2 de 3 resueltas)
 - [ ] `webcomponents.js` v0.7.24 — **no se puede quitar todavía: lo bloquea G1.**

@@ -137,7 +137,12 @@ const ViewManagerPage: FunctionComponent<ViewManagerPageProps> = ({
                 });
         };
 
-        loadPage();
+        // Fire and forget: el efecto no puede esperar y los fallos ya se
+        // gestionan dentro (tryRestoreView tiene su catch). El `void` es
+        // explícito desde que viewContainer usa `import()` nativo: antes la
+        // cadena venía de un paquete sin tipos y acababa en `any`, así que la
+        // promesa colgante no se veía.
+        void loadPage();
     },
     // location.state and navigationType are NOT included as dependencies here since dialogs will update state while the current view stays the same
     // eslint-disable-next-line react-hooks/exhaustive-deps

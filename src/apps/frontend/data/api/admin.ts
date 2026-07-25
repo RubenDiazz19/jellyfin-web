@@ -11,8 +11,16 @@ export type SystemInfo = {
     id: string;
 };
 
+/** Lo que /System/Info devuelve y aquí se usa (el resto se ignora). */
+type JFSystemInfo = {
+    ServerName?: string;
+    Version?: string;
+    OperatingSystem?: string;
+    Id?: string;
+};
+
 export async function getSystemInfo(): Promise<SystemInfo> {
-    const data = await apiFetch<any>('/System/Info');
+    const data = await apiFetch<JFSystemInfo>('/System/Info');
     return {
         serverName: data.ServerName ?? 'Jellyfin',
         version: data.Version ?? '',
