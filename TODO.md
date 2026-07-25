@@ -124,11 +124,17 @@
       recorrido y sale por el lado del gesto; el descarte manual cancela el
       timer de auto-cierre
 
-### B3. Extender `touch-action: manipulation`
+### B3. Extender `touch-action: manipulation` ✅
 > Actualmente solo en botones.
 
-- [ ] Revisar sliders, listas, tarjetas clickeables
-- [ ] Añadir bajo `html.layout-mobile` / `html.layout-tablet`
+- [x] Revisar sliders, listas, tarjetas clickeables — las tarjetas
+      (`.jfp-card-m3`, `.jfp-hoverlift`) entran; los deslizantes se excluyen
+      a propósito (`input[type=range]`, `[role=slider]`, la capa de gestos y
+      la barra de seek, que declaran `touch-action: none`). Las listas no
+      necesitan nada: `manipulation` sigue permitiendo pan y pinch.
+- [x] Añadir bajo `html.layout-mobile` / `html.layout-tablet` — y también bajo
+      `body.jf-video-active`, la ruta `/video`, que se monta sin AppLayout y
+      se quedaba fuera
 
 ---
 

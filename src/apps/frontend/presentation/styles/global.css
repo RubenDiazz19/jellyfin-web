@@ -121,13 +121,36 @@ body.jf-frontend-active option {
     color: var(--md-sys-color-on-surface, #fff);
 }
 
-/* touch-action: manipulation en los controles táctiles (Fase 7): elimina el
-   retardo de 300 ms y el doble-tap-zoom del navegador. Solo mobile/tablet;
-   desktop no lleva estas clases y sus botones quedan igual. */
-html.layout-mobile body.jf-frontend-active button,
-html.layout-tablet body.jf-frontend-active button,
-html.layout-mobile body.jf-frontend-active [role='button'],
-html.layout-tablet body.jf-frontend-active [role='button'] {
+/* touch-action: manipulation en los elementos interactivos (Fase 7 + B3):
+   elimina el retardo de 300 ms y el doble-tap-zoom del navegador sobre ellos.
+   Importa más desde que el viewport permite zoom (A1): sin esto, un doble tap
+   rápido sobre una tarjeta lo interpretaría el navegador como zoom.
+
+   Solo mobile/tablet; desktop no lleva estas clases y queda igual. Se cubre
+   también `jf-video-active`, que es la ruta /video: se monta sin AppLayout,
+   así que no tiene la clase del frontend y sus controles se quedaban fuera.
+
+   `manipulation` sigue permitiendo el pan y el pinch-zoom, así que es seguro
+   en contenedores scrolleables y en listas.
+
+   Se EXCLUYE lo que necesita gestionar el gesto por su cuenta:
+   - `input[type=range]` y `[role=slider]` (emby-slider y la barra de
+     progreso del reproductor: el arrastre es suyo),
+   - `.jfp-video-gestures` y `.jfp-video-progress`, que declaran
+     `touch-action: none` en sus propias reglas — al ser selectores de una
+     sola clase perderían por especificidad si entraran aquí. */
+html.layout-mobile body.jf-frontend-active :is(button, a[href], label, summary, select, input:not([type='range']), [role='button'], [role='link'], [role='tab'], [role='menuitem'], [role='option'], [role='switch'], [role='checkbox'], [role='radio']),
+html.layout-tablet body.jf-frontend-active :is(button, a[href], label, summary, select, input:not([type='range']), [role='button'], [role='link'], [role='tab'], [role='menuitem'], [role='option'], [role='switch'], [role='checkbox'], [role='radio']),
+html.layout-mobile body.jf-video-active :is(button, a[href], [role='button'], [role='menuitem'], [role='option']),
+html.layout-tablet body.jf-video-active :is(button, a[href], [role='button'], [role='menuitem'], [role='option']) {
+    touch-action: manipulation;
+}
+
+/* Tarjetas y filas clicables: el hijo interactivo ya lo cubre la regla de
+   arriba, pero el contenedor recibe taps en los huecos (padding, poster).
+   Se listan por clase porque no son botones ni llevan rol. */
+html.layout-mobile body.jf-frontend-active :is(.jfp-card-m3, .jfp-hoverlift),
+html.layout-tablet body.jf-frontend-active :is(.jfp-card-m3, .jfp-hoverlift) {
     touch-action: manipulation;
 }
 
