@@ -154,12 +154,30 @@
 - [ ] Documentar decisión en el código
 - [ ] Consolidar breakpoints de `card.scss` (25+ → menos pasos)
 
-### F2. Unificar 3 sistemas de imágenes
+### F2. Unificar 3 sistemas de imágenes 🟡 (React unificado; el legacy lo bloquea G1/F4)
 > `Image.tsx`, `common/Image.tsx`, `images/imageLoader.js`
 
-- [ ] Analizar diferencias y funcionalidad de cada uno
-- [ ] Elegir implementación canónica
-- [ ] Migrar consumidores y eliminar los otros dos
+- [x] Analizar diferencias y funcionalidad de cada uno — **no eran tres
+      alternativas del mismo componente, sino tres cosas distintas:**
+      - `common/Image.tsx` (74 líneas): la imagen de verdad — lazy loading,
+        placeholder blurhash y fade-in según ajustes del usuario. La usaban
+        `common/Media.tsx` y `CardFooterText.tsx`.
+      - `Image.tsx` (67 líneas): marco del dashboard — superficie MUI con
+        aspect-ratio, skeleton e icono de fallback. Reimplementaba su propio
+        `<img>` sin lazy ni blurhash. La usaban 2 rutas del dashboard.
+      - `images/imageLoader.js` (256 líneas): lazy loading **imperativo** para
+        las tarjetas que se construyen como HTML a mano (cardBuilder, guide,
+        chaptercardbuilder, itemsByName…). No es React y no puede serlo
+        mientras exista ese renderer.
+- [x] Elegir implementación canónica — `components/common/Image.tsx`, ahora con
+      `alt` (antes no ponía ninguno: las imágenes salían sin texto alternativo)
+      y con `layout: 'fill' | 'flow'` para poder vivir dentro de un marco.
+- [x] Migrar consumidores — `components/Image.tsx` conserva su marco MUI pero
+      delega el `<img>` en el canónico: ya solo hay **una** implementación de
+      carga de imagen en React. Cubierto con tests.
+- [ ] Eliminar `images/imageLoader.js` — **bloqueado por G1/F4**: sus 10
+      consumidores generan HTML como texto; no se puede sustituir por un
+      componente React hasta que esos renderers sean React.
 
 ### F3. Unificar routers (`appRouter.js` → `react-router-dom`)
 > `appRouter.js` (553 líneas) corre en paralelo con react-router v6.
