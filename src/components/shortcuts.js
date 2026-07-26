@@ -1,7 +1,10 @@
 /**
  * "Shortcut" action handlers for BaseItems.
  */
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+import { getLiveTvApi } from '@jellyfin/sdk/lib/utils/api/live-tv-api';
 import { getPlaylistApi } from '@jellyfin/sdk/lib/utils/api/playlist-api';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 
 import { EventType } from 'constants/eventType';
 import { ItemAction } from 'constants/itemAction';
@@ -83,15 +86,18 @@ function getItem(button) {
     const id = button.getAttribute('data-id');
     const type = button.getAttribute('data-type');
 
-    const apiClient = ServerConnections.getApiClient(serverId);
+    const api = ServerConnections.getApi(serverId);
 
     if (type === 'Timer') {
-        return apiClient.getLiveTvTimer(id);
+        return getLiveTvApi(api).getTimer({ timerId: id }).then(({ data }) => data);
     }
     if (type === 'SeriesTimer') {
-        return apiClient.getLiveTvSeriesTimer(id);
+        return getLiveTvApi(api).getSeriesTimer({ timerId: id }).then(({ data }) => data);
     }
-    return apiClient.getItem(apiClient.getCurrentUserId(), id);
+    return getLibraryApi(api).getItem({
+        itemId: id,
+        userId: ServerConnections.getCurrentUserId(serverId)
+    }).then(({ data }) => data);
 }
 
 function notifyRefreshNeeded(childElement, itemsContainer) {
@@ -130,19 +136,19 @@ function showContextMenu(card, options = {}) {
         }
 
         const api = ServerConnections.getApi(item.ServerId);
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
+        const userId = ServerConnections.getCurrentUserId(item.ServerId);
 
         Promise.all([
             // Import the item menu component
             import('./itemContextMenu'),
             // Fetch the current user
-            apiClient?.getCurrentUser(),
+            api ? getUserApi(api).getCurrentUser().then(({ data }) => data) : undefined,
             // Fetch playlist perms if item is a child of a playlist
             api && playlistId ?
                 getPlaylistApi(api)
                     .getPlaylistUser({
                         playlistId,
-                        userId: apiClient?.getCurrentUserId()
+                        userId
                     })
                     .then(({ data }) => data)
                     .catch(err => {
@@ -322,8 +328,8 @@ function executeAction(card, target, action) {
             showPlayMenu(card, target);
             break;
         case ItemAction.Edit:
-            getItem(target).then(itemToEdit => {
-                editItem(itemToEdit, serverId);
+            getItem(target).then(() => {
+                void editItem();
             });
             break;
         case ItemAction.PlayTrailer:
@@ -361,24 +367,20 @@ function addToPlaylist(item) {
 }
 
 function playTrailer(item) {
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
 
-    apiClient.getLocalTrailers(apiClient.getCurrentUserId(), item.Id).then(trailers => {
+    getLibraryApi(api).getLocalTrailers({
+        itemId: item.Id,
+        userId: ServerConnections.getCurrentUserId(item.ServerId)
+    }).then(({ data: trailers }) => {
         playbackManager.play({ items: trailers });
     });
 }
 
-function editItem(item, serverId) {
-    const apiClient = ServerConnections.getApiClient(serverId);
-
-    return new Promise((resolve, reject) => {
-        const currentServerId = apiClient.serverInfo().Id;
-
-        // Los editores de grabaciones y metadatos se retiraron con el
-        // frontend legacy.
-        void currentServerId;
-        reject(new Error('Editing is no longer available'));
-    });
+function editItem() {
+    // Los editores de grabaciones y metadatos se retiraron con el
+    // frontend legacy.
+    return Promise.reject(new Error('Editing is no longer available'));
 }
 
 function onRecordCommand() {

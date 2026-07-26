@@ -19,6 +19,10 @@ export interface PlaybackHarness {
     /** Llamadas registradas, en orden, con el nombre del paso. */
     calls: string[];
     apiClient: Record<string, ReturnType<typeof vi.fn> | unknown>;
+    /** Api del SDK de mentira, con lo justo para construir URLs. */
+    api: Record<string, unknown>;
+    /** Métodos de `getLibraryApi` que usa la cadena de reproducción. */
+    libraryApi: Record<string, ReturnType<typeof vi.fn>>;
     loading: { show: ReturnType<typeof vi.fn>; hide: ReturnType<typeof vi.fn> };
     alert: ReturnType<typeof vi.fn>;
     /** Players que verá el manager al construirse. */
@@ -92,6 +96,31 @@ const harness: PlaybackHarness = {
     playbackInfo: { MediaSources: [] },
     calls: [],
     apiClient: {},
+    api: {
+        basePath: 'https://srv',
+        accessToken: 'token-1',
+        deviceInfo: { id: 'dev-1' },
+        getUri: (url: string, params?: object) => {
+            const query = new URLSearchParams(
+                Object.entries(params ?? {})
+                    .filter(([, v]) => v !== undefined && v !== null)
+                    .map(([k, v]) => [k, String(v)])
+            ).toString();
+            const suffix = query ? `?${query}` : '';
+            return `https://srv${url}${suffix}`;
+        }
+    },
+    libraryApi: {
+        getItem: vi.fn(() => Promise.resolve({
+            data: {
+                Id: 'item-1',
+                MediaStreams: [{ Type: 'Audio', Index: 1, Codec: 'aac', Language: 'spa' }]
+            }
+        })),
+        getItems: vi.fn(() => Promise.resolve({ data: { Items: [], TotalRecordCount: 0 } })),
+        getIntros: vi.fn(() => Promise.resolve({ data: { Items: [] } })),
+        getLocalTrailers: vi.fn(() => Promise.resolve({ data: [] }))
+    },
     loading: { show: vi.fn(), hide: vi.fn() },
     alert: vi.fn(),
     players: []
@@ -138,9 +167,15 @@ export function installPlaybackMocks(): void {
         ServerConnections: {
             getApiClient: () => harness.apiClient,
             currentApiClient: () => harness.apiClient,
-            getApi: () => ({}),
+            getApi: () => harness.api,
+            getCurrentUserId: () => 'user-1',
+            getCurrentServerId: () => 'srv-1',
             getServerInfo: () => ({ Id: 'srv-1' })
         }
+    }));
+
+    vi.mock('@jellyfin/sdk/lib/utils/api/library-api', () => ({
+        getLibraryApi: () => harness.libraryApi
     }));
 
     vi.mock('@jellyfin/sdk/lib/utils/api/media-info-api', () => ({

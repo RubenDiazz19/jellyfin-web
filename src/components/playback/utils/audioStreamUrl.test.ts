@@ -14,18 +14,20 @@ const {
     setStreamUrls
 } = await import('./audioStreamUrl');
 
-/** ApiClient de mentira: devuelve la URL con los parámetros serializados. */
-const apiClient = {
-    getUrl: (path: string, urlParams: Record<string, unknown>) => {
-        const query = Object.entries(urlParams)
-            .filter(([, v]) => v !== undefined && v !== null)
-            .map(([k, v]) => `${k}=${String(v)}`)
-            .join('&');
-        return `https://srv/${path}?${query}`;
+/** Api del SDK de mentira: devuelve la URL con los parámetros serializados. */
+const context = {
+    api: {
+        getUri: (url: string, urlParams: object = {}) => {
+            const query = Object.entries(urlParams)
+                .filter(([, v]) => v !== undefined && v !== null)
+                .map(([k, v]) => `${k}=${String(v)}`)
+                .join('&');
+            return `https://srv${url}?${query}`;
+        },
+        accessToken: 'token-1',
+        deviceInfo: { id: 'dev-1' }
     },
-    getCurrentUserId: () => 'user-1',
-    deviceId: () => 'dev-1',
-    accessToken: () => 'token-1'
+    userId: 'user-1'
 };
 
 /** Parámetros de una URL generada, para poder afirmar sobre ellos. */
@@ -101,20 +103,20 @@ describe('getAudioMaxValues', () => {
 
 describe('getAudioStreamUrlFromDeviceProfile', () => {
     it('apunta al endpoint universal del item', () => {
-        const url = getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, apiClient);
+        const url = getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, context);
         expect(url).toContain('/Audio/i1/universal');
     });
 
     it('lista los contenedores directos separando el códec con |', () => {
         const p = params(
-            getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, apiClient)
+            getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, context)
         );
         expect(p.get('Container')).toBe('mp3,flac|flac');
     });
 
     it('toma contenedor, protocolo y códec del perfil de transcodificación', () => {
         const p = params(
-            getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, apiClient)
+            getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, context)
         );
         expect(p.get('TranscodingContainer')).toBe('ts');
         expect(p.get('TranscodingProtocol')).toBe('hls');
@@ -129,27 +131,27 @@ describe('getAudioStreamUrlFromDeviceProfile', () => {
             }]
         } as Partial<DeviceProfile>);
 
-        const q = params(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), p, 999999, apiClient));
+        const q = params(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), p, 999999, context));
         expect(q.get('MaxStreamingBitrate')).toBe('320000');
     });
 
     it('sin techo de audio se usa el general', () => {
         const q = params(
-            getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 128000, apiClient)
+            getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 128000, context)
         );
         expect(q.get('MaxStreamingBitrate')).toBe('128000');
     });
 
     it('cada llamada usa un PlaySessionId distinto', () => {
-        const a = params(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, apiClient));
-        const b = params(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, apiClient));
+        const a = params(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, context));
+        const b = params(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), profile(), 0, context));
 
         expect(a.get('PlaySessionId')).not.toBe(b.get('PlaySessionId'));
     });
 
     it('un perfil sin transcodificación de audio sigue dando URL', () => {
         const p = profile({ TranscodingProfiles: [] });
-        expect(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), p, 0, apiClient))
+        expect(getAudioStreamUrlFromDeviceProfile(audioItem('i1'), p, 0, context))
             .toContain('/Audio/i1/universal');
     });
 });
@@ -162,7 +164,7 @@ describe('getStreamUrls', () => {
             audioItem('c')
         ];
 
-        const urls = getStreamUrls(items, profile(), 0, apiClient);
+        const urls = getStreamUrls(items, profile(), 0, context);
 
         expect(urls).toHaveLength(3);
         expect(urls[0]).toContain('/Audio/a/universal');
@@ -172,11 +174,11 @@ describe('getStreamUrls', () => {
 
     it('los items locales no se transmiten', () => {
         isLocalItem.mockReturnValue(true);
-        expect(getStreamUrls([audioItem('a')], profile(), 0, apiClient)).toEqual(['']);
+        expect(getStreamUrls([audioItem('a')], profile(), 0, context)).toEqual(['']);
     });
 
     it('la posición de inicio solo se aplica a la primera pista', () => {
-        const urls = getStreamUrls([audioItem('a'), audioItem('b')], profile(), 0, apiClient, 5000);
+        const urls = getStreamUrls([audioItem('a'), audioItem('b')], profile(), 0, context, 5000);
 
         expect(params(urls[0]).get('StartTimeTicks')).toBe('5000');
         expect(params(urls[1]).get('StartTimeTicks')).toBe('0');
@@ -187,7 +189,7 @@ describe('setStreamUrls', () => {
     it('deja precalculada la fuente de cada pista', () => {
         const item = audioItem('a');
 
-        setStreamUrls([item], profile(), 0, apiClient);
+        setStreamUrls([item], profile(), 0, context);
 
         const preset = (item as { PresetMediaSource?: Record<string, unknown> }).PresetMediaSource;
         expect(preset).toMatchObject({ Id: 'a', MediaStreams: [], RunTimeTicks: 100 });
@@ -197,7 +199,7 @@ describe('setStreamUrls', () => {
     it('no toca los items sin URL', () => {
         const video: BaseItemDto = { Id: 'v', MediaType: 'Video' };
 
-        setStreamUrls([video], profile(), 0, apiClient);
+        setStreamUrls([video], profile(), 0, context);
 
         expect(video).not.toHaveProperty('PresetMediaSource');
     });

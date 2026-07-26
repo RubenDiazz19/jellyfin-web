@@ -1,5 +1,10 @@
+import { getImageApi } from '@jellyfin/sdk/lib/utils/api/image-api';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+import { getRemoteImageApi } from '@jellyfin/sdk/lib/utils/api/remote-image-api';
+
 import { AppFeature } from 'constants/appFeature';
 import { queryClient } from 'utils/query/queryClient';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 
 import dialogHelper from '../dialogHelper/dialogHelper';
 import loading from '../loading/loading';
@@ -33,14 +38,16 @@ function getBaseRemoteOptions() {
 async function reload(page, item, focusContext) {
     loading.show();
 
-    const apiClient = ServerConnections.getApiClient(item ? item.ServerId : currentItem.ServerId);
-    if (!item) item = await apiClient.getItem(apiClient.getCurrentUserId(), currentItem.Id);
+    const serverId = item ? item.ServerId : currentItem.ServerId;
+    const api = ServerConnections.getApi(serverId);
+    const userId = ServerConnections.getCurrentUserId(serverId);
+    if (!item) item = (await getLibraryApi(api).getItem({ itemId: currentItem.Id, userId })).data;
 
     // NOTE: We have to invalidate all queries for the user because images can show up in various places in the app and
     // we want them all to update when changed.
-    void queryClient.invalidateQueries(['User', apiClient.getCurrentUserId()]);
+    void queryClient.invalidateQueries(['User', userId]);
 
-    reloadItem(page, item, apiClient, focusContext);
+    reloadItem(page, item, api, focusContext);
 }
 
 function addListeners(container, className, eventName, fn) {
@@ -52,10 +59,10 @@ function addListeners(container, className, eventName, fn) {
     });
 }
 
-function reloadItem(page, item, apiClient, focusContext) {
+function reloadItem(page, item, api, focusContext) {
     currentItem = item;
 
-    apiClient.getRemoteImageProviders(getBaseRemoteOptions()).then(function (providers) {
+    getRemoteImageApi(api).getRemoteImageProviders(getBaseRemoteOptions()).then(function ({ data: providers }) {
         const btnBrowseAllImages = page.querySelectorAll('.btnBrowseAllImages');
         for (let i = 0, length = btnBrowseAllImages.length; i < length; i++) {
             if (providers.length) {
@@ -65,9 +72,9 @@ function reloadItem(page, item, apiClient, focusContext) {
             }
         }
 
-        apiClient.getItemImageInfos(currentItem.Id).then(function (imageInfos) {
-            renderStandardImages(page, apiClient, item, imageInfos, providers);
-            renderBackdrops(page, apiClient, item, imageInfos, providers);
+        getImageApi(api).getItemImageInfos({ itemId: currentItem.Id }).then(function ({ data: imageInfos }) {
+            renderStandardImages(page, api, item, imageInfos, providers);
+            renderBackdrops(page, api, item, imageInfos, providers);
             loading.hide();
 
             if (layoutManager.tv) {
@@ -77,24 +84,22 @@ function reloadItem(page, item, apiClient, focusContext) {
     });
 }
 
-function getImageUrl(item, apiClient, type, index, options) {
-    options = options || {};
-    options.type = type;
-    options.index = index;
+function getImageUrl(item, api, type, index, options) {
+    let tag;
 
     if (type === 'Backdrop') {
-        options.tag = item.BackdropImageTags[index];
+        tag = item.BackdropImageTags[index];
     } else if (type === 'Primary') {
-        options.tag = item.PrimaryImageTag || item.ImageTags[type];
+        tag = item.PrimaryImageTag || item.ImageTags[type];
     } else {
-        options.tag = item.ImageTags[type];
+        tag = item.ImageTags[type];
     }
 
     // For search hints
-    return apiClient.getScaledImageUrl(item.Id || item.ItemId, options);
+    return getScaledImageUrl(api, item.Id || item.ItemId, type, { ...options, index, tag });
 }
 
-function getCardHtml(image, apiClient, options) {
+function getCardHtml(image, api, options) {
     // TODO move card creation code to Card component
 
     let html = '';
@@ -120,7 +125,7 @@ function getCardHtml(image, apiClient, options) {
         html += '<div class="' + cssClass + '"';
     }
 
-    html += ' data-id="' + currentItem.Id + '" data-serverid="' + apiClient.serverId() + '" data-index="' + options.index + '" data-numimages="' + options.numImages + '" data-imagetype="' + image.ImageType + '" data-providers="' + options.imageProviders.length + '"';
+    html += ' data-id="' + currentItem.Id + '" data-serverid="' + currentItem.ServerId + '" data-index="' + options.index + '" data-numimages="' + options.numImages + '" data-imagetype="' + image.ImageType + '" data-providers="' + options.imageProviders.length + '"';
 
     html += '>';
 
@@ -130,7 +135,7 @@ function getCardHtml(image, apiClient, options) {
 
     html += '<div class="cardContent">';
 
-    const imageUrl = getImageUrl(currentItem, apiClient, image.ImageType, image.ImageIndex, { maxWidth: options.imageSize });
+    const imageUrl = getImageUrl(currentItem, api, image.ImageType, image.ImageIndex, { maxWidth: options.imageSize });
 
     html += '<div class="cardImageContainer" style="background-image:url(\'' + imageUrl + '\');background-position:center center;background-size:contain;"></div>';
 
@@ -179,9 +184,9 @@ function getCardHtml(image, apiClient, options) {
     return html;
 }
 
-function deleteImage(context, itemId, type, index, apiClient, enableConfirmation) {
+function deleteImage(context, itemId, type, index, api, enableConfirmation) {
     const afterConfirm = function () {
-        apiClient.deleteItemImage(itemId, type, index).then(function () {
+        getImageApi(api).deleteItemImage({ itemId, imageType: type, imageIndex: index }).then(function () {
             hasChanges = true;
             reload(context);
         });
@@ -199,8 +204,8 @@ function deleteImage(context, itemId, type, index, apiClient, enableConfirmation
     }).then(afterConfirm);
 }
 
-function moveImage(context, apiClient, itemId, type, index, newIndex, focusContext) {
-    apiClient.updateItemImageIndex(itemId, type, index, newIndex).then(function () {
+function moveImage(context, api, itemId, type, index, newIndex, focusContext) {
+    getImageApi(api).updateItemImageIndex({ itemId, imageType: type, imageIndex: index, newIndex }).then(function () {
         hasChanges = true;
         reload(context, null, focusContext);
     }, function () {
@@ -208,7 +213,7 @@ function moveImage(context, apiClient, itemId, type, index, newIndex, focusConte
     });
 }
 
-function renderImages(page, item, apiClient, images, imageProviders, elem) {
+function renderImages(page, item, api, images, imageProviders, elem) {
     let html = '';
 
     let imageSize = 300;
@@ -223,22 +228,22 @@ function renderImages(page, item, apiClient, images, imageProviders, elem) {
     for (let i = 0, length = images.length; i < length; i++) {
         const image = images[i];
         const options = { index: i, numImages: length, imageProviders, imageSize, tagName, enableFooterButtons };
-        html += getCardHtml(image, apiClient, options);
+        html += getCardHtml(image, api, options);
     }
 
     elem.innerHTML = html;
     imageLoader.lazyChildren(elem);
 }
 
-function renderStandardImages(page, apiClient, item, imageInfos, imageProviders) {
+function renderStandardImages(page, api, item, imageInfos, imageProviders) {
     const images = imageInfos.filter(function (i) {
         return i.ImageType !== 'Backdrop' && i.ImageType !== 'Chapter';
     });
 
-    renderImages(page, item, apiClient, images, imageProviders, page.querySelector('#images'));
+    renderImages(page, item, api, images, imageProviders, page.querySelector('#images'));
 }
 
-function renderBackdrops(page, apiClient, item, imageInfos, imageProviders) {
+function renderBackdrops(page, api, item, imageInfos, imageProviders) {
     const images = imageInfos.filter(function (i) {
         return i.ImageType === 'Backdrop';
     }).sort(function (a, b) {
@@ -247,7 +252,7 @@ function renderBackdrops(page, apiClient, item, imageInfos, imageProviders) {
 
     if (images.length) {
         page.querySelector('#backdropsContainer', page).classList.remove('hide');
-        renderImages(page, item, apiClient, images, imageProviders, page.querySelector('#backdrops'));
+        renderImages(page, item, api, images, imageProviders, page.querySelector('#backdrops'));
     } else {
         page.querySelector('#backdropsContainer', page).classList.add('hide');
     }
@@ -273,7 +278,7 @@ function showImageDownloader(page, imageType) {
 function showActionSheet(context, imageCard) {
     const itemId = imageCard.getAttribute('data-id');
     const serverId = imageCard.getAttribute('data-serverid');
-    const apiClient = ServerConnections.getApiClient(serverId);
+    const api = ServerConnections.getApi(serverId);
 
     const type = imageCard.getAttribute('data-imagetype');
     const index = parseInt(imageCard.getAttribute('data-index'), 10);
@@ -319,16 +324,16 @@ function showActionSheet(context, imageCard) {
         }).then(function (id) {
             switch (id) {
                 case 'delete':
-                    deleteImage(context, itemId, type, index, apiClient, false);
+                    deleteImage(context, itemId, type, index, api, false);
                     break;
                 case 'search':
                     showImageDownloader(context, type);
                     break;
                 case 'moveleft':
-                    moveImage(context, apiClient, itemId, type, index, index - 1, dom.parentWithClass(imageCard, 'itemsContainer'));
+                    moveImage(context, api, itemId, type, index, index - 1, dom.parentWithClass(imageCard, 'itemsContainer'));
                     break;
                 case 'moveright':
-                    moveImage(context, apiClient, itemId, type, index, index + 1, dom.parentWithClass(imageCard, 'itemsContainer'));
+                    moveImage(context, api, itemId, type, index, index + 1, dom.parentWithClass(imageCard, 'itemsContainer'));
                     break;
                 default:
                     break;
@@ -384,16 +389,16 @@ function initEditor(context, options) {
         const type = this.getAttribute('data-imagetype');
         let index = this.getAttribute('data-index');
         index = index === 'null' ? null : parseInt(index, 10);
-        const apiClient = ServerConnections.getApiClient(currentItem.ServerId);
-        deleteImage(context, currentItem.Id, type, index, apiClient, true);
+        const api = ServerConnections.getApi(currentItem.ServerId);
+        deleteImage(context, currentItem.Id, type, index, api, true);
     });
 
     addListeners(context, 'btnMoveImage', 'click', function () {
         const type = this.getAttribute('data-imagetype');
         const index = this.getAttribute('data-index');
         const newIndex = this.getAttribute('data-newindex');
-        const apiClient = ServerConnections.getApiClient(currentItem.ServerId);
-        moveImage(context, apiClient, currentItem.Id, type, index, newIndex, dom.parentWithClass(this, 'itemsContainer'));
+        const api = ServerConnections.getApi(currentItem.ServerId);
+        moveImage(context, api, currentItem.Id, type, index, newIndex, dom.parentWithClass(this, 'itemsContainer'));
     });
 }
 
@@ -403,8 +408,11 @@ function showEditor(options, resolve, reject) {
 
     loading.show();
 
-    const apiClient = ServerConnections.getApiClient(serverId);
-    apiClient.getItem(apiClient.getCurrentUserId(), itemId).then(function (item) {
+    const api = ServerConnections.getApi(serverId);
+    getLibraryApi(api).getItem({
+        itemId,
+        userId: ServerConnections.getCurrentUserId(serverId)
+    }).then(function ({ data: item }) {
         const dialogOptions = {
             removeOnClose: true
         };

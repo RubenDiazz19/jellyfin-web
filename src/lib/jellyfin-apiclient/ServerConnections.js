@@ -145,6 +145,27 @@ class ServerConnections extends ConnectionManager {
     }
 
     /**
+     * Gets the id of the server currently in use.
+     * @returns {string|undefined} The server id, if any.
+     */
+    getCurrentServerId() {
+        return this.currentApiClient()?.serverId() ?? this.getLastUsedServer()?.Id;
+    }
+
+    /**
+     * Gets the stored details (id, name, address…) of a server.
+     *
+     * The SDK Api only knows the address, so anything else about the server
+     * has to come from here.
+     * @param {string} [serverId] The server id; defaults to the current one.
+     * @returns {object|undefined} The server info, if known.
+     */
+    getServerInfo(serverId) {
+        const apiClient = serverId ? this.getApiClient(serverId) : this.currentApiClient();
+        return apiClient?.serverInfo();
+    }
+
+    /**
      * Gets the ApiClient that is currently connected or throws if not defined.
      * @async
      * @returns {Promise<ApiClient>} The current ApiClient instance.

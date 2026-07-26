@@ -1,4 +1,8 @@
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
+import { getUserDataApi } from '@jellyfin/sdk/lib/utils/api/user-data-api';
+import { getVideoApi } from '@jellyfin/sdk/lib/utils/api/video-api';
 
 import { AppFeature } from 'constants/appFeature';
 import { EventType } from 'constants/eventType';
@@ -161,7 +165,7 @@ function alertText(options) {
     });
 }
 
-function deleteItems(apiClient, itemIds) {
+function deleteItems(api, itemIds) {
     return new Promise((resolve, reject) => {
         let msg = globalize.translate('ConfirmDeleteItem');
         let title = globalize.translate('HeaderDeleteItem');
@@ -172,7 +176,7 @@ function deleteItems(apiClient, itemIds) {
         }
 
         confirm(msg, title).then(() => {
-            const promises = itemIds.map(itemId => apiClient.deleteItem(itemId));
+            const promises = itemIds.map(itemId => getLibraryApi(api).deleteItem({ itemId }));
 
             Promise.all(promises).then(resolve, () => {
                 alertText(globalize.translate('ErrorDeletingItem')).then(reject, reject);
@@ -182,11 +186,12 @@ function deleteItems(apiClient, itemIds) {
 }
 
 function showMenuForSelectedItems(e) {
-    const apiClient = ServerConnections.currentApiClient();
+    const api = ServerConnections.getApi();
+    const userId = ServerConnections.getCurrentUserId();
 
-    apiClient.getCurrentUser().then(user => {
+    getUserApi(api).getCurrentUser().then(({ data: user }) => {
         // get first selected item to perform metadata refresh permission check
-        apiClient.getItem(apiClient.getCurrentUserId(), selectedItems[0]).then(firstItem => {
+        getLibraryApi(api).getItem({ itemId: selectedItems[0], userId }).then(({ data: firstItem }) => {
             const menuItems = [];
 
             menuItems.push({
@@ -257,7 +262,7 @@ function showMenuForSelectedItems(e) {
                     positionTo: e.target,
                     callback: function (id) {
                         const items = selectedItems.slice(0);
-                        const serverId = apiClient.serverInfo().Id;
+                        const serverId = firstItem.ServerId;
 
                         switch (id) {
                             case 'selectall':
@@ -289,23 +294,23 @@ function showMenuForSelectedItems(e) {
                                 dispatchNeedsRefresh();
                                 break;
                             case 'delete':
-                                deleteItems(apiClient, items).then(dispatchNeedsRefresh);
+                                deleteItems(api, items).then(dispatchNeedsRefresh);
                                 hideSelections();
                                 dispatchNeedsRefresh();
                                 break;
                             case 'groupvideos':
-                                combineVersions(apiClient, items);
+                                combineVersions(api, items);
                                 break;
                             case 'markplayed':
                                 items.forEach(itemId => {
-                                    apiClient.markPlayed(apiClient.getCurrentUserId(), itemId);
+                                    void getUserDataApi(api).markPlayedItem({ itemId, userId });
                                 });
                                 hideSelections();
                                 dispatchNeedsRefresh();
                                 break;
                             case 'markunplayed':
                                 items.forEach(itemId => {
-                                    apiClient.markUnplayed(apiClient.getCurrentUserId(), itemId);
+                                    void getUserDataApi(api).markUnplayedItem({ itemId, userId });
                                 });
                                 hideSelections();
                                 dispatchNeedsRefresh();
@@ -348,7 +353,7 @@ function dispatchNeedsRefresh() {
     Events.trigger(document, EventType.REFRESH_NEEDED);
 }
 
-function combineVersions(apiClient, selection) {
+function combineVersions(api, selection) {
     if (selection.length < 2) {
         alert({
             text: globalize.translate('PleaseSelectTwoItems')
@@ -359,12 +364,7 @@ function combineVersions(apiClient, selection) {
 
     loading.show();
 
-    apiClient.ajax({
-
-        type: 'POST',
-        url: apiClient.getUrl('Videos/MergeVersions', { Ids: selection.join(',') })
-
-    }).then(() => {
+    getVideoApi(api).mergeVersions({ ids: selection }).then(() => {
         loading.hide();
         hideSelections();
         dispatchNeedsRefresh();

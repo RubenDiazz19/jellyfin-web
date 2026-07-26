@@ -1,5 +1,6 @@
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
 import { ItemFilter } from '@jellyfin/sdk/lib/generated-client/models/item-filter';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
 import { MediaType } from '@jellyfin/sdk/lib/generated-client/models/media-type';
 import Screenfull from 'screenfull';
@@ -75,6 +76,18 @@ import { MediaError } from 'types/mediaError';
 import { getMediaError } from 'utils/mediaError';
 import * as bitrateTest from 'utils/bitrateTest';
 import { getUrlParameter } from 'utils/url';
+
+/**
+ * Servidor y usuario contra los que se resuelven los medios de un item.
+ * @param {string} serverId El id del servidor.
+ * @returns {{api: import('@jellyfin/sdk').Api, userId: string}} El contexto.
+ */
+function getMediaContext(serverId) {
+    return {
+        api: ServerConnections.getApi(serverId),
+        userId: ServerConnections.getCurrentUserId(serverId)
+    };
+}
 
 export class PlaybackManager {
     constructor() {
@@ -161,7 +174,7 @@ export class PlaybackManager {
                     allowAudioStreamCopy: null
                 };
 
-                return getPlaybackInfo(player, apiClient, item, deviceProfile, null, null, mediaOptions).then((playbackInfoResult) => {
+                return getPlaybackInfo(player, getMediaContext(item.ServerId), item, deviceProfile, null, null, mediaOptions).then((playbackInfoResult) => {
                     return playbackInfoResult.MediaSources;
                 });
             });
@@ -311,7 +324,7 @@ export class PlaybackManager {
                     allowAudioStreamCopy: null
                 };
 
-                return this._getPlaybackMediaSource(player, apiClient, deviceProfile, item, options.mediaSourceId, mediaOptions).then((mediaSource) => {
+                return this._getPlaybackMediaSource(player, getMediaContext(item.ServerId), deviceProfile, item, options.mediaSourceId, mediaOptions).then((mediaSource) => {
                     return this._createStreamInfo(apiClient, item.MediaType, item, mediaSource, startPosition, player);
                 });
             });
@@ -1036,7 +1049,7 @@ export class PlaybackManager {
                 allowAudioStreamCopy: params.AllowAudioStreamCopy
             };
 
-            getPlaybackInfo(player, apiClient, currentItem, deviceProfile, currentMediaSource.Id, liveStreamId, options).then((result) => {
+            getPlaybackInfo(player, getMediaContext(currentItem.ServerId), currentItem, deviceProfile, currentMediaSource.Id, liveStreamId, options).then((result) => {
                 if (validatePlaybackInfoResult(result)) {
                     currentMediaSource = result.MediaSources[0];
 
@@ -1621,8 +1634,8 @@ export class PlaybackManager {
         }, reject);
     }
 
-    _sendPlaybackListToPlayer(player, items, deviceProfile, apiClient, mediaSourceId, options) {
-        setStreamUrls(items, deviceProfile, options.maxBitrate, apiClient, options.startPosition);
+    _sendPlaybackListToPlayer(player, items, deviceProfile, mediaContext, mediaSourceId, options) {
+        setStreamUrls(items, deviceProfile, options.maxBitrate, mediaContext, options.startPosition);
         loading.hide();
 
         return player.play({
@@ -1741,7 +1754,7 @@ export class PlaybackManager {
             };
 
             if (player && !enableLocalPlaylistManagement(player)) {
-                return this._sendPlaybackListToPlayer(player, playOptions.items, deviceProfile, apiClient, mediaSourceId, options);
+                return this._sendPlaybackListToPlayer(player, playOptions.items, deviceProfile, getMediaContext(item.ServerId), mediaSourceId, options);
             }
 
             // this reference was only needed by sendPlaybackListToPlayer
@@ -1764,7 +1777,7 @@ export class PlaybackManager {
                 mediaSourceId ||= item.Id;
             }
 
-            return this._getPlaybackMediaSource(player, apiClient, deviceProfile, item, mediaSourceId, options).then(async (mediaSource) => {
+            return this._getPlaybackMediaSource(player, getMediaContext(item.ServerId), deviceProfile, item, mediaSourceId, options).then(async (mediaSource) => {
                 if (trackOptions.DefaultSecondarySubtitleStreamIndex != null) {
                     mediaSource.DefaultSecondarySubtitleStreamIndex = trackOptions.DefaultSecondarySubtitleStreamIndex;
                 }
@@ -1954,27 +1967,30 @@ export class PlaybackManager {
         return tracks;
     }
 
-    _getPlaybackMediaSource(player, apiClient, deviceProfile, item, mediaSourceId, options) {
+    _getPlaybackMediaSource(player, mediaContext, deviceProfile, item, mediaSourceId, options) {
         options.isPlayback = true;
 
-        return getPlaybackInfo(player, apiClient, item, deviceProfile, mediaSourceId, null, options).then(function (playbackInfoResult) {
+        return getPlaybackInfo(player, mediaContext, item, deviceProfile, mediaSourceId, null, options).then(function (playbackInfoResult) {
             if (validatePlaybackInfoResult(playbackInfoResult)) {
-                return getOptimalMediaSource(apiClient, item, playbackInfoResult.MediaSources).then(function (mediaSource) {
+                return getOptimalMediaSource(mediaContext, item, playbackInfoResult.MediaSources).then(function (mediaSource) {
                     if (mediaSource) {
                         if (mediaSource.RequiresOpening && !mediaSource.LiveStreamId) {
                             options.audioStreamIndex = null;
                             options.subtitleStreamIndex = null;
 
-                            return getLiveStream(player, apiClient, item, playbackInfoResult.PlaySessionId, deviceProfile, mediaSource, options).then(function (openLiveStreamResult) {
-                                return supportsDirectPlay(apiClient, item, openLiveStreamResult.MediaSource).then(function (result) {
+                            return getLiveStream(player, mediaContext, item, playbackInfoResult.PlaySessionId, deviceProfile, mediaSource, options).then(function (openLiveStreamResult) {
+                                return supportsDirectPlay(mediaContext, item, openLiveStreamResult.MediaSource).then(function (result) {
                                     openLiveStreamResult.MediaSource.enableDirectPlay = result;
                                     return openLiveStreamResult.MediaSource;
                                 });
                             });
                         } else {
                             if (item.AlbumId != null) {
-                                return apiClient.getItem(apiClient.getCurrentUserId(), item.AlbumId).then(function(result) {
-                                    mediaSource.albumNormalizationGain = result.NormalizationGain;
+                                return getLibraryApi(mediaContext.api).getItem({
+                                    itemId: item.AlbumId,
+                                    userId: mediaContext.userId
+                                }).then(function ({ data: album }) {
+                                    mediaSource.albumNormalizationGain = album.NormalizationGain;
                                     return mediaSource;
                                 });
                             }
@@ -2069,10 +2085,8 @@ export class PlaybackManager {
         const queueDirectToPlayer = player && !enableLocalPlaylistManagement(player);
 
         if (queueDirectToPlayer) {
-            const apiClient = ServerConnections.getApiClient(items[0].ServerId);
-
             player.getDeviceProfile(items[0]).then((profile) => {
-                setStreamUrls(items, profile, this.getMaxStreamingBitrate(player), apiClient, 0);
+                setStreamUrls(items, profile, this.getMaxStreamingBitrate(player), getMediaContext(items[0].ServerId), 0);
                 if (mode === 'next') {
                     player.queueNext(items);
                 } else {

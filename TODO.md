@@ -47,16 +47,16 @@ legacy; en la fase 4 esa función deja de mirar al `ApiClient`.
 
 ### Fase 2 — Consumidores medianos (4-19 llamadas c/u)
 
-- [ ] `imageeditor.js` (9)
-- [ ] `multiSelect.js` (8)
-- [ ] `guide.js` (6)
-- [ ] `shortcuts.js` (5)
-- [ ] `session.ts` (6)
-- [ ] `itemContextMenu.js` (13)
-- [ ] `notifications.js` (19)
-- [ ] `serverNotifications.js` (9)
-- [ ] `audioStreamUrl.ts` (4) — ya extraído en D1, pendiente de migrar
-- [ ] `mediaResolution.ts` (7) — ya extraído en D1, pendiente de migrar
+- [x] `imageeditor.js` (9)
+- [x] `multiSelect.js` (8)
+- [x] `guide.js` (6)
+- [x] `shortcuts.js` (5)
+- [x] `session.ts` (6)
+- [x] `itemContextMenu.js` (13)
+- [x] `notifications.js` (19)
+- [x] `serverNotifications.js` (9)
+- [x] `audioStreamUrl.ts` (4) — ya extraído en D1, pendiente de migrar
+- [x] `mediaResolution.ts` (7) — ya extraído en D1, pendiente de migrar
 
 ### Fase 3 — Consumidor grande
 

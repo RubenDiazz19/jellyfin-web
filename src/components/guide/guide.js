@@ -1,7 +1,13 @@
 import escapeHtml from 'escape-html';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
+import { ItemFields } from '@jellyfin/sdk/lib/generated-client/models/item-fields';
+import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
+import { SortOrder } from '@jellyfin/sdk/lib/generated-client/models/sort-order';
+import { getLiveTvApi } from '@jellyfin/sdk/lib/utils/api/live-tv-api';
 
 import { ItemAction } from 'constants/itemAction';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 
 import inputManager from '../../scripts/inputManager';
@@ -221,26 +227,25 @@ function Guide(options) {
     }
 
     function reloadGuide(context, newStartDate, scrollToTimeMs, focusToTimeMs, startTimeOfDayMs, focusProgramOnRender) {
-        const apiClient = ServerConnections.getApiClient(options.serverId);
+        const api = ServerConnections.getApi(options.serverId);
+        const userId = ServerConnections.getCurrentUserId(options.serverId);
 
         const channelQuery = {
-
-            StartIndex: 0,
-            EnableFavoriteSorting: userSettings.get('livetv-favoritechannelsattop') !== 'false'
+            startIndex: 0,
+            enableFavoriteSorting: userSettings.get('livetv-favoritechannelsattop') !== 'false',
+            userId
         };
-
-        channelQuery.UserId = apiClient.getCurrentUserId();
 
         const channelLimit = 500;
         currentChannelLimit = channelLimit;
 
         showLoading();
 
-        channelQuery.StartIndex = currentStartIndex;
-        channelQuery.Limit = channelLimit;
-        channelQuery.AddCurrentProgram = false;
-        channelQuery.EnableUserData = false;
-        channelQuery.EnableImageTypes = 'Primary';
+        channelQuery.startIndex = currentStartIndex;
+        channelQuery.limit = channelLimit;
+        channelQuery.addCurrentProgram = false;
+        channelQuery.enableUserData = false;
+        channelQuery.enableImageTypes = [ImageType.Primary];
 
         const categories = self.categoryOptions.categories || [];
         const displayMovieContent = !categories.length || categories.indexOf('movies') !== -1;
@@ -250,35 +255,35 @@ function Guide(options) {
         const displaySeriesContent = !categories.length || categories.indexOf('series') !== -1;
 
         if (displayMovieContent && displaySportsContent && displayNewsContent && displayKidsContent) {
-            channelQuery.IsMovie = null;
-            channelQuery.IsSports = null;
-            channelQuery.IsKids = null;
-            channelQuery.IsNews = null;
-            channelQuery.IsSeries = null;
+            channelQuery.isMovie = undefined;
+            channelQuery.isSports = undefined;
+            channelQuery.isKids = undefined;
+            channelQuery.isNews = undefined;
+            channelQuery.isSeries = undefined;
         } else {
             if (displayNewsContent) {
-                channelQuery.IsNews = true;
+                channelQuery.isNews = true;
             }
             if (displaySportsContent) {
-                channelQuery.IsSports = true;
+                channelQuery.isSports = true;
             }
             if (displayKidsContent) {
-                channelQuery.IsKids = true;
+                channelQuery.isKids = true;
             }
             if (displayMovieContent) {
-                channelQuery.IsMovie = true;
+                channelQuery.isMovie = true;
             }
             if (displaySeriesContent) {
-                channelQuery.IsSeries = true;
+                channelQuery.isSeries = true;
             }
         }
 
         if (userSettings.get('livetv-channelorder') === 'DatePlayed') {
-            channelQuery.SortBy = 'DatePlayed';
-            channelQuery.SortOrder = 'Descending';
+            channelQuery.sortBy = [ItemSortBy.DatePlayed];
+            channelQuery.sortOrder = SortOrder.Descending;
         } else {
-            channelQuery.SortBy = null;
-            channelQuery.SortOrder = null;
+            channelQuery.sortBy = undefined;
+            channelQuery.sortOrder = undefined;
         }
 
         let date = newStartDate;
@@ -302,7 +307,7 @@ function Guide(options) {
             showEpisodeTitle: !layoutManager.tv
         };
 
-        apiClient.getLiveTvChannels(channelQuery).then(function (channelsResult) {
+        getLiveTvApi(api).getLiveTvChannels(channelQuery).then(function ({ data: channelsResult }) {
             const btnPreviousPage = context.querySelector('.btnPreviousPage');
             const btnNextPage = context.querySelector('.btnNextPage');
 
@@ -312,13 +317,13 @@ function Guide(options) {
                 btnPreviousPage.classList.remove('hide');
                 btnNextPage.classList.remove('hide');
 
-                if (channelQuery.StartIndex) {
+                if (channelQuery.startIndex) {
                     context.querySelector('.btnPreviousPage').disabled = false;
                 } else {
                     context.querySelector('.btnPreviousPage').disabled = true;
                 }
 
-                if ((channelQuery.StartIndex + channelLimit) < channelsResult.TotalRecordCount) {
+                if ((channelQuery.startIndex + channelLimit) < channelsResult.TotalRecordCount) {
                     btnNextPage.disabled = false;
                 } else {
                     btnNextPage.disabled = true;
@@ -330,32 +335,31 @@ function Guide(options) {
             const programFields = [];
 
             const programQuery = {
-                UserId: apiClient.getCurrentUserId(),
-                MaxStartDate: nextDay.toISOString(),
-                MinEndDate: date.toISOString(),
+                userId,
+                maxStartDate: nextDay.toISOString(),
+                minEndDate: date.toISOString(),
                 channelIds: channelsResult.Items.map(function (c) {
                     return c.Id;
-                }).join(','),
-                ImageTypeLimit: 1,
-                EnableImages: false,
-                //EnableImageTypes: layoutManager.tv ? "Primary,Backdrop" : "Primary",
-                SortBy: 'StartDate',
-                EnableTotalRecordCount: false,
-                EnableUserData: false
+                }),
+                imageTypeLimit: 1,
+                enableImages: false,
+                sortBy: [ItemSortBy.StartDate],
+                enableTotalRecordCount: false,
+                enableUserData: false
             };
 
             if (renderOptions.showHdIcon) {
-                programFields.push('IsHD');
+                programFields.push(ItemFields.IsHd);
             }
 
             if (programFields.length) {
-                programQuery.Fields = programFields.join('');
+                programQuery.fields = programFields;
             }
 
-            apiClient.getLiveTvPrograms(programQuery).then(function (programsResult) {
+            getLiveTvApi(api).getLiveTvPrograms(programQuery).then(function ({ data: programsResult }) {
                 const guideOptions = { focusProgramOnRender, scrollToTimeMs, focusToTimeMs, startTimeOfDayMs };
 
-                renderGuide(context, date, channelsResult.Items, programsResult.Items, renderOptions, guideOptions, apiClient);
+                renderGuide(context, date, channelsResult.Items, programsResult.Items, renderOptions, guideOptions, api);
 
                 hideLoading();
             });
@@ -595,7 +599,7 @@ function Guide(options) {
         return html;
     }
 
-    function renderChannelHeaders(context, channels, apiClient) {
+    function renderChannelHeaders(context, channels, api) {
         let html = '';
 
         for (const channel of channels) {
@@ -618,10 +622,9 @@ function Guide(options) {
             html += `<button title="${escapeHtml(title.join(' '))}" type="button" class="${cssClass}" data-action="${ItemAction.Link}" data-isfolder="${channel.IsFolder}" data-id="${channel.Id}" data-serverid="${channel.ServerId}" data-type="${channel.Type}">`;
 
             if (hasChannelImage) {
-                const url = apiClient.getScaledImageUrl(channel.Id, {
+                const url = getScaledImageUrl(api, channel.Id, ImageType.Primary, {
                     maxHeight: 220,
-                    tag: channel.ImageTags.Primary,
-                    type: 'Primary'
+                    tag: channel.ImageTags.Primary
                 });
 
                 html += '<div class="guideChannelImage lazy" data-src="' + url + '"></div>';
@@ -677,7 +680,7 @@ function Guide(options) {
         return (channelIndex * 10000000) + (start.getTime() / 60000);
     }
 
-    function renderGuide(context, date, channels, programs, renderOptions, guideOptions, apiClient) {
+    function renderGuide(context, date, channels, programs, renderOptions, guideOptions, api) {
         programs.sort(function (a, b) {
             return getProgramSortOrder(a, channels) - getProgramSortOrder(b, channels);
         });
@@ -691,7 +694,7 @@ function Guide(options) {
             channelRowId = channelRowId?.getAttribute ? channelRowId.getAttribute('data-channelid') : null;
         }
 
-        renderChannelHeaders(context, channels, apiClient);
+        renderChannelHeaders(context, channels, api);
 
         const startDate = date;
         const endDate = new Date(startDate.getTime() + msPerDay);
@@ -881,9 +884,9 @@ function Guide(options) {
     function reloadPage(page) {
         showLoading();
 
-        const apiClient = ServerConnections.getApiClient(options.serverId);
+        const api = ServerConnections.getApi(options.serverId);
 
-        apiClient.getLiveTvGuideInfo().then(function (guideInfo) {
+        getLiveTvApi(api).getGuideInfo().then(function ({ data: guideInfo }) {
             setDateRange(page, guideInfo);
         });
     }
@@ -1190,11 +1193,11 @@ function Guide(options) {
 
     Events.trigger(self, 'load');
 
-    const _guideApiClient = ServerConnections.getApiClient(options.serverId);
+    const guideApi = ServerConnections.getApi(options.serverId);
     self._wsUnsubscribers = [
-        _guideApiClient?.subscribe([OutboundWebSocketMessageType.TimerCreated], ({ Data }) => onTimerCreated(Data)),
-        _guideApiClient?.subscribe([OutboundWebSocketMessageType.TimerCancelled], ({ Data }) => onTimerCancelled(Data)),
-        _guideApiClient?.subscribe([OutboundWebSocketMessageType.SeriesTimerCancelled], ({ Data }) => onSeriesTimerCancelled(Data))
+        guideApi?.subscribe([OutboundWebSocketMessageType.TimerCreated], ({ Data }) => onTimerCreated(Data)),
+        guideApi?.subscribe([OutboundWebSocketMessageType.TimerCancelled], ({ Data }) => onTimerCancelled(Data)),
+        guideApi?.subscribe([OutboundWebSocketMessageType.SeriesTimerCancelled], ({ Data }) => onSeriesTimerCancelled(Data))
     ].filter(Boolean);
 
     self.refresh();

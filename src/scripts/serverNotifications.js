@@ -7,6 +7,7 @@ import { pluginManager } from 'components/pluginManager';
 import { appRouter } from 'components/router/appRouter';
 import toast from 'components/toast/toast';
 import { PluginType } from 'constants/pluginType';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import inputManager from 'scripts/inputManager';
 import Events from 'utils/events';
@@ -26,19 +27,22 @@ function displayMessage(cmd) {
     }
 }
 
-function displayContent(cmd, apiClient) {
+function displayContent(cmd, serverId) {
     if (!playbackManager.isPlayingLocally(['Video', 'Book'])) {
-        appRouter.showItem(cmd.Arguments.ItemId, apiClient.serverId());
+        appRouter.showItem(cmd.Arguments.ItemId, serverId);
     }
 }
 
-function playTrailers(apiClient, itemId) {
-    apiClient.getItem(apiClient.getCurrentUserId(), itemId).then(function (item) {
+function playTrailers(api, serverId, itemId) {
+    getLibraryApi(api).getItem({
+        itemId,
+        userId: ServerConnections.getCurrentUserId(serverId)
+    }).then(function ({ data: item }) {
         playbackManager.playTrailers(item);
     });
 }
 
-function processGeneralCommand(cmd, apiClient) {
+function processGeneralCommand(cmd, api, serverId) {
     console.debug('Received command: ' + cmd.Name);
     switch (cmd.Name) {
         case 'Select':
@@ -66,7 +70,7 @@ function processGeneralCommand(cmd, apiClient) {
             inputManager.handleCommand('pagedown');
             return;
         case 'PlayTrailers':
-            playTrailers(apiClient, cmd.Arguments.ItemId);
+            playTrailers(api, serverId, cmd.Arguments.ItemId);
             break;
         case 'SetRepeatMode':
             playbackManager.setRepeatMode(cmd.Arguments.RepeatMode);
@@ -117,7 +121,7 @@ function processGeneralCommand(cmd, apiClient) {
             inputManager.handleCommand('settings');
             return;
         case 'DisplayContent':
-            displayContent(cmd, apiClient);
+            displayContent(cmd, serverId);
             break;
         case 'GoToSearch':
             inputManager.handleCommand('search');
@@ -141,9 +145,8 @@ function processGeneralCommand(cmd, apiClient) {
     notifyApp();
 }
 
-function onPlay({ Data }, apiClient) {
+function onPlay({ Data }, serverId) {
     notifyApp();
-    const serverId = apiClient.serverInfo().Id;
     if (Data.PlayCommand === 'PlayNext') {
         playbackManager.queueNext({ ids: Data.ItemIds, serverId });
     } else if (Data.PlayCommand === 'PlayLast') {
@@ -187,33 +190,40 @@ function onPlaystate({ Data }) {
 
 /**
  * Subscribes to server notifications for SyncPlay and Playstate
- * @param {import('jellyfin-apiclient').ApiClient} apiClient
+ * @param {string} serverId The id of the server to listen to
  * @returns A cleanup function that will unsubscribe from the events
  */
-function subscribeToApiClient(apiClient) {
+function subscribeToServer(serverId) {
+    const api = ServerConnections.getApi(serverId);
+    if (!api) return () => { /* nothing subscribed */ };
+
     const subscriptions = [
-        apiClient.subscribe([OutboundWebSocketMessageType.Play], (msg) => onPlay(msg, apiClient)),
-        apiClient.subscribe([OutboundWebSocketMessageType.Playstate], (msg) => onPlaystate(msg)),
-        apiClient.subscribe([OutboundWebSocketMessageType.GeneralCommand], ({ Data }) => processGeneralCommand(Data, apiClient)),
-        apiClient.subscribe([OutboundWebSocketMessageType.SyncPlayCommand], ({ Data }) => {
-            pluginManager.firstOfType(PluginType.SyncPlay)?.instance.Manager.processCommand(Data, apiClient);
+        api.subscribe([OutboundWebSocketMessageType.Play], (msg) => onPlay(msg, serverId)),
+        api.subscribe([OutboundWebSocketMessageType.Playstate], (msg) => onPlaystate(msg)),
+        api.subscribe([OutboundWebSocketMessageType.GeneralCommand], ({ Data }) => processGeneralCommand(Data, api, serverId)),
+        api.subscribe([OutboundWebSocketMessageType.SyncPlayCommand], ({ Data }) => {
+            pluginManager.firstOfType(PluginType.SyncPlay)?.instance.Manager.processCommand(Data, api);
         }),
-        apiClient.subscribe([OutboundWebSocketMessageType.SyncPlayGroupUpdate], ({ Data }) => {
-            pluginManager.firstOfType(PluginType.SyncPlay)?.instance.Manager.processGroupUpdate(Data, apiClient);
-            Events.trigger(serverNotifications, OutboundWebSocketMessageType.SyncPlayGroupUpdate, [apiClient, Data]);
+        api.subscribe([OutboundWebSocketMessageType.SyncPlayGroupUpdate], ({ Data }) => {
+            pluginManager.firstOfType(PluginType.SyncPlay)?.instance.Manager.processGroupUpdate(Data, api);
+            Events.trigger(serverNotifications, OutboundWebSocketMessageType.SyncPlayGroupUpdate, [api, Data]);
         })
     ];
 
-    return () => subscriptions.get(apiClient.serverId()).forEach((unsub) => {
-        unsub();
-    });
+    return () => {
+        subscriptions.forEach((unsub) => {
+            unsub();
+        });
+    };
 }
 
 export function initializeServerConnections() {
-    ServerConnections.getApiClients().forEach(subscribeToApiClient);
+    ServerConnections.getApiClients().forEach((apiClient) => {
+        subscribeToServer(apiClient.serverId());
+    });
 
     Events.on(ServerConnections, 'apiclientcreated', function (e, newApiClient) {
-        subscribeToApiClient(newApiClient);
+        subscribeToServer(newApiClient.serverId());
     });
 }
 

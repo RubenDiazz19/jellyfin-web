@@ -3,10 +3,13 @@ import Events from '../../utils/events.ts';
 import globalize from '../../lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { getItems } from '../../utils/sdk/getItems.ts';
+import { getScaledImageUrl } from '../../utils/sdk/imageUrls.ts';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 import { ItemFilter } from '@jellyfin/sdk/lib/generated-client/models/item-filter';
 import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
 import { MediaType } from '@jellyfin/sdk/lib/generated-client/models/media-type';
 import { SortOrder } from '@jellyfin/sdk/lib/generated-client/models/sort-order';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 
 import NotificationIcon from './notificationicon.png';
@@ -29,9 +32,9 @@ function registerOneDocumentClickHandler() {
 }
 
 function initPermissionRequest() {
-    const apiClient = ServerConnections.currentApiClient();
-    if (apiClient) {
-        apiClient.getCurrentUser()
+    const api = ServerConnections.getApi();
+    if (api) {
+        getUserApi(api).getCurrentUser()
             .then(() => registerOneDocumentClickHandler())
             .catch(() => {
                 Events.on(ServerConnections, 'localusersignedin', registerOneDocumentClickHandler);
@@ -92,11 +95,11 @@ function showNonPersistentNotification(title, options, timeoutMs) {
     }
 }
 
-function showNotification(options, timeoutMs, apiClient) {
+function showNotification(options, timeoutMs, serverId) {
     const title = options.title;
 
     options.data = options.data || {};
-    options.data.serverId = apiClient.serverInfo().Id;
+    options.data.serverId = serverId;
     options.icon = options.icon || NotificationIcon;
     options.badge = options.badge || NotificationIcon;
 
@@ -110,7 +113,7 @@ function showNotification(options, timeoutMs, apiClient) {
     showNonPersistentNotification(title, options, timeoutMs);
 }
 
-function showNewItemNotification(item, apiClient) {
+function showNewItemNotification(item, api) {
     if (playbackManager.isPlayingLocally(['Video'])) {
         return;
     }
@@ -132,17 +135,16 @@ function showNewItemNotification(item, apiClient) {
     const imageTags = item.ImageTags || {};
 
     if (imageTags.Primary) {
-        notification.icon = apiClient.getScaledImageUrl(item.Id, {
+        notification.icon = getScaledImageUrl(api, item.Id, ImageType.Primary, {
             width: 80,
-            tag: imageTags.Primary,
-            type: 'Primary'
+            tag: imageTags.Primary
         });
     }
 
-    showNotification(notification, 15000, apiClient);
+    showNotification(notification, 15000, item.ServerId);
 }
 
-function onLibraryChanged(data, apiClient) {
+function onLibraryChanged(data, api, serverId) {
     const newItems = data.ItemsAdded;
 
     if (!newItems.length) {
@@ -154,8 +156,8 @@ function onLibraryChanged(data, apiClient) {
         newItems.length = 12;
     }
 
-    getItems(ServerConnections.getApi(apiClient.serverId()), {
-        userId: apiClient.getCurrentUserId(),
+    getItems(api, {
+        userId: ServerConnections.getCurrentUserId(serverId),
         recursive: true,
         limit: 3,
         filters: [ItemFilter.IsNotFolder],
@@ -168,13 +170,13 @@ function onLibraryChanged(data, apiClient) {
         const items = result.Items;
 
         for (const item of items) {
-            showNewItemNotification(item, apiClient);
+            showNewItemNotification(item, api);
         }
     });
 }
 
-function showPackageInstallNotification(apiClient, installation, status) {
-    apiClient.getCurrentUser().then(function (user) {
+function showPackageInstallNotification(api, serverId, installation, status) {
+    getUserApi(api).getCurrentUser().then(function ({ data: user }) {
         if (!user.Policy.IsAdministrator) {
             return;
         }
@@ -215,53 +217,52 @@ function showPackageInstallNotification(apiClient, installation, status) {
 
         const timeout = status === 'cancelled' ? 5000 : 0;
 
-        showNotification(notification, timeout, apiClient);
+        showNotification(notification, timeout, serverId);
     });
 }
 
 const subscriptions = [];
 
-function subscribeToApiClient(apiClient) {
+function subscribeToServer(serverId) {
+    const api = ServerConnections.getApi(serverId);
+    const serverName = ServerConnections.getServerInfo(serverId)?.Name;
     const clientSubscriptions = [
-        apiClient.subscribe?.([OutboundWebSocketMessageType.LibraryChanged], ({ Data }) => {
-            onLibraryChanged(Data, apiClient);
+        api?.subscribe?.([OutboundWebSocketMessageType.LibraryChanged], ({ Data }) => {
+            onLibraryChanged(Data, api, serverId);
         }),
-        apiClient.subscribe?.([OutboundWebSocketMessageType.PackageInstallationCompleted], ({ Data }) => {
-            showPackageInstallNotification(apiClient, Data, 'completed');
+        api?.subscribe?.([OutboundWebSocketMessageType.PackageInstallationCompleted], ({ Data }) => {
+            showPackageInstallNotification(api, serverId, Data, 'completed');
         }),
-        apiClient.subscribe?.([OutboundWebSocketMessageType.PackageInstallationFailed], ({ Data }) => {
-            showPackageInstallNotification(apiClient, Data, 'failed');
+        api?.subscribe?.([OutboundWebSocketMessageType.PackageInstallationFailed], ({ Data }) => {
+            showPackageInstallNotification(api, serverId, Data, 'failed');
         }),
-        apiClient.subscribe?.([OutboundWebSocketMessageType.PackageInstallationCancelled], ({ Data }) => {
-            showPackageInstallNotification(apiClient, Data, 'cancelled');
+        api?.subscribe?.([OutboundWebSocketMessageType.PackageInstallationCancelled], ({ Data }) => {
+            showPackageInstallNotification(api, serverId, Data, 'cancelled');
         }),
-        apiClient.subscribe?.([OutboundWebSocketMessageType.PackageInstalling], ({ Data }) => {
-            showPackageInstallNotification(apiClient, Data, 'progress');
+        api?.subscribe?.([OutboundWebSocketMessageType.PackageInstalling], ({ Data }) => {
+            showPackageInstallNotification(api, serverId, Data, 'progress');
         }),
 
-        apiClient.subscribe?.([OutboundWebSocketMessageType.ServerShuttingDown], () => {
-            const serverId = apiClient.serverInfo().Id;
+        api?.subscribe?.([OutboundWebSocketMessageType.ServerShuttingDown], () => {
             const notification = {
                 tag: 'restart' + serverId,
-                title: globalize.translate('ServerNameIsShuttingDown', apiClient.serverInfo().Name)
+                title: globalize.translate('ServerNameIsShuttingDown', serverName)
             };
-            showNotification(notification, 0, apiClient);
+            showNotification(notification, 0, serverId);
         }),
 
-        apiClient.subscribe?.([OutboundWebSocketMessageType.ServerRestarting], () => {
-            const serverId = apiClient.serverInfo().Id;
+        api?.subscribe?.([OutboundWebSocketMessageType.ServerRestarting], () => {
             const notification = {
                 tag: 'restart' + serverId,
-                title: globalize.translate('ServerNameIsRestarting', apiClient.serverInfo().Name)
+                title: globalize.translate('ServerNameIsRestarting', serverName)
             };
-            showNotification(notification, 0, apiClient);
+            showNotification(notification, 0, serverId);
         }),
 
-        apiClient.subscribe?.([OutboundWebSocketMessageType.RestartRequired], () => {
-            const serverId = apiClient.serverInfo().Id;
+        api?.subscribe?.([OutboundWebSocketMessageType.RestartRequired], () => {
             const notification = {
                 tag: 'restart' + serverId,
-                title: globalize.translate('PleaseRestartServerName', apiClient.serverInfo().Name)
+                title: globalize.translate('PleaseRestartServerName', serverName)
             };
 
             notification.actions =
@@ -273,7 +274,7 @@ function subscribeToApiClient(apiClient) {
                     }
                 ];
 
-            showNotification(notification, 0, apiClient);
+            showNotification(notification, 0, serverId);
         })
     ].filter(Boolean);
 
@@ -283,10 +284,10 @@ function subscribeToApiClient(apiClient) {
 }
 
 /**
- * Add subscriptions when the apiClient is created
+ * Add subscriptions when a connection to a server is created
  */
 Events.on(ServerConnections, 'apiclientcreated', (e, newApiClient) => {
-    subscriptions.push(subscribeToApiClient(newApiClient));
+    subscriptions.push(subscribeToServer(newApiClient.serverId()));
 });
 
 /**

@@ -1,20 +1,21 @@
+import type { Api } from '@jellyfin/sdk';
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
 import type { DeviceProfile } from '@jellyfin/sdk/lib/generated-client/models/device-profile';
 import type { MediaSourceInfo } from '@jellyfin/sdk/lib/generated-client/models/media-source-info';
 import type { PlaybackInfoResponse } from '@jellyfin/sdk/lib/generated-client/models/playback-info-response';
 import { PlaybackErrorCode } from '@jellyfin/sdk/lib/generated-client/models/playback-error-code';
 import { getMediaInfoApi } from '@jellyfin/sdk/lib/utils/api/media-info-api';
+import { getSystemApi } from '@jellyfin/sdk/lib/utils/api/system-api';
 
 import alert from 'components/alert';
 import { appHost } from 'components/apphost';
 import itemHelper from 'components/itemHelper';
 import { AppFeature } from 'constants/appFeature';
 import globalize from 'lib/globalize';
-import { ServerConnections } from 'lib/jellyfin-apiclient';
 import appSettings from 'scripts/settings/appSettings';
 
 import type { Player } from '../types/player';
-import { getAudioStreamUrlFromDeviceProfile, type UrlApiClient } from './audioStreamUrl';
+import { getAudioStreamUrlFromDeviceProfile } from './audioStreamUrl';
 
 /**
  * Resolución de medios: de un item a una fuente concreta reproducible.
@@ -25,11 +26,10 @@ import { getAudioStreamUrlFromDeviceProfile, type UrlApiClient } from './audioSt
  * abren los live streams.
  */
 
-/** ApiClient legacy: solo lo que necesita este módulo. */
-interface MediaApiClient extends UrlApiClient {
-    serverId: () => string;
-    getEndpointInfo: () => Promise<{ IsInNetwork?: boolean; IsLocal?: boolean }>;
-    ajax: (options: Record<string, unknown>) => Promise<unknown>;
+/** Servidor y usuario contra los que se resuelven los medios. */
+export interface MediaContext {
+    api: Api;
+    userId?: string;
 }
 
 /** Opciones de reproducción que afectan a la consulta de PlaybackInfo. */
@@ -80,7 +80,7 @@ type ItemWithPresetSource = BaseItemDto & { PresetMediaSource?: AppMediaSource }
  */
 export async function getPlaybackInfo(
     player: NegotiatingPlayer,
-    apiClient: MediaApiClient,
+    context: MediaContext,
     item: ItemWithPresetSource,
     deviceProfile: DeviceProfile,
     mediaSourceId: string | null | undefined,
@@ -94,7 +94,7 @@ export async function getPlaybackInfo(
     if (isStreamableAudio) {
         const source: AppMediaSource = {
             StreamUrl: getAudioStreamUrlFromDeviceProfile(
-                item, deviceProfile, options.maxBitrate, apiClient, options.startPosition
+                item, deviceProfile, options.maxBitrate, context, options.startPosition
             ),
             Id: item.Id,
             MediaStreams: [],
@@ -108,15 +108,10 @@ export async function getPlaybackInfo(
         return { MediaSources: [item.PresetMediaSource] };
     }
 
-    const query = buildPlaybackInfoQuery(player, apiClient, item, deviceProfile,
+    const query = buildPlaybackInfoQuery(player, context, item, deviceProfile,
         mediaSourceId, liveStreamId, options);
 
-    const api = ServerConnections.getApi(apiClient.serverId());
-    if (!api) {
-        throw new Error(`Sin conexión al servidor ${apiClient.serverId()}`);
-    }
-
-    const res = await getMediaInfoApi(api).getPostedPlaybackInfo({
+    const res = await getMediaInfoApi(context.api).getPostedPlaybackInfo({
         itemId: item.Id as string,
         playbackInfoDto: query
     });
@@ -126,7 +121,7 @@ export async function getPlaybackInfo(
 /** Arma el cuerpo de la consulta, omitiendo lo que no se ha especificado. */
 function buildPlaybackInfoQuery(
     player: NegotiatingPlayer,
-    apiClient: MediaApiClient,
+    { userId }: MediaContext,
     item: BaseItemDto,
     deviceProfile: DeviceProfile,
     mediaSourceId: string | null | undefined,
@@ -134,7 +129,7 @@ function buildPlaybackInfoQuery(
     options: PlaybackInfoOptions
 ): Record<string, unknown> {
     const query: Record<string, unknown> = {
-        UserId: apiClient.getCurrentUserId(),
+        UserId: userId,
         StartTimeTicks: options.startPosition || 0,
         // `IsPlayback` distingue reproducir de solo inspeccionar: solo en el
         // primer caso el servidor abre el live stream y cuenta la sesión.
@@ -195,7 +190,7 @@ function buildPlaybackInfoQuery(
  * primera — que fallará, pero con un error del player en vez de un silencio.
  */
 export async function getOptimalMediaSource(
-    apiClient: MediaApiClient,
+    context: MediaContext,
     item: BaseItemDto,
     versions: MediaSourceInfo[]
 ): Promise<MediaSourceInfo> {
@@ -204,7 +199,7 @@ export async function getOptimalMediaSource(
     }
 
     const directPlayResults = await Promise.all(
-        versions.map((v) => supportsDirectPlay(apiClient, item, v))
+        versions.map((v) => supportsDirectPlay(context, item, v))
     );
 
     // El flag se anota en la fuente: el resto del sistema lo consulta después.
@@ -220,43 +215,37 @@ export async function getOptimalMediaSource(
 }
 
 /** Abre un live stream (TV en directo, grabaciones en curso) en el servidor. */
-export function getLiveStream(
+export async function getLiveStream(
     player: NegotiatingPlayer,
-    apiClient: MediaApiClient,
+    { api, userId }: MediaContext,
     item: BaseItemDto,
     playSessionId: string,
     deviceProfile: DeviceProfile,
     mediaSource: MediaSourceInfo,
     options: PlaybackInfoOptions
 ): Promise<unknown> {
-    const query: Record<string, unknown> = {
-        UserId: apiClient.getCurrentUserId(),
-        StartTimeTicks: options.startPosition || 0,
-        ItemId: item.Id,
-        PlaySessionId: playSessionId
-    };
-
-    if (options.maxBitrate) query.MaxStreamingBitrate = options.maxBitrate;
-    if (options.audioStreamIndex != null) query.AudioStreamIndex = options.audioStreamIndex;
-    if (options.subtitleStreamIndex != null) query.SubtitleStreamIndex = options.subtitleStreamIndex;
-
     // Igual que en PlaybackInfo: el veto del player va el último. El original
     // comprobaba antes `query.EnableDirectStream !== false`, pero aquí nunca
     // se ha fijado, así que la condición siempre se cumplía.
-    if (player.supportsPlayMethod && !player.supportsPlayMethod('DirectStream', item)) {
-        query.EnableDirectStream = false;
-    }
+    const vetoesDirectStream = player.supportsPlayMethod
+        && !player.supportsPlayMethod('DirectStream', item);
 
-    return apiClient.ajax({
-        url: apiClient.getUrl('LiveStreams/Open', query),
-        type: 'POST',
-        data: JSON.stringify({
+    const res = await getMediaInfoApi(api).openLiveStream({
+        userId,
+        startTimeTicks: options.startPosition || 0,
+        itemId: item.Id as string,
+        playSessionId,
+        maxStreamingBitrate: options.maxBitrate || undefined,
+        audioStreamIndex: options.audioStreamIndex ?? undefined,
+        subtitleStreamIndex: options.subtitleStreamIndex ?? undefined,
+        enableDirectStream: vetoesDirectStream ? false : undefined,
+        openLiveStreamDto: {
             DeviceProfile: deviceProfile,
             OpenToken: mediaSource.OpenToken
-        }),
-        contentType: 'application/json',
-        dataType: 'json'
+        }
     });
+
+    return res.data;
 }
 
 /**
@@ -267,13 +256,13 @@ export function getLiveStream(
  */
 export async function isHostReachable(
     mediaSource: MediaSourceInfo,
-    apiClient: MediaApiClient
+    { api }: MediaContext
 ): Promise<boolean> {
     if (mediaSource.IsRemote) {
         return true;
     }
 
-    const endpointInfo = await apiClient.getEndpointInfo();
+    const { data: endpointInfo } = await getSystemApi(api).getEndpointInfo();
     if (!endpointInfo.IsInNetwork) {
         // La fuente está en la red local y la conexión viene de fuera.
         return false;
@@ -297,7 +286,7 @@ export async function isHostReachable(
  * la única vía es el acceso directo.
  */
 export async function supportsDirectPlay(
-    apiClient: MediaApiClient,
+    context: MediaContext,
     item: BaseItemDto,
     mediaSource: MediaSourceInfo
 ): Promise<boolean> {
@@ -333,7 +322,7 @@ export async function supportsDirectPlay(
         return true;
     }
 
-    return isHostReachable(mediaSource, apiClient);
+    return isHostReachable(mediaSource, context);
 }
 
 /** Muestra el error de reproducción que ha devuelto el servidor. */

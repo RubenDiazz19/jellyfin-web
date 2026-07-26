@@ -16,12 +16,17 @@ import { AppFeature } from 'constants/appFeature';
  * que en un álbum entero se nota.
  */
 
-/** ApiClient legacy, del que aquí solo se usa la construcción de URLs. */
-export interface UrlApiClient {
-    getUrl: (path: string, params: Record<string, unknown>) => string;
-    getCurrentUserId: () => string;
-    deviceId: () => string;
-    accessToken: () => string;
+/** Lo que se usa del SDK `Api` para construir estas URLs. */
+export interface StreamUrlApi {
+    getUri: (url: string, params?: object) => string;
+    readonly accessToken: string;
+    readonly deviceInfo: { id: string };
+}
+
+/** Servidor y usuario contra los que se firman las URLs. */
+export interface AudioStreamContext {
+    api: StreamUrlApi;
+    userId?: string;
 }
 
 /** Techos de audio que impone el perfil del dispositivo. */
@@ -74,15 +79,15 @@ export function getAudioStreamUrl(
     item: BaseItemDto,
     transcodingProfile: TranscodingProfile | undefined,
     directPlayContainers: string,
-    apiClient: UrlApiClient,
+    { api, userId }: AudioStreamContext,
     startPosition: number | undefined,
     maxValues: AudioMaxValues
 ): string {
     startingPlaySession++;
 
-    return apiClient.getUrl(`Audio/${item.Id}/universal`, {
-        UserId: apiClient.getCurrentUserId(),
-        DeviceId: apiClient.deviceId(),
+    return api.getUri(`/Audio/${item.Id}/universal`, {
+        UserId: userId,
+        DeviceId: api.deviceInfo.id,
         MaxStreamingBitrate: maxValues.maxAudioBitrate || maxValues.maxBitrate,
         Container: directPlayContainers,
         TranscodingContainer: transcodingProfile?.Container || null,
@@ -90,7 +95,7 @@ export function getAudioStreamUrl(
         AudioCodec: transcodingProfile?.AudioCodec,
         MaxAudioSampleRate: maxValues.maxAudioSampleRate,
         MaxAudioBitDepth: maxValues.maxAudioBitDepth,
-        ApiKey: apiClient.accessToken(),
+        ApiKey: api.accessToken,
         PlaySessionId: startingPlaySession,
         StartTimeTicks: startPosition || 0,
         EnableRedirection: true,
@@ -127,14 +132,14 @@ export function getAudioStreamUrlFromDeviceProfile(
     item: BaseItemDto,
     deviceProfile: DeviceProfile,
     maxBitrate: number | undefined,
-    apiClient: UrlApiClient,
+    context: AudioStreamContext,
     startPosition?: number
 ): string {
     return getAudioStreamUrl(
         item,
         findAudioTranscodingProfile(deviceProfile),
         buildDirectPlayContainers(deviceProfile),
-        apiClient,
+        context,
         startPosition,
         { maxBitrate, ...getAudioMaxValues(deviceProfile) }
     );
@@ -151,7 +156,7 @@ export function getStreamUrls(
     items: BaseItemDto[],
     deviceProfile: DeviceProfile,
     maxBitrate: number | undefined,
-    apiClient: UrlApiClient,
+    context: AudioStreamContext,
     startPosition?: number
 ): string[] {
     const transcodingProfile = findAudioTranscodingProfile(deviceProfile);
@@ -166,7 +171,7 @@ export function getStreamUrls(
             item,
             transcodingProfile,
             directPlayContainers,
-            apiClient,
+            context,
             index === 0 ? startPosition : 0,
             { maxBitrate, ...maxValues }
         );
@@ -183,10 +188,10 @@ export function setStreamUrls(
     items: BaseItemDto[],
     deviceProfile: DeviceProfile,
     maxBitrate: number | undefined,
-    apiClient: UrlApiClient,
+    context: AudioStreamContext,
     startPosition?: number
 ): void {
-    const streamUrls = getStreamUrls(items, deviceProfile, maxBitrate, apiClient, startPosition);
+    const streamUrls = getStreamUrls(items, deviceProfile, maxBitrate, context, startPosition);
 
     items.forEach((item, index) => {
         const streamUrl = streamUrls[index];

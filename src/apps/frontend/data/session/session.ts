@@ -1,5 +1,5 @@
 // Session façade over the official ServerConnections singleton. All state is
-// derived from the active ApiClient; we only cache the display name locally.
+// derived from the active SDK Api; we only cache the display name locally.
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import events from 'utils/events';
@@ -8,15 +8,15 @@ export const SESSION_EVENT = 'jfp-session-change';
 
 // Restaura las credenciales guardadas (localStorage) llamando al connect() del
 // ConnectionManager: valida el AccessToken contra /System/Info y, si es válido,
-// hace setAuthenticationInfo en el ApiClient. Sin esto, initApiClient() del
-// bootstrap crea un cliente sin token → apiClient.accessToken() = undefined y
+// hace setAuthenticationInfo en el cliente. Sin esto, initApiClient() del
+// bootstrap crea un cliente sin token → api.accessToken = undefined y
 // el usuario acaba en LoginPage aunque su sesión siga viva en storage.
 export async function restoreSession(): Promise<Session | null> {
     try {
         await ServerConnections.connect();
     } catch {
         // Sin red / servidor caído: seguimos con lo que haya (posiblemente
-        // nada). El propio ApiClient volverá a intentarlo cuando el usuario
+        // nada). La propia conexión volverá a intentarlo cuando el usuario
         // haga una acción, y mientras tanto la UI puede seguir mostrando el
         // login sin pantalla en blanco.
     }
@@ -36,12 +36,12 @@ export type Session = {
 let cachedDisplayName = '';
 
 function readFromServerConnections(): Session | null {
-    const apiClient = ServerConnections.currentApiClient?.();
-    if (!apiClient) return null;
-    const accessToken = apiClient.accessToken?.();
-    const userId = apiClient.getCurrentUserId?.();
-    const serverUrl = apiClient.serverAddress?.() ?? '';
-    const serverId = apiClient.serverId?.() ?? undefined;
+    const api = ServerConnections.getApi();
+    if (!api) return null;
+    const accessToken = api.accessToken;
+    const userId = ServerConnections.getCurrentUserId();
+    const serverUrl = api.basePath ?? '';
+    const serverId = ServerConnections.getCurrentServerId();
     if (!accessToken || !userId) return null;
     return {
         serverUrl,
@@ -67,9 +67,8 @@ export function notifySessionChanged() {
 }
 
 export function clearSession() {
-    const apiClient = ServerConnections.currentApiClient?.();
-    if (apiClient?.accessToken?.()) {
-        void apiClient.logout?.();
+    if (ServerConnections.getApi()?.accessToken) {
+        void ServerConnections.logout();
     }
     window.dispatchEvent(new Event(SESSION_EVENT));
 }
