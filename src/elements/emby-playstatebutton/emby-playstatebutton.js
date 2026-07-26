@@ -1,19 +1,21 @@
 import globalize from '../../lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { getUserDataApi } from '@jellyfin/sdk/lib/utils/api/user-data-api';
 import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 import EmbyButtonPrototype from '../../elements/emby-button/emby-button';
 
 function onClick() {
     const button = this;
-    const id = button.getAttribute('data-id');
+    const itemId = button.getAttribute('data-id');
     const serverId = button.getAttribute('data-serverid');
-    const apiClient = ServerConnections.getApiClient(serverId);
+    const userDataApi = getUserDataApi(ServerConnections.getApi(serverId));
+    const userId = ServerConnections.getCurrentUserId(serverId);
 
     if (!button.classList.contains('playstatebutton-played')) {
-        apiClient.markPlayed(apiClient.getCurrentUserId(), id, new Date());
+        void userDataApi.markPlayedItem({ itemId, userId, datePlayed: new Date().toISOString() });
         setState(button, true);
     } else {
-        apiClient.markUnplayed(apiClient.getCurrentUserId(), id, new Date());
+        void userDataApi.markUnplayedItem({ itemId, userId });
         setState(button, false);
     }
 }
@@ -78,8 +80,8 @@ function bindEvents(button) {
 
     button.addEventListener('click', onClick);
     const serverId = button.dataset.serverid;
-    const apiClient = ServerConnections.getApiClient(serverId);
-    button._unsubscribeUserData = apiClient?.subscribe(
+    const api = ServerConnections.getApi(serverId);
+    button._unsubscribeUserData = api?.subscribe(
         [OutboundWebSocketMessageType.UserDataChanged],
         (msg) => onUserDataChanged(msg, button)
     );

@@ -1,8 +1,10 @@
+import type { Api } from '@jellyfin/sdk';
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
 import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import type { ItemDto } from 'types/base/models/item-dto';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 
 interface ImageOptions {
     height?: number
@@ -11,32 +13,30 @@ interface ImageOptions {
     type?: ImageType
 }
 
-function getSeriesImageUrl(item: ItemDto, options: ImageOptions = {}) {
-    if (!item.ServerId) return null;
+/** The scaling half of ImageOptions; `type` travels as its own argument. */
+type ScaleOptions = Omit<ImageOptions, 'type'>;
 
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
-    if (!apiClient) {
-        console.error('[getSeriesImageUrl] No ApiClient instance available for serverId', item.ServerId);
-        return null;
+function getSeriesImageUrl(api: Api, item: ItemDto, type: ImageType, options: ScaleOptions) {
+    if (item.SeriesId && type === ImageType.Primary && item.SeriesPrimaryImageTag) {
+        return getScaledImageUrl(api, item.SeriesId, ImageType.Primary, {
+            ...options,
+            tag: item.SeriesPrimaryImageTag
+        });
     }
 
-    if (item.SeriesId && options.type === ImageType.Primary && item.SeriesPrimaryImageTag) {
-        options.tag = item.SeriesPrimaryImageTag;
-
-        return apiClient.getScaledImageUrl(item.SeriesId, options);
-    }
-
-    if (options.type === ImageType.Thumb) {
+    if (type === ImageType.Thumb) {
         if (item.SeriesId && item.SeriesThumbImageTag) {
-            options.tag = item.SeriesThumbImageTag;
-
-            return apiClient.getScaledImageUrl(item.SeriesId, options);
+            return getScaledImageUrl(api, item.SeriesId, ImageType.Thumb, {
+                ...options,
+                tag: item.SeriesThumbImageTag
+            });
         }
 
         if (item.ParentThumbItemId && item.ParentThumbImageTag) {
-            options.tag = item.ParentThumbImageTag;
-
-            return apiClient.getScaledImageUrl(item.ParentThumbItemId, options);
+            return getScaledImageUrl(api, item.ParentThumbItemId, ImageType.Thumb, {
+                ...options,
+                tag: item.ParentThumbImageTag
+            });
         }
     }
 
@@ -46,26 +46,30 @@ function getSeriesImageUrl(item: ItemDto, options: ImageOptions = {}) {
 export function getImageUrl(item: ItemDto, options: ImageOptions = {}) {
     if (!item.ServerId) return null;
 
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
-    if (!apiClient) {
-        console.error('[getImageUrl] No ApiClient instance available for serverId', item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
+    if (!api) {
+        console.error('[getImageUrl] No Api instance available for serverId', item.ServerId);
         return null;
     }
 
-    options.type = options.type || ImageType.Primary;
+    const { type = ImageType.Primary, ...scaleOptions } = options;
 
-    if (item.Type === BaseItemKind.Episode) return getSeriesImageUrl(item, options);
+    if (item.Type === BaseItemKind.Episode) return getSeriesImageUrl(api, item, type, scaleOptions);
 
     const itemId = item.PrimaryImageItemId || item.Id;
 
-    if (itemId && item.ImageTags?.[options.type]) {
-        options.tag = item.ImageTags[options.type] ?? undefined;
-        return apiClient.getScaledImageUrl(itemId, options);
+    if (itemId && item.ImageTags?.[type]) {
+        return getScaledImageUrl(api, itemId, type, {
+            ...scaleOptions,
+            tag: item.ImageTags[type] ?? undefined
+        });
     }
 
     if (item.AlbumId && item.AlbumPrimaryImageTag) {
-        options.tag = item.AlbumPrimaryImageTag;
-        return apiClient.getScaledImageUrl(item.AlbumId, options);
+        return getScaledImageUrl(api, item.AlbumId, type, {
+            ...scaleOptions,
+            tag: item.AlbumPrimaryImageTag
+        });
     }
 
     return null;

@@ -121,6 +121,30 @@ class ServerConnections extends ConnectionManager {
     }
 
     /**
+     * Gets an SDK Api instance for every connected server.
+     * @returns {import('@jellyfin/sdk').Api[]} The Api instances.
+     */
+    getApis() {
+        return this.getApiClients()
+            .map((apiClient) => this.getApi(apiClient.serverId()))
+            .filter(Boolean);
+    }
+
+    /**
+     * Gets the id of the user signed in on a server.
+     *
+     * Consumers that only talk to the SDK still need the user id for the
+     * endpoints that take one, and asking the connection layer keeps them from
+     * reaching for an ApiClient just to read it.
+     * @param {string} [serverId] The server id; defaults to the last used server.
+     * @returns {string|undefined} The signed in user id, if any.
+     */
+    getCurrentUserId(serverId) {
+        const apiClient = serverId ? this.getApiClient(serverId) : this.currentApiClient();
+        return apiClient?.getCurrentUserId();
+    }
+
+    /**
      * Gets the ApiClient that is currently connected or throws if not defined.
      * @async
      * @returns {Promise<ApiClient>} The current ApiClient instance.

@@ -1,16 +1,21 @@
+import { ItemFields } from '@jellyfin/sdk/lib/generated-client/models/item-fields';
 import { getPlaylistApi } from '@jellyfin/sdk/lib/utils/api/playlist-api';
 
 import listView from 'components/listview/listview';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 
-function getFetchPlaylistItemsFn(apiClient, itemId) {
+function getFetchPlaylistItemsFn(api, userId, playlistId) {
     return function () {
-        const query = {
-            Fields: 'PrimaryImageAspectRatio,MediaSourceCount,Chapters,Trickplay',
-            EnableImageTypes: 'Primary,Backdrop,Banner,Thumb',
-            UserId: apiClient.getCurrentUserId()
-        };
-        return apiClient.getJSON(apiClient.getUrl(`Playlists/${itemId}/Items`, query));
+        return getPlaylistApi(api).getPlaylistItems({
+            playlistId,
+            userId,
+            fields: [
+                ItemFields.PrimaryImageAspectRatio,
+                ItemFields.MediaSourceCount,
+                ItemFields.Chapters,
+                ItemFields.Trickplay
+            ]
+        }).then(({ data }) => data);
     };
 }
 
@@ -31,10 +36,10 @@ function getItemsHtmlFn(playlistId, isEditable = false) {
 
 async function init(page, item) {
     const api = ServerConnections.getApi(item.ServerId);
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
+    const userId = ServerConnections.getCurrentUserId(item.ServerId);
 
-    if (!api || !apiClient) {
-        console.error('[PlaylistViewer] No Api or ApiClient instance is available', { api, apiClient });
+    if (!api) {
+        console.error('[PlaylistViewer] No Api instance is available for serverId', item.ServerId);
         return;
     }
 
@@ -42,7 +47,7 @@ async function init(page, item) {
     const { data } = await getPlaylistApi(api)
         .getPlaylistUser({
             playlistId: item.Id,
-            userId: apiClient.getCurrentUserId()
+            userId
         })
         .catch(err => {
             // If a user doesn't have access, then the request will 404 and throw
@@ -55,7 +60,7 @@ async function init(page, item) {
     elem.classList.add('vertical-list');
     elem.classList.remove('vertical-wrap');
     elem.enableDragReordering(isEditable);
-    elem.fetchData = getFetchPlaylistItemsFn(apiClient, item.Id);
+    elem.fetchData = getFetchPlaylistItemsFn(api, userId, item.Id);
     elem.getItemsHtml = getItemsHtmlFn(item.Id, isEditable);
 }
 

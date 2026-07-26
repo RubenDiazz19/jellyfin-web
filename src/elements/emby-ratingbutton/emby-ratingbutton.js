@@ -1,5 +1,6 @@
 import globalize from '../../lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { getUserDataApi } from '@jellyfin/sdk/lib/utils/api/user-data-api';
 import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 import EmbyButtonPrototype from '../emby-button/emby-button';
 import serverNotifications from 'scripts/serverNotifications';
@@ -8,26 +9,31 @@ import { queryClient } from 'utils/query/queryClient';
 
 function onClick() {
     const button = this;
-    const id = button.getAttribute('data-id');
+    const itemId = button.getAttribute('data-id');
     const serverId = button.getAttribute('data-serverid');
-    const apiClient = ServerConnections.getApiClient(serverId);
+    const api = ServerConnections.getApi(serverId);
     const isFavorite = this.getAttribute('data-isfavorite') === 'true';
-    const userId = apiClient.getCurrentUserId();
+    const userId = ServerConnections.getCurrentUserId(serverId);
 
-    apiClient.updateFavoriteStatus(userId, id, !isFavorite)
-        .then(userData => {
-            setState(button, userData.Likes, userData.IsFavorite);
-            void queryClient.invalidateQueries({ queryKey: ['User', userId, 'Items'] });
-        });
+    const userDataApi = getUserDataApi(api);
+    const request = { itemId, userId };
+    const update = isFavorite ?
+        userDataApi.unmarkFavoriteItem(request) :
+        userDataApi.markFavoriteItem(request);
+
+    update.then(({ data: userData }) => {
+        setState(button, userData.Likes, userData.IsFavorite);
+        void queryClient.invalidateQueries({ queryKey: ['User', userId, 'Items'] });
+    });
 }
 
-function onUserDataChanged({ MessageType, Data }, apiClient, button) {
+function onUserDataChanged({ MessageType, Data }, api, button) {
     const itemId = button.dataset.id;
     const userData = (Data?.UserDataList ?? []).find(u => u.ItemId === itemId);
     if (userData) {
         setState(button, userData.Likes, userData.IsFavorite);
     }
-    Events.trigger(serverNotifications, MessageType, [apiClient, Data]);
+    Events.trigger(serverNotifications, MessageType, [api, Data]);
 }
 
 function setState(button, likes, isFavorite, updateAttribute) {
@@ -78,10 +84,10 @@ function bindEvents(button) {
     button.addEventListener('click', onClick);
 
     const serverId = button.dataset.serverid;
-    const apiClient = ServerConnections.getApiClient(serverId);
-    button._unsubscribeUserData = apiClient?.subscribe(
+    const api = ServerConnections.getApi(serverId);
+    button._unsubscribeUserData = api?.subscribe(
         [OutboundWebSocketMessageType.UserDataChanged],
-        (message) => onUserDataChanged(message, apiClient, button)
+        (message) => onUserDataChanged(message, api, button)
     );
 }
 

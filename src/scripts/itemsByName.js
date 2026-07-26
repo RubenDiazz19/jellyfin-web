@@ -1,4 +1,9 @@
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
+import { ItemFields } from '@jellyfin/sdk/lib/generated-client/models/item-fields';
+import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
+import { SortOrder } from '@jellyfin/sdk/lib/generated-client/models/sort-order';
+import { getArtistApi } from '@jellyfin/sdk/lib/utils/api/artist-api';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 
 import listView from 'components/listview/listview';
 import cardBuilder from 'components/cardbuilder/cardBuilder';
@@ -111,13 +116,9 @@ function renderSection(item, element, type, user) {
     switch (type) {
         case 'Program':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'Program',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                Limit: 10,
-                SortBy: 'StartDate'
+                includeItemTypes: [BaseItemKind.Program],
+                limit: 10,
+                sortBy: [ItemSortBy.StartDate]
             }, {
                 shape: 'overflowBackdrop',
                 showTitle: true,
@@ -133,14 +134,10 @@ function renderSection(item, element, type, user) {
 
         case 'Movie':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'Movie',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                Limit: 10,
-                SortOrder: 'Descending,Descending,Ascending',
-                SortBy: 'PremiereDate,ProductionYear,SortName'
+                includeItemTypes: [BaseItemKind.Movie],
+                limit: 10,
+                sortOrder: [SortOrder.Descending, SortOrder.Descending, SortOrder.Ascending],
+                sortBy: [ItemSortBy.PremiereDate, ItemSortBy.ProductionYear, ItemSortBy.SortName]
             }, {
                 shape: 'overflowPortrait',
                 showTitle: true,
@@ -153,13 +150,9 @@ function renderSection(item, element, type, user) {
 
         case 'MusicVideo':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'MusicVideo',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                Limit: 10,
-                SortBy: 'SortName'
+                includeItemTypes: [BaseItemKind.MusicVideo],
+                limit: 10,
+                sortBy: [ItemSortBy.SortName]
             }, {
                 shape: 'overflowBackdrop',
                 showTitle: true,
@@ -170,13 +163,9 @@ function renderSection(item, element, type, user) {
 
         case 'Trailer':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'Trailer',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                Limit: 10,
-                SortBy: 'SortName'
+                includeItemTypes: [BaseItemKind.Trailer],
+                limit: 10,
+                sortBy: [ItemSortBy.SortName]
             }, {
                 shape: 'overflowPortrait',
                 showTitle: true,
@@ -187,13 +176,9 @@ function renderSection(item, element, type, user) {
 
         case 'Series':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'Series',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                Limit: 10,
-                SortBy: 'SortName'
+                includeItemTypes: [BaseItemKind.Series],
+                limit: 10,
+                sortBy: [ItemSortBy.SortName]
             }, {
                 shape: 'overflowPortrait',
                 showTitle: true,
@@ -204,13 +189,9 @@ function renderSection(item, element, type, user) {
 
         case 'MusicAlbum':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'MusicAlbum',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                SortOrder: 'Descending,Descending,Ascending',
-                SortBy: 'PremiereDate,ProductionYear,Sortname'
+                includeItemTypes: [BaseItemKind.MusicAlbum],
+                sortOrder: [SortOrder.Descending, SortOrder.Descending, SortOrder.Ascending],
+                sortBy: [ItemSortBy.PremiereDate, ItemSortBy.ProductionYear, ItemSortBy.SortName]
             }, {
                 shape: 'overflowSquare',
                 playFromHere: true,
@@ -224,10 +205,10 @@ function renderSection(item, element, type, user) {
 
         case 'Audiobook':
             loadItems(element, item, type, {
-                IncludeItemTypes: 'Audiobook',
-                SortBy: 'ProductionYear,SortName',
-                SortOrder: 'Descending,Ascending',
-                Limit: 10
+                includeItemTypes: [BaseItemKind.AudioBook],
+                sortBy: [ItemSortBy.ProductionYear, ItemSortBy.SortName],
+                sortOrder: [SortOrder.Descending, SortOrder.Ascending],
+                limit: 10
             }, {
                 shape: 'overflowPortrait',
                 showTitle: true,
@@ -240,10 +221,10 @@ function renderSection(item, element, type, user) {
 
         case 'Book':
             loadItems(element, item, type, {
-                IncludeItemTypes: 'Book',
-                SortBy: 'ProductionYear,SortName',
-                SortOrder: 'Descending,Ascending',
-                Limit: 10
+                includeItemTypes: [BaseItemKind.Book],
+                sortBy: [ItemSortBy.ProductionYear, ItemSortBy.SortName],
+                sortOrder: [SortOrder.Descending, SortOrder.Ascending],
+                limit: 10
             }, {
                 shape: 'overflowPortrait',
                 showTitle: true,
@@ -256,13 +237,9 @@ function renderSection(item, element, type, user) {
 
         case 'MusicArtist':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'MusicArtist',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                Limit: 8,
-                SortBy: 'SortName'
+                includeItemTypes: [BaseItemKind.MusicArtist],
+                limit: 8,
+                sortBy: [ItemSortBy.SortName]
             }, {
                 shape: 'overflowSquare',
                 playFromHere: true,
@@ -276,13 +253,9 @@ function renderSection(item, element, type, user) {
 
         case 'Episode':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'Episode',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                Limit: 6,
-                SortBy: 'SortName',
+                includeItemTypes: [BaseItemKind.Episode],
+                limit: 6,
+                sortBy: [ItemSortBy.SortName],
                 isMissing: !user?.Configuration?.DisplayMissingEpisodes ? false : undefined
             }, {
                 shape: 'overflowBackdrop',
@@ -295,12 +268,8 @@ function renderSection(item, element, type, user) {
 
         case 'Audio':
             loadItems(element, item, type, {
-                MediaTypes: '',
-                IncludeItemTypes: 'Audio',
-                PersonTypes: '',
-                ArtistIds: '',
-                AlbumArtistIds: '',
-                SortBy: 'AlbumArtist,Album,SortName'
+                includeItemTypes: [BaseItemKind.Audio],
+                sortBy: [ItemSortBy.AlbumArtist, ItemSortBy.Album, ItemSortBy.SortName]
             }, {
                 playFromHere: true,
                 action: 'playallfromhere',
@@ -310,9 +279,9 @@ function renderSection(item, element, type, user) {
     }
 }
 
-function loadItems(element, item, type, query, listOptions) {
-    query = getQuery(query, item);
-    getItemsFunction(query, item)(query.StartIndex, query.Limit, query.Fields).then(function (result) {
+function loadItems(element, item, type, options, listOptions) {
+    const query = getQuery(options, item);
+    fetchItems(query, item).then(function (result) {
         // If results are empty, hide the section
         if (!result.Items?.length) {
             element.classList.add('hide');
@@ -321,7 +290,7 @@ function loadItems(element, item, type, query, listOptions) {
 
         let html = '';
 
-        if (query.Limit && result.TotalRecordCount > query.Limit) {
+        if (query.limit && result.TotalRecordCount > query.limit) {
             const link = element.querySelector('a');
             link.classList.remove('hide');
             link.setAttribute('href', getMoreItemsHref(item, type));
@@ -374,60 +343,52 @@ function getMoreItemsHref(item, type) {
 function addCurrentItemToQuery(query, item) {
     switch (item.Type) {
         case BaseItemKind.Person:
-            query.PersonIds = item.Id;
+            query.personIds = [item.Id];
             break;
         case BaseItemKind.Genre:
-            query.Genres = item.Name;
-            break;
         case BaseItemKind.MusicGenre:
-            query.Genres = item.Name;
+            query.genres = [item.Name];
             break;
         case BaseItemKind.Studio:
-            query.StudioIds = item.Id;
+            query.studioIds = [item.Id];
             break;
         case BaseItemKind.MusicArtist:
-            if (query.IncludeItemTypes === BaseItemKind.MusicVideo) {
-                query.ArtistIds = item.Id;
+            if (query.includeItemTypes?.includes(BaseItemKind.MusicVideo)) {
+                query.artistIds = [item.Id];
             } else {
-                query.AlbumArtistIds = item.Id;
+                query.albumArtistIds = [item.Id];
             }
     }
 }
 
 function getQuery(options, item) {
-    let query = {
-        SortOrder: 'Ascending',
-        IncludeItemTypes: '',
-        Recursive: true,
-        Fields: 'ParentId,PrimaryImageAspectRatio',
-        Limit: 100,
-        StartIndex: 0,
-        CollapseBoxSetItems: false
+    const query = {
+        sortOrder: [SortOrder.Ascending],
+        recursive: true,
+        fields: [ItemFields.ParentId, ItemFields.PrimaryImageAspectRatio],
+        limit: 100,
+        startIndex: 0,
+        collapseBoxSetItems: false,
+        ...options
     };
-    query = Object.assign(query, options || {});
     addCurrentItemToQuery(query, item);
     return query;
 }
 
-function getItemsFunction(options, item) {
-    const query = getQuery(options, item);
-    return function (index, limit, fields) {
-        query.StartIndex = index;
-        query.Limit = limit;
+function fetchItems(query, item) {
+    const api = ServerConnections.getApi(item.ServerId);
+    const userId = ServerConnections.getCurrentUserId(item.ServerId);
 
-        if (fields) {
-            query.Fields += ',' + fields;
-        }
+    // Los artistas no salen del listado general: tienen endpoint propio, y ahí
+    // el tipo de item sobra porque ya viene implícito.
+    if (query.includeItemTypes?.includes(BaseItemKind.MusicArtist)) {
+        return getArtistApi(api)
+            .getAlbumArtists({ ...query, includeItemTypes: undefined, userId })
+            .then(({ data }) => data);
+    }
 
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
-
-        if (query.IncludeItemTypes === 'MusicArtist') {
-            query.IncludeItemTypes = null;
-            return apiClient.getAlbumArtists(apiClient.getCurrentUserId(), query);
-        }
-
-        return apiClient.getItems(apiClient.getCurrentUserId(), query);
-    };
+    return getLibraryApi(api).getItems({ ...query, userId })
+        .then(({ data }) => data);
 }
 
 const ItemsByName = {

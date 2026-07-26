@@ -1,4 +1,5 @@
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
+import { ItemFilter } from '@jellyfin/sdk/lib/generated-client/models/item-filter';
 import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
 import { MediaType } from '@jellyfin/sdk/lib/generated-client/models/media-type';
 import Screenfull from 'screenfull';
@@ -14,7 +15,7 @@ import { PlayerStateManager } from 'components/playback/utils/PlayerStateManager
 import * as userSettings from '../../scripts/settings/userSettings';
 import loading from '../loading/loading';
 import { appHost } from '../apphost';
-import { getItemBackdropImageUrl } from '../../utils/jellyfin-apiclient/backdropImage';
+import { getItemBackdropImageUrl } from '../../utils/sdk/backdropImage';
 
 import { PlayerEvent } from 'components/playback/constants/playerEvent';
 import {
@@ -794,7 +795,7 @@ export class PlaybackManager {
             }
 
             items = (await getItemsForPlayback(options.serverId, {
-                Ids: options.ids.join(',')
+                ids: options.ids
             })).Items;
         }
 
@@ -1129,70 +1130,70 @@ export class PlaybackManager {
     }
 
     _getPlaybackPromise(firstItem, serverId, options, queryOptions, items) {
-        const SortBy = options.shuffle ? ItemSortBy.Random : ItemSortBy.SortName;
+        const sortBy = options.shuffle ? [ItemSortBy.Random] : [ItemSortBy.SortName];
 
         switch (firstItem.Type) {
             case BaseItemKind.Program:
                 return getItemsForPlayback(serverId, {
-                    Ids: firstItem.ChannelId
+                    ids: [firstItem.ChannelId]
                 });
             case BaseItemKind.Playlist:
                 return getItemsForPlayback(serverId, {
-                    ParentId: firstItem.Id,
-                    SortBy: options.shuffle ? SortBy : undefined
+                    parentId: firstItem.Id,
+                    sortBy: options.shuffle ? sortBy : undefined
                 });
             case BaseItemKind.MusicArtist:
 
                 return getItemsForPlayback(serverId, mergePlaybackQueries({
-                    ArtistIds: firstItem.Id,
-                    Recursive: true,
-                    SortBy: options.shuffle ? SortBy : [
+                    artistIds: [firstItem.Id],
+                    recursive: true,
+                    sortBy: options.shuffle ? sortBy : [
                         ItemSortBy.Album,
                         ItemSortBy.ParentIndexNumber,
                         ItemSortBy.IndexNumber,
                         ItemSortBy.SortName
-                    ].join(','),
-                    MediaTypes: MediaType.Audio
+                    ],
+                    mediaTypes: [MediaType.Audio]
                 }, queryOptions));
             case BaseItemKind.PhotoAlbum:
                 return getItemsForPlayback(serverId, mergePlaybackQueries({
-                    ParentId: firstItem.Id,
+                    parentId: firstItem.Id,
                     // Setting this to true may cause some incorrect sorting
-                    Recursive: false,
-                    SortBy,
+                    recursive: false,
+                    sortBy,
                     // Only include Photos because we do not handle mixed queues currently
-                    MediaTypes: MediaType.Photo,
-                    Limit: UNLIMITED_ITEMS
+                    mediaTypes: [MediaType.Photo],
+                    limit: UNLIMITED_ITEMS
                 }, queryOptions));
             case BaseItemKind.MusicGenre:
                 return getItemsForPlayback(serverId, mergePlaybackQueries({
-                    GenreIds: firstItem.Id,
-                    Recursive: true,
-                    SortBy,
-                    MediaTypes: MediaType.Audio
+                    genreIds: [firstItem.Id],
+                    recursive: true,
+                    sortBy,
+                    mediaTypes: [MediaType.Audio]
                 }, queryOptions));
             case BaseItemKind.Genre:
                 return getItemsForPlayback(serverId, mergePlaybackQueries({
-                    GenreIds: firstItem.Id,
-                    ParentId: firstItem.ParentId,
-                    Recursive: true,
-                    SortBy,
-                    MediaTypes: MediaType.Video
+                    genreIds: [firstItem.Id],
+                    parentId: firstItem.ParentId,
+                    recursive: true,
+                    sortBy,
+                    mediaTypes: [MediaType.Video]
                 }, queryOptions));
             case BaseItemKind.Studio:
                 return getItemsForPlayback(serverId, mergePlaybackQueries({
-                    StudioIds: firstItem.Id,
-                    Recursive: true,
-                    SortBy,
-                    MediaTypes: MediaType.Video
+                    studioIds: [firstItem.Id],
+                    recursive: true,
+                    sortBy,
+                    mediaTypes: [MediaType.Video]
                 }, queryOptions));
             case BaseItemKind.Person:
                 return getItemsForPlayback(serverId, mergePlaybackQueries({
-                    PersonIds: firstItem.Id,
-                    ParentId: firstItem.ParentId,
-                    Recursive: true,
-                    SortBy,
-                    MediaTypes: MediaType.Video
+                    personIds: [firstItem.Id],
+                    parentId: firstItem.ParentId,
+                    recursive: true,
+                    sortBy,
+                    mediaTypes: [MediaType.Video]
                 }, queryOptions));
             case BaseItemKind.Series:
             case BaseItemKind.Season:
@@ -1205,15 +1206,17 @@ export class PlaybackManager {
     }
 
     _getNonItemTypePromise(firstItem, serverId, options, queryOptions) {
+        const sortBy = options.shuffle ? [ItemSortBy.Random] : [ItemSortBy.SortName];
+
         if (firstItem.MediaType === 'Photo') {
             return getItemsForPlayback(serverId, mergePlaybackQueries({
-                ParentId: firstItem.ParentId,
-                Filters: 'IsNotFolder',
+                parentId: firstItem.ParentId,
+                filters: [ItemFilter.IsNotFolder],
                 // Setting this to true may cause some incorrect sorting
-                Recursive: false,
-                SortBy: options.shuffle ? 'Random' : 'SortName',
-                MediaTypes: 'Photo,Video',
-                Limit: UNLIMITED_ITEMS
+                recursive: false,
+                sortBy,
+                mediaTypes: [MediaType.Photo, MediaType.Video],
+                limit: UNLIMITED_ITEMS
             }, queryOptions)).then(function (result) {
                 const playbackItems = result.Items;
 
@@ -1231,42 +1234,47 @@ export class PlaybackManager {
             });
         } else if (firstItem.IsFolder && firstItem.CollectionType === 'homevideos') {
             return getItemsForPlayback(serverId, mergePlaybackQueries({
-                ParentId: firstItem.Id,
-                Filters: 'IsNotFolder',
-                Recursive: true,
-                SortBy: options.shuffle ? 'Random' : 'SortName',
+                parentId: firstItem.Id,
+                filters: [ItemFilter.IsNotFolder],
+                recursive: true,
+                sortBy,
                 // Only include Photos because we do not handle mixed queues currently
-                MediaTypes: 'Photo',
-                Limit: UNLIMITED_ITEMS
+                mediaTypes: [MediaType.Photo],
+                limit: UNLIMITED_ITEMS
             }, queryOptions));
         } else if (firstItem.IsFolder && firstItem.CollectionType === 'musicvideos') {
             return getItemsForPlayback(serverId, mergePlaybackQueries({
-                ParentId: firstItem.Id,
-                Filters: 'IsNotFolder',
-                Recursive: true,
-                SortBy: options.shuffle ? 'Random' : 'SortName',
-                MediaTypes: 'Video',
-                Limit: UNLIMITED_ITEMS
+                parentId: firstItem.Id,
+                filters: [ItemFilter.IsNotFolder],
+                recursive: true,
+                sortBy,
+                mediaTypes: [MediaType.Video],
+                limit: UNLIMITED_ITEMS
             }, queryOptions));
         } else if (firstItem.IsFolder) {
-            let sortBy = null;
+            let folderSortBy;
             if (options.shuffle) {
-                sortBy = 'Random';
+                folderSortBy = [ItemSortBy.Random];
             } else if (firstItem.Type !== 'BoxSet') {
                 if (firstItem.CollectionType === 'music' || firstItem.MediaType === 'Audio') {
-                    sortBy = 'Album,ParentIndexNumber,IndexNumber,SortName';
+                    folderSortBy = [
+                        ItemSortBy.Album,
+                        ItemSortBy.ParentIndexNumber,
+                        ItemSortBy.IndexNumber,
+                        ItemSortBy.SortName
+                    ];
                 } else {
-                    sortBy = 'SortName';
+                    folderSortBy = [ItemSortBy.SortName];
                 }
             }
 
             return getItemsForPlayback(serverId, mergePlaybackQueries({
-                ParentId: firstItem.Id,
-                Filters: 'IsNotFolder',
-                Recursive: true,
+                parentId: firstItem.Id,
+                filters: [ItemFilter.IsNotFolder],
+                recursive: true,
                 // These are pre-sorted
-                SortBy: sortBy,
-                MediaTypes: 'Audio,Video'
+                sortBy: folderSortBy,
+                mediaTypes: [MediaType.Audio, MediaType.Video]
             }, queryOptions));
         }
 
@@ -1454,9 +1462,7 @@ export class PlaybackManager {
             return this._playOther(items, options);
         }
 
-        const apiClient = ServerConnections.getApiClient(firstItem.ServerId);
-
-        return getIntros(firstItem, apiClient, options).then((introsResult) => {
+        return getIntros(firstItem, ServerConnections.getApi(firstItem.ServerId), options).then((introsResult) => {
             const introItems = introsResult.Items;
             let introPlayOptions;
 
@@ -1907,7 +1913,7 @@ export class PlaybackManager {
             title: item.Name
         };
 
-        const backdropUrl = getItemBackdropImageUrl(apiClient, item, {}, true);
+        const backdropUrl = getItemBackdropImageUrl(ServerConnections.getApi(item.ServerId), item, {}, true);
         if (backdropUrl) {
             resultInfo.backdropUrl = backdropUrl;
         }
@@ -2036,7 +2042,7 @@ export class PlaybackManager {
         }
 
         return getItemsForPlayback(options.serverId, {
-            Ids: options.ids.join(',')
+            ids: options.ids
         })
             .then((result) => this._translateItemsForPlayback(result.Items, options))
             .then((items) => this._queueAll(items, mode, player));

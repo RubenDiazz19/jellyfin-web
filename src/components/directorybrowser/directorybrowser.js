@@ -1,4 +1,7 @@
 import escapeHtml from 'escape-html';
+import { getEnvironmentApi } from '@jellyfin/sdk/lib/utils/api/environment-api';
+
+import { ServerConnections } from 'lib/jellyfin-apiclient';
 import loading from '../loading/loading';
 import dialogHelper from '../dialogHelper/dialogHelper';
 import dom from '../../utils/dom';
@@ -22,19 +25,20 @@ function refreshDirectoryBrowser(page, path, fileOptions, updatePathOnError) {
 
     loading.show();
 
+    const environmentApi = getEnvironmentApi(ServerConnections.getApi());
     const promises = [];
 
     if (path) {
-        promises.push(ApiClient.getDirectoryContents(path, fileOptions));
-        promises.push(ApiClient.getParentPath(path));
+        promises.push(environmentApi.getDirectoryContents({ path, ...fileOptions }));
+        promises.push(environmentApi.getParentPath({ path }));
     } else {
-        promises.push(ApiClient.getDrives());
+        promises.push(environmentApi.getDrives());
     }
 
     Promise.all(promises).then(
         responses => {
-            const folders = responses[0];
-            const parentPath = (responses[1] ? JSON.parse(responses[1]) : '') || '';
+            const folders = responses[0].data;
+            const parentPath = responses[1]?.data || '';
             let html = '';
 
             page.querySelector('.results').scrollTop = 0;
@@ -124,16 +128,15 @@ function alertTextWithOptions(options) {
     alert(options);
 }
 
-function validatePath(path, validateWriteable, apiClient) {
-    return apiClient.ajax({
-        type: 'POST',
-        url: apiClient.getUrl('Environment/ValidatePath'),
-        data: JSON.stringify({
+function validatePath(path, validateWriteable, api) {
+    return getEnvironmentApi(api).validatePath({
+        validatePathDto: {
             ValidateWriteable: validateWriteable,
             Path: path
-        }),
-        contentType: 'application/json'
-    }).catch(response => {
+        }
+    }).catch(err => {
+        // Axios anida la respuesta del servidor en `err.response`.
+        const response = err?.response;
         if (response) {
             if (response.status === 404) {
                 alertText(globalize.translate('PathNotFound'));
@@ -182,7 +185,7 @@ function initEditor(content, options, fileOptions) {
     content.querySelector('form').addEventListener('submit', function(e) {
         if (options.callback) {
             const path = this.querySelector('#txtDirectoryPickerPath').value;
-            validatePath(path, options.validateWriteable, ApiClient)
+            validatePath(path, options.validateWriteable, ServerConnections.getApi())
                 .then(options.callback(path))
                 .catch(() => { /* no-op */ });
         }
@@ -196,13 +199,9 @@ function getDefaultPath(options) {
     if (options.path) {
         return Promise.resolve(options.path);
     } else {
-        return ApiClient.getJSON(ApiClient.getUrl('Environment/DefaultDirectoryBrowser')).then(
-            result => {
-                return result.Path || '';
-            }, () => {
-                return '';
-            }
-        );
+        return getEnvironmentApi(ServerConnections.getApi())
+            .getDefaultDirectoryBrowser()
+            .then(({ data }) => data.Path || '', () => '');
     }
 }
 

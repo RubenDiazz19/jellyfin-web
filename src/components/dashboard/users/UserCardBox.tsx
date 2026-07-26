@@ -1,6 +1,9 @@
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client';
+import { getImageApi } from '@jellyfin/sdk/lib/utils/api/image-api';
 import { FunctionComponent } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+
+import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { getLocaleWithSuffix } from '../../../utils/dateFnsLocale';
 import globalize from '../../../lib/globalize';
 import IconButtonElement from '../../../elements/IconButtonElement';
@@ -28,12 +31,9 @@ const UserCardBox: FunctionComponent<IProps> = ({ user = {} }: IProps) => {
 
     let imgUrl;
 
-    if (user.PrimaryImageTag && user.Id) {
-        imgUrl = window.ApiClient.getUserImageUrl(user.Id, {
-            width: 300,
-            tag: user.PrimaryImageTag,
-            type: 'Primary'
-        });
+    const api = ServerConnections.getApi();
+    if (user.PrimaryImageTag && user.Id && api) {
+        imgUrl = getImageApi(api).getUserImageUrl(user, { width: 300 });
     }
 
     let imageClass = 'cardImage';

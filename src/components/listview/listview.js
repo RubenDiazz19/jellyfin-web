@@ -7,8 +7,10 @@
 import DOMPurify from 'dompurify';
 import escapeHtml from 'escape-html';
 import markdownIt from 'markdown-it';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 
 import { ItemAction } from 'constants/itemAction';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 
 import { getDefaultBackgroundClass } from '../cardbuilder/utils/builder';
 import itemHelper from '../itemHelper';
@@ -84,13 +86,12 @@ function getIndex(item, options) {
 }
 
 function getImageUrl(item, size) {
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
     let itemId;
 
     const options = {
         fillWidth: size,
-        fillHeight: size,
-        type: 'Primary'
+        fillHeight: size
     };
 
     if (item.ImageTags?.Primary) {
@@ -108,17 +109,16 @@ function getImageUrl(item, size) {
     }
 
     if (itemId) {
-        return apiClient.getScaledImageUrl(itemId, options);
+        return getScaledImageUrl(api, itemId, ImageType.Primary, options);
     }
     return null;
 }
 
 function getChannelImageUrl(item, size) {
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
     const options = {
         fillWidth: size,
-        fillHeight: size,
-        type: 'Primary'
+        fillHeight: size
     };
 
     if (item.ChannelId && item.ChannelPrimaryImageTag) {
@@ -126,7 +126,7 @@ function getChannelImageUrl(item, size) {
     }
 
     if (item.ChannelId) {
-        return apiClient.getScaledImageUrl(item.ChannelId, options);
+        return getScaledImageUrl(api, item.ChannelId, ImageType.Primary, options);
     }
 }
 

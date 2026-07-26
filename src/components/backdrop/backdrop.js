@@ -1,5 +1,8 @@
 import isEqual from 'lodash-es/isEqual';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
+
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 import browser from '../../scripts/browser';
 import { playbackManager } from '../playback/playbackmanager';
 import dom from '../../utils/dom';
@@ -155,26 +158,26 @@ function setBackdropImage(url) {
 function getItemImageUrls(item, imageOptions) {
     imageOptions = imageOptions || {};
 
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
     if (item.BackdropImageTags && item.BackdropImageTags.length > 0) {
         return item.BackdropImageTags.map((imgTag, index) => {
-            return apiClient.getScaledImageUrl(item.BackdropItemId || item.Id, Object.assign(imageOptions, {
-                type: 'Backdrop',
+            return getScaledImageUrl(api, item.BackdropItemId || item.Id, ImageType.Backdrop, {
+                ...imageOptions,
                 tag: imgTag,
                 maxWidth: dom.getScreenWidth(),
                 index: index
-            }));
+            });
         });
     }
 
     if (item.ParentBackdropItemId && item.ParentBackdropImageTags?.length) {
         return item.ParentBackdropImageTags.map((imgTag, index) => {
-            return apiClient.getScaledImageUrl(item.ParentBackdropItemId, Object.assign(imageOptions, {
-                type: 'Backdrop',
+            return getScaledImageUrl(api, item.ParentBackdropItemId, ImageType.Backdrop, {
+                ...imageOptions,
                 tag: imgTag,
                 maxWidth: dom.getScreenWidth(),
                 index: index
-            }));
+            });
         });
     }
 

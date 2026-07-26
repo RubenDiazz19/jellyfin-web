@@ -1,3 +1,5 @@
+import { getUserDataApi } from '@jellyfin/sdk/lib/utils/api/user-data-api';
+
 import globalize from '../../lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import dom from '../../utils/dom';
@@ -158,18 +160,22 @@ function markPlayed(link) {
     }
 }
 
-function played(id, serverId, isPlayed) {
-    const apiClient = ServerConnections.getApiClient(serverId);
+function played(itemId, serverId, isPlayed) {
+    const userDataApi = getUserDataApi(ServerConnections.getApi(serverId));
+    const userId = ServerConnections.getCurrentUserId(serverId);
 
-    const method = isPlayed ? 'markPlayed' : 'markUnplayed';
-
-    return apiClient[method](apiClient.getCurrentUserId(), id, new Date());
+    return isPlayed ?
+        userDataApi.markPlayedItem({ itemId, userId, datePlayed: new Date().toISOString() }) :
+        userDataApi.markUnplayedItem({ itemId, userId });
 }
 
-function favorite(id, serverId, isFavorite) {
-    const apiClient = ServerConnections.getApiClient(serverId);
+function favorite(itemId, serverId, isFavorite) {
+    const userDataApi = getUserDataApi(ServerConnections.getApi(serverId));
+    const userId = ServerConnections.getCurrentUserId(serverId);
 
-    return apiClient.updateFavoriteStatus(apiClient.getCurrentUserId(), id, isFavorite);
+    return isFavorite ?
+        userDataApi.markFavoriteItem({ itemId, userId }) :
+        userDataApi.unmarkFavoriteItem({ itemId, userId });
 }
 
 export default {

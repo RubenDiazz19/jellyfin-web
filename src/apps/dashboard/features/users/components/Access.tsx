@@ -1,6 +1,11 @@
 import type { BaseItemDto, DeviceInfoDto, UserDto } from '@jellyfin/sdk/lib/generated-client';
+import { getChannelApi } from '@jellyfin/sdk/lib/utils/api/channel-api';
+import { getDeviceApi } from '@jellyfin/sdk/lib/utils/api/device-api';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 
+import { ServerConnections } from 'lib/jellyfin-apiclient';
 import loading from 'components/loading/loading';
 import globalize from 'lib/globalize';
 import Button from 'elements/emby-button/Button';
@@ -143,14 +148,19 @@ const Access = ({ userId }: AccessProps) => {
 
     const loadData = useCallback(() => {
         loading.show();
-        const promise1 = userId ? window.ApiClient.getUser(userId) : Promise.resolve({ Configuration: {} });
-        const promise2 = window.ApiClient.getJSON(window.ApiClient.getUrl('Library/MediaFolders', {
-            IsHidden: false
-        }));
-        const promise3 = window.ApiClient.getJSON(window.ApiClient.getUrl('Channels'));
-        const promise4 = window.ApiClient.getJSON(window.ApiClient.getUrl('Devices'));
-        Promise.all([promise1, promise2, promise3, promise4]).then(function (responses) {
-            loadUser(responses[0], responses[1].Items, responses[2].Items, responses[3].Items);
+        const api = ServerConnections.getApi();
+        if (!api) {
+            console.error('[userlibraryaccess] no Api instance available');
+            return;
+        }
+        const userPromise = userId ?
+            getUserApi(api).getUserById({ userId }).then(({ data }) => data) :
+            Promise.resolve({ Configuration: {} } as UserDto);
+        const mediaFoldersPromise = getLibraryApi(api).getMediaFolders({ isHidden: false });
+        const channelsPromise = getChannelApi(api).getChannels();
+        const devicesPromise = getDeviceApi(api).getDevices();
+        Promise.all([userPromise, mediaFoldersPromise, channelsPromise, devicesPromise]).then(function ([user, mediaFolders, channels, devices]) {
+            loadUser(user, mediaFolders.data.Items || [], channels.data.Items || [], devices.data.Items || []);
         }).catch(err => {
             console.error('[userlibraryaccess] failed to load data', err);
         });
@@ -173,8 +183,14 @@ const Access = ({ userId }: AccessProps) => {
             }
 
             loading.show();
-            window.ApiClient.getUser(userId).then(function (result) {
-                saveUser(result);
+            const api = ServerConnections.getApi();
+            if (!api) {
+                console.error('[userlibraryaccess] no Api instance available');
+                return;
+            }
+
+            getUserApi(api).getUserById({ userId }).then(function ({ data }) {
+                saveUser(data);
             }).catch(err => {
                 console.error('[userlibraryaccess] failed to fetch user', err);
             });
@@ -212,7 +228,15 @@ const Access = ({ userId }: AccessProps) => {
             });
             user.Policy.BlockedChannels = null;
             user.Policy.BlockedMediaFolders = null;
-            window.ApiClient.updateUserPolicy(user.Id, user.Policy).then(function () {
+            const api = ServerConnections.getApi();
+            if (!api) {
+                throw new Error('Unexpected missing Api instance');
+            }
+
+            getUserApi(api).updateUserPolicy({
+                userId: user.Id,
+                userPolicy: user.Policy
+            }).then(function () {
                 onSaveComplete();
             }).catch(err => {
                 console.error('[userlibraryaccess] failed to update user policy', err);

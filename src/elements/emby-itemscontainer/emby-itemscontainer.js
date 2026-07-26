@@ -11,6 +11,7 @@ import dom from '../../utils/dom';
 import loading from '../../components/loading/loading';
 import focusManager from '../../components/focusManager';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { getPlaylistApi } from '@jellyfin/sdk/lib/utils/api/playlist-api';
 import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 
 const ItemsContainerPrototype = Object.create(HTMLDivElement.prototype);
@@ -100,14 +101,11 @@ function onDrop(evt, itemsContainer) {
     }
 
     const serverId = el.getAttribute('data-serverid');
-    const apiClient = ServerConnections.getApiClient(serverId);
+    const api = ServerConnections.getApi(serverId);
 
     loading.show();
 
-    apiClient.ajax({
-        url: apiClient.getUrl('Playlists/' + playlistId + '/Items/' + itemId + '/Move/' + newIndex),
-        type: 'POST'
-    }).then(function () {
+    getPlaylistApi(api).moveItem({ playlistId, itemId, newIndex }).then(function () {
         loading.hide();
     }, function () {
         loading.hide();
@@ -290,19 +288,21 @@ ItemsContainerPrototype.attachedCallback = function () {
 
     itemShortcuts.on(this, getShortcutOptions());
 
-    const subscribeToApiClient = (apiClient) => [
-        apiClient.subscribe([OutboundWebSocketMessageType.UserDataChanged], (msg) => onUserDataChanged(msg, this)),
-        apiClient.subscribe([OutboundWebSocketMessageType.TimerCreated], (msg) => onTimerCreated(msg, this)),
-        apiClient.subscribe([OutboundWebSocketMessageType.SeriesTimerCreated], (msg) => onSeriesTimerCreated(msg, this)),
-        apiClient.subscribe([OutboundWebSocketMessageType.TimerCancelled], (msg) => onTimerCancelled(msg, this)),
-        apiClient.subscribe([OutboundWebSocketMessageType.SeriesTimerCancelled], (msg) => onSeriesTimerCancelled(msg, this)),
-        apiClient.subscribe([OutboundWebSocketMessageType.LibraryChanged], (msg) => onLibraryChanged(msg, this))
+    const subscribeToApi = (api) => [
+        api.subscribe([OutboundWebSocketMessageType.UserDataChanged], (msg) => onUserDataChanged(msg, this)),
+        api.subscribe([OutboundWebSocketMessageType.TimerCreated], (msg) => onTimerCreated(msg, this)),
+        api.subscribe([OutboundWebSocketMessageType.SeriesTimerCreated], (msg) => onSeriesTimerCreated(msg, this)),
+        api.subscribe([OutboundWebSocketMessageType.TimerCancelled], (msg) => onTimerCancelled(msg, this)),
+        api.subscribe([OutboundWebSocketMessageType.SeriesTimerCancelled], (msg) => onSeriesTimerCancelled(msg, this)),
+        api.subscribe([OutboundWebSocketMessageType.LibraryChanged], (msg) => onLibraryChanged(msg, this))
     ].filter(Boolean);
 
     this._wsApiClientCreatedHandler = (e, newApiClient) => {
-        this._wsUnsubscribers = (this._wsUnsubscribers ?? []).concat(subscribeToApiClient(newApiClient));
+        const api = ServerConnections.getApi(newApiClient.serverId());
+        if (!api) return;
+        this._wsUnsubscribers = (this._wsUnsubscribers ?? []).concat(subscribeToApi(api));
     };
-    this._wsUnsubscribers = ServerConnections.getApiClients().flatMap(subscribeToApiClient);
+    this._wsUnsubscribers = ServerConnections.getApis().flatMap(subscribeToApi);
 
     addNotificationEvent(this, 'playbackstop', onPlaybackStopped, playbackManager);
 

@@ -1,4 +1,6 @@
 import escapeHtml from 'escape-html';
+import { getLiveTvApi } from '@jellyfin/sdk/lib/utils/api/live-tv-api';
+
 import dom from '../../utils/dom';
 import dialogHelper from '../dialogHelper/dialogHelper';
 import loading from '../loading/loading';
@@ -17,17 +19,13 @@ export default class ChannelMapper {
         function mapChannel(button, channelId, providerChannelId) {
             loading.show();
             const providerId = options.providerId;
-            ServerConnections.getApiClient(options.serverId).ajax({
-                type: 'POST',
-                url: ApiClient.getUrl('LiveTv/ChannelMappings'),
-                data: JSON.stringify({
-                    providerId: providerId,
-                    tunerChannelId: channelId,
-                    providerChannelId: providerChannelId
-                }),
-                contentType: 'application/json',
-                dataType: 'json'
-            }).then(mapping => {
+            getLiveTvApi(ServerConnections.getApi(options.serverId)).setChannelMapping({
+                setChannelMappingDto: {
+                    ProviderId: providerId,
+                    TunerChannelId: channelId,
+                    ProviderChannelId: providerChannelId
+                }
+            }).then(({ data: mapping }) => {
                 const listItem = dom.parentWithClass(button, 'listItem');
                 button.setAttribute('data-providerid', mapping.ProviderChannelId);
                 listItem.querySelector('.secondary').innerText = getMappingSecondaryName(mapping, currentMappingOptions.ProviderName);
@@ -60,10 +58,9 @@ export default class ChannelMapper {
         }
 
         function getChannelMappingOptions(serverId, providerId) {
-            const apiClient = ServerConnections.getApiClient(serverId);
-            return apiClient.getJSON(apiClient.getUrl('LiveTv/ChannelMappingOptions', {
-                providerId: providerId
-            }));
+            return getLiveTvApi(ServerConnections.getApi(serverId))
+                .getChannelMappingOptions({ providerId })
+                .then(({ data }) => data);
         }
 
         function getMappingSecondaryName(mapping, providerName) {

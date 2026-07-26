@@ -34,12 +34,13 @@ EmbyItemRefreshIndicatorPrototype.createdCallback = function () {
     const handler = ({ Data }) => onRefreshProgress(this, Data);
 
     this._wsApiClientCreatedHandler = (e, newApiClient) => {
-        const unsub = newApiClient.subscribe([OutboundWebSocketMessageType.RefreshProgress], handler);
+        const api = ServerConnections.getApi(newApiClient.serverId());
+        const unsub = api?.subscribe([OutboundWebSocketMessageType.RefreshProgress], handler);
         if (unsub) this._wsUnsubscribers.push(unsub);
     };
 
-    this._wsUnsubscribers = ServerConnections.getApiClients()
-        .map(apiClient => apiClient.subscribe([OutboundWebSocketMessageType.RefreshProgress], handler))
+    this._wsUnsubscribers = ServerConnections.getApis()
+        .map(api => api.subscribe([OutboundWebSocketMessageType.RefreshProgress], handler))
         .filter(Boolean);
 };
 

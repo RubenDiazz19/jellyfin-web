@@ -2,30 +2,31 @@ import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base
 import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import dom from 'utils/dom';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 
 const getNowPlayingImageUrl = (item: BaseItemDto) => {
     if (!item.ServerId) return null;
 
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
-    if (!apiClient) {
-        console.error('[getNowPlayingImageUrl] No ApiClient instance available for serverId', item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
+    if (!api) {
+        console.error('[getNowPlayingImageUrl] No Api instance available for serverId', item.ServerId);
         return null;
     }
 
     /* Screen width is multiplied by 0.2, as the there is currently no way to get the width of
                 elements that aren't created yet. */
+    const maxWidth = Math.round(dom.getScreenWidth() * 0.20);
+
     if (item?.BackdropImageTags?.length && item.Id) {
-        return apiClient.getScaledImageUrl(item.Id, {
-            maxWidth: Math.round(dom.getScreenWidth() * 0.20),
-            type: ImageType.Backdrop,
+        return getScaledImageUrl(api, item.Id, ImageType.Backdrop, {
+            maxWidth,
             tag: item.BackdropImageTags[0]
         });
     }
 
     if (item?.ParentBackdropImageTags?.length && item.ParentBackdropItemId) {
-        return apiClient.getScaledImageUrl(item.ParentBackdropItemId, {
-            maxWidth: Math.round(dom.getScreenWidth() * 0.20),
-            type: ImageType.Backdrop,
+        return getScaledImageUrl(api, item.ParentBackdropItemId, ImageType.Backdrop, {
+            maxWidth,
             tag: item.ParentBackdropImageTags[0]
         });
     }
@@ -33,33 +34,29 @@ const getNowPlayingImageUrl = (item: BaseItemDto) => {
     const imageTags = item?.ImageTags || {};
 
     if (item?.Id && imageTags.Thumb) {
-        return apiClient.getScaledImageUrl(item.Id, {
-            maxWidth: Math.round(dom.getScreenWidth() * 0.20),
-            type: ImageType.Thumb,
+        return getScaledImageUrl(api, item.Id, ImageType.Thumb, {
+            maxWidth,
             tag: imageTags.Thumb
         });
     }
 
     if (item?.ParentThumbImageTag && item.ParentThumbItemId) {
-        return apiClient.getScaledImageUrl(item.ParentThumbItemId, {
-            maxWidth: Math.round(dom.getScreenWidth() * 0.20),
-            type: ImageType.Thumb,
+        return getScaledImageUrl(api, item.ParentThumbItemId, ImageType.Thumb, {
+            maxWidth,
             tag: item.ParentThumbImageTag
         });
     }
 
     if (item?.Id && imageTags.Primary) {
-        return apiClient.getScaledImageUrl(item.Id, {
-            maxWidth: Math.round(dom.getScreenWidth() * 0.20),
-            type: ImageType.Primary,
+        return getScaledImageUrl(api, item.Id, ImageType.Primary, {
+            maxWidth,
             tag: imageTags.Primary
         });
     }
 
     if (item?.AlbumPrimaryImageTag && item.AlbumId) {
-        return apiClient.getScaledImageUrl(item.AlbumId, {
-            maxWidth: Math.round(dom.getScreenWidth() * 0.20),
-            type: ImageType.Primary,
+        return getScaledImageUrl(api, item.AlbumId, ImageType.Primary, {
+            maxWidth,
             tag: item.AlbumPrimaryImageTag
         });
     }

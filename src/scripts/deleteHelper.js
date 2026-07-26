@@ -1,5 +1,7 @@
 
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+import { getLyricApi } from '@jellyfin/sdk/lib/utils/api/lyric-api';
 
 import alert from 'components/alert';
 import confirm from 'components/confirm/confirm';
@@ -52,10 +54,10 @@ export function deleteItem(options) {
     const item = options.item;
     const parentId = item.SeasonId || item.SeriesId || item.ParentId;
 
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
 
     return confirm(getDeletionConfirmContent(item)).then(function () {
-        return apiClient.deleteItem(item.Id).then(function () {
+        return getLibraryApi(api).deleteItem({ itemId: item.Id }).then(function () {
             if (options.navigate) {
                 if (parentId) {
                     appRouter.showItem(parentId, item.ServerId);
@@ -80,11 +82,8 @@ export function deleteLyrics (item) {
         confirmText: globalize.translate('Delete'),
         primary: 'delete'
     }).then(() => {
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
-        return apiClient.ajax({
-            url: apiClient.getUrl('Audio/' + item.Id + '/Lyrics'),
-            type: 'DELETE'
-        }).catch((err) => {
+        const api = ServerConnections.getApi(item.ServerId);
+        return getLyricApi(api).deleteLyrics({ itemId: item.Id }).catch((err) => {
             const result = function () {
                 return Promise.reject(err);
             };

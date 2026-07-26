@@ -5,8 +5,10 @@
  */
 
 import escapeHtml from 'escape-html';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 import datetime from '../../scripts/datetime';
 import imageLoader from '../images/imageLoader';
 import layoutManager from '../layoutManager';
@@ -47,7 +49,7 @@ function buildChapterCardsHtml(item, chapters, options) {
     let html = '';
     let itemsInRow = 0;
 
-    const apiClient = ServerConnections.getApiClient(item.ServerId);
+    const api = ServerConnections.getApi(item.ServerId);
 
     for (let i = 0, length = chapters.length; i < length; i++) {
         if (options.rows && itemsInRow === 0) {
@@ -56,7 +58,7 @@ function buildChapterCardsHtml(item, chapters, options) {
 
         const chapter = chapters[i];
 
-        html += buildChapterCard(item, apiClient, chapter, i, options, className, shape);
+        html += buildChapterCard(item, api, chapter, i, options, className, shape);
         itemsInRow++;
 
         if (options.rows && itemsInRow >= options.rows) {
@@ -68,13 +70,11 @@ function buildChapterCardsHtml(item, chapters, options) {
     return html;
 }
 
-function getImgUrl({ Id }, { ImageTag }, index, maxWidth, apiClient) {
+function getImgUrl({ Id }, { ImageTag }, index, maxWidth, api) {
     if (ImageTag) {
-        return apiClient.getScaledImageUrl(Id, {
-
+        return getScaledImageUrl(api, Id, ImageType.Chapter, {
             maxWidth: maxWidth,
             tag: ImageTag,
-            type: 'Chapter',
             index
         });
     }
@@ -82,8 +82,8 @@ function getImgUrl({ Id }, { ImageTag }, index, maxWidth, apiClient) {
     return null;
 }
 
-function buildChapterCard(item, apiClient, chapter, index, { width, coverImage }, className, shape) {
-    const imgUrl = getImgUrl(item, chapter, index, width || 400, apiClient);
+function buildChapterCard(item, api, chapter, index, { width, coverImage }, className, shape) {
+    const imgUrl = getImgUrl(item, chapter, index, width || 400, api);
 
     let cardImageContainerClass = 'cardContent cardContent-shadow cardImageContainer chapterCardImageContainer';
     if (coverImage) {

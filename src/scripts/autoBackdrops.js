@@ -6,6 +6,9 @@ import { queryClient } from 'utils/query/queryClient';
 import { getBrandingOptionsQuery } from 'apps/dashboard/features/branding/api/useBrandingOptions';
 import { SPLASHSCREEN_URL } from 'constants/branding';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
+import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 
 const cache = {};
 
@@ -13,7 +16,7 @@ function enabled() {
     return userSettings.enableBackdrops();
 }
 
-function getBackdropItemIds(apiClient, userId, types, parentId) {
+function getBackdropItemIds(api, userId, types, parentId) {
     const key = `backdrops2_${userId + (types || '') + (parentId || '')}`;
     let data = cache[key];
 
@@ -23,17 +26,18 @@ function getBackdropItemIds(apiClient, userId, types, parentId) {
         return Promise.resolve(data);
     }
 
-    const options = {
-        SortBy: 'IsFavoriteOrLiked,Random',
-        Limit: 20,
-        Recursive: true,
-        IncludeItemTypes: types,
-        ImageTypes: 'Backdrop',
-        ParentId: parentId,
-        EnableTotalRecordCount: false,
-        MaxOfficialRating: parentId ? '' : 'PG-13'
-    };
-    return apiClient.getItems(apiClient.getCurrentUserId(), options).then(function (result) {
+    return getLibraryApi(api).getItems({
+        userId,
+        sortBy: [ItemSortBy.IsFavoriteOrLiked, ItemSortBy.Random],
+        limit: 20,
+        recursive: true,
+        // `data-backdroptype` llega como lista separada por comas.
+        includeItemTypes: types ? types.split(',') : undefined,
+        imageTypes: [ImageType.Backdrop],
+        parentId,
+        enableTotalRecordCount: false,
+        maxOfficialRating: parentId ? '' : 'PG-13'
+    }).then(function ({ data: result }) {
         const images = result.Items.map(function (i) {
             return {
                 Id: i.Id,
@@ -47,10 +51,10 @@ function getBackdropItemIds(apiClient, userId, types, parentId) {
 }
 
 function showBackdrop(type, parentId) {
-    const apiClient = ServerConnections.currentApiClient();
+    const api = ServerConnections.getApi();
 
-    if (apiClient) {
-        getBackdropItemIds(apiClient, apiClient.getCurrentUserId(), type, parentId).then(function (images) {
+    if (api) {
+        getBackdropItemIds(api, ServerConnections.getCurrentUserId(), type, parentId).then(function (images) {
             if (images.length) {
                 setBackdrops(images.map(function (i) {
                     i.BackdropImageTags = [i.tag];

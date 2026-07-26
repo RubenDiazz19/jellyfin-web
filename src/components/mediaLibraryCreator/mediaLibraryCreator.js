@@ -5,6 +5,9 @@
  */
 
 import escapeHtml from 'escape-html';
+import { getEnvironmentApi } from '@jellyfin/sdk/lib/utils/api/environment-api';
+import { getLibraryStructureApi } from '@jellyfin/sdk/lib/utils/api/library-structure-api';
+
 import loading from '../loading/loading';
 import dialogHelper from '../dialogHelper/dialogHelper';
 import dom from '../../utils/dom';
@@ -64,7 +67,13 @@ function onAddLibrary(e) {
 
     const libraryOptions = libraryoptionseditor.getLibraryOptions(dlg.querySelector('.libraryOptions'));
     libraryOptions.PathInfos = pathInfos;
-    ApiClient.addVirtualFolder(name, type, currentOptions.refresh, libraryOptions).then(() => {
+    getLibraryStructureApi(ServerConnections.getApi()).addVirtualFolder({
+        name,
+        collectionType: type,
+        refreshLibrary: currentOptions.refresh,
+        // Las rutas viajan dentro de LibraryOptions.PathInfos, no como parámetro suelto.
+        addVirtualFolderDto: { LibraryOptions: libraryOptions }
+    }).then(() => {
         hasChanges = true;
         isCreating = false;
         loading.hide();
@@ -168,8 +177,7 @@ async function addMediaLocation(page, path) {
     if (isPathInLibrary) return;
 
     try {
-        const apiClient = await ServerConnections.getCurrentApiClientAsync();
-        await apiClient.getDirectoryContents(path);
+        await getEnvironmentApi(ServerConnections.getApi()).getDirectoryContents({ path });
         pathInfos.push({ Path: path });
         renderPaths(page);
     } catch {

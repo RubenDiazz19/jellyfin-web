@@ -24,21 +24,26 @@ const item = await apiClient.getItem(userId, itemId);
 
 // DESPUÉS (SDK)
 const api = ServerConnections.getApi(serverId);
-const item = (await getItemsApi(api).getItems({ userId, ids: [itemId] })).data;
+const item = (await getLibraryApi(api).getItem({ itemId, userId })).data;
 ```
+
+En esta versión del SDK los listados de items viven en `getLibraryApi`, no en
+un `getItemsApi`. Los consumidores que necesitan el id del usuario lo piden a
+`ServerConnections.getCurrentUserId(serverId)` en vez de sacarlo del cliente
+legacy; en la fase 4 esa función deja de mirar al `ApiClient`.
 
 ## Subtareas
 
 ### Fase 1 — Consumidores pequeños (1-3 llamadas c/u)
 
-- [ ] **Utilidades de imagen**: `backdropImage.ts` (3), `image.ts` (5), `getNowPlayingImageUrl.ts` (6)
-- [ ] **Utilidades de items**: `getItems.ts` (3), `itemsByName.js` (2), `deleteHelper.js` (3)
-- [ ] **Elementos emby-***: `emby-ratingbutton.js` (2), `emby-playstatebutton.js` (2), `emby-itemscontainer.js` (8), `emby-itemrefreshindicator.js` (1)
-- [ ] **Scripts sueltos**: `taskbutton.js` (1), `libraryMenu.js` (1), `dashboard.js` (2)
-- [ ] **Componentes varios**: `filterdialog.js` (2), `filtermenu.js` (2), `groupedcards.js` (2), `channelMapper.js` (1), `directorybrowser.js` (2), `mediaLibraryCreator.js` (1), `refreshdialog.js` (1), `userdatabuttons.js` (2), `playlistViewer.js` (3)
-- [ ] **Card builder**: `cardBuilder.js` (3), `cardImage.ts` (1), `chaptercardbuilder.js` (1), `listview.js` (2)
-- [ ] **Backdrop**: `backdrop.js` (2), `autoBackdrops.js` (2)
-- [ ] **Dashboard con `window.ApiClient`**: `Access.tsx` (6), `UserCardBox.tsx` (1), `UserPasswordForm.tsx` (2), `ParentalControl.tsx` (1)
+- [x] **Utilidades de imagen**: `backdropImage.ts` (3), `image.ts` (5), `getNowPlayingImageUrl.ts` (6)
+- [x] **Utilidades de items**: `getItems.ts` (3), `itemsByName.js` (2), `deleteHelper.js` (3)
+- [x] **Elementos emby-***: `emby-ratingbutton.js` (2), `emby-playstatebutton.js` (2), `emby-itemscontainer.js` (8), `emby-itemrefreshindicator.js` (1)
+- [x] **Scripts sueltos**: `taskbutton.js` (1), `libraryMenu.js` (1), `dashboard.js` (2)
+- [x] **Componentes varios**: `filterdialog.js` (2), `filtermenu.js` (2), `groupedcards.js` (2), `channelMapper.js` (1), `directorybrowser.js` (2), `mediaLibraryCreator.js` (1), `refreshdialog.js` (1), `userdatabuttons.js` (2), `playlistViewer.js` (3)
+- [x] **Card builder**: `cardBuilder.js` (3), `cardImage.ts` (1), `chaptercardbuilder.js` (1), `listview.js` (2)
+- [x] **Backdrop**: `backdrop.js` (2), `autoBackdrops.js` (2)
+- [x] **Dashboard con `window.ApiClient`**: `Access.tsx` (6), `UserCardBox.tsx` (1), `UserPasswordForm.tsx` (2), `ParentalControl.tsx` (1)
 
 ### Fase 2 — Consumidores medianos (4-19 llamadas c/u)
 

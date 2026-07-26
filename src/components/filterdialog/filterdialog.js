@@ -1,3 +1,5 @@
+import { getFilterApi } from '@jellyfin/sdk/lib/utils/api/filter-api';
+
 import dom from '../../utils/dom';
 import dialogHelper from '../dialogHelper/dialogHelper';
 import globalize from '../../lib/globalize';
@@ -60,13 +62,13 @@ function renderFilters(context, result, query) {
     });
 }
 
-function loadDynamicFilters(context, apiClient, userId, itemQuery) {
-    return apiClient.getJSON(apiClient.getUrl('Items/Filters', {
-        UserId: userId,
-        ParentId: itemQuery.ParentId,
-        IncludeItemTypes: itemQuery.IncludeItemTypes
-    })).then(function (result) {
-        renderFilters(context, result, itemQuery);
+function loadDynamicFilters(context, api, userId, itemQuery) {
+    return getFilterApi(api).getQueryFiltersLegacy({
+        userId,
+        parentId: itemQuery.ParentId,
+        includeItemTypes: itemQuery.IncludeItemTypes?.split(',')
+    }).then(function ({ data }) {
+        renderFilters(context, data, itemQuery);
     });
 }
 
@@ -489,8 +491,13 @@ class FilterDialog {
             this.bindEvents(dlg);
             if (enableDynamicFilters(this.options.mode)) {
                 dlg.classList.add('dynamicFilterDialog');
-                const apiClient = ServerConnections.getApiClient(this.options.serverId);
-                loadDynamicFilters(dlg, apiClient, apiClient.getCurrentUserId(), this.options.query);
+                const serverId = this.options.serverId;
+                loadDynamicFilters(
+                    dlg,
+                    ServerConnections.getApi(serverId),
+                    ServerConnections.getCurrentUserId(serverId),
+                    this.options.query
+                );
             }
         });
     }

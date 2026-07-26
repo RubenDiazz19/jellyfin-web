@@ -1,3 +1,5 @@
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+
 import dom from '../../utils/dom';
 import dialogHelper from '../dialogHelper/dialogHelper';
 import loading from '../loading/loading';
@@ -71,7 +73,7 @@ function onSubmit(e) {
     const dlg = dom.parentWithClass(e.target, 'dialog');
     const options = instance.options;
 
-    const apiClient = ServerConnections.getApiClient(options.serverId);
+    const libraryApi = getLibraryApi(ServerConnections.getApi(options.serverId));
 
     const replaceAllMetadata = dlg.querySelector('#selectMetadataRefreshMode').value === 'all';
 
@@ -80,13 +82,13 @@ function onSubmit(e) {
     const replaceTrickplayImages = mode === 'FullRefresh' && dlg.querySelector('.chkReplaceTrickplayImages').checked;
 
     options.itemIds.forEach(function (itemId) {
-        apiClient.refreshItem(itemId, {
-            Recursive: true,
-            ImageRefreshMode: mode,
-            MetadataRefreshMode: mode,
-            ReplaceAllImages: replaceAllImages,
-            RegenerateTrickplay: replaceTrickplayImages,
-            ReplaceAllMetadata: replaceAllMetadata
+        void libraryApi.refreshItem({
+            itemId,
+            imageRefreshMode: mode,
+            metadataRefreshMode: mode,
+            replaceAllImages: replaceAllImages,
+            regenerateTrickplay: replaceTrickplayImages,
+            replaceAllMetadata: replaceAllMetadata
         });
     });
 

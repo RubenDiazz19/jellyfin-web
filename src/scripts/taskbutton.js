@@ -1,6 +1,7 @@
 
 import globalize from 'lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
+import { getScheduledTaskApi } from '@jellyfin/sdk/lib/utils/api/scheduled-task-api';
 import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 
 import 'elements/emby-button/emby-button';
@@ -57,8 +58,8 @@ function taskbutton(options) {
         }
     }
 
-    function onScheduledTaskMessageConfirmed(id) {
-        ServerConnections.getApiClient(serverId).startScheduledTask(id);
+    function onScheduledTaskMessageConfirmed(taskId) {
+        void getScheduledTaskApi(ServerConnections.getApi(serverId)).startTask({ taskId });
     }
 
     function onButtonClick() {
@@ -66,10 +67,7 @@ function taskbutton(options) {
     }
 
     function onScheduledTasksUpdate({ Data }) {
-        const apiClient = ServerConnections.getApiClient(serverId);
-        if (apiClient.serverId() === serverId) {
-            updateTasks(Data ?? []);
-        }
+        updateTasks(Data ?? []);
     }
 
     let unsubscribe;

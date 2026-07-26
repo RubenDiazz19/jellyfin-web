@@ -1,10 +1,14 @@
+import type { Api } from '@jellyfin/sdk';
+import type { LibraryApiGetItemsRequest } from '@jellyfin/sdk/lib/generated-client/api/library-api';
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
+import { ItemFields } from '@jellyfin/sdk/lib/generated-client/models/item-fields';
 import { ItemFilter } from '@jellyfin/sdk/lib/generated-client/models/item-filter';
-import merge from 'lodash-es/merge';
+import { LocationType } from '@jellyfin/sdk/lib/generated-client/models/location-type';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import * as userSettings from 'scripts/settings/userSettings';
-import { getItems } from 'utils/jellyfin-apiclient/getItems';
+import { getItems } from 'utils/sdk/getItems';
 
 /**
  * Consultas al servidor para armar la cola de reproducción.
@@ -14,7 +18,7 @@ import { getItems } from 'utils/jellyfin-apiclient/getItems';
  * Aquí están esas consultas y los ajustes que llevan todas.
  */
 
-/** `Limit` con este valor pide la lista entera, sin tope. */
+/** `limit` con este valor pide la lista entera, sin tope. */
 export const UNLIMITED_ITEMS = -1;
 
 /** Tope por defecto cuando no se pide uno: evita colas inmanejables. */
@@ -26,12 +30,8 @@ export interface ItemsResult {
     TotalRecordCount?: number;
 }
 
-/** Consulta de items, tal como la acepta el ApiClient legacy. */
-export type PlaybackQuery = Record<string, unknown> & {
-    Ids?: string;
-    Limit?: number;
-    Filters?: string;
-};
+/** Consulta de items, tal como la acepta el SDK. */
+export type PlaybackQuery = Omit<LibraryApiGetItemsRequest, 'userId'>;
 
 /**
  * Trae los items que se van a reproducir.
@@ -45,33 +45,28 @@ export function getItemsForPlayback(
     serverId: string,
     query: PlaybackQuery
 ): Promise<ItemsResult> {
-    const apiClient = ServerConnections.getApiClient(serverId);
-    if (!apiClient) {
+    const api = ServerConnections.getApi(serverId);
+    if (!api) {
         return Promise.reject(new Error(`Sin conexión al servidor ${serverId}`));
     }
 
-    const ids = query.Ids ? query.Ids.split(',') : [];
+    const userId = ServerConnections.getCurrentUserId(serverId);
+    const ids = query.ids ?? [];
     if (ids.length === 1) {
-        // El original pasaba aquí el array entero en vez de su único elemento;
-        // colaba porque el ApiClient lo interpola en la URL y un array de uno
-        // se convierte en ese mismo id.
-        return apiClient.getItem(apiClient.getCurrentUserId(), ids[0])
-            .then((item: BaseItemDto) => ({ Items: [item], TotalRecordCount: 1 }));
+        return getLibraryApi(api).getItem({ itemId: ids[0], userId })
+            .then(({ data }) => ({ Items: [data], TotalRecordCount: 1 }));
     }
 
-    if (query.Limit === UNLIMITED_ITEMS) {
-        delete query.Limit;
-    } else {
-        query.Limit = query.Limit || DEFAULT_ITEM_LIMIT;
-    }
-
-    query.Fields = ['Chapters', 'Trickplay'];
-    query.ExcludeLocationTypes = 'Virtual';
-    // El total no se usa para reproducir y cuesta un recuento en el servidor.
-    query.EnableTotalRecordCount = false;
-    query.CollapseBoxSetItems = false;
-
-    return getItems(apiClient, apiClient.getCurrentUserId(), query);
+    return getItems(api, {
+        ...query,
+        userId,
+        limit: query.limit === UNLIMITED_ITEMS ? undefined : (query.limit || DEFAULT_ITEM_LIMIT),
+        fields: [ItemFields.Chapters, ItemFields.Trickplay],
+        excludeLocationTypes: [LocationType.Virtual],
+        // El total no se usa para reproducir y cuesta un recuento en el servidor.
+        enableTotalRecordCount: false,
+        collapseBoxSetItems: false
+    });
 }
 
 /**
@@ -84,15 +79,14 @@ export function mergePlaybackQueries(
     base: PlaybackQuery,
     overrides: PlaybackQuery
 ): PlaybackQuery {
-    const query: PlaybackQuery = merge({}, base, overrides);
+    const query = { ...base, ...overrides };
 
-    const filters = query.Filters?.split(',') || [];
-    if (!filters.includes(ItemFilter.IsNotFolder)) {
-        filters.push(ItemFilter.IsNotFolder);
-    }
-    query.Filters = filters.join(',');
+    const filters = query.filters ?? [];
 
-    return query;
+    return {
+        ...query,
+        filters: filters.includes(ItemFilter.IsNotFolder) ? filters : [...filters, ItemFilter.IsNotFolder]
+    };
 }
 
 /** ¿El item viene del servidor, o es una URL suelta que se le ha pasado? */
@@ -121,11 +115,6 @@ interface IntroOptions {
     fullscreen?: boolean;
 }
 
-/** ApiClient legacy: aquí solo se piden las intros. */
-interface IntrosApiClient {
-    getIntros: (itemId: string) => Promise<ItemsResult>;
-}
-
 const NO_INTROS: ItemsResult = { Items: [] };
 
 /**
@@ -137,7 +126,7 @@ const NO_INTROS: ItemsResult = { Items: [] };
  */
 export function getIntros(
     firstItem: BaseItemDto,
-    apiClient: IntrosApiClient,
+    api: Api,
     options: IntroOptions
 ): Promise<ItemsResult> {
     const skip = options.startPositionTicks
@@ -150,6 +139,10 @@ export function getIntros(
         return Promise.resolve(NO_INTROS);
     }
 
-    return apiClient.getIntros(firstItem.Id as string)
+    return getLibraryApi(api).getIntros({
+        itemId: firstItem.Id as string,
+        userId: ServerConnections.getCurrentUserId(firstItem.ServerId ?? undefined)
+    })
+        .then(({ data }) => data)
         .catch(() => NO_INTROS);
 }

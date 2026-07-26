@@ -1,6 +1,8 @@
 import escapeHtml from 'escape-html';
 import Headroom from 'headroom.js';
 
+import { getSystemApi } from '@jellyfin/sdk/lib/utils/api/system-api';
+
 import { AppFeature } from 'constants/appFeature';
 import { PluginType } from 'constants/pluginType';
 import { getUserViewsQuery } from 'hooks/api/useUserViews';
@@ -718,12 +720,14 @@ function setTabs (type, selectedIndex, builder) {
 
 /**
  * Fetch the server name and update the document title.
- * @param {import('jellyfin-apiclient').ApiClient} [_apiClient] The current api client.
+ * @param {import('@jellyfin/sdk').Api} [api] The api of the current server.
  */
-const fetchServerName = (_apiClient) => {
-    _apiClient
-        ?.getPublicSystemInfo()
-        .then(({ ServerName }) => {
+const fetchServerName = (api) => {
+    if (!api) return;
+
+    getSystemApi(api)
+        .getPublicSystemInfo()
+        .then(({ data: { ServerName } }) => {
             documentTitle = ServerName || documentTitle;
             document.title = documentTitle;
         })
@@ -821,7 +825,7 @@ pageClassOn('pageshow', 'page', function (e) {
 });
 
 Events.on(ServerConnections, 'apiclientcreated', (e, newApiClient) => {
-    fetchServerName(newApiClient);
+    fetchServerName(ServerConnections.getApi(newApiClient.serverId()));
 });
 
 Events.on(ServerConnections, 'localusersignedin', function (e, user) {
@@ -847,7 +851,7 @@ Events.on(ServerConnections, 'localusersignedout', function () {
 
 Events.on(playbackManager, 'playerchange', updateCastIcon);
 
-fetchServerName(getCurrentApiClient());
+fetchServerName(ServerConnections.getApi());
 loadNavDrawer();
 
 const LibraryMenu = {

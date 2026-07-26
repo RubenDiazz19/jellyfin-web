@@ -1,6 +1,8 @@
 import type { AccessSchedule, ParentalRating, UserDto } from '@jellyfin/sdk/lib/generated-client';
 import { UnratedItem } from '@jellyfin/sdk/lib/generated-client/models/unrated-item';
 import { DynamicDayOfWeek } from '@jellyfin/sdk/lib/generated-client/models/dynamic-day-of-week';
+import { getLocalizationApi } from '@jellyfin/sdk/lib/utils/api/localization-api';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import escapeHTML from 'escape-html';
 import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 
@@ -207,10 +209,15 @@ const ParentalControl = ({ userId }: ParentalControlProps) => {
         }
 
         loading.show();
-        const promise1 = window.ApiClient.getUser(userId);
-        const promise2 = window.ApiClient.getParentalRatings();
-        Promise.all([promise1, promise2]).then(function (responses) {
-            loadUser(responses[0], responses[1]);
+        const api = ServerConnections.getApi();
+        if (!api) {
+            console.error('[userparentalcontrol] no Api instance available');
+            return;
+        }
+        const userPromise = getUserApi(api).getUserById({ userId });
+        const ratingsPromise = getLocalizationApi(api).getParentalRatings();
+        Promise.all([userPromise, ratingsPromise]).then(function ([user, ratings]) {
+            loadUser(user.data, ratings.data);
         }).catch(err => {
             console.error('[userparentalcontrol] failed to load data', err);
         });
@@ -314,8 +321,14 @@ const ParentalControl = ({ userId }: ParentalControlProps) => {
             }
 
             loading.show();
-            window.ApiClient.getUser(userId).then(function (result) {
-                saveUser(result);
+            const api = ServerConnections.getApi();
+            if (!api) {
+                console.error('[userparentalcontrol] no Api instance available');
+                return;
+            }
+
+            getUserApi(api).getUserById({ userId }).then(function ({ data }) {
+                saveUser(data);
             }).catch(err => {
                 console.error('[userparentalcontrol] failed to fetch user', err);
             });

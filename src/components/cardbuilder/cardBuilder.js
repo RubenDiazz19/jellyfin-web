@@ -5,6 +5,7 @@
  */
 
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 import { PersonKind } from '@jellyfin/sdk/lib/generated-client/models/person-kind';
 import escapeHtml from 'escape-html';
 
@@ -15,6 +16,7 @@ import dom from 'utils/dom';
 import globalize from 'lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { getItemTypeIcon, getLibraryIcon } from 'utils/image';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 
 import focusManager from '../focusManager';
 import imageLoader from '../images/imageLoader';
@@ -155,7 +157,7 @@ function buildCardsHtmlInternal(items, options) {
     let hasOpenSection;
 
     const sectionTitleTagName = options.sectionTitleTagName || 'div';
-    let apiClient;
+    let api;
     let lastServerId;
 
     for (const [i, item] of items.entries()) {
@@ -163,7 +165,7 @@ function buildCardsHtmlInternal(items, options) {
 
         if (serverId !== lastServerId) {
             lastServerId = serverId;
-            apiClient = ServerConnections.getApiClient(lastServerId);
+            api = ServerConnections.getApi(lastServerId);
         }
 
         if (options.indexBy) {
@@ -226,7 +228,7 @@ function buildCardsHtmlInternal(items, options) {
             hasOpenRow = true;
         }
 
-        html += buildCard(i, item, apiClient, options);
+        html += buildCard(i, item, api, options);
 
         itemsInRow++;
 
@@ -340,7 +342,6 @@ function getAirTimeText(item, showAirDateTime, showAirEndTime) {
 /**
  * Generates the HTML markup for the card's footer text.
  * @param {Object} item - Item used to generate the footer text.
- * @param {Object} apiClient - API client instance.
  * @param {Object} options - Options used to generate the footer text.
  * @param {string} footerClass - CSS classes of the footer element.
  * @param {string} progressHtml - HTML markup of the progress bar element.
@@ -348,7 +349,7 @@ function getAirTimeText(item, showAirDateTime, showAirEndTime) {
  * @param {Object} urls - Various urls for the footer
  * @returns {string} HTML markup of the card's footer text element.
  */
-function getCardFooterText(item, apiClient, options, footerClass, progressHtml, flags, urls) {
+function getCardFooterText(item, options, footerClass, progressHtml, flags, urls) {
     item = item.ProgramInfo || item;
     let html = '';
 
@@ -726,11 +727,11 @@ function importRefreshIndicator() {
  * Builds the HTML markup for an individual card.
  * @param {number} index - Index of the card
  * @param {object} item - Item used to generate the card.
- * @param {object} apiClient - API client instance.
+ * @param {import('@jellyfin/sdk').Api} api - SDK Api instance.
  * @param {object} options - Options used to generate the card.
  * @returns {string} HTML markup for the generated card.
  */
-function buildCard(index, item, apiClient, options) {
+function buildCard(index, item, api, options) {
     const action = resolveAction({
         defaultAction: options.action || ItemAction.Link,
         isFolder: item.IsFolder,
@@ -745,7 +746,7 @@ function buildCard(index, item, apiClient, options) {
 
     // TODO move card creation code to Card component
 
-    const imgInfo = getCardImageUrl({ api: ServerConnections.getApi(apiClient.serverId()), item, options, shape });
+    const imgInfo = getCardImageUrl({ api, item, options, shape });
     const imgUrl = imgInfo.imgUrl;
     const blurhash = imgInfo.blurhash;
     const forceName = imgInfo.forceName;
@@ -769,14 +770,12 @@ function buildCard(index, item, apiClient, options) {
     const logoHeight = 40;
 
     if (options.showChannelLogo && item.ChannelPrimaryImageTag) {
-        logoUrl = apiClient.getScaledImageUrl(item.ChannelId, {
-            type: 'Primary',
+        logoUrl = getScaledImageUrl(api, item.ChannelId, ImageType.Primary, {
             height: logoHeight,
             tag: item.ChannelPrimaryImageTag
         });
     } else if (options.showLogo && item.ParentLogoImageTag) {
-        logoUrl = apiClient.getScaledImageUrl(item.ParentLogoItemId, {
-            type: 'Logo',
+        logoUrl = getScaledImageUrl(api, item.ParentLogoItemId, ImageType.Logo, {
             height: logoHeight,
             tag: item.ParentLogoImageTag
         });
@@ -786,7 +785,7 @@ function buildCard(index, item, apiClient, options) {
         logoUrl = null;
 
         footerCssClass = progressHtml ? 'innerCardFooter fullInnerCardFooter' : 'innerCardFooter';
-        innerCardFooter += getCardFooterText(item, apiClient, options, footerCssClass, progressHtml, { forceName, overlayText, isOuterFooter: false }, { imgUrl, logoUrl });
+        innerCardFooter += getCardFooterText(item, options, footerCssClass, progressHtml, { forceName, overlayText, isOuterFooter: false }, { imgUrl, logoUrl });
         footerOverlayed = true;
     } else if (progressHtml) {
         innerCardFooter += '<div class="innerCardFooter fullInnerCardFooter innerCardFooterClear">';
@@ -813,7 +812,7 @@ function buildCard(index, item, apiClient, options) {
             logoUrl = null;
         }
 
-        outerCardFooter = getCardFooterText(item, apiClient, options, footerCssClass, progressHtml, { forceName, overlayText, isOuterFooter: true }, { imgUrl, logoUrl });
+        outerCardFooter = getCardFooterText(item, options, footerCssClass, progressHtml, { forceName, overlayText, isOuterFooter: true }, { imgUrl, logoUrl });
     }
 
     const cardBoxClass = resolveCardBoxCssClasses({

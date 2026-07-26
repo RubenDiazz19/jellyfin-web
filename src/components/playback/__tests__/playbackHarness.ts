@@ -184,7 +184,7 @@ export function installPlaybackMocks(): void {
         skipForwardLength: () => 30000
     }));
 
-    vi.mock('utils/jellyfin-apiclient/backdropImage', () => ({
+    vi.mock('utils/sdk/backdropImage', () => ({
         getItemBackdropImageUrl: () => null
     }));
 

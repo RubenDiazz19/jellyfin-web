@@ -1,3 +1,5 @@
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
+
 import { appHost } from 'components/apphost';
 import viewContainer from 'components/viewContainer';
 import { AppFeature } from 'constants/appFeature';
@@ -18,7 +20,9 @@ import { getLocationSearch } from './url.ts';
 import { queryClient } from './query/queryClient';
 
 export function getCurrentUser() {
-    return window.ApiClient.getCurrentUser(false);
+    return getUserApi(ServerConnections.getApi())
+        .getCurrentUser()
+        .then(({ data }) => data);
 }
 
 // TODO: investigate url prefix support for serverAddress function
@@ -87,13 +91,7 @@ export async function serverAddress() {
 }
 
 export function getCurrentUserId() {
-    const apiClient = window.ApiClient;
-
-    if (apiClient) {
-        return apiClient.getCurrentUserId();
-    }
-
-    return null;
+    return ServerConnections.getCurrentUserId() ?? null;
 }
 
 export function onServerChanged(_userId, _accessToken, apiClient) {
@@ -116,9 +114,8 @@ export function getPluginUrl(name) {
 }
 
 export function getConfigurationResourceUrl(name) {
-    return ApiClient.getUrl('web/ConfigurationPage', {
-        name: name
-    });
+    const api = ServerConnections.getApi();
+    return `${api.basePath}/web/ConfigurationPage?name=${encodeURIComponent(name)}`;
 }
 
 /**

@@ -1,5 +1,8 @@
 import { FunctionComponent, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
+
+import { ServerConnections } from 'lib/jellyfin-apiclient';
 import Dashboard from '../../../utils/dashboard';
 import globalize from '../../../lib/globalize';
 import confirm from '../../confirm/confirm';
@@ -97,7 +100,18 @@ const UserPasswordForm: FunctionComponent<IProps> = ({ user }: IProps) => {
                 currentPassword = '';
             }
 
-            window.ApiClient.updateUserPassword(user.Id, currentPassword, newPassword).then(function () {
+            const api = ServerConnections.getApi();
+            if (!api) {
+                throw new Error('Unexpected missing Api instance');
+            }
+
+            getUserApi(api).updateUserPassword({
+                userId: user.Id,
+                updateUserPassword: {
+                    CurrentPw: currentPassword || '',
+                    NewPw: newPassword
+                }
+            }).then(function () {
                 loading.hide();
                 toast(globalize.translate('PasswordSaved'));
 
@@ -117,8 +131,12 @@ const UserPasswordForm: FunctionComponent<IProps> = ({ user }: IProps) => {
             const msg = globalize.translate('PasswordResetConfirmation');
             confirm(msg, globalize.translate('ResetPassword')).then(function () {
                 loading.show();
-                if (user.Id) {
-                    window.ApiClient.resetUserPassword(user.Id).then(function () {
+                const api = ServerConnections.getApi();
+                if (user.Id && api) {
+                    getUserApi(api).updateUserPassword({
+                        userId: user.Id,
+                        updateUserPassword: { ResetPassword: true }
+                    }).then(function () {
                         loading.hide();
                         Dashboard.alert({
                             message: globalize.translate('PasswordResetComplete'),

@@ -1,3 +1,5 @@
+import { getFilterApi } from '@jellyfin/sdk/lib/utils/api/filter-api';
+
 import escapeHtml from 'escape-html';
 import dom from '../../utils/dom';
 import focusManager from '../focusManager';
@@ -193,17 +195,15 @@ function initEditor(context, settings) {
     }
 }
 function loadDynamicFilters(context, options) {
-    const apiClient = ServerConnections.getApiClient(options.serverId);
+    const api = ServerConnections.getApi(options.serverId);
 
-    const filterMenuOptions = Object.assign(options.filterMenuOptions, {
-
-        UserId: apiClient.getCurrentUserId(),
-        ParentId: options.parentId,
-        IncludeItemTypes: options.itemTypes.join(',')
-    });
-
-    apiClient.getFilters(filterMenuOptions).then((result) => {
-        renderDynamicFilters(context, result, options);
+    getFilterApi(api).getQueryFilters({
+        ...options.filterMenuOptions,
+        userId: ServerConnections.getCurrentUserId(options.serverId),
+        parentId: options.parentId,
+        includeItemTypes: options.itemTypes
+    }).then(({ data }) => {
+        renderDynamicFilters(context, data, options);
     });
 }
 class FilterMenu {
