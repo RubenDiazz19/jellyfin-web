@@ -4,6 +4,7 @@
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
 import { apiSend, trimSlash } from './http';
+import { emitItemMutated } from './mutations';
 
 export type MediaStreamInfo = {
     index: number;
@@ -239,6 +240,12 @@ export async function reportPlaybackStop(
             // a targeted delete would never match. Clearing the whole cache keeps
             // "continue watching" fresh; each show refetches once on next visit.
             clearShowCache();
+            // Series ya se refresca vía clearShowCache + ShowViewModel.load
+            // (que no cachea a nivel VM). MovieViewModel sí early-returna si
+            // ya tiene la peli: sin este emit, al volver del reproductor a la
+            // ficha, `movie.watched` sigue rancio y la barra de progreso del
+            // botón Play no aparece. El listener chequea que el id coincida.
+            emitItemMutated(itemId);
         } catch { /* silent */ }
     })();
     pendingStopReport = report;

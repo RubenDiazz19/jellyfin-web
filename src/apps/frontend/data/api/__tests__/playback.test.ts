@@ -4,18 +4,21 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { reportPlaybackStop, settlePlaybackReports } from '../playback';
 import { apiSend } from '../http';
 import { clearShowCache } from '../cache';
+import { emitItemMutated } from '../mutations';
 
 vi.mock('../http', () => ({
     apiSend: vi.fn(),
     trimSlash: (u: string) => u.replace(/\/$/, '')
 }));
 vi.mock('../cache', () => ({ clearShowCache: vi.fn() }));
+vi.mock('../mutations', () => ({ emitItemMutated: vi.fn() }));
 vi.mock('../../session/session', () => ({
     loadSession: vi.fn(() => ({ accessToken: 't', userId: 'u', serverUrl: 'http://s' }))
 }));
 
 const apiSendMock = vi.mocked(apiSend);
 const clearShowCacheMock = vi.mocked(clearShowCache);
+const emitItemMutatedMock = vi.mocked(emitItemMutated);
 
 const flush = () => new Promise<void>((resolve) => { setTimeout(resolve, 0); });
 
@@ -63,6 +66,18 @@ describe('settlePlaybackReports', () => {
         await reportPlaybackStop('ep1', 5);
         await expect(settlePlaybackReports()).resolves.toBeUndefined();
         expect(clearShowCacheMock).not.toHaveBeenCalled();
+        expect(emitItemMutatedMock).not.toHaveBeenCalled();
+    });
+
+    test('emite mutación con el itemId para que MovieViewModel refetchee', async () => {
+        // Sin este emit, al volver del reproductor a la ficha de la peli el
+        // botón Play no muestra la barra de progreso (movie.watched rancio).
+        apiSendMock.mockResolvedValueOnce({} as Response);
+        apiSendMock.mockResolvedValueOnce({} as Response);
+
+        await reportPlaybackStop('movie-42', 999_999, 'ps1');
+
+        expect(emitItemMutatedMock).toHaveBeenCalledWith('movie-42');
     });
 
     test('timeout de seguridad: un stop colgado no bloquea los fetch', async () => {
