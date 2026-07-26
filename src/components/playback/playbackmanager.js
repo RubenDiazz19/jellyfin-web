@@ -1,6 +1,11 @@
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
+import { ItemFields } from '@jellyfin/sdk/lib/generated-client/models/item-fields';
 import { ItemFilter } from '@jellyfin/sdk/lib/generated-client/models/item-filter';
+import { getInstantMixApi } from '@jellyfin/sdk/lib/utils/api/instant-mix-api';
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+import { getShowApi } from '@jellyfin/sdk/lib/utils/api/show-api';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
+import { getVideoApi } from '@jellyfin/sdk/lib/utils/api/video-api';
 import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
 import { MediaType } from '@jellyfin/sdk/lib/generated-client/models/media-type';
 import Screenfull from 'screenfull';
@@ -75,7 +80,40 @@ import { OutboundWebSocketMessageType } from '@jellyfin/sdk/lib/websocket';
 import { MediaError } from 'types/mediaError';
 import { getMediaError } from 'utils/mediaError';
 import * as bitrateTest from 'utils/bitrateTest';
+import { getEndpointInfo, getSavedEndpointInfo } from 'utils/sdk/endpointInfo';
 import { getUrlParameter } from 'utils/url';
+
+/**
+ * Corta las transcodificaciones que siguen vivas de una sesión.
+ *
+ * `DELETE /Videos/ActiveEncodings` no está en el cliente generado del SDK,
+ * así que se llama por su axios, que ya lleva la autenticación puesta.
+ * @param {import('@jellyfin/sdk').Api} api El Api del servidor.
+ * @param {string} playSessionId La sesión cuyas transcodificaciones se paran.
+ * @returns {Promise<unknown>} La respuesta del servidor.
+ */
+function stopActiveEncodings(api, playSessionId) {
+    return api.axiosInstance.delete(api.getUri('/Videos/ActiveEncodings', {
+        deviceId: api.deviceInfo.id,
+        PlaySessionId: playSessionId || undefined
+    }), { headers: { Authorization: api.authorizationHeader } });
+}
+
+/**
+ * Pistas de un live stream ya abierto.
+ *
+ * `POST /LiveStreams/MediaInfo` tampoco está en el cliente generado.
+ * @param {import('@jellyfin/sdk').Api} api El Api del servidor.
+ * @param {string} liveStreamId El stream del que se piden las pistas.
+ * @returns {Promise<object>} La información de medios.
+ */
+function getLiveStreamMediaInfo(api, liveStreamId) {
+    return api.axiosInstance.post(
+        api.getUri('/LiveStreams/MediaInfo'),
+        { LiveStreamId: liveStreamId },
+        { headers: { Authorization: api.authorizationHeader } }
+    ).then(({ data }) => data);
+}
 
 /**
  * Servidor y usuario contra los que se resuelven los medios de un item.
@@ -155,11 +193,11 @@ export class PlaybackManager {
         // remota activa, porque la respuesta se usa para pintar el
         // selector de versiones aquí.
         const player = this._getPlayer(item, options, true);
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
+        const api = ServerConnections.getApi(item.ServerId);
 
         // Call this just to ensure the value is recorded, it is needed with getSavedMaxStreamingBitrate
-        return apiClient.getEndpointInfo().then(() => {
-            const maxBitrate = this._getSavedMaxStreamingBitrate(ServerConnections.getApiClient(item.ServerId), mediaType);
+        return getEndpointInfo(api).then(() => {
+            const maxBitrate = this._getSavedMaxStreamingBitrate(api, mediaType);
 
             return player.getDeviceProfile(item).then((deviceProfile) => {
                 const mediaOptions = {
@@ -274,9 +312,8 @@ export class PlaybackManager {
         }
 
         const api = ServerConnections.getApi(this.currentItem(player).ServerId);
-        const apiClient = ServerConnections.getApiClient(this.currentItem(player).ServerId);
 
-        apiClient.getEndpointInfo().then((endpointInfo) => {
+        getEndpointInfo(api).then((endpointInfo) => {
             const playerData = this._playerData(player);
             const mediaType = playerData.streamInfo ? playerData.streamInfo.mediaType : null;
 
@@ -304,11 +341,11 @@ export class PlaybackManager {
         const startPosition = options.startPositionTicks || 0;
         const mediaType = options.mediaType || item.MediaType;
         const player = this._getPlayer(item, options);
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
+        const api = ServerConnections.getApi(item.ServerId);
 
         // Call this just to ensure the value is recorded, it is needed with getSavedMaxStreamingBitrate
-        return apiClient.getEndpointInfo().then(() => {
-            const maxBitrate = this._getSavedMaxStreamingBitrate(ServerConnections.getApiClient(item.ServerId), mediaType);
+        return getEndpointInfo(api).then(() => {
+            const maxBitrate = this._getSavedMaxStreamingBitrate(api, mediaType);
 
             return player.getDeviceProfile(item).then((deviceProfile) => {
                 const mediaOptions = {
@@ -325,7 +362,7 @@ export class PlaybackManager {
                 };
 
                 return this._getPlaybackMediaSource(player, getMediaContext(item.ServerId), deviceProfile, item, options.mediaSourceId, mediaOptions).then((mediaSource) => {
-                    return this._createStreamInfo(apiClient, item.MediaType, item, mediaSource, startPosition, player);
+                    return this._createStreamInfo(api, item.MediaType, item, mediaSource, startPosition, player);
                 });
             });
         });
@@ -593,9 +630,9 @@ export class PlaybackManager {
         if (errorOccurred) {
             showPlaybackInfoErrorMessage('PlaybackError' + displayErrorCode);
         } else if (newPlayer) {
-            const apiClient = ServerConnections.getApiClient(nextItem.item.ServerId);
+            const api = ServerConnections.getApi(nextItem.item.ServerId);
 
-            apiClient.getCurrentUser().then((user) => {
+            getUserApi(api).getCurrentUser().then(({ data: user }) => {
                 if (user.Configuration.EnableNextEpisodeAutoPlay || nextMediaType !== MediaType.Video) {
                     this.nextTrack();
 
@@ -666,8 +703,7 @@ export class PlaybackManager {
         const mediaType = playerData.streamInfo ? playerData.streamInfo.mediaType : null;
         const currentItem = this.currentItem(player);
 
-        const apiClient = currentItem ? ServerConnections.getApiClient(currentItem.ServerId) : ServerConnections.currentApiClient();
-        return this._getSavedMaxStreamingBitrate(apiClient, mediaType);
+        return this._getSavedMaxStreamingBitrate(ServerConnections.getApi(currentItem?.ServerId), mediaType);
     }
 
     setSubtitleStreamIndex(index, player) {
@@ -966,13 +1002,11 @@ export class PlaybackManager {
         };
     }
 
-    _getSavedMaxStreamingBitrate(apiClient, mediaType) {
-        if (!apiClient) {
-            // This should hopefully never happen
-            apiClient = ServerConnections.currentApiClient();
-        }
+    _getSavedMaxStreamingBitrate(api, mediaType) {
+        // This should hopefully never happen
+        api ??= ServerConnections.getApi();
 
-        const endpointInfo = apiClient.getSavedEndpointInfo() || {};
+        const endpointInfo = getSavedEndpointInfo(api) || {};
 
         return appSettings.maxStreamingBitrate(endpointInfo.IsInNetwork, mediaType);
     }
@@ -1027,7 +1061,7 @@ export class PlaybackManager {
             const secondarySubtitleStreamIndex = params.SecondarySubtitleStreamIndex == null ? this._playerData(player).secondarySubtitleStreamIndex : params.SecondarySubtitleStreamIndex;
 
             let currentMediaSource = this.currentMediaSource(player);
-            const apiClient = ServerConnections.getApiClient(currentItem.ServerId);
+            const api = ServerConnections.getApi(currentItem.ServerId);
 
             if (ticks) {
                 ticks = parseInt(ticks, 10);
@@ -1053,7 +1087,7 @@ export class PlaybackManager {
                 if (validatePlaybackInfoResult(result)) {
                     currentMediaSource = result.MediaSources[0];
 
-                    const streamInfo = this._createStreamInfo(apiClient, currentItem.MediaType, currentItem, currentMediaSource, ticks, player);
+                    const streamInfo = this._createStreamInfo(api, currentItem.MediaType, currentItem, currentMediaSource, ticks, player);
                     streamInfo.fullscreen = currentPlayOptions.fullscreen;
                     streamInfo.lastMediaInfoQuery = lastMediaInfoQuery;
                     streamInfo.resetSubtitleOffset = false;
@@ -1069,31 +1103,31 @@ export class PlaybackManager {
                     this._playerData(player).audioStreamIndex = audioStreamIndex;
                     this._playerData(player).maxStreamingBitrate = maxBitrate;
 
-                    this._changeStreamToUrl(apiClient, player, playSessionId, streamInfo);
+                    this._changeStreamToUrl(api, player, playSessionId, streamInfo);
                 }
             });
         });
     }
 
-    _changeStreamToUrl(apiClient, player, playSessionId, streamInfo) {
+    _changeStreamToUrl(api, player, playSessionId, streamInfo) {
         const playerData = this._playerData(player);
 
         playerData.isChangingStream = true;
 
         if (playerData.streamInfo && playSessionId) {
-            apiClient.stopActiveEncodings(playSessionId).then(() => {
+            stopActiveEncodings(api, playSessionId).then(() => {
                 // Stop the first transcoding afterwards because the player may still send requests to the original url
                 const afterSetSrc = function () {
-                    apiClient.stopActiveEncodings(playSessionId);
+                    void stopActiveEncodings(api, playSessionId);
                 };
-                this._setSrcIntoPlayer(apiClient, player, streamInfo).then(afterSetSrc, afterSetSrc);
+                this._setSrcIntoPlayer(api, player, streamInfo).then(afterSetSrc, afterSetSrc);
             });
         } else {
-            this._setSrcIntoPlayer(apiClient, player, streamInfo);
+            this._setSrcIntoPlayer(api, player, streamInfo);
         }
     }
 
-    _setSrcIntoPlayer(apiClient, player, streamInfo) {
+    _setSrcIntoPlayer(api, player, streamInfo) {
         const playerData = this._playerData(player);
 
         playerData.streamInfo = streamInfo;
@@ -1295,32 +1329,33 @@ export class PlaybackManager {
     }
 
     async _getSeriesOrSeasonPlaybackPromise(firstItem, options, items) {
-        const apiClient = ServerConnections.getApiClient(firstItem.ServerId);
+        const api = ServerConnections.getApi(firstItem.ServerId);
         const startSeasonId = firstItem.Type === 'Season' ? items[options.startIndex || 0].Id : undefined;
 
         const seasonId = (startSeasonId && items.length === 1) ? startSeasonId : undefined;
-        const SeriesId = firstItem.SeriesId || firstItem.Id;
-        const UserId = apiClient.getCurrentUserId();
+        const seriesId = firstItem.SeriesId || firstItem.Id;
+        const userId = ServerConnections.getCurrentUserId(firstItem.ServerId);
 
         let startItemId;
 
         // Start from a specific (the next unwatched) episode if we want to watch in order and have not chosen a specific season
         if (!options.shuffle && !seasonId) {
-            const nextUp = await apiClient.getNextUpEpisodes({ SeriesId, UserId });
-            startItemId = nextUp?.Items?.[0]?.Id;
+            const nextUp = await getShowApi(api).getNextUp({ seriesId, userId });
+            startItemId = nextUp?.data?.Items?.[0]?.Id;
         }
 
-        const episodesResult = await apiClient.getEpisodes(SeriesId, {
-            IsVirtualUnaired: false,
-            IsMissing: false,
-            SeasonId: seasonId,
+        const episodesResult = (await getShowApi(api).getEpisodes({
+            seriesId,
+            isVirtualUnaired: false,
+            isMissing: false,
+            seasonId,
             // default to first 100 episodes if no season was specified to avoid loading too large payloads
             limit: seasonId ? undefined : 100,
-            SortBy: options.shuffle ? 'Random' : undefined,
-            UserId,
-            Fields: ['Chapters', 'Trickplay'],
+            sortBy: options.shuffle ? ItemSortBy.Random : undefined,
+            userId,
+            fields: [ItemFields.Chapters, ItemFields.Trickplay],
             startItemId
-        });
+        })).data;
 
         if (options.shuffle) {
             episodesResult.StartIndex = 0;
@@ -1365,27 +1400,23 @@ export class PlaybackManager {
     }
 
     _getEpisodes(firstItem, options) {
-        return new Promise((resolve, reject) => {
-            const apiClient = ServerConnections.getApiClient(firstItem.ServerId);
+        const { SeriesId: seriesId, Id } = firstItem;
+        if (!seriesId) {
+            return Promise.resolve(null);
+        }
 
-            const { SeriesId, Id } = firstItem;
-            if (!SeriesId) {
-                resolve(null);
-                return;
-            }
+        const api = ServerConnections.getApi(firstItem.ServerId);
 
-            apiClient.getEpisodes(SeriesId, {
-                IsVirtualUnaired: false,
-                IsMissing: false,
-                UserId: apiClient.getCurrentUserId(),
-                Fields: ['Chapters', 'Trickplay'],
-                // limit to loading 100 episodes to avoid loading too large payload
-                limit: 100,
-                startItemId: Id
-            }).then(function (episodesResult) {
-                resolve(this._filterEpisodes(episodesResult, firstItem, options));
-            }, reject);
-        });
+        return getShowApi(api).getEpisodes({
+            seriesId,
+            isVirtualUnaired: false,
+            isMissing: false,
+            userId: ServerConnections.getCurrentUserId(firstItem.ServerId),
+            fields: [ItemFields.Chapters, ItemFields.Trickplay],
+            // limit to loading 100 episodes to avoid loading too large payload
+            limit: 100,
+            startItemId: Id
+        }).then(({ data: episodesResult }) => this._filterEpisodes(episodesResult, firstItem, options));
     }
 
     _filterEpisodes(episodesResult, firstItem, options) {
@@ -1435,8 +1466,8 @@ export class PlaybackManager {
                 item.PartCount && item.PartCount > 1
                 && [ BaseItemKind.Episode, BaseItemKind.Movie ].includes(item.Type)
             ) {
-                const client = ServerConnections.getApiClient(item.ServerId);
-                const user = await client.getCurrentUser();
+                const api = ServerConnections.getApi(item.ServerId);
+                const { data: user } = await getUserApi(api).getCurrentUser();
                 // When the user picked an alternate version, that version's MediaSourceId
                 // equals its own BaseItem.Id, so use it to fetch the alternate's own
                 // additional parts instead of the primary's - otherwise the primary's
@@ -1444,7 +1475,8 @@ export class PlaybackManager {
                 const idForParts = (isStartItem && mediaSourceId && mediaSourceId !== item.Id) ?
                     mediaSourceId :
                     item.Id;
-                const additionalParts = await client.getAdditionalVideoParts(user.Id, idForParts);
+                const { data: additionalParts } = await getVideoApi(api)
+                    .getAdditionalPart({ itemId: idForParts, userId: user.Id });
                 if (additionalParts.Items.length) {
                     return [ item, ...additionalParts.Items ];
                 }
@@ -1650,7 +1682,6 @@ export class PlaybackManager {
 
     _detectBitrate(item, mediaType) {
         const api = ServerConnections.getApi(item.ServerId);
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
 
         // La cadena arranca con un Promise.resolve() vacío para poder
         // usar `reject` como "salta la detección" y recogerlo abajo en un
@@ -1663,7 +1694,7 @@ export class PlaybackManager {
                     return Promise.reject(new Error('skip bitrate detection'));
                 }
 
-                return apiClient.getEndpointInfo()
+                return getEndpointInfo(api)
                     .then((endpointInfo) => {
                         if ((mediaType === 'Video' || mediaType === 'Audio') && appSettings.enableAutomaticBitrateDetection(endpointInfo.IsInNetwork, mediaType)) {
                             return bitrateTest.detectBitrate(api)
@@ -1676,7 +1707,7 @@ export class PlaybackManager {
                         return Promise.reject(new Error('skip bitrate detection'));
                     });
             })
-            .catch(() => this._getSavedMaxStreamingBitrate(apiClient, mediaType));
+            .catch(() => this._getSavedMaxStreamingBitrate(api, mediaType));
     }
 
     _playAfterBitrateDetect(maxBitrate, item, playOptions, onPlaybackStartedFn, prevSource) {
@@ -1725,16 +1756,16 @@ export class PlaybackManager {
 
         let mediaSourceId = playOptions.mediaSourceId;
 
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
+        const api = ServerConnections.getApi(item.ServerId);
         const isLiveTv = [BaseItemKind.TvChannel, BaseItemKind.LiveTvChannel].includes(item.Type);
-        const getMediaStreams = isLiveTv ? Promise.resolve([]) : apiClient.getItem(apiClient.getCurrentUserId(), mediaSourceId || item.Id)
-            .then(fullItem => {
-                return fullItem.MediaStreams;
-            });
+        const getMediaStreams = isLiveTv ? Promise.resolve([]) : getLibraryApi(api).getItem({
+            itemId: mediaSourceId || item.Id,
+            userId: ServerConnections.getCurrentUserId(item.ServerId)
+        }).then(({ data: fullItem }) => fullItem.MediaStreams);
 
-        return Promise.all([promise, player.getDeviceProfile(item), apiClient.getCurrentUser(), getMediaStreams]).then((responses) => {
+        return Promise.all([promise, player.getDeviceProfile(item), getUserApi(api).getCurrentUser(), getMediaStreams]).then((responses) => {
             const deviceProfile = responses[1];
-            const user = responses[2];
+            const user = responses[2].data;
             const mediaStreams = responses[3];
 
             const audioStreamIndex = playOptions.audioStreamIndex;
@@ -1797,7 +1828,7 @@ export class PlaybackManager {
                     mediaSource.DefaultSecondarySubtitleStreamIndex = -1;
                 }
 
-                const streamInfo = this._createStreamInfo(apiClient, item.MediaType, item, mediaSource, startPosition, player);
+                const streamInfo = this._createStreamInfo(api, item.MediaType, item, mediaSource, startPosition, player);
                 streamInfo.aspectRatio = playOptions.aspectRatio;
                 streamInfo.fullscreen = playOptions.fullscreen;
 
@@ -1830,7 +1861,7 @@ export class PlaybackManager {
         });
     }
 
-    _createStreamInfo(apiClient, type, item, mediaSource, startPosition, player) {
+    _createStreamInfo(api, type, item, mediaSource, startPosition, player) {
         let mediaUrl;
         let contentType;
         let transcodingOffsetTicks = 0;
@@ -1845,7 +1876,7 @@ export class PlaybackManager {
         if (mediaSource.MediaStreams && player.useFullSubtitleUrls) {
             mediaSource.MediaStreams.forEach(stream => {
                 if (stream.DeliveryUrl?.startsWith('/')) {
-                    stream.DeliveryUrl = apiClient.getUrl(stream.DeliveryUrl);
+                    stream.DeliveryUrl = api.getUri(stream.DeliveryUrl);
                 }
             });
         }
@@ -1865,8 +1896,8 @@ export class PlaybackManager {
                 directOptions = {
                     Static: true,
                     mediaSourceId: mediaSource.Id,
-                    deviceId: apiClient.deviceId(),
-                    ApiKey: apiClient.accessToken()
+                    deviceId: api.deviceInfo.id,
+                    ApiKey: api.accessToken
                 };
 
                 if (mediaSource.ETag) {
@@ -1878,11 +1909,11 @@ export class PlaybackManager {
                 }
 
                 const prefix = type === 'Video' ? 'Videos' : 'Audio';
-                mediaUrl = apiClient.getUrl(prefix + '/' + item.Id + '/stream.' + mediaSourceContainer, directOptions);
+                mediaUrl = api.getUri('/' + prefix + '/' + item.Id + '/stream.' + mediaSourceContainer, directOptions);
 
                 playMethod = mediaSource.SupportsDirectPlay ? 'DirectPlay' : 'DirectStream';
             } else if (mediaSource.SupportsTranscoding) {
-                mediaUrl = apiClient.getUrl(mediaSource.TranscodingUrl);
+                mediaUrl = api.getUri(mediaSource.TranscodingUrl);
 
                 if (mediaSource.TranscodingSubProtocol === 'hls') {
                     contentType = 'application/x-mpegURL';
@@ -1909,7 +1940,7 @@ export class PlaybackManager {
         // Se calculan una sola vez: antes se llamaba dos veces a
         // getTextTracks para rellenar `textTracks` y un `tracks` duplicado
         // que no leía nadie.
-        const textTracks = this._getTextTracks(apiClient, item, mediaSource);
+        const textTracks = this._getTextTracks(api, item, mediaSource);
 
         const resultInfo = {
             url: mediaUrl,
@@ -1934,7 +1965,7 @@ export class PlaybackManager {
         return resultInfo;
     }
 
-    _getTextTracks(apiClient, item, mediaSource) {
+    _getTextTracks(api, item, mediaSource) {
         const subtitleStreams = mediaSource.MediaStreams.filter(function (s) {
             return s.Type === 'Subtitle';
         });
@@ -1952,7 +1983,7 @@ export class PlaybackManager {
             if (itemHelper.isLocalItem(item)) {
                 textStreamUrl = textStream.Path;
             } else {
-                textStreamUrl = !textStream.IsExternalUrl ? apiClient.getUrl(textStream.DeliveryUrl) : textStream.DeliveryUrl;
+                textStreamUrl = !textStream.IsExternalUrl ? api.getUri(textStream.DeliveryUrl) : textStream.DeliveryUrl;
             }
 
             tracks.push({
@@ -2291,7 +2322,7 @@ export class PlaybackManager {
 
         streamInfo.lastMediaInfoQuery = new Date().getTime();
 
-        ServerConnections.getApiClient(serverId).getLiveStreamMediaInfo(liveStreamId).then(function (info) {
+        getLiveStreamMediaInfo(ServerConnections.getApi(serverId), liveStreamId).then(function (info) {
             mediaSource.MediaStreams = info.MediaStreams;
             Events.trigger(player, 'mediastreamschange');
         }, function () {
@@ -2386,8 +2417,7 @@ export class PlaybackManager {
         const mediaType = playerData.streamInfo ? playerData.streamInfo.mediaType : null;
         const currentItem = this.currentItem(player);
 
-        const apiClient = currentItem ? ServerConnections.getApiClient(currentItem.ServerId) : ServerConnections.currentApiClient();
-        const endpointInfo = apiClient.getSavedEndpointInfo() || {};
+        const endpointInfo = getSavedEndpointInfo(ServerConnections.getApi(currentItem?.ServerId)) || {};
 
         return appSettings.enableAutomaticBitrateDetection(endpointInfo.IsInNetwork, mediaType);
     }
@@ -3021,8 +3051,11 @@ export class PlaybackManager {
             return Promise.reject();
         }
 
-        const apiClient = ServerConnections.getApiClient(nextItem.item.ServerId);
-        return apiClient.getItem(apiClient.getCurrentUserId(), nextItem.item.Id);
+        const api = ServerConnections.getApi(nextItem.item.ServerId);
+        return getLibraryApi(api).getItem({
+            itemId: nextItem.item.Id,
+            userId: ServerConnections.getCurrentUserId(nextItem.item.ServerId)
+        }).then(({ data }) => data);
     }
 
     canQueue(item) {
@@ -3175,12 +3208,15 @@ export class PlaybackManager {
             return player.playTrailers(item);
         }
 
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
+        const api = ServerConnections.getApi(item.ServerId);
 
         let items;
 
         if (item.LocalTrailerCount) {
-            items = await apiClient.getLocalTrailers(apiClient.getCurrentUserId(), item.Id);
+            items = (await getLibraryApi(api).getLocalTrailers({
+                itemId: item.Id,
+                userId: ServerConnections.getCurrentUserId(item.ServerId)
+            })).data;
         }
 
         if (!items?.length) {
@@ -3190,7 +3226,7 @@ export class PlaybackManager {
                     Url: t.Url,
                     MediaType: 'Video',
                     Type: 'Trailer',
-                    ServerId: apiClient.serverId()
+                    ServerId: item.ServerId
                 };
             });
         }
@@ -3205,9 +3241,9 @@ export class PlaybackManager {
     }
 
     getSubtitleUrl(textStream, serverId) {
-        const apiClient = ServerConnections.getApiClient(serverId);
+        const api = ServerConnections.getApi(serverId);
 
-        return !textStream.IsExternalUrl ? apiClient.getUrl(textStream.DeliveryUrl) : textStream.DeliveryUrl;
+        return !textStream.IsExternalUrl ? api.getUri(textStream.DeliveryUrl) : textStream.DeliveryUrl;
     }
 
     stop(player) {
@@ -3288,16 +3324,14 @@ export class PlaybackManager {
             return player.instantMix(item);
         }
 
-        const apiClient = ServerConnections.getApiClient(item.ServerId);
-
-        const options = {
-            UserId: apiClient.getCurrentUserId(),
-            Limit: 200
-        };
-
+        const api = ServerConnections.getApi(item.ServerId);
         const instance = this;
 
-        apiClient.getInstantMixFromItem(item.Id, options).then(function (result) {
+        getInstantMixApi(api).getInstantMixFromItem({
+            itemId: item.Id,
+            userId: ServerConnections.getCurrentUserId(item.ServerId),
+            limit: 200
+        }).then(function ({ data: result }) {
             instance.play({
                 items: result.Items
             });

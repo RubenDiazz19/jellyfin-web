@@ -60,7 +60,7 @@ legacy; en la fase 4 esa función deja de mirar al `ApiClient`.
 
 ### Fase 3 — Consumidor grande
 
-- [ ] `playbackmanager.js` (29 llamadas) — migrar `getEndpointInfo`, `getCurrentUser`, `getItem`, `getEpisodes`, `getUrl`, `deviceId`, `accessToken`, `getLocalTrailers`, `getInstantMixFromItem`, `stopActiveEncodings`
+- [x] `playbackmanager.js` (29 llamadas) — migrar `getEndpointInfo`, `getCurrentUser`, `getItem`, `getEpisodes`, `getUrl`, `deviceId`, `accessToken`, `getLocalTrailers`, `getInstantMixFromItem`, `stopActiveEncodings`
 
 ### Fase 4 — Infraestructura (al final, cuando ya nadie use legacy)
 

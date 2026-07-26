@@ -23,6 +23,8 @@ export interface PlaybackHarness {
     api: Record<string, unknown>;
     /** Métodos de `getLibraryApi` que usa la cadena de reproducción. */
     libraryApi: Record<string, ReturnType<typeof vi.fn>>;
+    /** Usuario en sesión, tal como lo devuelve `getUserApi`. */
+    user: Record<string, unknown>;
     loading: { show: ReturnType<typeof vi.fn>; hide: ReturnType<typeof vi.fn> };
     alert: ReturnType<typeof vi.fn>;
     /** Players que verá el manager al construirse. */
@@ -121,6 +123,10 @@ const harness: PlaybackHarness = {
         getIntros: vi.fn(() => Promise.resolve({ data: { Items: [] } })),
         getLocalTrailers: vi.fn(() => Promise.resolve({ data: [] }))
     },
+    user: {
+        Id: 'user-1',
+        Configuration: { RememberAudioSelections: true, RememberSubtitleSelections: true }
+    },
     loading: { show: vi.fn(), hide: vi.fn() },
     alert: vi.fn(),
     players: []
@@ -176,6 +182,37 @@ export function installPlaybackMocks(): void {
 
     vi.mock('@jellyfin/sdk/lib/utils/api/library-api', () => ({
         getLibraryApi: () => harness.libraryApi
+    }));
+
+    vi.mock('@jellyfin/sdk/lib/utils/api/user-api', () => ({
+        getUserApi: () => ({
+            getCurrentUser: () => Promise.resolve({ data: harness.user })
+        })
+    }));
+
+    vi.mock('@jellyfin/sdk/lib/utils/api/show-api', () => ({
+        getShowApi: () => ({
+            getNextUp: () => Promise.resolve({ data: { Items: [] } }),
+            getEpisodes: () => Promise.resolve({ data: { Items: [], TotalRecordCount: 0 } })
+        })
+    }));
+
+    vi.mock('@jellyfin/sdk/lib/utils/api/video-api', () => ({
+        getVideoApi: () => ({
+            getAdditionalPart: () => Promise.resolve({ data: { Items: [] } })
+        })
+    }));
+
+    vi.mock('@jellyfin/sdk/lib/utils/api/instant-mix-api', () => ({
+        getInstantMixApi: () => ({
+            getInstantMixFromItem: () => Promise.resolve({ data: { Items: [] } })
+        })
+    }));
+
+    vi.mock('@jellyfin/sdk/lib/utils/api/system-api', () => ({
+        getSystemApi: () => ({
+            getEndpointInfo: () => Promise.resolve({ data: { IsInNetwork: true, IsLocal: true } })
+        })
     }));
 
     vi.mock('@jellyfin/sdk/lib/utils/api/media-info-api', () => ({
