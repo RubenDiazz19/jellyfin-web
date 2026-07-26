@@ -1,13 +1,14 @@
 import type { Api } from '@jellyfin/sdk';
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client';
-import type { ApiClient, Event } from 'jellyfin-apiclient';
+import type { Event } from 'jellyfin-apiclient';
 import { type FC, type PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react';
+
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import events from 'utils/events';
 
 export interface JellyfinApiContext {
-    __legacyApiClient__?: ApiClient
     api?: Api
     user?: UserDto
 }
@@ -16,34 +17,36 @@ export const ApiContext = createContext<JellyfinApiContext>({});
 export const useApi = () => useContext(ApiContext);
 
 export const ApiProvider: FC<PropsWithChildren<unknown>> = ({ children }) => {
-    const [ legacyApiClient, setLegacyApiClient ] = useState<ApiClient>();
+    const [ serverId, setServerId ] = useState<string>();
     const [ api, setApi ] = useState<Api>();
     const [ user, setUser ] = useState<UserDto>();
 
     const context = useMemo(() => ({
-        __legacyApiClient__: legacyApiClient,
         api,
         user
-    }), [ api, legacyApiClient, user ]);
+    }), [ api, user ]);
 
     useEffect(() => {
-        ServerConnections.currentApiClient()
-            ?.getCurrentUser()
-            .then(newUser => updateApiUser(undefined, newUser))
-            .catch(err => {
-                console.info('[ApiProvider] Could not get current user', err);
-            });
+        const currentApi = ServerConnections.getApi();
+        if (currentApi) {
+            getUserApi(currentApi)
+                .getCurrentUser()
+                .then(({ data: newUser }) => updateApiUser(undefined, newUser))
+                .catch(err => {
+                    console.info('[ApiProvider] Could not get current user', err);
+                });
+        }
 
         const updateApiUser = (_e: Event | undefined, newUser: UserDto) => {
             setUser(newUser);
 
             if (newUser.ServerId) {
-                setLegacyApiClient(ServerConnections.getApiClient(newUser.ServerId));
+                setServerId(newUser.ServerId);
             }
         };
 
         const resetApiUser = () => {
-            setLegacyApiClient(undefined);
+            setServerId(undefined);
             setUser(undefined);
         };
 
@@ -54,11 +57,11 @@ export const ApiProvider: FC<PropsWithChildren<unknown>> = ({ children }) => {
             events.off(ServerConnections, 'localusersignedin', updateApiUser);
             events.off(ServerConnections, 'localusersignedout', resetApiUser);
         };
-    }, [ setLegacyApiClient, setUser ]);
+    }, [ setServerId, setUser ]);
 
     useEffect(() => {
-        setApi(legacyApiClient ? ServerConnections.getApi(legacyApiClient.serverId()) : undefined);
-    }, [ legacyApiClient, setApi ]);
+        setApi(serverId ? ServerConnections.getApi(serverId) : undefined);
+    }, [ serverId, setApi ]);
 
     return (
         <ApiContext.Provider value={context}>

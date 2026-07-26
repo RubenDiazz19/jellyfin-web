@@ -218,8 +218,8 @@ function subscribeToServer(serverId) {
 }
 
 export function initializeServerConnections() {
-    ServerConnections.getApiClients().forEach((apiClient) => {
-        subscribeToServer(apiClient.serverId());
+    ServerConnections.getServerIds().forEach((serverId) => {
+        subscribeToServer(serverId);
     });
 
     Events.on(ServerConnections, 'apiclientcreated', function (e, newApiClient) {

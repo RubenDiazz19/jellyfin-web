@@ -1,9 +1,11 @@
 import type { SessionInfoDto } from '@jellyfin/sdk/lib/generated-client/models/session-info-dto';
+import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 import itemHelper from 'components/itemHelper';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import globalize from 'lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { getLocaleWithSuffix } from 'utils/dateFnsLocale';
+import { getScaledImageUrl } from 'utils/sdk/imageUrls';
 
 type NowPlayingInfo = {
     topText?: string;
@@ -35,21 +37,19 @@ const getNowPlayingName = (session: SessionInfoDto): NowPlayingInfo => {
         bottomText = nowPlayingItem.ProductionYear.toString();
     }
 
-    const apiClient = ServerConnections.getApiClient(session.ServerId);
-    if (apiClient) {
+    const api = ServerConnections.getApi(session.ServerId ?? undefined);
+    if (api) {
         if (nowPlayingItem.ImageTags?.Logo) {
-            imgUrl = apiClient.getScaledImageUrl(nowPlayingItem.Id!, {
+            imgUrl = getScaledImageUrl(api, nowPlayingItem.Id!, ImageType.Logo, {
                 tag: nowPlayingItem.ImageTags.Logo,
                 maxHeight: 24,
-                maxWidth: 130,
-                type: 'Logo'
+                maxWidth: 130
             });
         } else if (nowPlayingItem.ParentLogoImageTag) {
-            imgUrl = apiClient.getScaledImageUrl(nowPlayingItem.ParentLogoItemId!, {
-                tag: nowPlayingItem.ParentLogoImageTag,
+            imgUrl = getScaledImageUrl(api, nowPlayingItem.ParentLogoItemId!, ImageType.Logo, {
+                tag: nowPlayingItem.ParentLogoImageTag ?? undefined,
                 maxHeight: 24,
-                maxWidth: 130,
-                type: 'Logo'
+                maxWidth: 130
             });
         }
     }

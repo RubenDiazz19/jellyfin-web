@@ -25,6 +25,8 @@ export interface PlaybackHarness {
     libraryApi: Record<string, ReturnType<typeof vi.fn>>;
     /** Usuario en sesión, tal como lo devuelve `getUserApi`. */
     user: Record<string, unknown>;
+    /** Informes de reproducción que ha recibido el servidor, ya desenvueltos. */
+    serverReports: Record<string, ReturnType<typeof vi.fn>>;
     loading: { show: ReturnType<typeof vi.fn>; hide: ReturnType<typeof vi.fn> };
     alert: ReturnType<typeof vi.fn>;
     /** Players que verá el manager al construirse. */
@@ -127,6 +129,11 @@ const harness: PlaybackHarness = {
         Id: 'user-1',
         Configuration: { RememberAudioSelections: true, RememberSubtitleSelections: true }
     },
+    serverReports: {
+        reportPlaybackStart: vi.fn(() => Promise.resolve()),
+        reportPlaybackProgress: vi.fn(() => Promise.resolve()),
+        reportPlaybackStopped: vi.fn(() => Promise.resolve())
+    },
     loading: { show: vi.fn(), hide: vi.fn() },
     alert: vi.fn(),
     players: []
@@ -158,6 +165,9 @@ export function resetHarness(): void {
     harness.loading.show.mockClear();
     harness.loading.hide.mockClear();
     harness.alert.mockClear();
+    Object.values(harness.serverReports).forEach((report) => {
+        report.mockClear();
+    });
     harness.players.length = 0;
 }
 
@@ -182,6 +192,19 @@ export function installPlaybackMocks(): void {
 
     vi.mock('@jellyfin/sdk/lib/utils/api/library-api', () => ({
         getLibraryApi: () => harness.libraryApi
+    }));
+
+    // Los informes llegan envueltos en el DTO que pide el SDK; el banco los
+    // desenvuelve para que un test pueda afirmar sobre lo que ve el servidor.
+    vi.mock('@jellyfin/sdk/lib/utils/api/session-api', () => ({
+        getSessionApi: () => ({
+            reportPlaybackStart: (req: { playbackStartInfo: unknown }) =>
+                harness.serverReports.reportPlaybackStart(req.playbackStartInfo),
+            reportPlaybackProgress: (req: { playbackProgressInfo: unknown }) =>
+                harness.serverReports.reportPlaybackProgress(req.playbackProgressInfo),
+            reportPlaybackStopped: (req: { playbackStopInfo: unknown }) =>
+                harness.serverReports.reportPlaybackStopped(req.playbackStopInfo)
+        })
     }));
 
     vi.mock('@jellyfin/sdk/lib/utils/api/user-api', () => ({

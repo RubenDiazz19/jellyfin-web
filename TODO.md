@@ -64,10 +64,36 @@ legacy; en la fase 4 esa función deja de mirar al `ApiClient`.
 
 ### Fase 4 — Infraestructura (al final, cuando ya nadie use legacy)
 
+**Consumidores fuera de la capa de conexión** — hecho:
+
+- [x] Los que no estaban en las listas de las fases 1-3 pero seguían con
+      `ApiClient`: `playbackReporting.ts`, `playlisteditor.ts`,
+      `imageUploader.js`, `imageDownloader.js`, `appRouter.js`,
+      `mediaSegmentManager.ts`, `getNowPlayingName.ts`, `autocast.js`,
+      `userSettings.js`, `libraryMenu.js`, `http.ts`, `useApi.tsx`,
+      `taskbutton.js`, `LibraryCard.tsx`, `Provider.tsx`
+- [x] `ServerConnections` expone lo que el SDK `Api` no sabe responder, para
+      que los consumidores no tengan que bajar al cliente legacy:
+      `getCurrentUserId`, `getCurrentServerId`, `getServerInfo`, `getServerIds`,
+      `getApis`, `getUserInfo`
+- [x] `useApi` deja de exponer `__legacyApiClient__` (nadie lo consumía)
+
+**Capa de conexión** — pendiente:
+
 - [ ] Reescribir `connectionManager.js` para crear SDK `Api` directamente sin pasar por `ApiClient` legacy
 - [ ] Simplificar `ServerConnections.js` como wrapper fino del SDK
+- [ ] Migrar lo que cuelga de esa capa: `ConnectionRequired.tsx`, `auth.ts`,
+      `ServerContentPage.tsx`, `Dashboard.serverAddress()`, `serviceworker.js`
 - [ ] Eliminar `compat.ts` (el puente ya no hace falta)
 - [ ] Eliminar `createApiClient.ts`
 - [ ] Eliminar dependencia `jellyfin-apiclient` de `package.json`
 - [ ] Eliminar `src/lib/jellyfin-apiclient/` y `src/utils/jellyfin-apiclient/`
-- [ ] Limpiar `global.d.ts` (quitar `window.ApiClient`, `window.Events`)
+- [ ] Limpiar `global.d.ts` y `apiclient.d.ts` (quitar `window.ApiClient`, `window.Events`)
+
+> Por qué queda pendiente: `connectionManager.js` son 846 líneas que guardan
+> las credenciales, descubren y fusionan servidores, prueban direcciones y
+> llevan `connect()` / `logout()` / `validateAuthentication()` / wake-on-LAN.
+> No hay ni un test que lo cubra, y equivocarse ahí deja al usuario fuera de
+> su servidor o le borra los servidores guardados. Es un trabajo aparte, con
+> su propia red de pruebas, no un paso más de esta migración. Todo lo demás
+> ya está en SDK: el cliente legacy solo sigue vivo dentro de esa capa.

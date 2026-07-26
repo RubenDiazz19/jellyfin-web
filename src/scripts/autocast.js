@@ -48,7 +48,7 @@ export function initialize() {
     console.debug('[autoCast] initializing connection listener');
 
     // Restore cast player if already signed in (e.g. on page reload)
-    if (ServerConnections.getApiClients().some(c => c.accessToken())) {
+    if (ServerConnections.getApis().some(api => api.accessToken)) {
         onOpen();
     }
 

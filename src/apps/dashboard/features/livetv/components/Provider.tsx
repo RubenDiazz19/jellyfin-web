@@ -36,7 +36,7 @@ const Provider = ({ provider }: ProviderProps) => {
         setAnchorEl(null);
         setIsMenuOpen(false);
         void new ChannelMapper({
-            serverId: ServerConnections.currentApiClient()?.serverId(),
+            serverId: ServerConnections.getCurrentServerId(),
             providerId: provider.Id
         }).show();
     }, [ provider ]);

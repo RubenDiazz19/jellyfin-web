@@ -96,7 +96,7 @@ describe('play(): el camino feliz', () => {
         await manager.play({ items: [videoItem()] });
         await settle();
 
-        const report = harness.apiClient.reportPlaybackStart as ReturnType<typeof vi.fn>;
+        const report = harness.serverReports.reportPlaybackStart as ReturnType<typeof vi.fn>;
         expect(report).toHaveBeenCalledOnce();
         expect(report.mock.calls[0][0]).toMatchObject({ ItemId: 'item-1' });
     });
@@ -200,7 +200,7 @@ describe('play(): cuando algo va mal', () => {
         await manager.play({ items: [videoItem()] });
         await settle();
 
-        expect(harness.apiClient.reportPlaybackStart).toHaveBeenCalledOnce();
+        expect(harness.serverReports.reportPlaybackStart).toHaveBeenCalledOnce();
     });
 });
 

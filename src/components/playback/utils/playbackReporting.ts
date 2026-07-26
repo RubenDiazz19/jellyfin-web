@@ -1,5 +1,6 @@
 import type { BaseItemDto } from '@jellyfin/sdk/lib/generated-client/models/base-item-dto';
 import type { MediaSourceInfo } from '@jellyfin/sdk/lib/generated-client/models/media-source-info';
+import { getSessionApi } from '@jellyfin/sdk/lib/utils/api/session-api';
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { TICKS_PER_MILLISECOND } from 'constants/time';
@@ -38,11 +39,18 @@ export interface ReportableState {
     PlayState?: Record<string, unknown>;
 }
 
-/** Métodos del ApiClient que aceptan un informe de reproducción. */
+/** Informes de reproducción que acepta el servidor. */
 export type ReportMethod =
     | 'reportPlaybackStart'
     | 'reportPlaybackProgress'
     | 'reportPlaybackStopped';
+
+/** Nombre del cuerpo que espera cada informe en el SDK. */
+const REPORT_BODY_KEY: Record<ReportMethod, string> = {
+    reportPlaybackStart: 'playbackStartInfo',
+    reportPlaybackProgress: 'playbackProgressInfo',
+    reportPlaybackStopped: 'playbackStopInfo'
+};
 
 /**
  * Cola actual: la del player si la gestiona él, y si no, la del manager.
@@ -122,17 +130,17 @@ export function reportPlayback(
         addPlaylistToPlaybackReport(instance, info, player, serverId);
     }
 
-    const apiClient = ServerConnections.getApiClient(serverId);
-    if (!apiClient) {
-        // Anomalía: hay serverId pero no hay cliente para ese servidor (sesión
+    const api = ServerConnections.getApi(serverId);
+    if (!api) {
+        // Anomalía: hay serverId pero no hay conexión con ese servidor (sesión
         // cerrada a media reproducción). No se puede informar, así que se
         // avisa igual que en el caso de item no-servidor.
-        console.warn('[playbackReporting] sin ApiClient para el servidor', serverId);
+        console.warn('[playbackReporting] sin conexión al servidor', serverId);
         Events.trigger(instance, 'reportplayback', [false]);
         return;
     }
 
-    void apiClient[method](info).then(() => {
+    void getSessionApi(api)[method]({ [REPORT_BODY_KEY[method]]: info }).then(() => {
         Events.trigger(instance, 'reportplayback', [true]);
     });
 }

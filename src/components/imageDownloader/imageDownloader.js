@@ -1,3 +1,5 @@
+import { getRemoteImageApi } from '@jellyfin/sdk/lib/utils/api/remote-image-api';
+
 import { AppFeature } from 'constants/appFeature';
 import dom from '../../utils/dom';
 import loading from '../loading/loading';
@@ -44,7 +46,7 @@ function getBaseRemoteOptions(page, forceCurrentItemId = false) {
     return options;
 }
 
-function reloadBrowsableImages(page, apiClient) {
+function reloadBrowsableImages(page, api) {
     loading.show();
 
     const options = getBaseRemoteOptions(page);
@@ -52,16 +54,16 @@ function reloadBrowsableImages(page, apiClient) {
     options.type = browsableImageType;
     options.startIndex = browsableImageStartIndex;
     options.limit = browsableImagePageSize;
-    options.IncludeAllLanguages = page.querySelector('#chkAllLanguages').checked;
+    options.includeAllLanguages = page.querySelector('#chkAllLanguages').checked;
 
     const provider = selectedProvider || '';
 
     if (provider) {
-        options.ProviderName = provider;
+        options.providerName = provider;
     }
 
-    apiClient.getAvailableRemoteImages(options).then(function (result) {
-        renderRemoteImages(page, apiClient, result, browsableImageType, options.startIndex, options.limit);
+    getRemoteImageApi(api).getRemoteImages(options).then(function ({ data: result }) {
+        renderRemoteImages(page, api, result, browsableImageType, options.startIndex, options.limit);
 
         page.querySelector('#selectBrowsableImageType').value = browsableImageType;
 
@@ -77,7 +79,7 @@ function reloadBrowsableImages(page, apiClient) {
     });
 }
 
-function renderRemoteImages(page, apiClient, imagesResult, imageType, startIndex, limit) {
+function renderRemoteImages(page, api, imagesResult, imageType, startIndex, limit) {
     page.querySelector('.availableImagesPaging').innerHTML = getPagingHtml(startIndex, limit, imagesResult.TotalRecordCount);
 
     let html = '';
@@ -98,7 +100,7 @@ function renderRemoteImages(page, apiClient, imagesResult, imageType, startIndex
             btnNextPage.disabled = true;
             if (btnPreviousPage) btnPreviousPage.disabled = true;
             browsableImageStartIndex += browsableImagePageSize;
-            reloadBrowsableImages(page, apiClient);
+            reloadBrowsableImages(page, api);
         });
     }
 
@@ -107,7 +109,7 @@ function renderRemoteImages(page, apiClient, imagesResult, imageType, startIndex
             btnPreviousPage.disabled = true;
             if (btnNextPage) btnNextPage.disabled = true;
             browsableImageStartIndex -= browsableImagePageSize;
-            reloadBrowsableImages(page, apiClient);
+            reloadBrowsableImages(page, api);
         });
     }
 }
@@ -142,16 +144,16 @@ function getPagingHtml(startIndex, limit, totalRecordCount) {
     return html;
 }
 
-function downloadRemoteImage(page, apiClient, url, type, provider) {
+function downloadRemoteImage(page, api, url, type, provider) {
     const options = getBaseRemoteOptions(page, true);
 
-    options.Type = type;
-    options.ImageUrl = url;
-    options.ProviderName = provider;
+    options.type = type;
+    options.imageUrl = url;
+    options.providerName = provider;
 
     loading.show();
 
-    apiClient.downloadRemoteImage(options).then(function () {
+    getRemoteImageApi(api).downloadRemoteImage(options).then(function () {
         hasChanges = true;
         const dlg = dom.parentWithClass(page, 'dialog');
         dialogHelper.close(dlg);
@@ -275,44 +277,44 @@ function getRemoteImageHtml(image, imageType) {
     return html;
 }
 
-function reloadBrowsableImagesFirstPage(page, apiClient) {
+function reloadBrowsableImagesFirstPage(page, api) {
     browsableImageStartIndex = 0;
-    reloadBrowsableImages(page, apiClient);
+    reloadBrowsableImages(page, api);
 }
 
-function initEditor(page, apiClient) {
+function initEditor(page, api) {
     page.querySelector('#selectBrowsableImageType').addEventListener('change', function () {
         browsableImageType = this.value;
         selectedProvider = null;
 
-        reloadBrowsableImagesFirstPage(page, apiClient);
+        reloadBrowsableImagesFirstPage(page, api);
     });
 
     page.querySelector('#selectImageProvider').addEventListener('change', function () {
         selectedProvider = this.value;
 
-        reloadBrowsableImagesFirstPage(page, apiClient);
+        reloadBrowsableImagesFirstPage(page, api);
     });
 
     page.querySelector('#chkAllLanguages').addEventListener('change', function () {
-        reloadBrowsableImagesFirstPage(page, apiClient);
+        reloadBrowsableImagesFirstPage(page, api);
     });
 
     page.querySelector('#chkShowParentImages').addEventListener('change', function () {
-        reloadBrowsableImagesFirstPage(page, apiClient);
+        reloadBrowsableImagesFirstPage(page, api);
     });
 
     page.addEventListener('click', function (e) {
         const btnDownloadRemoteImage = dom.parentWithClass(e.target, 'btnDownloadRemoteImage');
         if (btnDownloadRemoteImage) {
             const card = dom.parentWithClass(btnDownloadRemoteImage, 'card');
-            downloadRemoteImage(page, apiClient, card.getAttribute('data-imageurl'), card.getAttribute('data-imagetype'), card.getAttribute('data-imageprovider'));
+            downloadRemoteImage(page, api, card.getAttribute('data-imageurl'), card.getAttribute('data-imagetype'), card.getAttribute('data-imageprovider'));
             return;
         }
 
         const btnImageCard = dom.parentWithClass(e.target, 'btnImageCard');
         if (btnImageCard) {
-            downloadRemoteImage(page, apiClient, btnImageCard.getAttribute('data-imageurl'), btnImageCard.getAttribute('data-imagetype'), btnImageCard.getAttribute('data-imageprovider'));
+            downloadRemoteImage(page, api, btnImageCard.getAttribute('data-imageurl'), btnImageCard.getAttribute('data-imagetype'), btnImageCard.getAttribute('data-imageprovider'));
         }
     });
 }
@@ -320,7 +322,7 @@ function initEditor(page, apiClient) {
 function showEditor(itemId, serverId, itemType) {
     loading.show();
 
-    const apiClient = ServerConnections.getApiClient(serverId);
+    const api = ServerConnections.getApi(serverId);
 
     currentItemId = itemId;
     currentItemType = itemType;
@@ -353,13 +355,13 @@ function showEditor(itemId, serverId, itemType) {
     dialogHelper.open(dlg);
 
     const editorContent = dlg.querySelector('.formDialogContent');
-    initEditor(editorContent, apiClient);
+    initEditor(editorContent, api);
 
     dlg.querySelector('.btnCancel').addEventListener('click', function () {
         dialogHelper.close(dlg);
     });
 
-    reloadBrowsableImages(editorContent, apiClient);
+    reloadBrowsableImages(editorContent, api);
 }
 
 function onDialogClosed() {

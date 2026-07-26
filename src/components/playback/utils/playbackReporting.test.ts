@@ -4,10 +4,16 @@ import Events from 'utils/events';
 
 import type { PlaybackManagerLike, Player, QueueItem } from '../types/player';
 
-const getApiClient = vi.hoisted(() => vi.fn());
+const mocks = vi.hoisted(() => ({
+    getApi: vi.fn(),
+    sessionApi: {} as Record<string, ReturnType<typeof vi.fn>>
+}));
 // ServerConnections arrastra el ApiClient legacy entero; aquí solo hace falta
 // poder mirar qué se le manda.
-vi.mock('lib/jellyfin-apiclient', () => ({ ServerConnections: { getApiClient } }));
+vi.mock('lib/jellyfin-apiclient', () => ({ ServerConnections: { getApi: mocks.getApi } }));
+vi.mock('@jellyfin/sdk/lib/utils/api/session-api', () => ({
+    getSessionApi: () => mocks.sessionApi
+}));
 
 const {
     addPlaylistToPlaybackReport,
@@ -38,24 +44,25 @@ const queueItem = (Id: string, extra: Partial<QueueItem> = {}): QueueItem => ({
     Id, PlaylistItemId: `pl-${Id}`, ServerId: 'srv-1', ...extra
 });
 
-/** ApiClient de mentira que recuerda el informe recibido. */
+/** Api de mentira que recuerda el informe recibido, ya desenvuelto. */
 function stubApiClient() {
     const calls: Record<string, unknown[]> = {};
-    const record = (name: string) => vi.fn((info: unknown) => {
-        calls[name] = [...(calls[name] ?? []), info];
+    const record = (name: string, bodyKey: string) => vi.fn((req: Record<string, unknown>) => {
+        calls[name] = [...(calls[name] ?? []), req[bodyKey]];
         return Promise.resolve();
     });
     const client = {
-        reportPlaybackStart: record('reportPlaybackStart'),
-        reportPlaybackProgress: record('reportPlaybackProgress'),
-        reportPlaybackStopped: record('reportPlaybackStopped')
+        reportPlaybackStart: record('reportPlaybackStart', 'playbackStartInfo'),
+        reportPlaybackProgress: record('reportPlaybackProgress', 'playbackProgressInfo'),
+        reportPlaybackStopped: record('reportPlaybackStopped', 'playbackStopInfo')
     };
-    getApiClient.mockReturnValue(client);
+    mocks.sessionApi = client;
+    mocks.getApi.mockReturnValue({});
     return { client, calls };
 }
 
 beforeEach(() => {
-    getApiClient.mockReset();
+    mocks.getApi.mockReset();
 });
 
 describe('getPlaylistSync', () => {
@@ -192,7 +199,7 @@ describe('reportPlayback', () => {
 
         reportPlayback(manager, state, null, false, null, 'reportPlaybackStart');
 
-        expect(getApiClient).not.toHaveBeenCalled();
+        expect(mocks.getApi).not.toHaveBeenCalled();
         expect(onReport).toHaveBeenCalledWith(expect.anything(), false);
     });
 

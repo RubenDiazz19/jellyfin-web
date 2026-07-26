@@ -68,7 +68,7 @@ describe('el player avisa de que ha parado', () => {
 
     it('informa al servidor de la parada', async () => {
         await startPlayback();
-        const report = harness.apiClient.reportPlaybackStopped as ReturnType<typeof vi.fn>;
+        const report = harness.serverReports.reportPlaybackStopped as ReturnType<typeof vi.fn>;
 
         Events.trigger(player, 'stopped');
         await settle();
@@ -95,13 +95,13 @@ describe('el player avisa de que ha parado', () => {
 describe('el manager no reemite los cambios del player: los informa', () => {
     /** Nombres de evento que el servidor recibe en el informe de progreso. */
     const reported = (): string[] => {
-        const report = harness.apiClient.reportPlaybackProgress as ReturnType<typeof vi.fn>;
+        const report = harness.serverReports.reportPlaybackProgress as ReturnType<typeof vi.fn>;
         return report.mock.calls.map((c) => (c[0] as { EventName?: string }).EventName ?? '');
     };
 
     it('pausa y reanudación viajan como nombre de evento en el informe', async () => {
         await startPlayback();
-        (harness.apiClient.reportPlaybackProgress as ReturnType<typeof vi.fn>).mockClear();
+        (harness.serverReports.reportPlaybackProgress as ReturnType<typeof vi.fn>).mockClear();
 
         Events.trigger(player, 'pause');
         Events.trigger(player, 'unpause');
@@ -112,7 +112,7 @@ describe('el manager no reemite los cambios del player: los informa', () => {
 
     it('el volumen y los modos de cola también', async () => {
         await startPlayback();
-        (harness.apiClient.reportPlaybackProgress as ReturnType<typeof vi.fn>).mockClear();
+        (harness.serverReports.reportPlaybackProgress as ReturnType<typeof vi.fn>).mockClear();
 
         Events.trigger(player, 'volumechange');
         Events.trigger(player, 'repeatmodechange');
@@ -184,7 +184,7 @@ describe('latido de progreso', () => {
     }
 
     const progressReports = () =>
-        (harness.apiClient.reportPlaybackProgress as ReturnType<typeof vi.fn>);
+        (harness.serverReports.reportPlaybackProgress as ReturnType<typeof vi.fn>);
 
     afterEach(() => {
         vi.useRealTimers();

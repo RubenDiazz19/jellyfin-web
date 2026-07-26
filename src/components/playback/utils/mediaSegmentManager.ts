@@ -87,7 +87,7 @@ class MediaSegmentManager extends PlaybackSubscriber {
         this.hasSegments = !!state.MediaSource?.HasSegments;
 
         const itemId = state.MediaSource?.Id;
-        const serverId = state.NowPlayingItem?.ServerId || ServerConnections.currentApiClient()?.serverId();
+        const serverId = state.NowPlayingItem?.ServerId || ServerConnections.getCurrentServerId();
 
         if (!this.hasSegments || !serverId || !itemId) return;
 

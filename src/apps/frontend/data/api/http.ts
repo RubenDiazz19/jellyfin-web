@@ -1,17 +1,17 @@
 // Low-level HTTP helpers shared by every domain-specific API module.
 // The MediaBrowser Authorization header inherits clientName/deviceId from the
-// official ApiClient (ServerConnections) so the server sees a coherent session.
+// SDK Api (ServerConnections) so the server sees a coherent session.
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { loadSession } from '../session/session';
 
 export function authHeader(accessToken?: string): string {
-    const apiClient = ServerConnections.currentApiClient?.();
+    const api = ServerConnections.getApi();
     const parts = [
-        `MediaBrowser Client="${apiClient?.appName?.() ?? 'jellyfin-web'}"`,
-        `Device="${apiClient?.deviceName?.() ?? 'Web'}"`,
-        `DeviceId="${apiClient?.deviceId?.() ?? ''}"`,
-        `Version="${apiClient?.appVersion?.() ?? '1.0.0'}"`
+        `MediaBrowser Client="${api?.clientInfo?.name ?? 'jellyfin-web'}"`,
+        `Device="${api?.deviceInfo?.name ?? 'Web'}"`,
+        `DeviceId="${api?.deviceInfo?.id ?? ''}"`,
+        `Version="${api?.clientInfo?.version ?? '1.0.0'}"`
     ];
     if (accessToken) parts.push(`Token="${accessToken}"`);
     return parts.join(', ');

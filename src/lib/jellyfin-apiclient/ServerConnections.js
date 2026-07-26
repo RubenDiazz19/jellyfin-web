@@ -1,4 +1,6 @@
 import { Credentials } from 'jellyfin-apiclient';
+import { getImageApi } from '@jellyfin/sdk/lib/utils/api/image-api';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 
 import { appHost } from 'components/apphost';
 import appSettings from 'scripts/settings/appSettings';
@@ -131,6 +133,14 @@ class ServerConnections extends ConnectionManager {
     }
 
     /**
+     * Ids of every server the app is connected to.
+     * @returns {string[]} The server ids.
+     */
+    getServerIds() {
+        return this.getApiClients().map((apiClient) => apiClient.serverId());
+    }
+
+    /**
      * Gets the id of the user signed in on a server.
      *
      * Consumers that only talk to the SDK still need the user id for the
@@ -166,6 +176,32 @@ class ServerConnections extends ConnectionManager {
     }
 
     /**
+     * Gets the signed in user of a server, with its avatar url resolved.
+     *
+     * Replaces `ConnectionManager.user()`: same shape, but asked to the SDK.
+     * @param {string} [serverId] The server id; defaults to the current one.
+     * @returns {Promise<object>} The user info, or an empty object if nobody is signed in.
+     */
+    async getUserInfo(serverId) {
+        const api = serverId ? this.getApi(serverId) : this.getApi();
+        const userId = this.getCurrentUserId(serverId);
+
+        if (!api || !userId) return {};
+
+        const { data: localUser } = await getUserApi(api).getCurrentUser();
+        const imageUrl = localUser.PrimaryImageTag ?
+            getImageApi(api).getUserImageUrl(localUser, { tag: localUser.PrimaryImageTag }) :
+            null;
+
+        return {
+            localUser,
+            name: localUser?.Name ?? null,
+            imageUrl: imageUrl ?? null,
+            supportsImageParams: !!imageUrl
+        };
+    }
+
+    /**
      * Gets the ApiClient that is currently connected or throws if not defined.
      * @async
      * @returns {Promise<ApiClient>} The current ApiClient instance.
@@ -181,7 +217,7 @@ class ServerConnections extends ConnectionManager {
         const apiClient = this.getApiClient(user.ServerId);
         this.setLocalApiClient(apiClient);
         setTimeout(() => detectBitrate(this.getApi(user.ServerId), true), 6000);
-        return setUserInfo(user.Id, apiClient).then(() => {
+        return setUserInfo(user.Id, user.ServerId).then(() => {
             if (window.NativeShell && typeof window.NativeShell.onLocalUserSignedIn === 'function') {
                 return window.NativeShell.onLocalUserSignedIn(user, apiClient.accessToken());
             }

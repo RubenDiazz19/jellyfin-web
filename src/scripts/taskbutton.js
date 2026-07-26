@@ -72,7 +72,7 @@ function taskbutton(options) {
 
     let unsubscribe;
     const button = options.button;
-    const serverId = ServerConnections.currentApiClient()?.serverId() || '';
+    const serverId = ServerConnections.getCurrentServerId() || '';
 
     function subscribe() {
         const api = ServerConnections.getApi(serverId);

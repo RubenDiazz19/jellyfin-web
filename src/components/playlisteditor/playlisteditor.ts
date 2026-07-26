@@ -89,7 +89,7 @@ function createPlaylist(dlg: DialogElement) {
     if (isBlank(name)) return Promise.reject(new Error('Playlist name should not be blank'));
 
     const api = ServerConnections.getApi(currentServerId);
-    const apiClient = ServerConnections.getApiClient(currentServerId);
+    const userId = ServerConnections.getCurrentUserId(currentServerId);
     const itemIds = dlg.querySelector<HTMLInputElement>('.fldSelectedItemIds')?.value || undefined;
 
     if (!api) return Promise.reject(new Error('No Api instance available'));
@@ -100,7 +100,7 @@ function createPlaylist(dlg: DialogElement) {
                 Name: name ?? '',
                 IsPublic: dlg.querySelector<HTMLInputElement>('#chkPlaylistPublic')?.checked,
                 Ids: itemIds?.split(','),
-                UserId: apiClient?.getCurrentUserId()
+                UserId: userId
             }
         })
         .then(result => {
@@ -110,7 +110,7 @@ function createPlaylist(dlg: DialogElement) {
             // The playlist user view is only available after a playlist is created.
             // Ideally we would only invalidate if there are no other playlists.
             void queryClient.invalidateQueries({
-                queryKey: ['User', apiClient?.getCurrentUserId(), 'Views']
+                queryKey: ['User', userId, 'Views']
             });
             // If a new playlist is created, then trigger a refresh of the library views
             Events.trigger(document, EventType.REFRESH_NEEDED);
@@ -148,7 +148,7 @@ function updatePlaylist(dlg: DialogElement) {
 
 function addToPlaylist(dlg: DialogElement, id: string) {
     const api = ServerConnections.getApi(currentServerId);
-    const apiClient = ServerConnections.getApiClient(currentServerId);
+    const userId = ServerConnections.getCurrentUserId(currentServerId);
     const itemIds = dlg.querySelector<HTMLInputElement>('.fldSelectedItemIds')?.value || '';
 
     if (id === 'queue') {
@@ -169,7 +169,7 @@ function addToPlaylist(dlg: DialogElement, id: string) {
         .addItemToPlaylist({
             playlistId: id,
             ids: itemIds.split(','),
-            userId: apiClient?.getCurrentUserId()
+            userId: userId
         })
         .then(() => {
             dlg.submitted = true;
@@ -193,14 +193,14 @@ function populatePlaylists(editorOptions: PlaylistEditorOptions, panel: DialogEl
     panel.querySelector('.newPlaylistInfo')?.classList.add('hide');
 
     const api = ServerConnections.getApi(currentServerId);
-    const apiClient = ServerConnections.getApiClient(currentServerId);
+    const userId = ServerConnections.getCurrentUserId(currentServerId);
     const SyncPlay = pluginManager.firstOfType(PluginType.SyncPlay)?.instance;
 
     if (!api) return Promise.reject(new Error('No Api instance available'));
 
     return getLibraryApi(api)
         .getItems({
-            userId: apiClient?.getCurrentUserId(),
+            userId: userId,
             includeItemTypes: [ BaseItemKind.Playlist ],
             sortBy: [ ItemSortBy.SortName ],
             recursive: true,
@@ -212,8 +212,6 @@ function populatePlaylists(editorOptions: PlaylistEditorOptions, panel: DialogEl
                     item,
                     permissions: undefined
                 };
-                const userId = apiClient?.getCurrentUserId();
-
                 if (!item.Id || !userId) return playlist;
 
                 return getPlaylistApi(api)

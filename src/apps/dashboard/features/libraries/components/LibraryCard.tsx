@@ -96,7 +96,7 @@ const LibraryCard = ({ virtualFolder }: LibraryCardProps) => {
 
         void new RefreshDialog({
             itemIds: [ virtualFolder.ItemId ],
-            serverId: ServerConnections.currentApiClient()?.serverId(),
+            serverId: ServerConnections.getCurrentServerId(),
             mode: 'scan'
         }).show();
     }, [ virtualFolder ]);
@@ -121,7 +121,7 @@ const LibraryCard = ({ virtualFolder }: LibraryCardProps) => {
 
         void imageeditor.show({
             itemId: virtualFolder.ItemId,
-            serverId: ServerConnections.currentApiClient()?.serverId()
+            serverId: ServerConnections.getCurrentServerId()
         }).then(() => {
             invalidateVirtualFolders(user);
         }).catch(() => {

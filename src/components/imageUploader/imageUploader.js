@@ -79,6 +79,35 @@ function setFiles(page, files) {
 }
 
 // eslint-disable-next-line sonarjs/no-invariant-returns
+/**
+ * Sube una imagen a un item.
+ *
+ * El endpoint espera el fichero en base64 con el content-type de la imagen, no
+ * un multipart, así que se manda por el axios del SDK —que ya lleva la
+ * autenticación— en vez de por el método generado.
+ * @param {import('@jellyfin/sdk').Api} api El Api del servidor.
+ * @param {string} itemId El item al que se le pone la imagen.
+ * @param {string} imageType El tipo de imagen (Primary, Backdrop…).
+ * @param {File} file El fichero elegido por el usuario.
+ * @returns {Promise<unknown>} La respuesta del servidor.
+ */
+function uploadItemImage(api, itemId, imageType, file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onabort = reject;
+        reader.onload = (event) => {
+            const base64 = event.target.result.split(',')[1];
+            api.axiosInstance.post(
+                api.getUri(`/Items/${itemId}/Images/${imageType}`),
+                base64,
+                { headers: { 'Content-Type': file.type, Authorization: api.authorizationHeader } }
+            ).then(resolve, reject);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 function onSubmit(e) {
     const file = currentFile;
 
@@ -103,7 +132,7 @@ function onSubmit(e) {
         return false;
     }
 
-    ServerConnections.getApiClient(currentServerId).uploadItemImage(currentItemId, imageType, file).then(() => {
+    uploadItemImage(ServerConnections.getApi(currentServerId), currentItemId, imageType, file).then(() => {
         dlg.querySelector('#uploadImage').value = '';
 
         loading.hide();

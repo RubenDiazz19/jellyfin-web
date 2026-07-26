@@ -1,3 +1,6 @@
+import { getDisplayPreferenceApi } from '@jellyfin/sdk/lib/utils/api/display-preference-api';
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
+
 import { getDisplayPreferencesQuery } from 'hooks/api/useDisplayPreferences';
 import { getUserQuery } from 'hooks/api/useUser';
 import { QUERY_KEY } from 'hooks/useUsers';
@@ -16,7 +19,12 @@ const CLIENT_ID = 'emby';
 function onSaveTimeout() {
     const self = this;
     self.saveTimeout = null;
-    self.currentApiClient.updateDisplayPreferences(DISPLAY_PREFERENCES_ID, self.displayPrefs, self.currentUserId, CLIENT_ID);
+    void getDisplayPreferenceApi(self.currentApi).updateDisplayPreferences({
+        displayPreferencesId: DISPLAY_PREFERENCES_ID,
+        client: CLIENT_ID,
+        userId: self.currentUserId,
+        displayPreferencesDto: self.displayPrefs
+    });
 }
 
 function saveServerPreferences(instance) {
@@ -60,15 +68,15 @@ export class UserSettings {
     /**
      * Bind UserSettings instance to user.
      * @param {string|undefined} userId - User identifier.
-     * @param {import('jellyfin-apiclient').ApiClient} apiClient - ApiClient instance.
+     * @param {string|undefined} serverId - Id of the server the user signed in to.
      */
-    setUserInfo(userId, apiClient) {
+    setUserInfo(userId, serverId) {
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
         }
 
         this.currentUserId = userId;
-        this.currentApiClient = apiClient;
+        this.currentApi = userId ? ServerConnections.getApi(serverId) : undefined;
 
         if (!userId) {
             this.displayPrefs = null;
@@ -77,7 +85,7 @@ export class UserSettings {
 
         const self = this;
 
-        const api = ServerConnections.getApi(apiClient.serverId());
+        const api = this.currentApi;
         return queryClient
             .fetchQuery(getDisplayPreferencesQuery(
                 api,
@@ -138,10 +146,13 @@ export class UserSettings {
      * @return {Object|Promise} Configuration or Promise.
      */
     serverConfig(config) {
-        const apiClient = this.currentApiClient;
+        const api = this.currentApi;
         if (config) {
-            return apiClient
-                .updateUserConfiguration(this.currentUserId, config)
+            return getUserApi(api)
+                .updateUserConfiguration({
+                    userId: this.currentUserId,
+                    userConfiguration: config
+                })
                 .then(() => {
                     queryClient.invalidateQueries({
                         queryKey: [ QUERY_KEY, this.currentUserId ]
@@ -149,7 +160,6 @@ export class UserSettings {
                 });
         }
 
-        const api = ServerConnections.getApi(apiClient.serverId());
         return queryClient
             .fetchQuery(getUserQuery(api, { userId: this.currentUserId }))
             .then(user => user.Configuration);

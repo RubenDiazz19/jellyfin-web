@@ -78,12 +78,8 @@ function renderHeader() {
     updateClock();
 }
 
-function getCurrentApiClient() {
-    if (currentUser?.localUser) {
-        return ServerConnections.getApiClient(currentUser.localUser.ServerId);
-    }
-
-    return ServerConnections.currentApiClient();
+function getCurrentServerId() {
+    return currentUser?.localUser?.ServerId ?? ServerConnections.getCurrentServerId();
 }
 
 function lazyLoadViewMenuBarImages() {
@@ -389,8 +385,8 @@ function onSidebarLinkClick() {
     LibraryMenu.setTitle(text);
 }
 
-function getUserViews(apiClient, userId) {
-    const api = ServerConnections.getApi(apiClient.serverId());
+function getUserViews(serverId, userId) {
+    const api = ServerConnections.getApi(serverId);
 
     return queryClient
         .fetchQuery(getUserViewsQuery(api, { userId }))
@@ -436,7 +432,7 @@ function updateLibraryMenu(user) {
     }
 
     const userId = Dashboard.getCurrentUserId();
-    const apiClient = getCurrentApiClient();
+    const serverId = getCurrentServerId();
 
     const customMenuOptions = document.querySelector('.customMenuOptions');
     if (customMenuOptions) {
@@ -466,7 +462,7 @@ function updateLibraryMenu(user) {
     const libraryMenuOptions = document.querySelector('.libraryMenuOptions');
 
     if (libraryMenuOptions) {
-        getUserViews(apiClient, userId).then(function (result) {
+        getUserViews(serverId, userId).then(function (result) {
             const items = result;
             let html = `<h3 class="sidebarHeader">${globalize.translate('HeaderMedia')}</h3>`;
             html += items.map(function (i) {
@@ -608,7 +604,7 @@ function updateMenuForPageType(isDashboardPage, isLibraryPage) {
     }
 
     if (requiresUserRefresh) {
-        ServerConnections.user(getCurrentApiClient()).then(updateUserInHeader);
+        ServerConnections.getUserInfo(getCurrentServerId()).then(updateUserInHeader);
     }
 }
 
@@ -644,7 +640,7 @@ function refreshLibraryDrawer(user) {
     if (user) {
         Promise.resolve(user);
     } else {
-        ServerConnections.user(getCurrentApiClient()).then(function (userResult) {
+        ServerConnections.getUserInfo(getCurrentServerId()).then(function (userResult) {
             refreshLibraryInfoInDrawer(userResult);
             updateLibraryMenu(userResult.localUser);
         });
@@ -829,8 +825,6 @@ Events.on(ServerConnections, 'apiclientcreated', (e, newApiClient) => {
 });
 
 Events.on(ServerConnections, 'localusersignedin', function (e, user) {
-    const currentApiClient = ServerConnections.getApiClient(user.ServerId);
-
     currentDrawerType = null;
     currentUser = {
         localUser: user
@@ -838,7 +832,7 @@ Events.on(ServerConnections, 'localusersignedin', function (e, user) {
 
     loadNavDrawer();
 
-    ServerConnections.user(currentApiClient).then(function (userResult) {
+    ServerConnections.getUserInfo(user.ServerId).then(function (userResult) {
         currentUser = userResult;
         updateUserInHeader(userResult);
     });

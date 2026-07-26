@@ -136,8 +136,7 @@ class AppRouter {
         // TODO: Refactor this so it only gets items, not strings.
         if (typeof item === 'string') {
             const api = ServerConnections.getApi(serverId);
-            const apiClient = serverId ? ServerConnections.getApiClient(serverId) : ServerConnections.currentApiClient();
-            const userId = apiClient.getCurrentUserId();
+            const userId = ServerConnections.getCurrentUserId(serverId);
 
             queryClient
                 .fetchQuery(getItemQuery(api, item, userId))
