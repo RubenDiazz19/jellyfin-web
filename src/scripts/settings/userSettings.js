@@ -197,7 +197,7 @@ export class UserSettings {
 
     /**
      * Get or set 'Cinema Mode' state.
-     * @param {boolean|undefined} val - Flag to enable 'Cinema Mode' or undefined.
+     * @param {boolean} [val] - Flag to enable 'Cinema Mode'. Omit to read.
      * @return {boolean} 'Cinema Mode' state.
      */
     enableCinemaMode(val) {

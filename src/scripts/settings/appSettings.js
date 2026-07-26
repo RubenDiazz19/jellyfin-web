@@ -158,7 +158,7 @@ class AppSettings {
 
     /**
      * Get or set 'Always burn in subtitle when transcoding' state.
-     * @param {boolean|undefined} val - Flag to enable 'Always burn in subtitle when transcoding' or undefined.
+     * @param {boolean} [val] - Flag to enable 'Always burn in subtitle when transcoding'. Omit to read.
      * @return {boolean} 'Always burn in subtitle when transcoding' state.
      */
     alwaysBurnInSubtitleWhenTranscoding(val) {

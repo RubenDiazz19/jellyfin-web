@@ -40,6 +40,27 @@ export const getParameterByName = (name: string, url?: string | null | undefined
 };
 
 /**
+ * Gets the value of a search parameter from a full url.
+ *
+ * Unlike {@link getParameterByName}, which expects a bare search string, this
+ * accepts an absolute or relative url and only looks at its query.
+ *
+ * A missing url yields an empty string rather than throwing: callers read
+ * parameters off urls that are only built on some code paths.
+ * @param url The url to read.
+ * @param name The parameter name.
+ * @returns The parameter value, or an empty string if it is not present.
+ */
+export const getUrlParameter = (url: string | null | undefined, name: string) => {
+    const queryStart = url?.indexOf('?') ?? -1;
+    if (queryStart === -1) return '';
+
+    // The fragment is not part of the query.
+    const query = (url as string).substring(queryStart + 1).split('#')[0];
+    return new URLSearchParams(query).get(name) || '';
+};
+
+/**
  * Safely decodes a URI component, returning the original value if decoding fails.
  * This is useful for handling cases where the value may or may not be encoded.
  * @param value The value to decode.
