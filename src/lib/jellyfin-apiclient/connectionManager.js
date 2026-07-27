@@ -1,6 +1,7 @@
 import { AUTHORIZATION_HEADER } from '@jellyfin/sdk/lib/constants';
 import { getAuthorizationHeader } from '@jellyfin/sdk/lib/utils';
 import { MINIMUM_VERSION } from '@jellyfin/sdk/lib/versions';
+import { getAuthenticationApi } from '@jellyfin/sdk/lib/utils/api/authentication-api';
 import { getSessionApi } from '@jellyfin/sdk/lib/utils/api/session-api';
 
 import events from 'utils/events';
@@ -216,6 +217,36 @@ export default class ConnectionManager {
 
             return onLocalUserSignIn(server, apiClient.serverAddress(), result.User);
         }
+
+        /**
+         * Autentica contra un servidor usando el SDK.
+         *
+         * La llamada HTTP la hace el SDK, pero los efectos posteriores —
+         * persistir el token en las credenciales, dejar el cliente y el Api
+         * autenticados y disparar `localusersignedin` — siguen pasando por
+         * `onAuthenticated`, que es el único sitio donde se tocan las
+         * credenciales guardadas.
+         * @param {object} [apiClient] El cliente del servidor contra el que autenticar.
+         * @param {string} username Nombre de usuario.
+         * @param {string} password Contraseña.
+         * @returns {Promise<import('@jellyfin/sdk/lib/generated-client/models/authentication-result').AuthenticationResult>} El resultado de autenticación.
+         */
+        self.authenticateUserByName = async (apiClient, username, password) => {
+            if (!apiClient) {
+                throw new Error('[ConnectionManager] no hay cliente contra el que autenticar');
+            }
+
+            apiClient._sdk ??= toApi(apiClient);
+
+            const { data: result } = await getAuthenticationApi(apiClient._sdk)
+                .authenticateUserByName({
+                    authenticateUserByName: { Username: username, Pw: password }
+                });
+
+            await onAuthenticated(apiClient, result, {}, true);
+
+            return result;
+        };
 
         function afterConnected(apiClient, options = {}) {
             if (options.reportCapabilities !== false) {

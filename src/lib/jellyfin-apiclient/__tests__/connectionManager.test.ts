@@ -71,6 +71,19 @@ vi.mock('utils/jellyfin-apiclient/compat', () => ({
     toApi: () => ({ update: () => undefined, subscribe: () => undefined })
 }));
 
+// La autenticación pasa por el SDK; lo que importa aquí es qué se hace con
+// el resultado, no la llamada HTTP en sí.
+let authResponder: () => Promise<{ data: unknown }> = () =>
+    Promise.reject(new Error('sin responder de auth'));
+
+vi.mock('@jellyfin/sdk/lib/utils/api/authentication-api', () => ({
+    getAuthenticationApi: () => ({
+        authenticateUserByName: () => authResponder()
+    })
+}));
+
+import events from 'utils/events';
+
 import ConnectionManager from '../connectionManager';
 import { ConnectionState } from '../connectionState';
 import { ConnectionMode } from '../connectionMode';
@@ -114,6 +127,7 @@ const SYSTEM_INFO = { Id: 'srv1', ServerName: 'Casa', Version: '99.0.0', LocalAd
 
 beforeEach(() => {
     ajaxHandler = (request) => Promise.reject(new Error(`sin handler para ${request.url}`));
+    authResponder = () => Promise.reject(new Error('sin responder de auth'));
     // La capa de conexión es muy verbosa por consola; sin esto la salida de
     // la suite queda inservible.
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -334,6 +348,74 @@ describe('capa de conexión', () => {
             expect(saved?.UserId).toBeNull();
             // El servidor sigue en la lista: cerrar sesión no es olvidarlo.
             expect(provider._dump().Servers).toHaveLength(1);
+        });
+    });
+
+    describe('autenticación por SDK', () => {
+        // Antes esto lo hacía apiClient.authenticateUserByName(). Al pasar la
+        // llamada al SDK, lo que no puede perderse es la cadena de efectos:
+        // si el token no se persiste, el usuario vuelve al login en cada
+        // recarga aunque el login haya ido bien.
+        async function connectedManager() {
+            ajaxHandler = () => Promise.resolve(SYSTEM_INFO);
+            const { manager, provider } = makeManager();
+            const result = await manager.connectToServer({ ManualAddress: 'http://casa:8096' });
+            return { manager, provider, apiClient: result.ApiClient };
+        }
+
+        it('un login correcto persiste token y usuario en las credenciales', async () => {
+            const { manager, provider, apiClient } = await connectedManager();
+            authResponder = () => Promise.resolve({
+                data: { AccessToken: 'nuevo-token', ServerId: 'srv1', User: { Id: 'u1', Name: 'Ruben' } }
+            });
+
+            await manager.authenticateUserByName(apiClient, 'ruben', 'clave');
+
+            const saved = provider._dump().Servers.find((s) => s.Id === 'srv1');
+            expect(saved?.AccessToken).toBe('nuevo-token');
+            expect(saved?.UserId).toBe('u1');
+        });
+
+        it('deja el cliente autenticado para las llamadas siguientes', async () => {
+            const { manager, apiClient } = await connectedManager();
+            authResponder = () => Promise.resolve({
+                data: { AccessToken: 'nuevo-token', ServerId: 'srv1', User: { Id: 'u1', Name: 'Ruben' } }
+            });
+
+            await manager.authenticateUserByName(apiClient, 'ruben', 'clave');
+
+            expect(apiClient.accessToken()).toBe('nuevo-token');
+        });
+
+        it('avisa a la app de que hay sesión iniciada', async () => {
+            const { manager, apiClient } = await connectedManager();
+            authResponder = () => Promise.resolve({
+                data: { AccessToken: 'tok', ServerId: 'srv1', User: { Id: 'u1', Name: 'Ruben' } }
+            });
+
+            const signedIn = vi.fn();
+            events.on(manager, 'localusersignedin', signedIn);
+
+            await manager.authenticateUserByName(apiClient, 'ruben', 'clave');
+
+            expect(signedIn).toHaveBeenCalled();
+        });
+
+        it('un login fallido propaga el error y no toca las credenciales', async () => {
+            const { manager, provider, apiClient } = await connectedManager();
+            const before = JSON.stringify(provider._dump());
+            authResponder = () => Promise.reject(
+                Object.assign(new Error('401'), { response: { status: 401 } })
+            );
+
+            await expect(manager.authenticateUserByName(apiClient, 'ruben', 'mal'))
+                .rejects.toThrow();
+            expect(JSON.stringify(provider._dump())).toBe(before);
+        });
+
+        it('sin cliente falla de forma explícita en vez de autenticar contra nada', async () => {
+            const { manager } = makeManager();
+            await expect(manager.authenticateUserByName(undefined, 'a', 'b')).rejects.toThrow();
         });
     });
 
