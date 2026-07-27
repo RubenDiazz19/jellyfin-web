@@ -7,6 +7,7 @@ import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
+import { MoreButton } from '../components/controls/MoreButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
 import { MC, useResponsive } from '../theme/responsive';
@@ -151,6 +152,21 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                             'Volver a ver desde E01' :
                             `Continuar con E${nextEp?.n} · ${nextEp?.title}`}
                 </div>
+
+                {/* Opciones de la temporada (entre ellas editar su carátula).
+                    Requiere el id real del server: en los datos de prototipo
+                    no hay nada contra lo que editar. */}
+                {season.jfId && (
+                    <div style={{ marginTop: 18 }}>
+                        <MoreButton
+                            id={season.jfId}
+                            size={20}
+                            type='season'
+                            itemTitle={`${show.title} · Temporada ${season.n}`}
+                            nextEpisodeId={nextEp?.jfId}
+                        />
+                    </div>
+                )}
             </div>
 
             <ScrollHint label='Episodios' />

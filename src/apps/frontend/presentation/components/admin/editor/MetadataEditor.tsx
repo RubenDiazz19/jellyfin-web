@@ -9,7 +9,11 @@ import { ImagesTab } from './ImagesTab';
 import { MetadataTab } from './MetadataTab';
 import { SubtitlesTab } from './SubtitlesTab';
 
-export type EditorKind = 'movie' | 'show' | 'episode';
+export type EditorKind = 'movie' | 'show' | 'season' | 'episode';
+
+// Las temporadas no tienen endpoint en /Items/RemoteSearch: en Jellyfin se
+// identifican a través de la serie, no por sí solas.
+export type IdentifiableKind = Exclude<EditorKind, 'season'>;
 type Tab = 'metadata' | 'identify' | 'images' | 'subtitles';
 
 type Props = {
@@ -29,6 +33,8 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
     }, [onClose]);
 
     const canSubs = kind === 'episode' || kind === 'movie';
+    // Ver IdentifiableKind: las temporadas no se identifican por sí solas.
+    const canIdentify = kind !== 'season';
 
     return ReactDOM.createPortal(
         <div
@@ -69,7 +75,9 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
                     borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 13
                 }}>
                     <TabButton label='Metadatos' active={tab === 'metadata'} onClick={() => setTab('metadata')} />
-                    <TabButton label='Identificar' active={tab === 'identify'} onClick={() => setTab('identify')} />
+                    {canIdentify && (
+                        <TabButton label='Identificar' active={tab === 'identify'} onClick={() => setTab('identify')} />
+                    )}
                     <TabButton label='Imágenes' active={tab === 'images'} onClick={() => setTab('images')} />
                     {canSubs && (
                         <TabButton label='Subtítulos' active={tab === 'subtitles'} onClick={() => setTab('subtitles')} />
@@ -78,7 +86,7 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
 
                 <div style={{ overflowY: 'auto', padding: 22, flex: 1 }}>
                     {tab === 'metadata' && <MetadataTab itemId={itemId} onClose={onClose} />}
-                    {tab === 'identify' && <IdentifyTab itemId={itemId} kind={kind} onClose={onClose} />}
+                    {tab === 'identify' && canIdentify && <IdentifyTab itemId={itemId} kind={kind} onClose={onClose} />}
                     {tab === 'images' && <ImagesTab itemId={itemId} />}
                     {tab === 'subtitles' && canSubs && <SubtitlesTab itemId={itemId} />}
                 </div>

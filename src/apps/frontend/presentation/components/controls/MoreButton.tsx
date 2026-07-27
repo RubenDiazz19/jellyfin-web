@@ -24,7 +24,7 @@ type Props = {
     id: string;
     size?: number;
     items?: MenuItem[];
-    type?: 'movie' | 'show' | 'episode';
+    type?: 'movie' | 'show' | 'season' | 'episode';
     itemTitle?: string;
     // Para series: id del episodio con el que arrancar "Reproducir siguiente
     // episodio" / "Reproducir todo". Si no viene, esas opciones se ocultan.
@@ -136,7 +136,7 @@ export function MoreButton({
     };
 
     // -------- construcción de menús --------
-    const menuByType: Record<'movie' | 'show' | 'episode', MenuItem[]> = {
+    const menuByType: Record<'movie' | 'show' | 'season' | 'episode', MenuItem[]> = {
         movie: [
             { label: 'Reproducir desde el principio', fn: () => doPlay({ fromStart: true }) },
             { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
@@ -163,6 +163,23 @@ export function MoreButton({
             { label: 'Añadir a colección', fn: () => setAddTo('collection') },
             { isDivider: true },
             { label: 'Identificar…', fn: () => setEditor('identify') },
+            { label: 'Actualizar metadatos', fn: doRefresh },
+            { label: 'Editar metadatos', fn: () => setEditor('metadata') },
+            { label: 'Editar imágenes', fn: () => setEditor('images') },
+            { isDivider: true },
+            { label: 'Eliminar', fn: doDelete, danger: true }
+        ],
+        season: [
+            ...(nextEpisodeId ? [
+                { label: 'Reproducir siguiente episodio', fn: doPlayNextEpisode },
+                { label: 'Reproducir todo', fn: doPlayNextEpisode }
+            ] : []),
+            { isDivider: true },
+            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
+            { label: 'Añadir a colección', fn: () => setAddTo('collection') },
+            { isDivider: true },
+            // Sin "Identificar…": las temporadas no tienen búsqueda remota
+            // propia en Jellyfin, se identifican desde la serie.
             { label: 'Actualizar metadatos', fn: doRefresh },
             { label: 'Editar metadatos', fn: () => setEditor('metadata') },
             { label: 'Editar imágenes', fn: () => setEditor('images') },

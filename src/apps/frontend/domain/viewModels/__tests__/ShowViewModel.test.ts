@@ -74,4 +74,70 @@ describe('ShowViewModel', () => {
         expect(vm.show.value).toEqual(other);
         expect(vm.showFor('sh1')).toBeNull();
     });
+
+    describe('refresco ante mutaciones', () => {
+        // El contenido de una serie (temporadas, episodios) tiene ids propios.
+        // Al editar la carátula de una temporada la mutación llega con el id
+        // de esa temporada, no con el de la serie: si no se reconociera como
+        // propia, el cambio no se vería hasta recargar la página.
+        const nested = {
+            id: 'sh1',
+            title: 'Dandelion',
+            seasons: [
+                { n: 1, jfId: 'season-1', episodes: [{ n: 1, jfId: 'ep-1' }] },
+                { n: 2, jfId: 'season-2', episodes: [] }
+            ]
+        };
+
+        async function loadedVm() {
+            const getShow = vi.fn(() => Promise.resolve(nested));
+            const vm = new ShowViewModel(mockApi(getShow));
+            await vm.load('sh1');
+            return { vm, getShow };
+        }
+
+        function mutate(itemId?: string) {
+            window.dispatchEvent(new CustomEvent('jfp-item-mutated', { detail: { itemId } }));
+        }
+
+        test('recarga cuando muta una temporada de la serie cargada', async () => {
+            const { getShow } = await loadedVm();
+            mutate('season-2');
+            await Promise.resolve();
+
+            expect(getShow).toHaveBeenCalledTimes(2);
+        });
+
+        test('recarga cuando muta un episodio de la serie cargada', async () => {
+            const { getShow } = await loadedVm();
+            mutate('ep-1');
+            await Promise.resolve();
+
+            expect(getShow).toHaveBeenCalledTimes(2);
+        });
+
+        test('recarga cuando muta la propia serie', async () => {
+            const { getShow } = await loadedVm();
+            mutate('sh1');
+            await Promise.resolve();
+
+            expect(getShow).toHaveBeenCalledTimes(2);
+        });
+
+        test('ignora mutaciones de items ajenos a la serie', async () => {
+            const { getShow } = await loadedVm();
+            mutate('otra-cosa');
+            await Promise.resolve();
+
+            expect(getShow).toHaveBeenCalledTimes(1);
+        });
+
+        test('una mutación sin id (alcance desconocido) refresca por si acaso', async () => {
+            const { getShow } = await loadedVm();
+            mutate();
+            await Promise.resolve();
+
+            expect(getShow).toHaveBeenCalledTimes(2);
+        });
+    });
 });

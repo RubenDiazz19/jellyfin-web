@@ -7,12 +7,12 @@ import {
 } from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
-import type { EditorKind } from './MetadataEditor';
+import type { IdentifiableKind } from './MetadataEditor';
 import { Field, Muted, PrimaryBtn, SecondaryBtn, TextInput } from './primitives';
 
 type Props = {
     itemId: string;
-    kind: EditorKind;
+    kind: IdentifiableKind;
     onClose: () => void;
 };
 
@@ -31,8 +31,8 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
         }).catch(() => {});
     }, [itemId]);
 
-    const kindApi = (kind === 'show' ? 'Series' : kind === 'movie' ? 'Movie' : 'Episode') as
-        'Movie' | 'Series' | 'Episode';
+    const kindApi: 'Movie' | 'Series' | 'Episode' =
+        kind === 'show' ? 'Series' : kind === 'movie' ? 'Movie' : 'Episode';
 
     const doSearch = async () => {
         setSearching(true);

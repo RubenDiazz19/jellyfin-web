@@ -51,6 +51,11 @@ export class ShowViewModel {
     // Refresca la serie actual si alguien mutó ese mismo item (edición de
     // imagen, metadatos, played, favorito). Las mutaciones ya limpian el
     // showCache, así que el getShow siguiente pega al servidor.
+    //
+    // La mutación puede venir con el id de una temporada o de un episodio —
+    // p. ej. al cambiar la carátula de una temporada — y ese contenido vive
+    // dentro del Show que tenemos cargado. Si solo se comparase con el id de
+    // la serie, esos cambios no se verían hasta recargar la página.
     private subscribeToMutations() {
         if (this.subscribed || typeof window === 'undefined') return;
         this.subscribed = true;
@@ -58,10 +63,18 @@ export class ShowViewModel {
             const detail = (e as CustomEvent<ItemMutatedDetail>).detail;
             const current = this.show.value;
             if (!current) return;
-            if (detail?.itemId && detail.itemId !== current.id) return;
+            if (detail?.itemId && !belongsToShow(current, detail.itemId)) return;
             void this.load(current.id);
         });
     }
+}
+
+/** ¿El item mutado es la serie, una de sus temporadas o uno de sus episodios? */
+function belongsToShow(show: Show, itemId: string): boolean {
+    if (itemId === show.id) return true;
+    return show.seasons.some((season) =>
+        season.jfId === itemId || season.episodes.some((ep) => ep.jfId === itemId)
+    );
 }
 
 export const showVM = new ShowViewModel(apiService);
