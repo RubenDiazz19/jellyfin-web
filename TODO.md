@@ -78,22 +78,35 @@ legacy; en la fase 4 esa función deja de mirar al `ApiClient`.
       `getApis`, `getUserInfo`
 - [x] `useApi` deja de exponer `__legacyApiClient__` (nadie lo consumía)
 
-**Capa de conexión** — pendiente:
+**Capa de conexión** — en curso:
 
+- [x] Red de pruebas de la capa de conexión (`connectionManager.test.ts`, 24
+      tests): qué se persiste, en qué orden se prueban las direcciones, cuándo
+      se invalida un token, qué sobrevive a un logout. Era el bloqueante para
+      poder tocar nada de aquí.
+- [x] Migrar lo que cuelga de esa capa: `auth.ts` (autentica por
+      `getAuthenticationApi` del SDK), `ServerContentPage.tsx` (html de
+      plugins por el `axiosInstance`), `ConnectionRequired.tsx` (`isLoggedIn` y
+      `getCurrentUser` al SDK), `serviceworker.js` (dependía de un
+      `window.connectionManager` inexistente) y `Dashboard.onServerChanged`
+      (estaba muerto)
 - [ ] Reescribir `connectionManager.js` para crear SDK `Api` directamente sin pasar por `ApiClient` legacy
 - [ ] Simplificar `ServerConnections.js` como wrapper fino del SDK
-- [ ] Migrar lo que cuelga de esa capa: `ConnectionRequired.tsx`, `auth.ts`,
-      `ServerContentPage.tsx`, `Dashboard.serverAddress()`, `serviceworker.js`
 - [ ] Eliminar `compat.ts` (el puente ya no hace falta)
 - [ ] Eliminar `createApiClient.ts`
 - [ ] Eliminar dependencia `jellyfin-apiclient` de `package.json`
 - [ ] Eliminar `src/lib/jellyfin-apiclient/` y `src/utils/jellyfin-apiclient/`
 - [ ] Limpiar `global.d.ts` y `apiclient.d.ts` (quitar `window.ApiClient`, `window.Events`)
 
-> Por qué queda pendiente: `connectionManager.js` son 846 líneas que guardan
-> las credenciales, descubren y fusionan servidores, prueban direcciones y
-> llevan `connect()` / `logout()` / `validateAuthentication()` / wake-on-LAN.
-> No hay ni un test que lo cubra, y equivocarse ahí deja al usuario fuera de
-> su servidor o le borra los servidores guardados. Es un trabajo aparte, con
-> su propia red de pruebas, no un paso más de esta migración. Todo lo demás
-> ya está en SDK: el cliente legacy solo sigue vivo dentro de esa capa.
+> Estado: ningún consumidor llama ya a la API del `ApiClient` legacy. Lo que
+> queda fuera de la capa son handles opacos (`auth.ts`,
+> `ConnectionRequired.tsx`) que se pasan de vuelta a la fachada y desaparecen
+> con la reescritura.
+>
+> Lo que sigue pendiente es el núcleo: `connectionManager.js` son 846 líneas
+> que guardan las credenciales, descubren y fusionan servidores, prueban
+> direcciones y llevan `connect()` / `logout()` / `validateAuthentication()`.
+> Ahora hay red de pruebas sobre esa orquestación, así que la reescritura ya
+> no es a ciegas — pero los tests cubren la lógica, no los flujos de UI
+> (wizard, selección de servidor, login), que siguen sin cobertura y conviene
+> probar a mano tras tocar la capa.
