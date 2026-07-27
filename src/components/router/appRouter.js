@@ -257,10 +257,6 @@ class AppRouter {
             return '#/dashboard';
         }
 
-        if (item === 'recordedtv') {
-            return '#/livetv?tab=3&serverId=' + serverId;
-        }
-
         if (item === 'nextup') {
             return '#/list?type=nextup&serverId=' + serverId;
         }
@@ -303,67 +299,8 @@ class AppRouter {
             return urlForList;
         }
 
-        if (item === 'livetv') {
-            if (options.section === 'programs') {
-                return '#/livetv?tab=0&serverId=' + serverId;
-            }
-            if (options.section === 'guide') {
-                return '#/livetv?tab=1&serverId=' + serverId;
-            }
-
-            if (options.section === 'movies') {
-                return '#/list?type=Programs&IsMovie=true&serverId=' + serverId;
-            }
-
-            if (options.section === 'shows') {
-                return '#/list?type=Programs&IsSeries=true&IsMovie=false&IsNews=false&serverId=' + serverId;
-            }
-
-            if (options.section === 'sports') {
-                return '#/list?type=Programs&IsSports=true&serverId=' + serverId;
-            }
-
-            if (options.section === 'kids') {
-                return '#/list?type=Programs&IsKids=true&serverId=' + serverId;
-            }
-
-            if (options.section === 'news') {
-                return '#/list?type=Programs&IsNews=true&serverId=' + serverId;
-            }
-
-            if (options.section === 'onnow') {
-                return '#/list?type=Programs&IsAiring=true&serverId=' + serverId;
-            }
-
-            if (options.section === 'channels') {
-                return '#/livetv?tab=2&serverId=' + serverId;
-            }
-
-            if (options.section === 'dvrschedule') {
-                return '#/livetv?tab=4&serverId=' + serverId;
-            }
-
-            if (options.section === 'seriesrecording') {
-                return '#/livetv?tab=5&serverId=' + serverId;
-            }
-
-            return '#/livetv?serverId=' + serverId;
-        }
-
-        if (itemType == 'SeriesTimer') {
-            return '#/details?seriesTimerId=' + id + '&serverId=' + serverId;
-        }
-
-        if (item.CollectionType == CollectionType.Livetv) {
-            return `#/livetv?collectionType=${item.CollectionType}`;
-        }
-
         if (item.Type === 'Genre') {
             url = '#/list?genreId=' + item.Id + '&serverId=' + serverId;
-
-            if (context === 'livetv') {
-                url += '&type=Programs';
-            }
 
             if (options.parentId) {
                 url += '&parentId=' + options.parentId;
@@ -519,24 +456,12 @@ class AppRouter {
         return this.show('queue');
     }
 
-    showGuide() {
-        return this.show('livetv?tab=1');
-    }
-
     goHome() {
         return this.show('home');
     }
 
     showSearch() {
         return this.show('search');
-    }
-
-    showLiveTV() {
-        return this.show('livetv');
-    }
-
-    showRecordedTV() {
-        return this.show('livetv?tab=3');
     }
 
     showFavorites() {

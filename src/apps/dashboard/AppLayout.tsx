@@ -4,12 +4,11 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { FC, StrictMode, useCallback, useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 
 import AppBody from 'components/AppBody';
 import OffsetAppBar from 'components/OffsetAppBar';
 import AppToolbar from 'components/toolbar/AppToolbar';
-import ServerButton from 'components/toolbar/ServerButton';
 import { DRAWER_WIDTH } from 'components/ResponsiveDrawer';
 import { appRouter } from 'components/router/appRouter';
 import ThemeCss from 'components/ThemeCss';
@@ -19,19 +18,16 @@ import { useLocale } from 'hooks/useLocale';
 import AppTabs from './components/AppTabs';
 import AppDrawer from './components/drawer/AppDrawer';
 import HelpButton from './components/toolbar/HelpButton';
-import { DASHBOARD_APP_PATHS } from './routes/routes';
 
 import './AppOverrides.scss';
 
 export const Component: FC = () => {
     const [ isDrawerActive, setIsDrawerActive ] = useState(false);
-    const location = useLocation();
     const { user } = useApi();
     const { dateFnsLocale } = useLocale();
 
     const isMediumScreen = useMediaQuery((t: Theme) => t.breakpoints.up('md'));
-    const isMetadataManager = location.pathname.startsWith(`/${DASHBOARD_APP_PATHS.MetadataManager}`);
-    const isDrawerAvailable = Boolean(user) && !isMetadataManager;
+    const isDrawerAvailable = Boolean(user);
     const isDrawerOpen = isDrawerActive && isDrawerAvailable;
 
     const onToggleDrawer = useCallback(() => {
@@ -81,10 +77,6 @@ export const Component: FC = () => {
                             }
                             className='dashboard-appBar'
                         >
-                            {isMetadataManager && (
-                                <ServerButton />
-                            )}
-
                             <AppTabs isDrawerOpen={isDrawerOpen} />
                         </AppToolbar>
                     </OffsetAppBar>

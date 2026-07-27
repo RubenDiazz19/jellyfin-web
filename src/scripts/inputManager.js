@@ -137,15 +137,6 @@ export function handleCommand(commandName, options) {
         'previouschapter': () => {
             playbackManager.previousChapter();
         },
-        'guide': () => {
-            appRouter.showGuide();
-        },
-        'recordedtv': () => {
-            appRouter.showRecordedTV();
-        },
-        'livetv': () => {
-            appRouter.showLiveTV();
-        },
         'mute': () => {
             playbackManager.setMute(true);
         },

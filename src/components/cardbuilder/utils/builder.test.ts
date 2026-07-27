@@ -5,7 +5,6 @@ import {
     getDesiredAspect,
     getPostersPerRow,
     isResizable,
-    isUsingLiveTvNaming,
     resolveAction, resolveCardBoxCssClasses,
     resolveCardCssClasses,
     resolveCardImageContainerCssClasses,
@@ -406,12 +405,6 @@ describe('getPostersPerRow', () => {
             });
         });
     });
-});
-
-test('isUsingLiveTvNaming', () => {
-    expect(isUsingLiveTvNaming('Program')).toEqual(true);
-    expect(isUsingLiveTvNaming('Timer')).toEqual(true);
-    expect(isUsingLiveTvNaming('Recording')).toEqual(true);
 });
 
 describe('isResizable', () => {

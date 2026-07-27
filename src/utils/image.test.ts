@@ -49,7 +49,7 @@ const LIBRARY_ICON_MAP: Record<string, string | undefined> = {
     Boxsets: 'video_library',
     Folders: 'folder',
     Homevideos: 'photo',
-    Livetv: 'live_tv',
+    Livetv: 'folder',
     Movies: 'movie',
     Music: 'music_note',
     Musicvideos: 'music_video',

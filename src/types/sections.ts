@@ -8,16 +8,6 @@ export interface ParametersOptions {
     sortBy?: ItemSortBy[];
     sortOrder?: SortOrder[];
     includeItemTypes?: BaseItemKind[];
-    isAiring?: boolean;
-    hasAired?: boolean;
-    isMovie?: boolean;
-    isSports?: boolean;
-    isKids?: boolean;
-    isNews?: boolean;
-    isSeries?: boolean;
-    isInProgress?: boolean;
-    IsActive?: boolean;
-    IsScheduled?: boolean;
     limit?: number;
     imageTypeLimit?: number;
 }
@@ -25,11 +15,7 @@ export interface ParametersOptions {
 export enum SectionApiMethod {
     ResumeItems = 'resumeItems',
     LatestMedia = 'latestMedia',
-    NextUp = 'nextUp',
-    RecommendedPrograms = 'RecommendedPrograms',
-    LiveTvPrograms = 'liveTvPrograms',
-    Recordings = 'Recordings',
-    RecordingFolders = 'RecordingFolders'
+    NextUp = 'nextUp'
 }
 
 export enum SectionType {
@@ -41,18 +27,8 @@ export enum SectionType {
     LatestMusic = 'latestmusic',
     RecentlyPlayedMusic = 'recentlyplayedmusic',
     FrequentlyPlayedMusic = 'frequentlyplayedmusic',
-    ActivePrograms = 'ActivePrograms',
-    UpcomingEpisodes = 'UpcomingEpisodes',
-    UpcomingMovies = 'UpcomingMovies',
-    UpcomingSports = 'UpcomingSports',
-    UpcomingKids = 'UpcomingKids',
-    UpcomingNews = 'UpcomingNews',
-    LatestRecordings = 'LatestRecordings',
-    RecordingFolders = 'RecordingFolders',
-    ActiveRecordings = 'ActiveRecordings',
     ContinueReading = 'ContinueReading',
     LatestBooks = 'LatestBooks',
-    UpcomingRecordings = 'UpcomingRecordings',
     LatestMusicVideos = 'latestmusicvideos',
     RecentlyPlayedMusicVideos = 'recentlyplayedmusicvideos',
     FrequentlyPlayedMusicVideos = 'frequentlyplayedmusicvideos',

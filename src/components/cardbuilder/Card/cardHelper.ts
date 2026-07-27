@@ -10,7 +10,6 @@ import itemHelper from 'components/itemHelper';
 import { ItemAction } from 'constants/itemAction';
 import globalize from 'lib/globalize';
 import datetime from 'scripts/datetime';
-import { isUsingLiveTvNaming } from '../utils/builder';
 import { getDataAttributes } from 'utils/items';
 import { ItemKind } from 'types/base/models/item-kind';
 import { ItemMediaKind } from 'types/base/models/item-media-kind';
@@ -235,9 +234,7 @@ function getParentTitle(
             }), {});
     } else {
         return {
-            title: isUsingLiveTvNaming(item.Type) ?
-                item.Name :
-                item.SeriesName
+            title: item.SeriesName
                   || item.Series
                   || item.Album
                   || item.AlbumArtist
@@ -630,11 +627,6 @@ function getParentTitleOrTitle(
         } else {
             return { title: item.SeriesName };
         }
-    } else if (isUsingLiveTvNaming(item.Type)) {
-        if (!item.EpisodeTitle && !item.IndexNumber) {
-            setTitleAdded(true);
-        }
-        return { title: item.Name };
     } else {
         const parentTitle =
             item.SeriesName

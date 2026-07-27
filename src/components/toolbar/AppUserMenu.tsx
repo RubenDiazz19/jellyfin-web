@@ -3,7 +3,6 @@ import AppSettingsAlt from '@mui/icons-material/AppSettingsAlt';
 import Close from '@mui/icons-material/Close';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import Download from '@mui/icons-material/Download';
-import Edit from '@mui/icons-material/Edit';
 import Logout from '@mui/icons-material/Logout';
 import PhonelinkLock from '@mui/icons-material/PhonelinkLock';
 import Settings from '@mui/icons-material/Settings';
@@ -148,17 +147,6 @@ const AppUserMenu: FC<AppUserMenuProps> = ({
                         <DashboardIcon />
                     </ListItemIcon>
                     <ListItemText primary={globalize.translate('TabDashboard')} />
-                </MenuItem>,
-                <MenuItem
-                    key='admin-metadata-link'
-                    component={Link}
-                    to='/metadata'
-                    onClick={onMenuClose}
-                >
-                    <ListItemIcon>
-                        <Edit />
-                    </ListItemIcon>
-                    <ListItemText primary={globalize.translate('MetadataManager')} />
                 </MenuItem>
             ])}
 

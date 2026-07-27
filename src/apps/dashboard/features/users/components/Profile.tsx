@@ -181,8 +181,6 @@ const Profile = ({ userDto }: ProfileProps) => {
         (page.querySelector('.chkRemoteControlSharedDevices') as HTMLInputElement).checked = !!userDto.Policy?.EnableSharedDeviceControl;
         (page.querySelector('.chkEnableRemoteControlOtherUsers') as HTMLInputElement).checked = !!userDto.Policy?.EnableRemoteControlOfOtherUsers;
         (page.querySelector('.chkEnableDownloading') as HTMLInputElement).checked = !!userDto.Policy?.EnableContentDownloading;
-        (page.querySelector('.chkManageLiveTv') as HTMLInputElement).checked = !!userDto.Policy?.EnableLiveTvManagement;
-        (page.querySelector('.chkEnableLiveTvAccess') as HTMLInputElement).checked = !!userDto.Policy?.EnableLiveTvAccess;
         (page.querySelector('.chkEnableMediaPlayback') as HTMLInputElement).checked = !!userDto.Policy?.EnableMediaPlayback;
         (page.querySelector('.chkEnableAudioPlaybackTranscoding') as HTMLInputElement).checked = !!userDto.Policy?.EnableAudioPlaybackTranscoding;
         (page.querySelector('.chkEnableVideoPlaybackTranscoding') as HTMLInputElement).checked = !!userDto.Policy?.EnableVideoPlaybackTranscoding;
@@ -219,8 +217,6 @@ const Profile = ({ userDto }: ProfileProps) => {
             user.Policy.IsHidden = (page.querySelector('.chkIsHidden') as HTMLInputElement).checked;
             user.Policy.IsDisabled = (page.querySelector('.chkDisabled') as HTMLInputElement).checked;
             user.Policy.EnableRemoteControlOfOtherUsers = (page.querySelector('.chkEnableRemoteControlOtherUsers') as HTMLInputElement).checked;
-            user.Policy.EnableLiveTvManagement = (page.querySelector('.chkManageLiveTv') as HTMLInputElement).checked;
-            user.Policy.EnableLiveTvAccess = (page.querySelector('.chkEnableLiveTvAccess') as HTMLInputElement).checked;
             user.Policy.EnableSharedDeviceControl = (page.querySelector('.chkRemoteControlSharedDevices') as HTMLInputElement).checked;
             user.Policy.EnableMediaPlayback = (page.querySelector('.chkEnableMediaPlayback') as HTMLInputElement).checked;
             user.Policy.EnableAudioPlaybackTranscoding = (page.querySelector('.chkEnableAudioPlaybackTranscoding') as HTMLInputElement).checked;
@@ -380,21 +376,6 @@ const Profile = ({ userDto }: ProfileProps) => {
                     className='chkEnableSubtitleManagement'
                     title='AllowSubtitleManagement'
                 />
-                <div id='featureAccessFields' className='verticalSection'>
-                    <h2 className='paperListLabel'>
-                        {globalize.translate('HeaderFeatureAccess')}
-                    </h2>
-                    <div className='checkboxList paperList' style={{ padding: '.5em 1em' }}>
-                        <CheckBoxElement
-                            className='chkEnableLiveTvAccess'
-                            title='OptionAllowBrowsingLiveTv'
-                        />
-                        <CheckBoxElement
-                            className='chkManageLiveTv'
-                            title='OptionAllowManageLiveTv'
-                        />
-                    </div>
-                </div>
                 <div className='verticalSection'>
                     <h2 className='paperListLabel'>
                         {globalize.translate('HeaderPlayback')}

@@ -6,9 +6,7 @@ import type { SectionType } from './sections';
 export interface SectionsView {
     suggestionSections?: SectionType[];
     favoriteSections?: SectionType[];
-    programSections?: SectionType[];
     isMovieRecommendations?: boolean;
-    isLiveTvUpcomingRecordings?: boolean;
 }
 
 export interface LibraryTabContent {

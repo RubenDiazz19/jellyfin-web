@@ -16,7 +16,6 @@ import { getStudioApi } from '@jellyfin/sdk/lib/utils/api/studio-api';
 import { getShowApi } from '@jellyfin/sdk/lib/utils/api/show-api';
 import { getPlaylistApi } from '@jellyfin/sdk/lib/utils/api/playlist-api';
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
-import { getLiveTvApi } from '@jellyfin/sdk/lib/utils/api/live-tv-api';
 import { getUserDataApi } from '@jellyfin/sdk/lib/utils/api/user-data-api';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import datetime from 'scripts/datetime';
@@ -24,12 +23,11 @@ import globalize from 'lib/globalize';
 
 import { type JellyfinApiContext, useApi } from './useApi';
 import { getAlphaPickerQuery, getFieldsQuery, getFiltersQuery, getLimitQuery } from 'utils/items';
-import { getProgramSections, getSuggestionSections } from 'utils/sections';
+import { getSuggestionSections } from 'utils/sections';
 
 import type { LibraryViewSettings, ParentId } from 'types/library';
 import { type Section, type SectionType, SectionApiMethod } from 'types/sections';
 import { LibraryTab } from 'types/libraryTab';
-import { ItemKind } from 'types/base/models/item-kind';
 import type { ItemDtoQueryResult } from 'types/base/models/item-dto-query-result';
 import type { ItemDto } from 'types/base/models/item-dto';
 
@@ -138,12 +136,11 @@ const fetchGetStudios = async (
 
 export const useGetStudios = (parentId: ParentId, itemType: BaseItemKind[]) => {
     const currentApi = useApi();
-    const isLivetv = parentId === 'livetv';
     return useQuery({
         queryKey: ['Studios', parentId, itemType],
         queryFn: ({ signal }) =>
             fetchGetStudios(currentApi, parentId, itemType, { signal }),
-        enabled: !!currentApi.api && !!currentApi.user?.Id && !!parentId && !isLivetv
+        enabled: !!currentApi.api && !!currentApi.user?.Id && !!parentId
     });
 };
 
@@ -174,14 +171,13 @@ export const useGetQueryFiltersLegacy = (
     itemType: BaseItemKind[]
 ) => {
     const currentApi = useApi();
-    const isLivetv = parentId === 'livetv';
     return useQuery({
         queryKey: ['QueryFiltersLegacy', parentId, itemType],
         queryFn: ({ signal }) =>
             fetchGetQueryFiltersLegacy(currentApi, parentId, itemType, {
                 signal
             }),
-        enabled: !!currentApi.api && !!currentApi.user?.Id && !!parentId && !isLivetv
+        enabled: !!currentApi.api && !!currentApi.user?.Id && !!parentId
     });
 };
 
@@ -277,21 +273,6 @@ const fetchGetItemsViewByType = async (
                     }
                 );
                 break;
-            case LibraryTab.Channels: {
-                response = await getLiveTvApi(api).getLiveTvChannels(
-                    {
-                        userId: user.Id,
-                        fields: [ItemFields.PrimaryImageAspectRatio],
-                        startIndex: libraryViewSettings.StartIndex,
-                        isFavorite,
-                        enableImageTypes: [ImageType.Primary]
-                    },
-                    {
-                        signal: options?.signal
-                    }
-                );
-                break;
-            }
             case LibraryTab.Folders: {
                 response = await getLibraryApi(api).getItems(
                     {
@@ -317,17 +298,6 @@ const fetchGetItemsViewByType = async (
                 );
                 break;
             }
-            case LibraryTab.SeriesTimers:
-                response = await getLiveTvApi(api).getSeriesTimers(
-                    {
-                        sortBy: 'SortName',
-                        sortOrder: SortOrder.Ascending
-                    },
-                    {
-                        signal: options?.signal
-                    }
-                );
-                break;
             default: {
                 response = await getLibraryApi(api).getItems(
                     {
@@ -406,8 +376,6 @@ export const useGetItemsViewByType = (
                 LibraryTab.PhotoAlbums,
                 LibraryTab.Photos,
                 LibraryTab.Videos,
-                LibraryTab.Channels,
-                LibraryTab.SeriesTimers,
                 LibraryTab.MusicVideos,
                 LibraryTab.Folders,
                 LibraryTab.Mixed
@@ -596,92 +564,6 @@ export const useTogglePlayedMutation = () => {
     });
 };
 
-export type GroupsTimers = {
-    name: string;
-    timerInfo: ItemDto[];
-};
-
-function groupsTimers(timers: ItemDto[], indexByDate?: boolean) {
-    const items = timers.map(function (t) {
-        t.Type = ItemKind.Timer;
-        return t;
-    });
-    const groups: GroupsTimers[] = [];
-    let currentGroupName = '';
-    let currentGroup: ItemDto[] = [];
-
-    for (const item of items) {
-        let dateText = '';
-
-        if (indexByDate !== false && item.StartDate) {
-            try {
-                const premiereDate = datetime.parseISO8601Date(item.StartDate, true);
-                dateText = datetime.toLocaleDateString(premiereDate, {
-                    weekday: 'long',
-                    month: 'short',
-                    day: 'numeric'
-                });
-            } catch (err) {
-                console.error('error parsing premiereDate:' + item.StartDate + '; error: ' + err);
-            }
-        }
-
-        if (dateText != currentGroupName) {
-            if (currentGroup.length) {
-                groups.push({
-                    name: currentGroupName,
-                    timerInfo: currentGroup
-                });
-            }
-
-            currentGroupName = dateText;
-            currentGroup = [item];
-        } else {
-            currentGroup.push(item);
-        }
-    }
-
-    if (currentGroup.length) {
-        groups.push({
-            name: currentGroupName,
-            timerInfo: currentGroup
-        });
-    }
-    return groups;
-}
-
-const fetchGetTimers = async (
-    currentApi: JellyfinApiContext,
-    indexByDate?: boolean,
-    options?: AxiosRequestConfig
-) => {
-    const { api } = currentApi;
-    if (api) {
-        const response = await getLiveTvApi(api).getTimers(
-            {
-                isActive: false,
-                isScheduled: true
-            },
-            {
-                signal: options?.signal
-            }
-        );
-
-        const timers = (response.data.Items as ItemDto[]) || [];
-
-        return groupsTimers(timers, indexByDate);
-    }
-};
-
-export const useGetTimers = (isUpcomingRecordingsEnabled: boolean, indexByDate?: boolean) => {
-    const currentApi = useApi();
-    return useQuery({
-        queryKey: ['Timers', { isUpcomingRecordingsEnabled, indexByDate }],
-        queryFn: ({ signal }) => fetchGetTimers(currentApi, indexByDate, { signal }),
-        enabled: !!currentApi.api && !!currentApi.user?.Id && isUpcomingRecordingsEnabled
-    });
-};
-
 const fetchGetSectionItems = async (
     currentApi: JellyfinApiContext,
     parentId: ParentId,
@@ -692,84 +574,6 @@ const fetchGetSectionItems = async (
     if (api && user?.Id) {
         let response;
         switch (section.apiMethod) {
-            case SectionApiMethod.RecommendedPrograms: {
-                response = (
-                    await getLiveTvApi(api).getRecommendedPrograms(
-                        {
-                            userId: user.Id,
-                            limit: 12,
-                            imageTypeLimit: 1,
-                            enableImageTypes: [ImageType.Primary, ImageType.Thumb, ImageType.Backdrop],
-                            enableTotalRecordCount: false,
-                            fields: [
-                                ItemFields.ChannelInfo,
-                                ItemFields.PrimaryImageAspectRatio,
-                                ItemFields.MediaSourceCount
-                            ],
-                            ...section.parametersOptions
-                        },
-                        {
-                            signal: options?.signal
-                        }
-                    )
-                ).data.Items;
-                break;
-            }
-            case SectionApiMethod.LiveTvPrograms: {
-                response = (
-                    await getLiveTvApi(api).getLiveTvPrograms(
-                        {
-                            userId: user.Id,
-                            limit: 12,
-                            imageTypeLimit: 1,
-                            enableImageTypes: [ImageType.Primary, ImageType.Thumb, ImageType.Backdrop],
-                            enableTotalRecordCount: false,
-                            fields: [
-                                ItemFields.ChannelInfo,
-                                ItemFields.PrimaryImageAspectRatio
-                            ],
-                            ...section.parametersOptions
-                        },
-                        {
-                            signal: options?.signal
-                        }
-                    )
-                ).data.Items;
-                break;
-            }
-            case SectionApiMethod.Recordings: {
-                response = (
-                    await getLiveTvApi(api).getRecordings(
-                        {
-                            userId: user.Id,
-                            enableImageTypes: [ImageType.Primary, ImageType.Thumb, ImageType.Backdrop],
-                            enableTotalRecordCount: false,
-                            fields: [
-                                ItemFields.CanDelete,
-                                ItemFields.PrimaryImageAspectRatio
-                            ],
-                            ...section.parametersOptions
-                        },
-                        {
-                            signal: options?.signal
-                        }
-                    )
-                ).data.Items;
-                break;
-            }
-            case SectionApiMethod.RecordingFolders: {
-                response = (
-                    await getLiveTvApi(api).getRecordingFolders(
-                        {
-                            userId: user.Id
-                        },
-                        {
-                            signal: options?.signal
-                        }
-                    )
-                ).data.Items;
-                break;
-            }
             case SectionApiMethod.NextUp: {
                 response = (
                     await getShowApi(api).getNextUp(
@@ -912,18 +716,5 @@ export const useGetSuggestionSectionsWithItems = (
         queryFn: ({ signal }) =>
             getSectionsWithItems(currentApi, parentId, sections, suggestionSectionType, { signal }),
         enabled: !!currentApi.api && !!currentApi.user?.Id && !!parentId
-    });
-};
-
-export const useGetProgramsSectionsWithItems = (
-    parentId: ParentId,
-    programSectionType: SectionType[]
-) => {
-    const currentApi = useApi();
-    const sections = getProgramSections();
-    return useQuery({
-        queryKey: ['ProgramSectionWithItems', { programSectionType }],
-        queryFn: ({ signal }) => getSectionsWithItems(currentApi, parentId, sections, programSectionType, { signal }),
-        enabled: !!currentApi.api && !!currentApi.user?.Id
     });
 };

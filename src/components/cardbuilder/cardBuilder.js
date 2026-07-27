@@ -30,12 +30,11 @@ import itemShortcuts from '../shortcuts';
 import 'elements/emby-button/paper-icon-button-light';
 
 import './card.scss';
-import '../guide/programs.scss';
+import '../mediainfo/programs.scss';
 import {
     getDesiredAspect,
     getPostersPerRow,
     isResizable,
-    isUsingLiveTvNaming,
     resolveAction,
     resolveCardBoxCssClasses,
     resolveCardCssClasses,
@@ -384,12 +383,6 @@ function getCardFooterText(item, options, footerClass, progressHtml, flags, urls
             } else {
                 lines.push(escapeHtml(item.SeriesName));
             }
-        } else if (isUsingLiveTvNaming(item.Type)) {
-            lines.push(escapeHtml(item.Name));
-
-            if (!item.EpisodeTitle && !item.IndexNumber) {
-                titleAdded = true;
-            }
         } else {
             const parentTitle = item.SeriesName || item.Series || item.Album || item.AlbumArtist || '';
 
@@ -432,7 +425,7 @@ function getCardFooterText(item, options, footerClass, progressHtml, flags, urls
                     .join(' / ');
                 lines.push(artistText);
             } else {
-                lines.push(escapeHtml(isUsingLiveTvNaming(item.Type) ? item.Name : (item.SeriesName || item.Series || item.Album || item.AlbumArtist || '')));
+                lines.push(escapeHtml(item.SeriesName || item.Series || item.Album || item.AlbumArtist || ''));
             }
         }
 
@@ -1045,7 +1038,7 @@ export function getDefaultText(item, options) {
         return `<span class="cardImageIcon material-icons ${icon}" aria-hidden="true"></span>`;
     }
 
-    const defaultName = isUsingLiveTvNaming(item.Type) ? item.Name : itemHelper.getDisplayName(item);
+    const defaultName = itemHelper.getDisplayName(item);
     return '<div class="cardText cardDefaultText">' + escapeHtml(defaultName) + '</div>';
 }
 

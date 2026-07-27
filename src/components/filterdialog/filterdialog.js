@@ -79,14 +79,10 @@ function loadDynamicFilters(context, api, userId, itemQuery) {
 function updateFilterControls(context, options) {
     const query = options.query;
 
-    if (options.mode === 'livetvchannels') {
-        context.querySelector('.chkFavorite').checked = query.IsFavorite === true;
-    } else {
-        for (const elem of context.querySelectorAll('.chkStandardFilter')) {
-            const filters = `,${query.Filters || ''}`;
-            const filterName = elem.getAttribute('data-filter');
-            elem.checked = filters.includes(`,${filterName}`);
-        }
+    for (const elem of context.querySelectorAll('.chkStandardFilter')) {
+        const filters = `,${query.Filters || ''}`;
+        const filterName = elem.getAttribute('data-filter');
+        elem.checked = filters.includes(`,${filterName}`);
     }
 
     for (const elem of context.querySelectorAll('.chkVideoTypeFilter')) {
@@ -130,7 +126,7 @@ function triggerChange(instance) {
 }
 
 function setVisibility(context, options) {
-    if (options.mode === 'livetvchannels' || options.mode === 'albums' || options.mode === 'artists' || options.mode === 'albumartists' || options.mode === 'songs') {
+    if (options.mode === 'albums' || options.mode === 'artists' || options.mode === 'albumartists' || options.mode === 'songs') {
         hideByClass(context, 'videoStandard');
     }
 
@@ -201,16 +197,6 @@ class FilterDialog {
     /**
          * @private
          */
-    onFavoriteChange(elem) {
-        const query = this.options.query;
-        query.StartIndex = 0;
-        query.IsFavorite = !!elem.checked || null;
-        triggerChange(this);
-    }
-
-    /**
-         * @private
-         */
     onStandardFilterChange(elem) {
         const query = this.options.query;
         const filterName = elem.getAttribute('data-filter');
@@ -268,14 +254,8 @@ class FilterDialog {
     bindEvents(context) {
         const query = this.options.query;
 
-        if (this.options.mode === 'livetvchannels') {
-            for (const elem of context.querySelectorAll('.chkFavorite')) {
-                elem.addEventListener('change', () => this.onFavoriteChange(elem));
-            }
-        } else {
-            for (const elem of context.querySelectorAll('.chkStandardFilter')) {
-                elem.addEventListener('change', () => this.onStandardFilterChange(elem));
-            }
+        for (const elem of context.querySelectorAll('.chkStandardFilter')) {
+            elem.addEventListener('change', () => this.onStandardFilterChange(elem));
         }
 
         for (const elem of context.querySelectorAll('.chkVideoTypeFilter')) {

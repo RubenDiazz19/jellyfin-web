@@ -6,16 +6,6 @@ export const HelpLinks = [
         paths: ['/dashboard/libraries'],
         url: 'https://jellyfin.org/docs/general/server/libraries'
     }, {
-        paths: [
-            '/dashboard/livetv',
-            '/dashboard/livetv/tuner',
-            '/dashboard/recordings'
-        ],
-        url: 'https://jellyfin.org/docs/general/server/live-tv/'
-    }, {
-        paths: ['/dashboard/livetv/guide'],
-        url: 'https://jellyfin.org/docs/general/server/live-tv/setup-guide#adding-guide-data'
-    }, {
         paths: ['/dashboard/networking'],
         url: 'https://jellyfin.org/docs/general/networking/'
     }, {

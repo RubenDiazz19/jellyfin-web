@@ -1,4 +1,3 @@
-import { CollectionType } from '@jellyfin/sdk/lib/generated-client/models/collection-type';
 import { BaseItemKind } from '@jellyfin/sdk/lib/generated-client/models/base-item-kind';
 import { LocationType } from '@jellyfin/sdk/lib/generated-client/models/location-type';
 import { RecordingStatus } from '@jellyfin/sdk/lib/generated-client/models/recording-status';
@@ -88,10 +87,6 @@ export function supportsAddingToPlaylist(item) {
     if (isLocalItem(item)) {
         return false;
     }
-    if (item.CollectionType === CollectionType.Livetv) {
-        return false;
-    }
-
     return item.MediaType || item.IsFolder || item.Type === 'Genre' || item.Type === 'MusicGenre' || item.Type === 'MusicArtist';
 }
 
@@ -290,11 +285,6 @@ export function canConvert (item, user) {
         return false;
     }
 
-    const collectionType = item.CollectionType;
-    if (collectionType === CollectionType.Livetv) {
-        return false;
-    }
-
     const type = item.Type;
     if (type === 'Channel' || type === 'Person' || type === 'Year' || type === 'Program' || type === 'Timer' || type === 'SeriesTimer') {
         return false;
@@ -309,11 +299,6 @@ export function canConvert (item, user) {
 
 export function canRefreshMetadata (item, user) {
     if (user.Policy.IsAdministrator) {
-        const collectionType = item.CollectionType;
-        if (collectionType === CollectionType.Livetv) {
-            return false;
-        }
-
         return item.Type !== 'Timer' && item.Type !== 'SeriesTimer' && item.Type !== 'Program'
             && item.Type !== 'TvChannel'
             && !(item.Type === 'Recording' && item.Status !== 'Completed')

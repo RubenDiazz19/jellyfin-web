@@ -104,8 +104,6 @@ export function getLibraryIcon(library: CollectionType | string | null | undefin
         case CollectionType.Homevideos:
         case CollectionType.Photos:
             return 'photo';
-        case CollectionType.Livetv:
-            return 'live_tv';
         case CollectionType.Tvshows:
             return 'tv';
         case CollectionType.Trailers:

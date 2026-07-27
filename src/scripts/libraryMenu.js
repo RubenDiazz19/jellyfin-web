@@ -331,7 +331,6 @@ function refreshLibraryInfoInDrawer(user) {
         html += globalize.translate('HeaderAdmin');
         html += '</h3>';
         html += `<a is="emby-linkbutton" class="navMenuOption lnkMediaFolder lnkManageServer" data-itemid="dashboard" href="#/dashboard"><span class="material-icons navMenuOptionIcon dashboard" aria-hidden="true"></span><span class="navMenuOptionText">${globalize.translate('TabDashboard')}</span></a>`;
-        html += `<a is="emby-linkbutton" class="navMenuOption lnkMediaFolder editorViewMenu" data-itemid="editor" href="#/metadata"><span class="material-icons navMenuOptionIcon mode_edit" aria-hidden="true"></span><span class="navMenuOptionText">${globalize.translate('MetadataManager')}</span></a>`;
         html += '</div>';
     }
 
@@ -395,18 +394,7 @@ function getUserViews(serverId, userId) {
             const list = [];
 
             for (let i = 0, length = items.length; i < length; i++) {
-                const view = items[i];
-                list.push(view);
-
-                if (view.CollectionType == 'livetv') {
-                    view.icon = 'live_tv';
-                    const guideView = Object.assign({}, view);
-                    guideView.Name = globalize.translate('Guide');
-                    guideView.ImageTags = {};
-                    guideView.icon = 'dvr';
-                    guideView.url = '#/livetv?tab=1';
-                    list.push(guideView);
-                }
+                list.push(items[i]);
             }
 
             return list;
@@ -531,11 +519,9 @@ function updateCastIcon() {
 }
 
 function updateLibraryNavLinks(page) {
-    const isLiveTvPage = page.classList.contains('liveTvPage');
     const isChannelsPage = page.classList.contains('channelsPage');
-    const isEditorPage = page.classList.contains('metadataEditorPage');
     const isMySyncPage = page.classList.contains('mySyncPage');
-    const id = isLiveTvPage || isChannelsPage || isEditorPage || isMySyncPage || page.classList.contains('allLibraryPage') ? '' : getTopParentId() || '';
+    const id = isChannelsPage || isMySyncPage || page.classList.contains('allLibraryPage') ? '' : getTopParentId() || '';
     const elems = document.getElementsByClassName('lnkMediaFolder');
 
     for (let i = 0, length = elems.length; i < length; i++) {
@@ -543,10 +529,6 @@ function updateLibraryNavLinks(page) {
         const itemId = lnkMediaFolder.getAttribute('data-itemid');
 
         if (isChannelsPage && itemId === 'channels') {
-            lnkMediaFolder.classList.add('navMenuOption-selected');
-        } else if (isLiveTvPage && itemId === 'livetv') {
-            lnkMediaFolder.classList.add('navMenuOption-selected');
-        } else if (isEditorPage && itemId === 'editor') {
             lnkMediaFolder.classList.add('navMenuOption-selected');
         } else if (isMySyncPage && itemId === 'manageoffline' && window.location.href.toString().indexOf('mode=download') != -1) {
             lnkMediaFolder.classList.add('navMenuOption-selected');

@@ -2,7 +2,6 @@
  * "Shortcut" action handlers for BaseItems.
  */
 import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
-import { getLiveTvApi } from '@jellyfin/sdk/lib/utils/api/live-tv-api';
 import { getPlaylistApi } from '@jellyfin/sdk/lib/utils/api/playlist-api';
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 
@@ -75,25 +74,13 @@ function playAllFromHere(card, serverId, queue) {
     }
 }
 
-function showProgramDialog(item) {
-    // El editor de grabaciones de Live TV se retiró con el frontend legacy.
-    console.warn('[shortcuts] recording UI was removed', item?.Id);
-}
-
 function getItem(button) {
     button = dom.parentWithAttribute(button, 'data-id');
     const serverId = button.getAttribute('data-serverid');
     const id = button.getAttribute('data-id');
-    const type = button.getAttribute('data-type');
 
     const api = ServerConnections.getApi(serverId);
 
-    if (type === 'Timer') {
-        return getLiveTvApi(api).getTimer({ timerId: id }).then(({ data }) => data);
-    }
-    if (type === 'SeriesTimer') {
-        return getLiveTvApi(api).getSeriesTimer({ timerId: id }).then(({ data }) => data);
-    }
     return getLibraryApi(api).getItem({
         itemId: id,
         userId: ServerConnections.getCurrentUserId(serverId)
@@ -223,11 +210,8 @@ function showPlayMenu(card, target) {
 function executeAction(card, target, action) {
     target = target || card;
 
-    let id = card.getAttribute('data-id');
-
-    if (!id) {
+    if (!card.getAttribute('data-id')) {
         card = dom.parentWithAttribute(card, 'data-id');
-        id = card.getAttribute('data-id');
     }
 
     const item = getItemInfoFromCard(card);
@@ -251,9 +235,6 @@ function executeAction(card, target, action) {
                 context: card.getAttribute('data-context'),
                 parentId: card.getAttribute('data-parentid')
             });
-            break;
-        case ItemAction.ProgramDialog:
-            showProgramDialog(item);
             break;
         case ItemAction.InstantMix:
             playbackManager.instantMix({
@@ -303,9 +284,6 @@ function executeAction(card, target, action) {
             break;
         case ItemAction.SetPlaylistIndex:
             playbackManager.setCurrentPlaylistItem(card.getAttribute('data-playlistitemid'));
-            break;
-        case ItemAction.Record:
-            onRecordCommand(serverId, id, type, card.getAttribute('data-timerid'), card.getAttribute('data-seriestimerid'));
             break;
         case ItemAction.Menu: {
             const options = target.getAttribute('data-playoptions') === 'false' ?
@@ -383,10 +361,6 @@ function editItem() {
     return Promise.reject(new Error('Editing is no longer available'));
 }
 
-function onRecordCommand() {
-    // La gestión de grabaciones se retiró con el frontend legacy.
-}
-
 export function onClick(e) {
     const card = dom.parentWithClass(e.target, 'itemAction');
 
@@ -414,7 +388,7 @@ export function onClick(e) {
 function onCommand(e) {
     const cmd = e.detail.command;
 
-    if (cmd === 'play' || cmd === 'resume' || cmd === 'record' || cmd === 'menu' || cmd === 'info') {
+    if (cmd === 'play' || cmd === 'resume' || cmd === 'menu' || cmd === 'info') {
         const target = e.target;
         const card = dom.parentWithClass(target, 'itemAction') || dom.parentWithAttribute(target, 'data-id');
 

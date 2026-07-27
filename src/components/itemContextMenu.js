@@ -153,30 +153,6 @@ export async function getCommands(options) {
         }
     }
 
-    if ((item.Type === 'Timer') && user.Policy.EnableLiveTvManagement && options.cancelTimer !== false) {
-        commands.push({
-            name: globalize.translate('CancelRecording'),
-            id: 'canceltimer',
-            icon: 'cancel'
-        });
-    }
-
-    if ((item.Type === 'Recording' && item.Status === 'InProgress') && user.Policy.EnableLiveTvManagement && options.cancelTimer !== false) {
-        commands.push({
-            name: globalize.translate('CancelRecording'),
-            id: 'canceltimer',
-            icon: 'cancel'
-        });
-    }
-
-    if ((item.Type === 'SeriesTimer') && user.Policy.EnableLiveTvManagement && options.cancelTimer !== false) {
-        commands.push({
-            name: globalize.translate('CancelSeries'),
-            id: 'cancelseriestimer',
-            icon: 'cancel'
-        });
-    }
-
     if (appHost.supports(AppFeature.FileDownload)) {
         // CanDownload should probably be updated to return true for these items?
         if (user.Policy.EnableContentDownloading && DOWNLOAD_ALL_TYPES.includes(item.Type)) {
@@ -549,26 +525,11 @@ function executeCommand(item, id, options) {
                     getResolveFunction(resolve, id, true)();
                 });
                 break;
-            case 'canceltimer':
-                deleteTimer(resolve, id);
-                break;
-            case 'cancelseriestimer':
-                deleteSeriesTimer(resolve, id);
-                break;
             default:
                 reject();
                 break;
         }
     });
-}
-
-// La gestión de timers de grabación se retiró con el frontend legacy.
-function deleteTimer(resolve, command) {
-    getResolveFunction(resolve, command)();
-}
-
-function deleteSeriesTimer(resolve, command) {
-    getResolveFunction(resolve, command)();
 }
 
 function play(item, resume, queue, queueNext) {

@@ -99,9 +99,6 @@ const ParentalControl = ({ userId }: ParentalControlProps) => {
             name: globalize.translate('Channels'),
             value: UnratedItem.ChannelContent
         }, {
-            name: globalize.translate('LiveTV'),
-            value: UnratedItem.LiveTvChannel
-        }, {
             name: globalize.translate('Movies'),
             value: UnratedItem.Movie
         }, {
