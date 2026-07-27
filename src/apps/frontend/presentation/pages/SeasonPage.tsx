@@ -135,13 +135,29 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     <span>{season.year}</span>
                 </div>
 
-                <div style={{ marginTop: 36 }}>
+                <div style={{
+                    marginTop: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 26
+                }}>
                     <PlayBtn
                         size={104}
                         onClick={startPlay}
                         progress={inProgress ? nextEp.watched : null}
                         watched={season.watched >= season.total && season.total > 0}
                     />
+                    {/* Opciones de la temporada (entre ellas editar su
+                        carátula). Requiere el id real del server: en los
+                        datos de prototipo no hay nada contra lo que editar.
+                        alignItems: center en la fila lo centra verticalmente
+                        con el círculo del play. */}
+                    {season.jfId && (
+                        <MoreButton
+                            id={season.jfId}
+                            size={28}
+                            type='season'
+                            itemTitle={`${show.title} · Temporada ${season.n}`}
+                            nextEpisodeId={nextEp?.jfId}
+                        />
+                    )}
                 </div>
                 <div style={{
                     marginTop: 22, fontFamily: T.ui, fontSize: 12, color: 'rgba(255,255,255,0.62)'
@@ -152,21 +168,6 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                             'Volver a ver desde E01' :
                             `Continuar con E${nextEp?.n} · ${nextEp?.title}`}
                 </div>
-
-                {/* Opciones de la temporada (entre ellas editar su carátula).
-                    Requiere el id real del server: en los datos de prototipo
-                    no hay nada contra lo que editar. */}
-                {season.jfId && (
-                    <div style={{ marginTop: 18 }}>
-                        <MoreButton
-                            id={season.jfId}
-                            size={20}
-                            type='season'
-                            itemTitle={`${show.title} · Temporada ${season.n}`}
-                            nextEpisodeId={nextEp?.jfId}
-                        />
-                    </div>
-                )}
             </div>
 
             <ScrollHint label='Episodios' />
