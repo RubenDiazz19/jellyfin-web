@@ -302,8 +302,8 @@ Events.on(ServerConnections, 'localusersignedout', () => {
 /**
  * Remove subscriptions when the page unloads
  */
-window.onbeforeunload = () => {
+window.addEventListener('beforeunload', () => {
     subscriptions.forEach(unsub => {
         unsub();
     });
-};
+});

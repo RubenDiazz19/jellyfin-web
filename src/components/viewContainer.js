@@ -69,14 +69,7 @@ export function loadView(options) {
         }
 
         if (currentPage) {
-            if (newViewInfo.hasScript && window.$) {
-                mainAnimatedPages.removeChild(currentPage);
-                view = $(view).appendTo(mainAnimatedPages)[0];
-            } else {
-                mainAnimatedPages.replaceChild(view, currentPage);
-            }
-        } else if (newViewInfo.hasScript && window.$) {
-            view = $(view).appendTo(mainAnimatedPages)[0];
+            mainAnimatedPages.replaceChild(view, currentPage);
         } else {
             mainAnimatedPages.appendChild(view);
         }
@@ -111,11 +104,6 @@ export function loadView(options) {
 
                 if (!options.cancel && previousAnimatable) {
                     afterAnimate(allPages, pageIndex);
-                }
-
-                if (window.$) {
-                    $.mobile = $.mobile || {};
-                    $.mobile.activePage = view;
                 }
 
                 return view;
@@ -215,11 +203,6 @@ export function tryRestoreView(options) {
 
                 if (!options.cancel && previousAnimatable) {
                     afterAnimate(allPages, index);
-                }
-
-                if (window.$) {
-                    $.mobile = $.mobile || {};
-                    $.mobile.activePage = view;
                 }
 
                 return view;
