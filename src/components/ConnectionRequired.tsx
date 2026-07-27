@@ -1,6 +1,7 @@
+import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { FunctionComponent, useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import type { ApiClient, ConnectResponse } from 'jellyfin-apiclient';
+import type { ConnectResponse } from 'jellyfin-apiclient';
 
 import { ConnectionState, ServerConnections } from 'lib/jellyfin-apiclient';
 
@@ -37,9 +38,9 @@ const ERROR_STATES = [
     ConnectionState.Unavailable
 ];
 
-const fetchPublicSystemInfo = async (apiClient: ApiClient) => {
+const fetchPublicSystemInfo = async (serverAddress: string) => {
     const infoResponse = await fetch(
-        `${apiClient.serverAddress()}/System/Info/Public`,
+        `${serverAddress}/System/Info/Public`,
         { cache: 'no-cache' }
     );
 
@@ -105,7 +106,7 @@ const ConnectionRequired: FunctionComponent<ConnectionRequiredProps> = ({
             throw new Error('No ApiClient available');
         }
 
-        const systemInfo = await fetchPublicSystemInfo(apiClient);
+        const systemInfo = await fetchPublicSystemInfo(apiClient.serverAddress());
         if (systemInfo?.StartupWizardCompleted) {
             console.info('[ConnectionRequired] startup wizard is complete, redirecting home');
             navigate(BounceRoutes.Home);
@@ -121,7 +122,7 @@ const ConnectionRequired: FunctionComponent<ConnectionRequiredProps> = ({
         if (firstConnection.State === ConnectionState.ServerSignIn) {
             // Verify the wizard is complete
             try {
-                const systemInfo = await fetchPublicSystemInfo(firstConnection.ApiClient);
+                const systemInfo = await fetchPublicSystemInfo(firstConnection.ApiClient.serverAddress());
                 if (!systemInfo?.StartupWizardCompleted) {
                     // Update the current ApiClient
                     // TODO: Is there a better place to handle this?
@@ -145,10 +146,13 @@ const ConnectionRequired: FunctionComponent<ConnectionRequiredProps> = ({
     }, [bounce, navigate]);
 
     const validateUserAccess = useCallback(async () => {
-        const client = ServerConnections.currentApiClient();
+        const api = ServerConnections.getApi();
+        // Equivalente al isLoggedIn() del cliente legacy: hay sesión cuando
+        // hay token y un usuario asociado.
+        const isLoggedIn = Boolean(api?.accessToken) && Boolean(ServerConnections.getCurrentUserId());
 
         // If this is a user route, ensure a user is logged in
-        if ((level === AccessLevel.Admin || level === AccessLevel.User) && !client?.isLoggedIn()) {
+        if ((level === AccessLevel.Admin || level === AccessLevel.User) && !isLoggedIn) {
             try {
                 console.warn('[ConnectionRequired] unauthenticated user attempted to access user route');
                 bounce(await ServerConnections.connect())
@@ -164,7 +168,7 @@ const ConnectionRequired: FunctionComponent<ConnectionRequiredProps> = ({
         // If this is an admin route, ensure the user has access
         if (level === AccessLevel.Admin) {
             try {
-                const user = await client?.getCurrentUser();
+                const user = api ? (await getUserApi(api).getCurrentUser()).data : undefined;
                 if (!user?.Policy?.IsAdministrator) {
                     console.warn('[ConnectionRequired] normal user attempted to access admin route');
                     bounce(await ServerConnections.connect())
@@ -184,7 +188,8 @@ const ConnectionRequired: FunctionComponent<ConnectionRequiredProps> = ({
 
     useEffect(() => {
         // Check connection status on initial page load
-        const apiClient = ServerConnections.currentApiClient();
+        const initialApi = ServerConnections.getApi();
+        const wasLoggedIn = Boolean(initialApi?.accessToken) && Boolean(ServerConnections.getCurrentUserId());
         const connection = Promise.resolve(ServerConnections.firstConnection ? null : ServerConnections.connect());
         connection.then(firstConnection => {
             console.debug('[ConnectionRequired] connection state', firstConnection?.State);
@@ -198,7 +203,7 @@ const ConnectionRequired: FunctionComponent<ConnectionRequiredProps> = ({
                         console.error('[ConnectionRequired] could not validate wizard status', err);
                     });
             } else if (
-                firstConnection && firstConnection.State !== ConnectionState.SignedIn && !apiClient?.isLoggedIn()
+                firstConnection && firstConnection.State !== ConnectionState.SignedIn && !wasLoggedIn
             ) {
                 handleIncompleteWizard(firstConnection)
                     .catch(err => {

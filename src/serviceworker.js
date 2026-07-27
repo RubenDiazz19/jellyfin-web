@@ -197,39 +197,15 @@ sw.addEventListener('fetch', (event) => {
     // Todo lo demás pasa directo a la red.
 });
 
-// ── Notificaciones (código legacy conservado tal cual) ──────────────────
+// ── Notificaciones ─────────────────────────────────────────────────────
 
-function getApiClient(serverId) {
-    return Promise.resolve(window.connectionManager.getApiClient(serverId));
-}
-
-function executeAction(action, data, serverId) {
-    return getApiClient(serverId).then(function (apiClient) {
-        switch (action) {
-            case 'cancel-install':
-                return apiClient.cancelPackageInstallation(data.id);
-            case 'restart':
-                return apiClient.restartServer();
-            default:
-                clients.openWindow('/');
-                return Promise.resolve();
-        }
-    });
-}
-
+// Las acciones de notificación (cancelar instalación, reiniciar servidor)
+// llamaban a un ApiClient sacado de `window.connectionManager`. Aquí no había
+// ni una cosa ni la otra: un service worker no tiene `window`, y nadie
+// asignaba nunca `connectionManager`, así que cualquier acción lanzaba un
+// ReferenceError en lugar de hacer nada. Abrir la app es lo que de verdad
+// ocurría en el único camino que funcionaba, y es lo que se hace ahora.
 sw.addEventListener('notificationclick', function (event) {
-    const notification = event.notification;
-    notification.close();
-
-    const data = notification.data;
-    const serverId = data.serverId;
-    const action = event.action;
-
-    if (!action) {
-        clients.openWindow('/');
-        event.waitUntil(Promise.resolve());
-        return;
-    }
-
-    event.waitUntil(executeAction(action, data, serverId));
+    event.notification.close();
+    event.waitUntil(clients.openWindow('/'));
 }, false);

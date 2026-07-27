@@ -94,10 +94,6 @@ export function getCurrentUserId() {
     return ServerConnections.getCurrentUserId() ?? null;
 }
 
-export function onServerChanged(_userId, _accessToken, apiClient) {
-    ServerConnections.setLocalApiClient(apiClient);
-}
-
 export function logout() {
     ServerConnections.logout().then(function () {
         // Clear the query cache
@@ -240,7 +236,6 @@ const Dashboard = {
     hideLoadingMsg,
     logout,
     navigate,
-    onServerChanged,
     processErrorResponse,
     processPluginConfigurationUpdateResult,
     processServerConfigurationUpdateResult,

@@ -1,3 +1,5 @@
+import { AUTHORIZATION_HEADER } from '@jellyfin/sdk/lib/constants';
+import { getAuthorizationHeader } from '@jellyfin/sdk/lib/utils';
 import { FunctionComponent, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -32,15 +34,30 @@ const ServerContentPage: FunctionComponent<ServerContentPageProps> = ({ view }) 
             viewManager.tryRestoreView(viewOptions)
                 .catch(async (result?: RestoreViewFailResponse) => {
                     if (!result?.cancelled) {
-                        const apiClient = ServerConnections.currentApiClient();
+                        const api = ServerConnections.getApi();
+                        if (!api) return;
 
-                        // Fetch the view html from the server and translate it
-                        const viewHtml = await apiClient?.get(apiClient.getUrl(view + location.search))
-                            .then((html: string) => globalize.translateHtml(html));
+                        // Fetch the view html from the server and translate it.
+                        // These are plugin configuration pages: the response is
+                        // html, not json, so it goes through the axios instance
+                        // directly instead of a generated endpoint.
+                        const { data } = await api.axiosInstance.get<string>(
+                            api.getUri(view + location.search),
+                            {
+                                responseType: 'text',
+                                headers: {
+                                    [AUTHORIZATION_HEADER]: getAuthorizationHeader(
+                                        api.clientInfo,
+                                        api.deviceInfo,
+                                        api.accessToken
+                                    )
+                                }
+                            }
+                        );
 
                         viewManager.loadView({
                             ...viewOptions,
-                            view: viewHtml
+                            view: globalize.translateHtml(data)
                         });
                     }
                 });
