@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { VideoPlayerViewModel } from '../VideoPlayerViewModel';
 import type { ApiService } from '../../../data/api/ApiService';
 import type { PlaybackDecision } from '../../../data/api/playback';
+import type { MediaSegment } from '../../../data/api/segments';
 
 vi.mock('../../../data/api/ApiService', () => ({ apiService: {} }));
 
@@ -50,7 +51,7 @@ function decision(overrides: Partial<PlaybackDecision> = {}): PlaybackDecision {
     };
 }
 
-function mockApi(dec = decision()): ApiService {
+function mockApi(dec = decision(), segments: MediaSegment[] = []): ApiService {
     return {
         playback: {
             getPlaybackDecision: vi.fn(() => Promise.resolve(dec)),
@@ -58,8 +59,11 @@ function mockApi(dec = decision()): ApiService {
                 `http://server/Videos/${itemId}/${msId}/Subtitles/${idx}/0/Stream.vtt`),
             reportPlaybackStart: vi.fn(() => Promise.resolve()),
             reportPlaybackProgress: vi.fn(() => Promise.resolve()),
-            reportPlaybackStop: vi.fn(() => Promise.resolve())
-        }
+            reportPlaybackStop: vi.fn(() => Promise.resolve()),
+            getMediaSegments: vi.fn(() => Promise.resolve(segments))
+        },
+        // Las preferencias de pista por título se guardan por cuenta.
+        session: { load: vi.fn(() => ({ userId: 'u1' })) }
     } as unknown as ApiService;
 }
 
@@ -102,6 +106,10 @@ describe('VideoPlayerViewModel', () => {
 
     test('el subtítulo de texto activo expone su URL VTT sin recargar', async () => {
         await vm.open('item1');
+        // El VTT solo se pide con la reproducción ya en marcha (pedirlo antes
+        // hace que el servidor extraiga todas las pistas del MKV y ahogue al
+        // transcode).
+        video.dispatchEvent(new Event('playing'));
         vm.setSubtitleTrack(3);
 
         expect(vm.selectedSubtitle.value).toBe(3);

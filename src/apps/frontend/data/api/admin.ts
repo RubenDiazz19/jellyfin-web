@@ -1,8 +1,10 @@
 // Admin endpoints: server info + library rescan + link back to the native
 // admin dashboard.
 
+import globalize from 'lib/globalize';
+
 import { loadSession } from '../session/session';
-import { apiFetch, authHeader, trimSlash } from './http';
+import { apiFetch, authHeader, noSessionError, trimSlash } from './http';
 
 export type SystemInfo = {
     serverName: string;
@@ -33,7 +35,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 // Scan). POST without a body, returns 204.
 export async function refreshLibrary(): Promise<void> {
     const session = loadSession();
-    if (!session?.accessToken) throw new Error('Sin sesión');
+    if (!session?.accessToken) throw noSessionError();
     const res = await fetch(`${trimSlash(session.serverUrl)}/Library/Refresh`, {
         method: 'POST',
         headers: {
@@ -41,7 +43,7 @@ export async function refreshLibrary(): Promise<void> {
             'X-Emby-Authorization': authHeader(session.accessToken)
         }
     });
-    if (!res.ok) throw new Error(`Refresh falló: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(globalize.translate('MessageRefreshFailed', res.status));
 }
 
 export function dashboardUrl(): string {

@@ -1,4 +1,7 @@
 import { useEffect, useRef } from 'react';
+
+import globalize from 'lib/globalize';
+
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { Nav } from '../components/layout/Nav';
@@ -10,17 +13,17 @@ import { useViewModel } from '../../domain/bridge/useViewModel';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
-const TYPE_TABS: { id: TypeFilter; label: string }[] = [
-    { id: 'todo', label: 'Todo' },
-    { id: 'series', label: 'Series' },
-    { id: 'peliculas', label: 'Películas' }
+const TYPE_TABS: { id: TypeFilter; key: string }[] = [
+    { id: 'todo', key: 'All' },
+    { id: 'series', key: 'Shows' },
+    { id: 'peliculas', key: 'Movies' }
 ];
 
-const STATE_TABS: { id: StateFilter; label: string }[] = [
-    { id: 'todo', label: 'Todos' },
-    { id: 'favs', label: 'Favoritos' },
-    { id: 'vistos', label: 'Vistos' },
-    { id: 'no-vistos', label: 'No vistos' }
+const STATE_TABS: { id: StateFilter; key: string }[] = [
+    { id: 'todo', key: 'All' },
+    { id: 'favs', key: 'Favorites' },
+    { id: 'vistos', key: 'Watched' },
+    { id: 'no-vistos', key: 'Unwatched' }
 ];
 
 export function SearchPage({ navigate }: { navigate: Navigate }) {
@@ -57,7 +60,10 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
         }}>
             <Nav
                 navigate={navigate}
-                breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: 'Buscar' }]}
+                breadcrumb={[
+                    { label: globalize.translate('Home'), to: { page: 'home' } },
+                    { label: globalize.translate('Search') }
+                ]}
             />
 
             <div style={{ padding: r.touch ? `72px ${r.pagePad}px 0` : '80px 64px 0' }}>
@@ -72,7 +78,7 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                         ref={inputRef}
                         value={query}
                         onChange={(e) => searchVM.setQuery(e.target.value)}
-                        placeholder='Buscar series, películas, actores…'
+                        placeholder={globalize.translate('SearchPlaceholder')}
                         style={{
                             width: '100%', boxSizing: 'border-box',
                             background: r.touch ?
@@ -89,27 +95,33 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                         onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
                     />
                     {query && (
-                        <div
+                        <button
+                            type='button'
                             onClick={searchVM.clearQuery}
+                            aria-label={globalize.translate('Clear')}
                             style={{
-                                position: 'absolute', right: 18, top: '50%',
+                                position: 'absolute', right: 10, top: '50%',
                                 transform: 'translateY(-50%)', cursor: 'pointer',
-                                color: T.dim, fontSize: 20, lineHeight: 1
+                                color: T.dim, fontSize: 20, lineHeight: 1,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: 32, height: 32, padding: 0,
+                                background: 'none', border: 'none', borderRadius: '50%',
+                                fontFamily: T.ui
                             }}
                         >
-                            ✕
-                        </div>
+                            <span aria-hidden='true'>✕</span>
+                        </button>
                     )}
                 </div>
 
                 <FilterRow<TypeFilter>
-                    label='Tipo'
+                    label={globalize.translate('LabelType')}
                     tabs={TYPE_TABS}
                     active={typeFilter}
                     onChange={searchVM.setTypeFilter}
                 />
                 <FilterRow<StateFilter>
-                    label='Estado'
+                    label={globalize.translate('LabelStatus')}
                     tabs={STATE_TABS}
                     active={stateFilter}
                     onChange={searchVM.setStateFilter}
@@ -120,20 +132,20 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                 {filtered.length === 0 ? (
                     q ? (
                         <EmptyState
-                            title={`Sin resultados para «${query}»`}
-                            hint='Prueba con otro título, actor o género — o afloja los filtros.'
+                            title={globalize.translate('SearchNoResultsFor', query)}
+                            hint={globalize.translate('SearchNoResultsForHelp')}
                             icon='⌕'
                         />
                     ) : anyFilterActive ? (
                         <EmptyState
-                            title='Sin resultados con estos filtros'
-                            hint='Cambia los filtros o escribe un título para buscar.'
+                            title={globalize.translate('SearchNoResultsFilters')}
+                            hint={globalize.translate('SearchNoResultsFiltersHelp')}
                             icon='⌕'
                         />
                     ) : (
                         <EmptyState
-                            title='Empieza a escribir'
-                            hint='Busca por título, sinopsis, actor o género en tu biblioteca.'
+                            title={globalize.translate('SearchStartTyping')}
+                            hint={globalize.translate('SearchStartTypingHelp')}
                             icon='⌕'
                         />
                     )
@@ -144,8 +156,8 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                             color: T.dim, marginBottom: 28
                         }}>
                             {q || anyFilterActive ?
-                                `${filtered.length} resultado${filtered.length !== 1 ? 's' : ''}` :
-                                'Tu biblioteca'}
+                                globalize.translate('SearchResultsCount', filtered.length) :
+                                globalize.translate('HeaderMyLibrary')}
                         </div>
                         <div style={{
                             display: 'grid',
@@ -182,7 +194,7 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                                                 background: 'rgba(0,0,0,0.5)',
                                                 padding: '3px 7px', borderRadius: 4
                                             }}>
-                                                {item._type === 'show' ? 'Serie' : 'Película'}
+                                                {globalize.translate(item._type === 'show' ? 'Series' : 'Movie')}
                                             </span>
                                         </div>
                                         {!item.poster && !item.backdrop && (
@@ -222,7 +234,7 @@ function FilterRow<T extends string>({
     label, tabs, active, onChange
 }: {
     label: string;
-    tabs: { id: T; label: string }[];
+    tabs: { id: T; key: string }[];
     active: T;
     onChange: (v: T) => void;
 }) {
@@ -254,7 +266,7 @@ function FilterRow<T extends string>({
                             color: active === tab.id ? '#000' : T.dim
                         }}
                     >
-                        {tab.label}
+                        {globalize.translate(tab.key)}
                     </button>
                 ))}
             </div>

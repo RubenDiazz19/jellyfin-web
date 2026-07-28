@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
@@ -265,7 +267,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                     ))}
                 </div>
 
-                <ScrollHint label='Tu biblioteca' />
+                <ScrollHint label={globalize.translate('HeaderMyLibrary')} />
             </section>
 
             <HomeLibrary navigate={navigate} />
@@ -371,37 +373,49 @@ const HeroSlide = React.memo(function HeroSlideBase({
                             }} />
                             {/* Películas: no hay T·E, solo la etiqueta de continuar. */}
                             {slide.season != null ? (
+                                <button
+                                    onClick={goSeason}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    style={textBtnStyle}
+                                    onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+                                >
+                                    {`T${slide.season}`}
+                                </button>
+                            ) : globalize.translate('ContinueWatching')}
+                            {/* "E6 · Inicio de semestre" es UN solo botón: el
+                                número y el nombre son la misma cosa (el
+                                capítulo) y llevaban ya al mismo sitio, así que
+                                separarlos solo daba dos dianas pequeñas para un
+                                único destino en vez de una cómoda. */}
+                            {slide.episode != null && (
                                 <>
-                                    <button
-                                        onClick={goSeason}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        style={textBtnStyle}
-                                        onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.color = '')}
-                                    >
-                                        {`T${slide.season}`}
-                                    </button>
                                     {' · '}
                                     <button
                                         onClick={goEpisode}
                                         onMouseDown={(e) => e.preventDefault()}
-                                        style={textBtnStyle}
+                                        style={{
+                                            ...textBtnStyle,
+                                            display: 'flex', alignItems: 'center', gap: 12
+                                        }}
                                         onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
                                         onMouseLeave={(e) => (e.currentTarget.style.color = '')}
                                     >
                                         {`E${slide.episode}`}
+                                        {slide.episodeTitle && (
+                                            <>
+                                                <Ic.Dot />
+                                                <span style={{
+                                                    fontStyle: 'italic', fontFamily: T.display, fontSize: 18
+                                                }}>
+                                                    {slide.episodeTitle}
+                                                </span>
+                                            </>
+                                        )}
                                     </button>
                                 </>
-                            ) : 'Continuar viendo'}
+                            )}
                         </span>
-                        {slide.episodeTitle && (
-                            <>
-                                <Ic.Dot />
-                                <span style={{ fontStyle: 'italic', fontFamily: T.display, fontSize: 18 }}>
-                                    {slide.episodeTitle}
-                                </span>
-                            </>
-                        )}
                     </div>
                 ) : (
                     <div style={{
@@ -452,8 +466,8 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     if (homeVM.showsLoading.value || !homeVM.showsReady.value) {
         return (
             <section style={sectionStyle}>
-                <SkeletonRow title='Series' />
-                <SkeletonRow title='Películas' />
+                <SkeletonRow title={globalize.translate('Shows')} />
+                <SkeletonRow title={globalize.translate('Movies')} />
             </section>
         );
     }
@@ -470,11 +484,10 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     }
     return (
         <section style={sectionStyle}>
-            <Row title='Series'>
+            <Row title={globalize.translate('Shows')}>
                 {series.length === 0 ? (
                     <div style={{ padding: r.touch ? `0 ${r.pagePad}px` : '0 56px', color: T.dim, fontSize: 14 }}>
-                        No hay series en la biblioteca. Añade contenido y lanza un rescan desde
-                        el panel de administración (avatar arriba a la derecha).
+                        {globalize.translate('MessageNoShowsInLibrary')}
                     </div>
                 ) : (
                     <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
@@ -483,7 +496,7 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
                 )}
             </Row>
             {movies.length > 0 && (
-                <Row title='Películas'>
+                <Row title={globalize.translate('Movies')}>
                     <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                         {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
                     </div>
@@ -513,10 +526,10 @@ function HomeLibraryProto({
                 background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
                 paddingBottom: r.touch ? 48 : 96, fontFamily: T.ui
             }}>
-                <SkeletonRow title='Continuar viendo' />
-                <SkeletonRow title='Recién añadidos' />
-                <SkeletonRow title='Películas' />
-                <SkeletonRow title='Series' />
+                <SkeletonRow title={globalize.translate('ContinueWatching')} />
+                <SkeletonRow title={globalize.translate('TabLatest')} />
+                <SkeletonRow title={globalize.translate('Movies')} />
+                <SkeletonRow title={globalize.translate('Shows')} />
             </section>
         );
     }
@@ -525,12 +538,12 @@ function HomeLibraryProto({
             background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
             paddingBottom: r.touch ? 48 : 96, fontFamily: T.ui
         }}>
-            <Row title='Continuar viendo'>
+            <Row title={globalize.translate('ContinueWatching')}>
                 <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {cw.map((s) => <CwCard key={s.id} slide={s} navigate={navigate} />)}
                 </div>
             </Row>
-            <Row title='Recién añadidos'>
+            <Row title={globalize.translate('TabLatest')}>
                 <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {recent.map((item) =>
                         'seasons' in item ?
@@ -539,12 +552,12 @@ function HomeLibraryProto({
                     )}
                 </div>
             </Row>
-            <Row title='Películas'>
+            <Row title={globalize.translate('Movies')}>
                 <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
                 </div>
             </Row>
-            <Row title='Series'>
+            <Row title={globalize.translate('Shows')}>
                 <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
                     {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
                 </div>

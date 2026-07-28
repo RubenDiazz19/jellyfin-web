@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import React from 'react';
 import { T } from '../../theme/tokens';
 
@@ -31,10 +33,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 <div style={{
                     fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: T.dim
                 }}>
-                    Algo ha fallado
+                    {globalize.translate('HeaderSomethingWentWrong')}
                 </div>
                 <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.85)', maxWidth: 560 }}>
-                    {this.state.error.message || 'Error inesperado al pintar esta página'}
+                    {this.state.error.message || globalize.translate('MessageUnexpectedRenderError')}
                 </div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
                     <button
@@ -45,7 +47,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                             fontSize: 13, fontWeight: 600, cursor: 'pointer'
                         }}
                     >
-                        Recargar
+                        {globalize.translate('ButtonReload')}
                     </button>
                     <button
                         onClick={() => {
@@ -59,7 +61,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                             fontSize: 13, fontWeight: 500, cursor: 'pointer'
                         }}
                     >
-                        Volver al inicio
+                        {globalize.translate('ButtonBackToHome')}
                     </button>
                 </div>
             </section>

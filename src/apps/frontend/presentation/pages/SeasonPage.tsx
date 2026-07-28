@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
@@ -14,6 +16,10 @@ import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type PageProps = { showId: string; seasonN: number; navigate: Navigate };
+
+/** Diámetro del play del hero y hueco hasta el botón de opciones. */
+const PLAY_SIZE = 104;
+const MORE_GAP = 26;
 
 export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
     const proto = PROTO_DATA.shows[showId];
@@ -82,7 +88,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
             <Nav
                 navigate={navigate}
                 breadcrumb={[
-                    { label: 'Series', to: { page: 'home' } },
+                    { label: globalize.translate('Shows'), to: { page: 'home' } },
                     { label: show.title, to: { page: 'show', showId: show.id } },
                     { label: `Temporada ${season.n}` }
                 ]}
@@ -115,7 +121,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     fontFamily: T.display, fontStyle: 'italic', fontSize: 36, fontWeight: 300,
                     color: 'rgba(255,255,255,0.72)', marginBottom: 6
                 }}>
-                    Temporada
+                    {globalize.translate('Season')}
                 </div>
                 <h1 style={{
                     fontFamily: T.display, fontSize: 'clamp(160px, 18vw, 260px)', lineHeight: 0.85,
@@ -136,10 +142,11 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                 </div>
 
                 <div style={{
-                    marginTop: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 26
+                    marginTop: 36, position: 'relative',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
                     <PlayBtn
-                        size={104}
+                        size={PLAY_SIZE}
                         onClick={startPlay}
                         progress={inProgress ? nextEp.watched : null}
                         watched={season.watched >= season.total && season.total > 0}
@@ -147,16 +154,27 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     {/* Opciones de la temporada (entre ellas editar su
                         carátula). Requiere el id real del server: en los
                         datos de prototipo no hay nada contra lo que editar.
-                        alignItems: center en la fila lo centra verticalmente
-                        con el círculo del play. */}
+                        Va posicionado en absoluto y NO como hermano en la
+                        fila: como hermano, su ancho entra en el centrado y
+                        empujaba el círculo del play a la izquierda del eje
+                        que marcan el número de temporada y el resto del hero. */}
                     {season.jfId && (
-                        <MoreButton
-                            id={season.jfId}
-                            size={28}
-                            type='season'
-                            itemTitle={`${show.title} · Temporada ${season.n}`}
-                            nextEpisodeId={nextEp?.jfId}
-                        />
+                        <div style={{
+                            position: 'absolute', top: '50%',
+                            left: `calc(50% + ${PLAY_SIZE / 2 + MORE_GAP}px)`,
+                            transform: 'translateY(-50%)',
+                            display: 'flex', alignItems: 'center'
+                        }}>
+                            <MoreButton
+                                id={season.jfId}
+                                size={28}
+                                type='season'
+                                itemTitle={`${show.title} · ${globalize.translate('ValueSeason', season.n)}`}
+                                nextEpisodeId={nextEp?.jfId}
+                                queueSubtitle={nextEp?.title}
+                                queuePoster={show.poster}
+                            />
+                        </div>
                     )}
                 </div>
                 <div style={{
@@ -170,7 +188,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                 </div>
             </div>
 
-            <ScrollHint label='Episodios' />
+            <ScrollHint label={globalize.translate('Episodes')} />
         </section>
     );
 }
@@ -186,7 +204,7 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                 <h3 style={{
                     fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
                 }}>
-                    Episodios
+                    {globalize.translate('Episodes')}
                 </h3>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
                     {show.seasons.map((s) => (
@@ -239,17 +257,17 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                         fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                         color: T.dim, marginBottom: 18
                     }}>
-                        Datos
+                        {globalize.translate('HeaderDetails')}
                     </div>
                     <div style={{
                         display: 'grid', gridTemplateColumns: '120px 1fr', rowGap: 14, fontSize: 13
                     }}>
-                        <span style={{ color: T.dim }}>Episodios</span><span>{season.total}</span>
-                        <span style={{ color: T.dim }}>Año</span><span>{season.year}</span>
-                        <span style={{ color: T.dim }}>Vistos</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Episodes')}</span><span>{season.total}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('LabelYear')}</span><span>{season.year}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Watched')}</span>
                         <span>{season.watched} · {Math.round((season.watched / season.total) * 100)}%</span>
-                        <span style={{ color: T.dim }}>Dirección</span><span>{show.directors}</span>
-                        <span style={{ color: T.dim }}>Estudio</span><span>{show.studio}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Director')}</span><span>{show.directors}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Studio')}</span><span>{show.studio}</span>
                     </div>
                 </div>
             </div>

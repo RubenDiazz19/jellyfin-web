@@ -22,10 +22,14 @@
 
     <meta id="themeColor" name="theme-color" content="#202020">
 
-    <link rel="apple-touch-icon" sizes="180x180" href="../node_modules/@jellyfin/ux-web/favicons/touchicon.png">
+    <!-- Icono propio: la silueta del logo en blanco sobre el negro del tema.
+         El .ico del paquete queda de respaldo para navegadores que no acepten
+         un PNG como favicon. -->
+    <link rel="icon" type="image/png" sizes="512x512" href="assets/img/jellyfin-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/img/jellyfin-icon-180.png">
     <link rel="shortcut icon" href="../node_modules/@jellyfin/ux-web/favicons/favicon.ico">
-    <meta name="msapplication-TileImage" content="../node_modules/@jellyfin/ux-web/favicons/touchicon144.png">
-    <meta name="msapplication-TileColor" content="#333333">
+    <meta name="msapplication-TileImage" content="assets/img/jellyfin-icon-180.png">
+    <meta name="msapplication-TileColor" content="#101010">
 
     <title>Jellyfin</title>
 

@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { T } from '../../theme/tokens';
 
 type Props = {
@@ -42,7 +44,7 @@ export function ImageUploadMenu({ id, type, onUpload }: Props) {
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
             <input type='file' accept='image/*' onChange={handleFileChange} style={{ display: 'none' }} />
-            Cambiar {type === 'backdrop' ? 'fondo' : 'póster'}
+            {globalize.translate(type === 'backdrop' ? 'ChangeBackdrop' : 'ChangePoster')}
         </label>
     );
 }

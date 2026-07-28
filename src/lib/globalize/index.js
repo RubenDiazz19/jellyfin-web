@@ -1,6 +1,5 @@
 import isEmpty from 'lodash-es/isEmpty';
 
-import { currentSettings as userSettings } from 'scripts/settings/userSettings';
 import Events from 'utils/events';
 import { updateLocale } from 'utils/dateFnsLocale';
 
@@ -16,6 +15,29 @@ const allTranslations = {};
 let currentCulture;
 let currentDateTimeCulture;
 let isRTL = false;
+
+/**
+ * Source of the user's locale preferences, injected by the app bootstrap.
+ *
+ * Importing `scripts/settings/userSettings` here would pull the whole legacy
+ * runtime (api client, playback manager, …) into every module that only wants
+ * to translate a string. Keeping it as a hole means `translate()` can be
+ * imported from anywhere; until it is filled we fall back to the browser
+ * locale, which is what standalone imports and tests want anyway.
+ */
+let localeSettings;
+
+export function setLocaleSettings(settings) {
+    localeSettings = settings;
+
+    Events.on(settings, 'change', function (e, name) {
+        if (name === 'language' || name === 'datetimelocale') {
+            updateCurrentCulture();
+        }
+    });
+
+    updateCurrentCulture();
+}
 
 export function getCurrentLocale() {
     return currentCulture;
@@ -78,7 +100,7 @@ export function getIsElementRTL(element) {
 export function updateCurrentCulture() {
     let culture;
     try {
-        culture = userSettings.language();
+        culture = localeSettings?.language();
     } catch {
         console.error('no language set in user settings');
     }
@@ -91,7 +113,7 @@ export function updateCurrentCulture() {
 
     let dateTimeCulture;
     try {
-        dateTimeCulture = userSettings.dateTimeLocale();
+        dateTimeCulture = localeSettings?.dateTimeLocale();
     } catch {
         console.error('no date format set in user settings');
     }
@@ -284,12 +306,6 @@ export function defaultModule(val) {
 
 updateCurrentCulture();
 
-Events.on(userSettings, 'change', function (e, name) {
-    if (name === 'language' || name === 'datetimelocale') {
-        updateCurrentCulture();
-    }
-});
-
 export default {
     translate,
     translateHtml,
@@ -298,6 +314,7 @@ export default {
     getCurrentLocale,
     getCurrentDateTimeLocale,
     register,
+    setLocaleSettings,
     updateCurrentCulture,
     getIsRTL,
     getIsElementRTL

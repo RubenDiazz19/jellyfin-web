@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useState } from 'react';
 import { downloadSubtitle, searchSubtitles, type RemoteSubtitle } from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
@@ -16,7 +18,7 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
         try {
             const rs = await searchSubtitles(itemId, lang);
             setResults(rs);
-            if (rs.length === 0) toast('Sin resultados', 'info');
+            if (rs.length === 0) toast(globalize.translate('MessageNoResults'), 'info');
         } catch (e) {
             toast((e as Error).message, 'warn');
         } finally {
@@ -28,7 +30,7 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
         setDownloading(id);
         try {
             await downloadSubtitle(itemId, id);
-            toast('Subtítulo descargado y aplicado', 'success');
+            toast(globalize.translate('MessageSubtitleDownloaded'), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
         } finally {
@@ -39,16 +41,15 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Muted>
-                Busca subtítulos en los proveedores conectados en Jellyfin (OpenSubtitles, etc.).
-                Se descargan y añaden como pista adicional al fichero.
+                {globalize.translate('MessageSubtitleSearchHelp')}
             </Muted>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12 }}>
-                <Field label='Idioma (ISO 639-2, ej. spa/eng/jpn)'>
+                <Field label={globalize.translate('LabelSubtitleLanguageCode')}>
                     <TextInput value={lang} onChange={setLang} />
                 </Field>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                     <PrimaryBtn onClick={doSearch} disabled={searching || !lang}>
-                        {searching ? 'Buscando…' : 'Buscar'}
+                        {globalize.translate(searching ? 'Searching' : 'Search')}
                     </PrimaryBtn>
                 </div>
             </div>
@@ -68,7 +69,7 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
                                 </div>
                             </div>
                             <SecondaryBtn onClick={() => doDownload(r.Id)} disabled={downloading === r.Id}>
-                                {downloading === r.Id ? 'Descargando…' : 'Descargar'}
+                                {globalize.translate(downloading === r.Id ? 'Downloading' : 'Download')}
                             </SecondaryBtn>
                         </div>
                     ))}

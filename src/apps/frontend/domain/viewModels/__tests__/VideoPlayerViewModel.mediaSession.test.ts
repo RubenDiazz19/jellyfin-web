@@ -61,11 +61,13 @@ function mockApi(): ApiService {
             subtitleVttUrl: vi.fn(() => ''),
             reportPlaybackStart: vi.fn(() => Promise.resolve()),
             reportPlaybackProgress: vi.fn(() => Promise.resolve()),
-            reportPlaybackStop: vi.fn(() => Promise.resolve())
+            reportPlaybackStop: vi.fn(() => Promise.resolve()),
+            getMediaSegments: vi.fn(() => Promise.resolve([]))
         },
         images: {
             imageUrl: vi.fn(() => 'http://server/Items/i1/Images/Primary?format=webp')
-        }
+        },
+        session: { load: vi.fn(() => ({ userId: 'u1' })) }
     } as unknown as ApiService;
 }
 

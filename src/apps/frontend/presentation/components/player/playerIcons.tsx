@@ -100,6 +100,52 @@ export const PlayerIc = {
             <rect x='12.5' y='12.5' width='8.5' height='6.5' rx='1.5' stroke='currentColor' strokeWidth={sw} />
         </svg>
     ),
+    Queue: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <path
+                d='M3 6h12M3 11h12M3 16h7'
+                stroke='currentColor' strokeWidth={sw} strokeLinecap='round'
+            />
+            <path
+                d='M15.5 14.2v5.6l4.7-2.8-4.7-2.8z'
+                fill='currentColor' stroke='currentColor'
+                strokeWidth={sw} strokeLinejoin='round'
+            />
+        </svg>
+    ),
+    // Engranaje macizo (8 dientes redondeados + agujero central): agrupa
+    // capítulos, subtítulos, audio, velocidad y aspecto. El "agujero" sale de
+    // dibujar el cuerpo como un anillo grueso, así queda transparente sobre
+    // el vídeo en vez de recortado a un color fijo.
+    Settings: ({ size = 20 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            {Array.from({ length: 8 }, (_, i) => (
+                <rect
+                    key={i}
+                    x='10' y='1.5' width='4' height='4.3' rx='1.4'
+                    fill='currentColor'
+                    transform={`rotate(${i * 45} 12 12)`}
+                />
+            ))}
+            <circle cx='12' cy='12' r='6.8' stroke='currentColor' strokeWidth='3.6' />
+        </svg>
+    ),
+    // Doble flecha de avance rápido: saltar intro/créditos, ir al siguiente.
+    SkipForward: ({ size = 18 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <path d='M3 5.5v13l9-6.5-9-6.5zM12.5 5.5v13l9-6.5-9-6.5z' fill='currentColor' />
+        </svg>
+    ),
+    // Barra dividida en tramos: los capítulos del item.
+    Chapters: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
+        <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+            <rect
+                x='2.5' y='8.5' width='19' height='7' rx='2'
+                stroke='currentColor' strokeWidth={sw}
+            />
+            <path d='M9 8.5v7M15 8.5v7' stroke='currentColor' strokeWidth={sw} />
+        </svg>
+    ),
     Subtitles: ({ size = 20, sw = 1.5 }: IconProps): ReactElement => (
         <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
             <rect x='3.5' y='5.5' width='17' height='13' rx='2' stroke='currentColor' strokeWidth={sw} />

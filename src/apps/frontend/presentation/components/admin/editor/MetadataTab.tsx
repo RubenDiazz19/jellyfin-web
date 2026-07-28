@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect, useState } from 'react';
 import { getItemRaw, updateItemMetadata } from '../../../../domain/api';
 import { useToast } from '../../toast/ToastProvider';
@@ -58,7 +60,7 @@ export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () =
                 Genres: genres.split(',').map((s) => s.trim()).filter(Boolean),
                 OfficialRating: officialRating || undefined
             });
-            toast('Metadatos guardados', 'success');
+            toast(globalize.translate('SettingsSaved'), 'success');
             onClose();
         } catch (e) {
             toast((e as Error).message, 'warn');
@@ -67,39 +69,39 @@ export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () =
         }
     };
 
-    if (loading) return <Muted>Cargando…</Muted>;
+    if (loading) return <Muted>{globalize.translate('Loading')}</Muted>;
     if (error) return <ErrText>{error}</ErrText>;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Field label='Título'>
+            <Field label={globalize.translate('LabelTitle')}>
                 <TextInput value={name} onChange={setName} autoFocus />
             </Field>
-            <Field label='Título original'>
+            <Field label={globalize.translate('LabelOriginalTitle')}>
                 <TextInput value={originalTitle} onChange={setOriginalTitle} />
             </Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <Field label='Año'>
+                <Field label={globalize.translate('LabelYear')}>
                     <TextInput value={year} onChange={setYear} placeholder='2015' />
                 </Field>
-                <Field label='Calificación'>
+                <Field label={globalize.translate('LabelParentalRating')}>
                     <TextInput value={officialRating} onChange={setOfficialRating} placeholder='TV-14' />
                 </Field>
             </div>
-            <Field label='Géneros (separados por comas)'>
+            <Field label={globalize.translate('LabelGenresCommaSeparated')}>
                 <TextInput value={genres} onChange={setGenres} />
             </Field>
-            <Field label='Sinopsis'>
+            <Field label={globalize.translate('Overview')}>
                 <TextArea value={overview} onChange={setOverview} rows={5} />
             </Field>
-            <Field label='Taglines (una por línea)'>
+            <Field label={globalize.translate('LabelTaglinesOnePerLine')}>
                 <TextArea value={taglines} onChange={setTaglines} rows={2} />
             </Field>
             <FooterRow>
                 <PrimaryBtn onClick={save} disabled={saving}>
-                    {saving ? 'Guardando…' : 'Guardar cambios'}
+                    {globalize.translate(saving ? 'Saving' : 'Save')}
                 </PrimaryBtn>
-                <SecondaryBtn onClick={onClose}>Cancelar</SecondaryBtn>
+                <SecondaryBtn onClick={onClose}>{globalize.translate('ButtonCancel')}</SecondaryBtn>
             </FooterRow>
         </div>
     );

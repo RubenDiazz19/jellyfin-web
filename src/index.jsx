@@ -8,6 +8,7 @@ import loading from 'components/loading/loading';
 import { appRouter } from './components/router/appRouter';
 import globalize from './lib/globalize';
 import { loadCoreDictionary } from 'lib/globalize/loader';
+import { currentSettings as userSettings } from './scripts/settings/userSettings';
 import { serverAddress } from './utils/dashboard';
 import Events from './utils/events';
 
@@ -36,6 +37,9 @@ build: ${__JF_BUILD_VERSION__}`);
     if (serverUrl) {
         ServerConnections.initApiClient(serverUrl);
     }
+
+    // Point globalize at the user's locale preferences before loading strings
+    globalize.setLocaleSettings(userSettings);
 
     // Load the translation dictionary
     await loadCoreDictionary();

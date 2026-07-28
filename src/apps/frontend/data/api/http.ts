@@ -2,8 +2,17 @@
 // The MediaBrowser Authorization header inherits clientName/deviceId from the
 // SDK Api (ServerConnections) so the server sees a coherent session.
 
+import globalize from 'lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { loadSession } from '../session/session';
+
+/**
+ * Guard used by every call that needs a signed-in user. The message reaches
+ * the user through the toast that wraps these calls, so it is translated.
+ */
+export function noSessionError(): Error {
+    return new Error(globalize.translate('MessageNoSession'));
+}
 
 export function authHeader(accessToken?: string): string {
     const api = ServerConnections.getApi();
@@ -30,7 +39,7 @@ export function normalizeServerUrl(u: string): string {
 export async function apiFetch<T>(path: string): Promise<T> {
     const session = loadSession();
     if (!session?.accessToken || !session.userId) {
-        throw new Error('Sin sesión activa');
+        throw noSessionError();
     }
     const res = await fetch(`${trimSlash(session.serverUrl)}${path}`, {
         headers: {
@@ -48,7 +57,7 @@ export async function apiSend(
     body?: unknown
 ): Promise<Response> {
     const session = loadSession();
-    if (!session?.accessToken) throw new Error('Sin sesión');
+    if (!session?.accessToken) throw noSessionError();
     const headers: Record<string, string> = {
         'Authorization': authHeader(session.accessToken),
         'X-Emby-Authorization': authHeader(session.accessToken)

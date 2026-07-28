@@ -27,6 +27,14 @@ export const ApiProvider: FC<PropsWithChildren<unknown>> = ({ children }) => {
     }), [ api, user ]);
 
     useEffect(() => {
+        const updateApiUser = (_e: Event | undefined, newUser: UserDto) => {
+            setUser(newUser);
+
+            if (newUser.ServerId) {
+                setServerId(newUser.ServerId);
+            }
+        };
+
         const currentApi = ServerConnections.getApi();
         if (currentApi) {
             getUserApi(currentApi)
@@ -36,14 +44,6 @@ export const ApiProvider: FC<PropsWithChildren<unknown>> = ({ children }) => {
                     console.info('[ApiProvider] Could not get current user', err);
                 });
         }
-
-        const updateApiUser = (_e: Event | undefined, newUser: UserDto) => {
-            setUser(newUser);
-
-            if (newUser.ServerId) {
-                setServerId(newUser.ServerId);
-            }
-        };
 
         const resetApiUser = () => {
             setServerId(undefined);

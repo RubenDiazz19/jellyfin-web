@@ -1,6 +1,8 @@
 // Modal item editor. Each tab is a self-contained subcomponent so state stays
 // isolated per tab.
 
+import globalize from 'lib/globalize';
+
 import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../../theme/tokens';
@@ -59,10 +61,10 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
                     display: 'flex', alignItems: 'center', padding: '16px 22px',
                     borderBottom: '1px solid rgba(255,255,255,0.08)'
                 }}>
-                    <div style={{ fontSize: 15, fontWeight: 500 }}>Editor de item</div>
+                    <div style={{ fontSize: 15, fontWeight: 500 }}>{globalize.translate('EditMetadata')}</div>
                     <button
                         onClick={onClose}
-                        aria-label='Cerrar'
+                        aria-label={globalize.translate('ButtonClose')}
                         style={{
                             marginLeft: 'auto', background: 'none', border: 'none',
                             color: T.dim, fontSize: 22, cursor: 'pointer', lineHeight: 1
@@ -74,13 +76,13 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
                     display: 'flex', gap: 4, padding: '6px 14px',
                     borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 13
                 }}>
-                    <TabButton label='Metadatos' active={tab === 'metadata'} onClick={() => setTab('metadata')} />
+                    <TabButton label={globalize.translate('LabelMetadata')} active={tab === 'metadata'} onClick={() => setTab('metadata')} />
                     {canIdentify && (
-                        <TabButton label='Identificar' active={tab === 'identify'} onClick={() => setTab('identify')} />
+                        <TabButton label={globalize.translate('Identify')} active={tab === 'identify'} onClick={() => setTab('identify')} />
                     )}
-                    <TabButton label='Imágenes' active={tab === 'images'} onClick={() => setTab('images')} />
+                    <TabButton label={globalize.translate('Images')} active={tab === 'images'} onClick={() => setTab('images')} />
                     {canSubs && (
-                        <TabButton label='Subtítulos' active={tab === 'subtitles'} onClick={() => setTab('subtitles')} />
+                        <TabButton label={globalize.translate('Subtitles')} active={tab === 'subtitles'} onClick={() => setTab('subtitles')} />
                     )}
                 </div>
 

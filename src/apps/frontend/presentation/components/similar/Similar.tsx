@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { T } from '../../theme/tokens';
 import { PROTO_DATA, type Show, type Movie } from '../../../domain/models';
 import { PosterCard } from '../cards/PosterCard';
@@ -45,10 +47,10 @@ export function Similar({ currentId, currentGenres, kind, navigate }: Props) {
                 <h3 style={{
                     fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
                 }}>
-                    Más como esto
+                    {globalize.translate('HeaderMoreLikeThis')}
                 </h3>
                 <div style={{ fontFamily: T.ui, fontSize: 12, color: T.dim }}>
-                    Basado en los géneros del título
+                    {globalize.translate('MessageBasedOnGenres')}
                 </div>
             </div>
             <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>

@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { lazy, Suspense, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -24,6 +26,7 @@ const GenrePage = lazy(() => import('../presentation/pages/GenrePage').then(m =>
 const FavoritesPage = lazy(() => import('../presentation/pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
 const PersonPage = lazy(() => import('../presentation/pages/PersonPage').then(m => ({ default: m.PersonPage })));
 const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const QueuePage = lazy(() => import('../presentation/pages/QueuePage').then(m => ({ default: m.QueuePage })));
 
 import {
     useTweaks, TweaksPanel, TweakSection, TweakRadio
@@ -41,6 +44,16 @@ type TweakDefaults = {
     heroScrim: HeroScrimKey;
 };
 
+// Los valores de los tweaks son claves internas (la app compara contra
+// ellas); estos mapas dan el texto traducido que ve el usuario.
+const HERO_POS_KEYS: Record<string, string> = {
+    Esquina: 'PositionCorner', Inferior: 'PositionBottom', Centro: 'PositionCenter'
+};
+const HERO_INFO_KEYS: Record<string, string> = { 'Mínima': 'InfoMinimal', Completa: 'InfoFull' };
+const HERO_SCRIM_KEYS: Record<string, string> = {
+    Sutil: 'ScrimSubtle', Media: 'ScrimMedium', Intensa: 'ScrimIntense'
+};
+
 const TWEAK_DEFAULTS: TweakDefaults = {
     heroPos: 'Inferior',
     heroInfo: 'Completa',
@@ -54,7 +67,7 @@ function PageFallback() {
             background: '#000', color: T.dim, fontFamily: T.ui, fontSize: 13,
             letterSpacing: 3, textTransform: 'uppercase'
         }}>
-            Cargando…
+            {globalize.translate('Loading')}
         </div>
     );
 }
@@ -184,24 +197,28 @@ function AuthedApp() {
                         {route.page === 'person' && <PersonPage name={route.name} navigate={navigate} />}
                         {route.page === 'settings' && <SettingsPage navigate={navigate} initial='reproduccion' />}
                         {route.page === 'profile' && <SettingsPage navigate={navigate} initial='perfil' />}
+                        {route.page === 'queue' && <QueuePage navigate={navigate} />}
                     </Suspense>
                 </ErrorBoundary>
             </div>
             <TweaksPanel title='Tweaks'>
-                <TweakSection label='Pantalla de detalle' />
+                <TweakSection label={globalize.translate('HeaderDetailScreen')} />
                 <TweakRadio
-                    label='Posición' value={t.heroPos}
+                    label={globalize.translate('LabelPosition')} value={t.heroPos}
                     options={['Esquina', 'Inferior', 'Centro'] as const}
+                    labelFor={(v) => globalize.translate(HERO_POS_KEYS[v])}
                     onChange={(v) => setTweak('heroPos', v)}
                 />
                 <TweakRadio
-                    label='Información' value={t.heroInfo}
+                    label={globalize.translate('LabelInformation')} value={t.heroInfo}
                     options={['Mínima', 'Completa'] as const}
+                    labelFor={(v) => globalize.translate(HERO_INFO_KEYS[v])}
                     onChange={(v) => setTweak('heroInfo', v)}
                 />
                 <TweakRadio
-                    label='Veladura' value={t.heroScrim}
+                    label={globalize.translate('LabelScrim')} value={t.heroScrim}
                     options={['Sutil', 'Media', 'Intensa'] as const}
+                    labelFor={(v) => globalize.translate(HERO_SCRIM_KEYS[v])}
                     onChange={(v) => setTweak('heroScrim', v)}
                 />
             </TweaksPanel>

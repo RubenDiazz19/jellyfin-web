@@ -1,4 +1,11 @@
 import React from 'react';
+
+import globalize from 'lib/globalize';
+
+// Import de módulo (no una ruta de texto suelta): así Vite lo copia, hashea
+// y referencia en el build de producción. Una cadena 'assets/img/...' solo
+// funciona en dev, donde Vite sirve src/ tal cual.
+import jellyfinLogo from '../../../../../assets/img/jellyfin-white.png';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useScrollY } from '../../../domain/bridge/useScrollY';
@@ -26,10 +33,10 @@ type NavProps = {
 };
 
 const NAV_LINKS = [
-    { id: 'home', label: 'Inicio' },
-    { id: 'series', label: 'Series' },
-    { id: 'movies', label: 'Películas' },
-    { id: 'favorites', label: 'Favoritos' }
+    { id: 'home', key: 'Home' },
+    { id: 'series', key: 'Shows' },
+    { id: 'movies', key: 'Movies' },
+    { id: 'favorites', key: 'Favorites' }
 ] as const;
 
 // Reset para que un <button> real (accesible con teclado) se vea como los
@@ -65,10 +72,18 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                     onClick={() => navigate({ page: 'home' })}
                     style={{
                         ...linkReset,
+                        display: 'flex', alignItems: 'center', gap: 8,
                         fontFamily: T.display, fontStyle: 'italic', fontSize: 19, letterSpacing: 0.5,
                         color: 'var(--md-sys-color-on-surface, #fff)'
                     }}
                 >
+                    <img
+                        src={jellyfinLogo}
+                        alt=''
+                        width={19}
+                        height={19}
+                        style={{ display: 'block' }}
+                    />
                     jellyfin
                 </button>
                 <div style={{
@@ -114,10 +129,20 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                 onClick={() => navigate({ page: 'home' })}
                 style={{
                     ...linkReset,
+                    display: 'flex', alignItems: 'center', gap: 10,
                     fontFamily: T.display, fontStyle: 'italic', fontSize: 22, letterSpacing: 0.5,
                     color: T.fg
                 }}
             >
+                {/* Silueta blanca del logo: el original a color desentona con
+                    el blanco y negro del resto de la interfaz. */}
+                <img
+                    src='assets/img/jellyfin-white.png'
+                    alt=''
+                    width={22}
+                    height={22}
+                    style={{ display: 'block' }}
+                />
                 jellyfin
             </button>
 
@@ -157,7 +182,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                                 position: 'relative'
                             }}
                         >
-                            {l.label}
+                            {globalize.translate(l.key)}
                             {l.id === active && (
                                 <div style={{ position: 'absolute', bottom: -6, left: 0, right: 0, height: 1, background: T.fg }} />
                             )}
@@ -186,7 +211,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                 )}
                 <button
                     onClick={() => navigate({ page: 'search' })}
-                    aria-label='Buscar'
+                    aria-label={globalize.translate('Search')}
                     style={{
                         ...linkReset, display: 'flex', alignItems: 'center',
                         padding: '4px 6px', borderRadius: 6, transition: 'background .15s'

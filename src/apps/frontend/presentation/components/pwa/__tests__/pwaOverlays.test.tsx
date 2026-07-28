@@ -62,24 +62,24 @@ describe('overlays PWA', () => {
             document.documentElement.classList.add('layout-mobile');
             initPwa();
             render(<InstallBanner />);
-            expect(host?.textContent).not.toContain('Instalar Jellyfin');
+            expect(host?.textContent).not.toContain('Install Jellyfin');
 
             fireInstallPrompt();
-            expect(host?.textContent).toContain('Instalar Jellyfin');
+            expect(host?.textContent).toContain('Install Jellyfin');
         });
 
-        it('"Ahora no" lo oculta y persiste el rechazo', () => {
+        it('«Not now» lo oculta y persiste el rechazo', () => {
             document.documentElement.classList.add('layout-mobile');
             initPwa();
             render(<InstallBanner />);
             fireInstallPrompt();
 
             const dismissBtn = [...(host?.querySelectorAll('button') ?? [])]
-                .find((b) => b.textContent === 'Ahora no');
+                .find((b) => b.textContent === 'Not now');
             expect(dismissBtn).toBeDefined();
             act(() => { dismissBtn?.click(); });
 
-            expect(host?.textContent).not.toContain('Instalar Jellyfin');
+            expect(host?.textContent).not.toContain('Install Jellyfin');
             expect(Number(localStorage.getItem('jfp-install-dismissed'))).toBeGreaterThan(0);
         });
 
@@ -88,7 +88,7 @@ describe('overlays PWA', () => {
             initPwa();
             render(<InstallBanner />);
             fireInstallPrompt();
-            expect(host?.textContent).not.toContain('Instalar');
+            expect(host?.textContent).not.toContain('Install');
         });
     });
 
@@ -96,20 +96,20 @@ describe('overlays PWA', () => {
         it('mobile: aparece al perder la red y desaparece al recuperarla', () => {
             document.documentElement.classList.add('layout-mobile');
             render(<OfflineIndicator />);
-            expect(host?.textContent).not.toContain('Sin conexión');
+            expect(host?.textContent).not.toContain('Offline');
 
             act(() => { window.dispatchEvent(new Event('offline')); });
-            expect(host?.textContent).toContain('Sin conexión');
+            expect(host?.textContent).toContain('Offline');
 
             act(() => { window.dispatchEvent(new Event('online')); });
-            expect(host?.textContent).not.toContain('Sin conexión');
+            expect(host?.textContent).not.toContain('Offline');
         });
 
         it('desktop: no renderiza ni estando offline', () => {
             document.documentElement.classList.add('layout-desktop');
             render(<OfflineIndicator />);
             act(() => { window.dispatchEvent(new Event('offline')); });
-            expect(host?.textContent).not.toContain('Sin conexión');
+            expect(host?.textContent).not.toContain('Offline');
         });
     });
 });

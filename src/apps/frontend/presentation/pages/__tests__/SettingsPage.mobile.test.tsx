@@ -94,31 +94,31 @@ describe('SettingsPage móvil', () => {
 
     it('muestra la lista de secciones con Apariencia primero', () => {
         render();
-        expect(host?.textContent).toContain('Apariencia');
-        expect(host?.textContent).toContain('Perfil');
-        expect(host?.textContent).toContain('Reproducción');
+        expect(host?.textContent).toContain('Appearance');
+        expect(host?.textContent).toContain('Profile');
+        expect(host?.textContent).toContain('Playback');
         // El sidebar desktop no existe: no hay grid de dos columnas.
-        expect(host?.textContent).not.toContain('Inicia sesión en un servidor');
+        expect(host?.textContent).not.toContain('Sign in to a Jellyfin server');
     });
 
     it('drill-down: entrar en Apariencia, elegir Claro y volver', () => {
         render();
-        clickByText('Apariencia');
-        expect(host?.textContent).toContain('Según el sistema');
+        clickByText('Appearance');
+        expect(host?.textContent).toContain('Follow the system');
 
-        clickByText('Claro');
+        clickByText('Light');
         expect(themeVM.mode.value).toBe('light');
 
-        clickByText('‹ Ajustes');
-        expect(host?.textContent).toContain('Reproducción');
+        clickByText('‹ Settings');
+        expect(host?.textContent).toContain('Playback');
     });
 
     it('desktop: dos columnas clásicas, sin sección Apariencia', () => {
         document.documentElement.className = 'layout-desktop';
         render();
-        expect(host?.textContent).not.toContain('Apariencia');
-        expect(host?.textContent).toContain('Perfil');
+        expect(host?.textContent).not.toContain('Appearance');
+        expect(host?.textContent).toContain('Profile');
         // Estado sin sesión visible en el panel derecho.
-        expect(host?.textContent).toContain('Inicia sesión en un servidor');
+        expect(host?.textContent).toContain('Sign in to a Jellyfin server');
     });
 });

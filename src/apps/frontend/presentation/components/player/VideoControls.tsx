@@ -1,7 +1,13 @@
-// Barra de controles del reproductor: seek bar arrastrable, tiempos,
+// Barra de controles del reproductor: seek bar arrastrable (dividida por
+// capítulos y con los tramos de intro/créditos marcados), tiempos,
 // play/pausa, volumen, ajustes y fullscreen.
-import { useRef, useState } from 'react';
-import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
+import globalize from 'lib/globalize';
+
+import { useMemo, useRef, useState } from 'react';
+import { queueVM } from '../../../domain/viewModels/QueueViewModel';
+import {
+    chapterDisplayName, chapterIndexAt, progressDividers, videoPlayerVM
+} from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
 import { VolumeSlider } from './VolumeSlider';
@@ -17,7 +23,17 @@ function formatTime(totalSeconds: number): string {
     return `${hours}${mm}:${String(s).padStart(2, '0')}`;
 }
 
-export function VideoControls() {
+/** % de la barra que ocupa un instante del vídeo. */
+function toPct(seconds: number, duration: number): number {
+    if (duration <= 0) return 0;
+    return Math.min(Math.max((seconds / duration) * 100, 0), 100);
+}
+
+type Props = {
+    onToggleQueue: () => void;
+};
+
+export function VideoControls({ onToggleQueue }: Props) {
     const barRef = useRef<HTMLDivElement>(null);
     const [dragPct, setDragPct] = useState<number | null>(null);
 
@@ -30,11 +46,28 @@ export function VideoControls() {
     const fullscreen = useSignalValue(videoPlayerVM.fullscreen);
     const pipAvailable = useSignalValue(videoPlayerVM.pipAvailable);
     const pipActive = useSignalValue(videoPlayerVM.pipActive);
-    const castAvailable = useSignalValue(videoPlayerVM.castAvailable);
-    const castState = useSignalValue(videoPlayerVM.castState);
+    const queueLength = useSignalValue(queueVM.items).length;
+    const chapters = useSignalValue(videoPlayerVM.chapters);
+    const segments = useSignalValue(videoPlayerVM.segmentList);
+    // Se recalcula solo al cambiar de item o al llegar los segmentos, no en
+    // cada timeupdate.
+    const dividers = useMemo(
+        () => progressDividers(chapters, segments, duration),
+        [chapters, segments, duration]
+    );
 
     const pct = dragPct ?? (duration > 0 ? (current / duration) * 100 : 0);
     const shownTime = dragPct != null ? (dragPct / 100) * duration : current;
+
+    // Posición del puntero sobre la barra: alimenta la etiqueta flotante con
+    // el tiempo y el nombre del capítulo al que se saltaría.
+    const [hoverPct, setHoverPct] = useState<number | null>(null);
+    const previewPct = dragPct ?? hoverPct;
+    const previewTime = previewPct != null ? (previewPct / 100) * duration : 0;
+    const previewChapterIndex = previewPct != null ? chapterIndexAt(chapters, previewTime) : -1;
+    const previewChapter = previewChapterIndex >= 0 ?
+        chapterDisplayName(chapters[previewChapterIndex]?.name, previewChapterIndex) :
+        null;
 
     const pctFromEvent = (e: React.PointerEvent): number => {
         const rect = barRef.current?.getBoundingClientRect();
@@ -48,6 +81,7 @@ export function VideoControls() {
         setDragPct(pctFromEvent(e));
     };
     const onPointerMove = (e: React.PointerEvent) => {
+        setHoverPct(pctFromEvent(e));
         if (dragPct == null) return;
         setDragPct(pctFromEvent(e));
     };
@@ -63,7 +97,7 @@ export function VideoControls() {
                 ref={barRef}
                 className='jfp-video-progress'
                 role='slider'
-                aria-label='Posición'
+                aria-label={globalize.translate('LabelPosition')}
                 aria-valuemin={0}
                 aria-valuemax={Math.floor(duration)}
                 aria-valuenow={Math.floor(shownTime)}
@@ -71,11 +105,35 @@ export function VideoControls() {
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={() => setDragPct(null)}
+                onPointerLeave={() => setHoverPct(null)}
             >
                 <div className='jfp-video-progress-track'>
                     <div className='jfp-video-progress-fill' style={{ width: `${pct}%` }} />
+                    {/* Cortes de la barra: inicio de capítulo y extremos de los
+                        tramos detectados (intro, créditos). Solo la división,
+                        sin colorear el tramo. */}
+                    {dividers.map((t) => (
+                        <div
+                            key={t}
+                            className='jfp-video-progress-mark'
+                            style={{ left: `${toPct(t, duration)}%` }}
+                        />
+                    ))}
                     <div className='jfp-video-progress-thumb' style={{ left: `${pct}%` }} />
                 </div>
+                {previewPct != null && duration > 0 && (
+                    <div
+                        className='jfp-video-progress-tip'
+                        style={{ left: `${previewPct}%` }}
+                    >
+                        {previewChapter && (
+                            <span className='jfp-video-progress-tip-name'>
+                                {previewChapter}
+                            </span>
+                        )}
+                        {formatTime(previewTime)}
+                    </div>
+                )}
             </div>
 
             <div className='jfp-video-controls-row'>
@@ -84,7 +142,7 @@ export function VideoControls() {
                         type='button'
                         className='jfp-video-btn'
                         onClick={() => videoPlayerVM.seekBy(-10)}
-                        aria-label='Retroceder 10 segundos'
+                        aria-label={globalize.translate('AttributeSkipBackward')}
                     >
                         <PlayerIc.Replay10 />
                     </button>
@@ -92,7 +150,7 @@ export function VideoControls() {
                         type='button'
                         className='jfp-video-btn jfp-video-btn-play'
                         onClick={videoPlayerVM.togglePlay}
-                        aria-label={playing ? 'Pausa' : 'Reproducir'}
+                        aria-label={globalize.translate(playing ? 'ButtonPause' : 'Play')}
                     >
                         {playing ? <PlayerIc.Pause /> : <PlayerIc.Play />}
                     </button>
@@ -100,7 +158,7 @@ export function VideoControls() {
                         type='button'
                         className='jfp-video-btn'
                         onClick={() => videoPlayerVM.seekBy(10)}
-                        aria-label='Avanzar 10 segundos'
+                        aria-label={globalize.translate('AttributeSkipForward')}
                     >
                         <PlayerIc.Forward10 />
                     </button>
@@ -112,23 +170,25 @@ export function VideoControls() {
                 </div>
                 <div className='jfp-video-controls-group'>
                     <VideoSettingsMenu />
-                    {/* Visible mientras se emite aunque la disponibilidad parpadee. */}
-                    {(castAvailable || castState !== 'disconnected') && (
+                    {queueLength > 0 && (
                         <button
                             type='button'
-                            className={`jfp-video-btn${castState === 'connected' ? ' is-active' : ''}`}
-                            onClick={videoPlayerVM.promptCast}
-                            aria-label={castState === 'connected' ? 'Emitiendo — cambiar receptor' : 'Enviar a TV'}
+                            className='jfp-video-btn jfp-video-queue-btn'
+                            onClick={onToggleQueue}
+                            aria-label={globalize.translate('HeaderPlayQueue')}
                         >
-                            <PlayerIc.Cast />
+                            <PlayerIc.Queue />
+                            <span className='jfp-video-queue-count'>{queueLength}</span>
                         </button>
                     )}
+                    {/* El botón de emitir (Cast/AirPlay) vive arriba a la
+                        derecha, junto al de bloqueo: ver CastButton. */}
                     {pipAvailable && (
                         <button
                             type='button'
                             className={`jfp-video-btn${pipActive ? ' is-active' : ''}`}
                             onClick={videoPlayerVM.togglePip}
-                            aria-label={pipActive ? 'Salir de Picture-in-Picture' : 'Picture-in-Picture'}
+                            aria-label={globalize.translate(pipActive ? 'ExitPictureInPicture' : 'PictureInPicture')}
                         >
                             <PlayerIc.Pip />
                         </button>
@@ -137,7 +197,7 @@ export function VideoControls() {
                         type='button'
                         className='jfp-video-btn'
                         onClick={videoPlayerVM.toggleFullscreen}
-                        aria-label={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                        aria-label={globalize.translate(fullscreen ? 'ExitFullscreen' : 'ButtonFullscreen')}
                     >
                         {fullscreen ? <PlayerIc.FullscreenExit /> : <PlayerIc.Fullscreen />}
                     </button>

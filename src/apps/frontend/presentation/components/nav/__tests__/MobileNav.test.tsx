@@ -69,8 +69,8 @@ describe('MobileNav', () => {
         expect(nav).not.toBeNull();
         expect(nav?.querySelectorAll('button')).toHaveLength(5);
         expect(document.body.classList.contains('jfp-has-nav')).toBe(true);
-        expect(host?.textContent).toContain('Inicio');
-        expect(host?.textContent).toContain('Ajustes');
+        expect(host?.textContent).toContain('Home');
+        expect(host?.textContent).toContain('Settings');
     });
 
     it('tablet: variante rail', () => {
@@ -84,8 +84,8 @@ describe('MobileNav', () => {
         render('/');
 
         const buttons = [...(host?.querySelectorAll('button') ?? [])];
-        const inicio = buttons.find((b) => b.textContent?.includes('Inicio'));
-        const series = buttons.find((b) => b.textContent?.includes('Series'));
+        const inicio = buttons.find((b) => b.textContent?.includes('Home'));
+        const series = buttons.find((b) => b.textContent?.includes('Shows'));
         expect(inicio?.getAttribute('aria-current')).toBe('page');
         expect(series?.getAttribute('aria-current')).toBeNull();
 

@@ -2,7 +2,7 @@
 
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
-import { apiFetch, apiSend } from './http';
+import { apiFetch, apiSend, noSessionError } from './http';
 import { emitItemMutated } from './mutations';
 
 export type ItemMetadataPatch = {
@@ -47,7 +47,7 @@ export type JFRawItem = {
 
 export async function getItemRaw(itemId: string): Promise<JFRawItem> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     return apiFetch<JFRawItem>(
         `/Users/${session.userId}/Items/${itemId}?Fields=Overview,Genres,Taglines,ProductionYear,OfficialRating,OriginalTitle,ProviderIds`
     );

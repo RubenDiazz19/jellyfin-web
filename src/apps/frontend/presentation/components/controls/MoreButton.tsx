@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import ReactDOM from 'react-dom';
+
+import globalize from 'lib/globalize';
+
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { IconButton } from './IconButton';
@@ -11,6 +14,7 @@ import {
 } from '../../../domain/api';
 import { MetadataEditor, type EditorKind } from '../admin/editor';
 import { AddToDialog } from './AddToDialog';
+import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import { usePlayer } from '../player/PlayerProvider';
 import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
@@ -26,6 +30,10 @@ type Props = {
     items?: MenuItem[];
     type?: 'movie' | 'show' | 'season' | 'episode';
     itemTitle?: string;
+    // Datos para la cola de reproducción. Sin `itemTitle` no encolamos: la
+    // fila de la cola quedaría sin texto.
+    queueSubtitle?: string;
+    queuePoster?: string;
     // Para series: id del episodio con el que arrancar "Reproducir siguiente
     // episodio" / "Reproducir todo". Si no viene, esas opciones se ocultan.
     nextEpisodeId?: string;
@@ -34,7 +42,8 @@ type Props = {
 // Botón "más opciones" (tres puntos) con menú flotante y editor de metadata
 // integrado. Las acciones se ejecutan contra la API real de Jellyfin.
 export function MoreButton({
-    id, size = 18, items, type = 'show', itemTitle, nextEpisodeId
+    id, size = 18, items, type = 'show', itemTitle, nextEpisodeId,
+    queueSubtitle, queuePoster
 }: Props) {
     const [open, setOpen] = useState(false);
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
@@ -60,6 +69,25 @@ export function MoreButton({
     const doPlayNextEpisode = () => {
         if (!nextEpisodeId) return;
         play({ itemId: nextEpisodeId, title: itemTitle });
+    };
+
+    // Series y temporadas no son reproducibles por sí mismas: se encola el
+    // episodio con el que arrancarían.
+    const queueableId = type === 'show' || type === 'season' ? nextEpisodeId : id;
+
+    const doQueue = (position: 'next' | 'last') => {
+        if (!queueableId || !itemTitle) return;
+        const entry = {
+            itemId: queueableId,
+            title: itemTitle,
+            subtitle: queueSubtitle,
+            poster: queuePoster
+        };
+        if (position === 'next') queueVM.playNext(entry);
+        else queueVM.enqueue(entry);
+        toast(globalize.translate(
+            position === 'next' ? 'MessageAddedToQueueNext' : 'MessageAddedToQueue'
+        ), 'success');
     };
 
     useEffect(() => {
@@ -97,20 +125,18 @@ export function MoreButton({
     const doRefresh = async () => {
         try {
             await refreshItemMetadata(id);
-            toast('Refresco de metadata lanzado', 'success');
+            toast(globalize.translate('MessageRefreshQueued'), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
         }
     };
 
     const doDelete = async () => {
-        const confirmed = window.confirm(
-            `Eliminar «${itemTitle ?? 'este item'}» del servidor. Esta acción es irreversible. ¿Continuar?`
-        );
+        const confirmed = window.confirm(globalize.translate('ConfirmDeleteItem'));
         if (!confirmed) return;
         try {
             await deleteItem(id);
-            toast(`Eliminado${label}`, 'success');
+            toast(globalize.translate('Deleted') + label, 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
         }
@@ -118,13 +144,13 @@ export function MoreButton({
 
     const openNative = (targetId?: string, extra = '') => {
         const url = nativeItemUrl(targetId ?? id) + extra;
-        if (!url) return toast('URL del servidor no disponible', 'warn');
+        if (!url) return toast(globalize.translate('MessageServerUrlUnavailable'), 'warn');
         window.open(url, '_blank', 'noopener');
     };
 
     const doDownload = () => {
         const url = downloadUrl(id);
-        if (!url) return toast('URL de descarga no disponible', 'warn');
+        if (!url) return toast(globalize.translate('MessageDownloadUrlUnavailable'), 'warn');
         // Un <a download> es más fiable que window.open (fuerza el guardado en
         // vez de que el browser abra el mkv como reproducción inline).
         const a = document.createElement('a');
@@ -136,68 +162,79 @@ export function MoreButton({
     };
 
     // -------- construcción de menús --------
+    const t = (key: string) => globalize.translate(key);
+    const canQueue = !!queueableId && !!itemTitle;
+
     const menuByType: Record<'movie' | 'show' | 'season' | 'episode', MenuItem[]> = {
         movie: [
-            { label: 'Reproducir desde el principio', fn: () => doPlay({ fromStart: true }) },
-            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
-            { label: 'Añadir a colección', fn: () => setAddTo('collection') },
+            { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
+            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
+            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
+            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
+            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
             { isDivider: true },
-            { label: 'Descargar', fn: doDownload },
+            { label: t('Download'), fn: doDownload },
             { isDivider: true },
-            { label: 'Identificar…', fn: () => setEditor('identify') },
-            { label: 'Actualizar metadatos', fn: doRefresh },
-            { label: 'Editar metadatos', fn: () => setEditor('metadata') },
-            { label: 'Editar imágenes', fn: () => setEditor('images') },
-            { label: 'Editar subtítulos', fn: () => setEditor('subtitles') },
+            { label: t('Identify'), fn: () => setEditor('identify') },
+            { label: t('RefreshMetadata'), fn: doRefresh },
+            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditImages'), fn: () => setEditor('images') },
+            { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
             { isDivider: true },
-            { label: 'Eliminar', fn: doDelete, danger: true }
+            { label: t('Delete'), fn: doDelete, danger: true }
         ],
         show: [
             ...(nextEpisodeId ? [
-                { label: 'Reproducir siguiente episodio', fn: doPlayNextEpisode },
-                { label: 'Reproducir todo', fn: doPlayNextEpisode }
+                { label: t('PlayNextEpisode'), fn: doPlayNextEpisode },
+                { label: t('HeaderPlayAll'), fn: doPlayNextEpisode }
             ] : []),
-            { label: 'Reproducción aleatoria', fn: () => openNative(undefined, '&shuffle=true') },
+            { label: t('Shuffle'), fn: () => openNative(undefined, '&shuffle=true') },
             { isDivider: true },
-            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
-            { label: 'Añadir a colección', fn: () => setAddTo('collection') },
+            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
+            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
+            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
+            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
             { isDivider: true },
-            { label: 'Identificar…', fn: () => setEditor('identify') },
-            { label: 'Actualizar metadatos', fn: doRefresh },
-            { label: 'Editar metadatos', fn: () => setEditor('metadata') },
-            { label: 'Editar imágenes', fn: () => setEditor('images') },
+            { label: t('Identify'), fn: () => setEditor('identify') },
+            { label: t('RefreshMetadata'), fn: doRefresh },
+            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditImages'), fn: () => setEditor('images') },
             { isDivider: true },
-            { label: 'Eliminar', fn: doDelete, danger: true }
+            { label: t('Delete'), fn: doDelete, danger: true }
         ],
         season: [
             ...(nextEpisodeId ? [
-                { label: 'Reproducir siguiente episodio', fn: doPlayNextEpisode },
-                { label: 'Reproducir todo', fn: doPlayNextEpisode }
+                { label: t('PlayNextEpisode'), fn: doPlayNextEpisode },
+                { label: t('HeaderPlayAll'), fn: doPlayNextEpisode }
             ] : []),
             { isDivider: true },
-            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
-            { label: 'Añadir a colección', fn: () => setAddTo('collection') },
+            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
+            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
+            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
+            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
             { isDivider: true },
             // Sin "Identificar…": las temporadas no tienen búsqueda remota
             // propia en Jellyfin, se identifican desde la serie.
-            { label: 'Actualizar metadatos', fn: doRefresh },
-            { label: 'Editar metadatos', fn: () => setEditor('metadata') },
-            { label: 'Editar imágenes', fn: () => setEditor('images') },
+            { label: t('RefreshMetadata'), fn: doRefresh },
+            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditImages'), fn: () => setEditor('images') },
             { isDivider: true },
-            { label: 'Eliminar', fn: doDelete, danger: true }
+            { label: t('Delete'), fn: doDelete, danger: true }
         ],
         episode: [
-            { label: 'Reproducir desde el principio', fn: () => doPlay({ fromStart: true }) },
-            { label: 'Añadir a lista de reproducción', fn: () => setAddTo('playlist') },
+            { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
+            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
+            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
+            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
             { isDivider: true },
-            { label: 'Descargar', fn: doDownload },
+            { label: t('Download'), fn: doDownload },
             { isDivider: true },
-            { label: 'Identificar…', fn: () => setEditor('identify') },
-            { label: 'Actualizar metadatos', fn: doRefresh },
-            { label: 'Editar metadatos', fn: () => setEditor('metadata') },
-            { label: 'Editar subtítulos', fn: () => setEditor('subtitles') },
+            { label: t('Identify'), fn: () => setEditor('identify') },
+            { label: t('RefreshMetadata'), fn: doRefresh },
+            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
             { isDivider: true },
-            { label: 'Eliminar episodio', fn: doDelete, danger: true }
+            { label: t('Delete'), fn: doDelete, danger: true }
         ]
     };
 
@@ -205,7 +242,7 @@ export function MoreButton({
 
     return (
         <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-            <IconButton onClick={openMenu} ariaLabel='Más opciones' active={open}>
+            <IconButton onClick={openMenu} ariaLabel={globalize.translate('ButtonMore')} active={open}>
                 <Ic.Dots size={size} />
             </IconButton>
             {/* Touch: bottom sheet M3 (spec 4.3). Desktop: popup anclado. */}
@@ -312,8 +349,8 @@ export function MoreButton({
 // Menú antiguo (modo prototipo sin sesión Jellyfin) — solo toasts. Se
 // mantiene para no romper demos sin backend.
 function legacyMenu(toast: ReturnType<typeof useToast>): MenuItem[] {
-    const notImpl = (l: string) => toast(`«${l}» — sin conexión con Jellyfin`, 'info');
+    const label = globalize.translate('Download');
     return [
-        { label: 'Descargar', fn: () => notImpl('Descargar') }
+        { label, fn: () => toast(globalize.translate('MessageNotConnected', label), 'info') }
     ];
 }

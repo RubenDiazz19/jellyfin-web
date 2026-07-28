@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect, useState } from 'react';
 import { T, HERO_POS, HERO_SCRIM, type HeroPosKey, type HeroScrimKey } from '../theme/tokens';
 import { Ic } from '../theme/icons';
@@ -113,7 +115,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             <Nav
                 navigate={navigate}
                 breadcrumb={[
-                    { label: 'Series', to: { page: 'home' } },
+                    { label: globalize.translate('Shows'), to: { page: 'home' } },
                     { label: 'Drama' },
                     { label: show.title }
                 ]}
@@ -253,7 +255,9 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                             {inProgress && btnHover && remaining ? (
                                 remaining
                             ) : (
-                                inProgress ? epLabel : complete ? 'Visto' : `Reproducir ${label}`
+                                inProgress ? epLabel :
+                                    complete ? globalize.translate(btnHover ? 'WatchAgain' : 'Watched') :
+                                        `${globalize.translate('Play')} ${label}`
                             )}
                         </span>
                     </button>
@@ -279,11 +283,17 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                                 .find((s) => s.n === (show.cont?.seasonN ?? show.defaultSeason))
                                 ?.episodes.find((e) => e.n === (show.cont?.epN ?? 1))?.jfId
                         }
+                        queueSubtitle={globalize.translate(
+                            'ValueSeasonEpisode',
+                            show.cont?.seasonN ?? show.defaultSeason,
+                            show.cont?.epN ?? 1
+                        )}
+                        queuePoster={show.poster}
                     />
                 </div>
             </div>
 
-            <ScrollHint label='Episodios' />
+            <ScrollHint label={globalize.translate('Episodes')} />
         </section>
     );
 }
@@ -310,7 +320,7 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                         fontFamily: T.ui, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                         color: T.dim, marginBottom: 18
                     }}>
-                        Sinopsis
+                        {globalize.translate('Overview')}
                     </div>
                     <p style={{
                         fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
@@ -329,17 +339,17 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                         fontFamily: T.ui, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                         color: T.dim, marginBottom: 18
                     }}>
-                        Detalles
+                        {globalize.translate('HeaderDetails')}
                     </div>
                     <div style={{
                         display: 'grid', gridTemplateColumns: '120px 1fr',
                         rowGap: 14, columnGap: 18, fontSize: 13
                     }}>
-                        <span style={{ color: T.dim }}>Creador</span><span>{show.creator}</span>
-                        <span style={{ color: T.dim }}>Dirección</span><span>{show.directors}</span>
-                        <span style={{ color: T.dim }}>Estudio</span><span>{show.studio}</span>
-                        <span style={{ color: T.dim }}>País</span><span>{show.country}</span>
-                        <span style={{ color: T.dim }}>Géneros</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Creator')}</span><span>{show.creator}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Director')}</span><span>{show.directors}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Studio')}</span><span>{show.studio}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Country')}</span><span>{show.country}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Genres')}</span>
                         <span>
                             {show.genres.map((g, i) => (
                                 <span key={g}>
@@ -355,9 +365,9 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                                 </span>
                             ))}
                         </span>
-                        <span style={{ color: T.dim }}>Duración</span><span>{show.runtime}</span>
-                        <span style={{ color: T.dim }}>Estreno</span><span>{show.premiere}</span>
-                        <span style={{ color: T.dim }}>Estado</span><span style={{ color: '#fff' }}>{show.status}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('LabelRuntimeMinutes')}</span><span>{show.runtime}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('OptionPremiereDate')}</span><span>{show.premiere}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('HeaderStatus')}</span><span style={{ color: '#fff' }}>{show.status}</span>
                     </div>
                 </div>
             </div>
@@ -367,7 +377,7 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                     <h3 style={{
                         fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
                     }}>
-                        Temporadas
+                        {globalize.translate('HeaderSeasons')}
                     </h3>
                     <div style={{ marginLeft: 14, fontFamily: T.ui, fontSize: 12, color: T.dim }}>
                         {show.seasons.length} temporadas · {show.seasons.reduce((a, s) => a + s.total, 0)} episodios

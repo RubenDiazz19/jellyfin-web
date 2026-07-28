@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
@@ -67,14 +69,15 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
 
     const menuItems = (
         <>
-            {item('Perfil', () => navigate({ page: 'profile' }))}
-            {item('Ajustes', () => navigate({ page: 'settings' }))}
-            {item('Cambiar usuario', () => {
-                toast('Sesión cerrada — inicia con otro usuario', 'info');
+            {item(globalize.translate('HeaderPlayQueue'), () => navigate({ page: 'queue' }))}
+            {item(globalize.translate('Profile'), () => navigate({ page: 'profile' }))}
+            {item(globalize.translate('Settings'), () => navigate({ page: 'settings' }))}
+            {item(globalize.translate('ButtonSwitchUser'), () => {
+                toast(globalize.translate('MessageSignedOutSwitchUser'), 'info');
                 logout();
             })}
-            {item('Cerrar sesión', () => {
-                toast('Sesión cerrada', 'info');
+            {item(globalize.translate('ButtonSignOut'), () => {
+                toast(globalize.translate('MessageSignedOut'), 'info');
                 logout();
             }, true)}
         </>
@@ -84,7 +87,7 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
         <div ref={ref} style={{ position: 'relative' }}>
             <button
                 onClick={openMenu}
-                aria-label='Cuenta'
+                aria-label={globalize.translate('LabelAccount')}
                 style={{
                     width: 28, height: 28, borderRadius: '50%',
                     background: 'linear-gradient(135deg,#d9a566,#3a1f10)',
@@ -99,7 +102,7 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
             {/* Táctil: bottom sheet M3. Desktop: popup anclado (sin cambios). */}
             {open && r.touch && (
                 <BottomSheet
-                    title={session?.displayName ?? 'Invitado'}
+                    title={session?.displayName ?? globalize.translate('Guest')}
                     onClose={() => setOpen(false)}
                 >
                     {menuItems}
@@ -120,21 +123,22 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                         padding: '10px 14px 8px',
                         fontSize: 13, color: '#fff', fontWeight: 500
                     }}>
-                        {session?.displayName ?? 'Invitado'}
+                        {session?.displayName ?? globalize.translate('Guest')}
                     </div>
                     <div style={{ padding: '0 14px 10px', fontSize: 11, color: T.dim, wordBreak: 'break-all' }}>
                         {session?.serverUrl}
                     </div>
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 6px' }} />
-                    {item('Perfil', () => navigate({ page: 'profile' }))}
-                    {item('Ajustes', () => navigate({ page: 'settings' }))}
-                    {item('Cambiar usuario', () => {
-                        toast('Sesión cerrada — inicia con otro usuario', 'info');
+                    {item(globalize.translate('HeaderPlayQueue'), () => navigate({ page: 'queue' }))}
+                    {item(globalize.translate('Profile'), () => navigate({ page: 'profile' }))}
+                    {item(globalize.translate('Settings'), () => navigate({ page: 'settings' }))}
+                    {item(globalize.translate('ButtonSwitchUser'), () => {
+                        toast(globalize.translate('MessageSignedOutSwitchUser'), 'info');
                         logout();
                     })}
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 0' }} />
-                    {item('Cerrar sesión', () => {
-                        toast('Sesión cerrada', 'info');
+                    {item(globalize.translate('ButtonSignOut'), () => {
+                        toast(globalize.translate('MessageSignedOut'), 'info');
                         logout();
                     }, true)}
                 </div>,

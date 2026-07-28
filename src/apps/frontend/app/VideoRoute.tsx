@@ -3,6 +3,8 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
 import loading from 'components/loading/loading';
 
+import { queueVM, type QueueEntry } from '../domain/viewModels/QueueViewModel';
+import { videoPlayerVM } from '../domain/viewModels/VideoPlayerViewModel';
 import { VideoPlayer } from '../presentation/components/player/VideoPlayer';
 import { initAdaptiveLayout } from '../shared/adaptiveLayout';
 // Si el usuario entra directo a /video (F5 o URL directa) esta ruta se monta
@@ -20,6 +22,14 @@ export const Component = () => {
     const itemId = params.get('item') ?? '';
     const startTicks = Number(params.get('start') ?? '0') || undefined;
     const title = params.get('title') ?? undefined;
+
+    // Reproducir otra entrada = cambiar los parámetros de esta misma ruta.
+    // `replace` para que el botón atrás no recorra toda la cola reproducida.
+    const playEntry = useCallback((entry: QueueEntry) => {
+        const q = new URLSearchParams({ item: entry.itemId });
+        if (entry.title) q.set('title', entry.title);
+        navigate(`/video?${q.toString()}`, { replace: true });
+    }, [navigate]);
 
     useEffect(() => {
         // `jf-video-active` desactiva el scrollbar del navegador y neutraliza
@@ -40,6 +50,21 @@ export const Component = () => {
         else navigate('/', { replace: true });
     }, [navigate]);
 
+    // Auto-avance: al terminar manda la cola; si está vacía, el siguiente
+    // episodio de la serie (el que anuncia el aviso de los créditos). Sin
+    // nada de eso, se sale. Vive aquí y no en el ViewModel porque implica
+    // navegar (regla MVVM).
+    const onEnded = useCallback(() => {
+        const queued = queueVM.takeNext();
+        if (queued) {
+            playEntry(queued);
+            return;
+        }
+        const next = videoPlayerVM.nextEpisode.peek();
+        if (next) playEntry({ itemId: next.id, title: next.title });
+        else onClose();
+    }, [onClose, playEntry]);
+
     if (!itemId) return <Navigate to='/' replace />;
 
     return (
@@ -48,6 +73,8 @@ export const Component = () => {
             startTicks={startTicks}
             title={title}
             onClose={onClose}
+            onEnded={onEnded}
+            onPlayQueued={playEntry}
         />
     );
 };

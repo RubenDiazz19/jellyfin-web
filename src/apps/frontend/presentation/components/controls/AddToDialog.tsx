@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
@@ -25,8 +27,16 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
     const [busy, setBusy] = useState(false);
 
     const labels = kind === 'playlist' ?
-        { title: 'Añadir a lista de reproducción', empty: 'No tienes listas todavía', create: 'Crear lista' } :
-        { title: 'Añadir a colección', empty: 'No hay colecciones todavía', create: 'Crear colección' };
+        {
+            title: globalize.translate('AddToPlaylist'),
+            empty: globalize.translate('MessageNoPlaylistsYet'),
+            create: globalize.translate('HeaderNewPlaylist')
+        } :
+        {
+            title: globalize.translate('AddToCollection'),
+            empty: globalize.translate('MessageNoCollectionsYet'),
+            create: globalize.translate('HeaderNewCollection')
+        };
 
     useEffect(() => {
         const fetchEntries = kind === 'playlist' ? getPlaylists : getCollections;
@@ -39,7 +49,7 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
         setBusy(true);
         try {
             await (kind === 'playlist' ? addToPlaylist : addToCollection)(entry.id, itemId);
-            toast(`Añadido a «${entry.name}»${suffix}`, 'success');
+            toast(globalize.translate('MessageAddedTo', entry.name) + suffix, 'success');
             onClose();
         } catch (e) {
             toast((e as Error).message, 'warn');
@@ -53,7 +63,7 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
         setBusy(true);
         try {
             await (kind === 'playlist' ? createPlaylist : createCollection)(name, itemId);
-            toast(`«${name}» creada${suffix}`, 'success');
+            toast(globalize.translate('MessageCreated', name) + suffix, 'success');
             onClose();
         } catch (e) {
             toast((e as Error).message, 'warn');
@@ -86,7 +96,7 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
                     <div style={{ fontSize: 15, fontWeight: 500 }}>{labels.title}</div>
                     <button
                         onClick={onClose}
-                        aria-label='Cerrar'
+                        aria-label={globalize.translate('ButtonClose')}
                         style={{
                             marginLeft: 'auto', background: 'none', border: 'none',
                             color: T.dim, cursor: 'pointer', fontSize: 18, lineHeight: 1
@@ -97,7 +107,7 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
                 {error ? (
                     <div style={{ color: '#ff6b6b', fontSize: 13 }}>{error}</div>
                 ) : !entries ? (
-                    <div style={{ color: T.dim, fontSize: 13 }}>Cargando…</div>
+                    <div style={{ color: T.dim, fontSize: 13 }}>{globalize.translate('Loading')}</div>
                 ) : entries.length === 0 ? (
                     <div style={{ color: T.dim, fontSize: 13, marginBottom: 8 }}>{labels.empty}</div>
                 ) : (
@@ -130,7 +140,7 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
                                         {e.name}
                                     </div>
                                     {e.count != null && (
-                                        <div style={{ fontSize: 12, color: T.dim }}>{e.count} elementos</div>
+                                        <div style={{ fontSize: 12, color: T.dim }}>{globalize.translate('ItemCount', e.count)}</div>
                                     )}
                                 </div>
                             </button>

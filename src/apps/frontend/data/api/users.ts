@@ -2,8 +2,10 @@
 // avatar, views and (admin) user listing. Powers the custom Ajustes page so
 // the native web UI isn't needed for day-to-day preferences.
 
+import globalize from 'lib/globalize';
+
 import { loadSession } from '../session/session';
-import { apiFetch, apiSend, authHeader, trimSlash } from './http';
+import { apiFetch, apiSend, authHeader, noSessionError, trimSlash } from './http';
 
 export type SubtitleMode = 'Default' | 'Always' | 'OnlyForced' | 'None' | 'Smart';
 
@@ -91,7 +93,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
  */
 export async function updateUserConfig(patch: Partial<UserConfig>): Promise<UserConfig> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     const current = (await apiFetch<JFUser>('/Users/Me')).Configuration;
     const merged: UserConfig = { ...withDefaults(current), ...patch };
     await apiSend(`/Users/${session.userId}/Configuration`, 'POST', merged);
@@ -100,7 +102,7 @@ export async function updateUserConfig(patch: Partial<UserConfig>): Promise<User
 
 export async function changePassword(currentPw: string, newPw: string): Promise<void> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     await apiSend(`/Users/${session.userId}/Password`, 'POST', {
         CurrentPw: currentPw,
         NewPw: newPw
@@ -117,7 +119,7 @@ export function avatarUrl(tag?: string): string {
 // Mismo formato que uploadImageFile: body base64 con el Content-Type real.
 export async function uploadAvatar(file: File): Promise<void> {
     const session = loadSession();
-    if (!session?.accessToken || !session.userId) throw new Error('Sin sesión');
+    if (!session?.accessToken || !session.userId) throw noSessionError();
     const MAX_BYTES = 30 * 1024 * 1024;
     if (file.size > MAX_BYTES) {
         throw new Error(`La imagen supera 30 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
@@ -139,12 +141,12 @@ export async function uploadAvatar(file: File): Promise<void> {
         },
         body: btoa(bin)
     });
-    if (!res.ok) throw new Error(`Subida del avatar falló: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(globalize.translate('MessageUploadFailed', String(res.status)));
 }
 
 export async function deleteAvatar(): Promise<void> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     await apiSend(`/Users/${session.userId}/Images/Primary`, 'DELETE');
 }
 
@@ -157,7 +159,7 @@ export type UserView = {
 
 export async function getUserViews(): Promise<UserView[]> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     const data = await apiFetch<{ Items: JFUserView[] }>(`/Users/${session.userId}/Views`);
     const server = trimSlash(session.serverUrl);
     return (data.Items ?? []).map((v) => ({

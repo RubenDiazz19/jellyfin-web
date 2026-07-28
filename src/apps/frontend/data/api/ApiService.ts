@@ -38,8 +38,12 @@ import {
     subtitleVttUrl,
     reportPlaybackStart,
     reportPlaybackProgress,
-    reportPlaybackStop
+    reportPlaybackStop,
+    getDeviceId,
+    getMaxStreamingBitrate
 } from './playback';
+import { getNextEpisode, getPlaybackContext } from './playbackContext';
+import { getMediaSegments } from './segments';
 import {
     getItemRaw,
     updateItemMetadata,
@@ -97,7 +101,12 @@ const playbackService = {
     subtitleVttUrl,
     reportPlaybackStart,
     reportPlaybackProgress,
-    reportPlaybackStop
+    reportPlaybackStop,
+    getMediaSegments,
+    getPlaybackContext,
+    getNextEpisode,
+    getDeviceId,
+    getMaxStreamingBitrate
 };
 
 const metadataService = {

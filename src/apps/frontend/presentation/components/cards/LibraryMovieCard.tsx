@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import React from 'react';
 import { T } from '../../theme/tokens';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
@@ -65,7 +67,7 @@ export const LibraryMovieCard = React.memo(function LibraryMovieCardBase({ movie
                 marginTop: 10, fontFamily: T.ui, fontSize: 11, color: T.dim,
                 letterSpacing: 1, textTransform: 'uppercase'
             }}>
-                {movie.year} · Película
+                {movie.year} · {globalize.translate('Movie')}
             </div>
         </div>
     );

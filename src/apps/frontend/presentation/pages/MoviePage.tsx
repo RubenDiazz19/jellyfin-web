@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect, useState } from 'react';
 import { T, HERO_POS, HERO_SCRIM } from '../theme/tokens';
 import { Ic } from '../theme/icons';
@@ -94,7 +96,7 @@ function MovieHero({
             <Nav
                 navigate={navigate}
                 breadcrumb={[
-                    { label: 'Películas', to: { page: 'home' } },
+                    { label: globalize.translate('Movies'), to: { page: 'home' } },
                     { label: movie.genres[0] },
                     { label: movie.title }
                 ]}
@@ -233,7 +235,12 @@ function MovieHero({
                                 {watched ?
                                     <Ic.Check size={14} stroke='#000' /> :
                                     <Ic.Play size={14} fill='#fff' />}
-                                {inProgress ? (btnHover ? remaining : 'Continuar viendo') : watched ? 'Visto' : 'Reproducir'}
+                                {/* Con el ratón encima el botón dice qué va a
+                                    pasar al pulsarlo: los minutos que quedan,
+                                    o «ver de nuevo» si ya está visto. */}
+                                {inProgress ? (btnHover ? remaining : globalize.translate('ContinueWatching')) :
+                                    watched ? globalize.translate(btnHover ? 'WatchAgain' : 'Watched') :
+                                        globalize.translate('Play')}
                             </span>
                         </button>
                         {/* "Mi lista" es decorativo (sin handler); en touch se
@@ -255,12 +262,16 @@ function MovieHero({
                         {/* id real del server: descarga/metadata/imágenes lo
                             necesitan; el prefijo movie- es solo de los stores
                             locales y lo aplica MoreButton internamente. */}
-                        <MoreButton id={movie.id} size={18} type='movie' itemTitle={movie.title} />
+                        <MoreButton
+                            id={movie.id} size={18} type='movie' itemTitle={movie.title}
+                            queueSubtitle={String(movie.year)}
+                            queuePoster={movie.poster}
+                        />
                     </div>
                 </div>
             </div>
 
-            <ScrollHint label='Detalles' />
+            <ScrollHint label={globalize.translate('HeaderDetails')} />
         </section>
     );
 }
@@ -287,7 +298,7 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                         fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                         color: T.dim, marginBottom: 18
                     }}>
-                        Sinopsis
+                        {globalize.translate('Overview')}
                     </div>
                     <p style={{
                         fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
@@ -306,16 +317,16 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                         fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                         color: T.dim, marginBottom: 18
                     }}>
-                        Detalles
+                        {globalize.translate('HeaderDetails')}
                     </div>
                     <div style={{
                         display: 'grid', gridTemplateColumns: '120px 1fr',
                         rowGap: 14, columnGap: 18, fontSize: 13
                     }}>
-                        <span style={{ color: T.dim }}>Dirección</span><span>{movie.director}</span>
-                        <span style={{ color: T.dim }}>Estudio</span><span>{movie.studio}</span>
-                        <span style={{ color: T.dim }}>País</span><span>{movie.country}</span>
-                        <span style={{ color: T.dim }}>Géneros</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Director')}</span><span>{movie.director}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Studio')}</span><span>{movie.studio}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Country')}</span><span>{movie.country}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Genres')}</span>
                         <span>
                             {movie.genres.map((g, i) => (
                                 <span key={g}>
@@ -331,8 +342,8 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                                 </span>
                             ))}
                         </span>
-                        <span style={{ color: T.dim }}>Duración</span><span>{formatRuntime(movie.runtime)}</span>
-                        <span style={{ color: T.dim }}>Estreno</span><span>{movie.premiere}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('LabelRuntimeMinutes')}</span><span>{formatRuntime(movie.runtime)}</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('OptionPremiereDate')}</span><span>{movie.premiere}</span>
                     </div>
                 </div>
             </div>

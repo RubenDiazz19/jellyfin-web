@@ -1,11 +1,18 @@
 // Reproductor de vídeo del frontend: <video> nativo controlado por
 // VideoPlayerViewModel + OSD propio (controles, ajustes, atajos de teclado).
+import globalize from 'lib/globalize';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { videoPlayerVM, type AspectRatio } from '../../../domain/viewModels/VideoPlayerViewModel';
-import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { queueVM, type QueueEntry } from '../../../domain/viewModels/QueueViewModel';
+import { QueuePanel } from '../queue/QueuePanel';
+import {
+    segmentSkipLabelKey, videoPlayerVM, type AspectRatio
+} from '../../../domain/viewModels/VideoPlayerViewModel';
+import { useSignalValue, useViewModel } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
 import { haptic } from '../../../shared/haptics';
 import { PlayerIc } from './playerIcons';
+import { CastButton } from './CastButton';
 import { VideoControls } from './VideoControls';
 import { VideoGestures } from './VideoGestures';
 
@@ -38,10 +45,20 @@ type Props = {
     startTicks?: number;
     title?: string;
     onClose: () => void;
+    /** La reproducción ha llegado al final: la ruta decide qué sigue. */
+    onEnded: () => void;
+    /** Reproduce otra entrada de la cola sin salir del reproductor. */
+    onPlayQueued: (entry: QueueEntry) => void;
 };
 
-export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
+export function VideoPlayer({
+    itemId, startTicks, title, onClose, onEnded, onPlayQueued
+}: Props) {
     useViewModel(videoPlayerVM);
+    // La cola cambia desde fuera del reproductor (menú de un item, otra
+    // pestaña): sin suscripción, el aviso de "a continuación" se quedaría
+    // anunciando lo que ya no toca.
+    const queueItems = useSignalValue(queueVM.items);
     const containerRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,6 +69,7 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
     const [locked, setLocked] = useState(false);
     const [showHints, setShowHints] = useState(false);
     const [suggestLandscape, setSuggestLandscape] = useState(false);
+    const [queueOpen, setQueueOpen] = useState(false);
 
     // startTicks/title solo importan al abrir; un cambio de itemId re-monta
     // la reproducción y captura los valores actuales.
@@ -84,6 +102,15 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
             setControlsVisible(false);
         }, HIDE_CONTROLS_MS);
     }, []);
+
+    // Fin de la reproducción → la ruta encadena con la cola. El VM no navega
+    // (regla MVVM), así que la señal se traduce aquí en una llamada.
+    const ended = videoPlayerVM.ended.value;
+    const onEndedRef = useRef(onEnded);
+    onEndedRef.current = onEnded;
+    useEffect(() => {
+        if (ended) onEndedRef.current();
+    }, [ended]);
 
     // Al pausar, muestra los controles; al reanudar, rearma el temporizador.
     const playing = videoPlayerVM.playing.value;
@@ -214,6 +241,20 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
     const loading = videoPlayerVM.loading.value;
     const buffering = videoPlayerVM.buffering.value;
     const error = videoPlayerVM.error.value;
+    const activeSegment = videoPlayerVM.activeSegment.value;
+    const autoNext = videoPlayerVM.autoNextProgress.value;
+    // Lo que se anuncia tiene que ser lo que va a sonar: al terminar manda la
+    // cola (si el usuario ha encolado algo a propósito) y si no el siguiente
+    // episodio de la serie — el mismo orden que aplica VideoRoute.
+    const queuedNext = queueItems[0];
+    const nextEpisode = queuedNext ?
+        {
+            id: queuedNext.itemId,
+            title: queuedNext.title,
+            label: queuedNext.subtitle ?? '',
+            thumb: queuedNext.poster
+        } :
+        videoPlayerVM.nextEpisode.value;
     const brightness = videoPlayerVM.brightness.value;
     const idle = !controlsVisible && !error;
     const videoStyle = aspectRatioStyle(videoPlayerVM.aspectRatio.value);
@@ -258,7 +299,7 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                         kind='subtitles'
                         src={subtitleUrl}
                         default
-                        label='Subtítulos'
+                        label={globalize.translate('Subtitles')}
                     />
                 )}
             </video>
@@ -274,23 +315,26 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                     type='button'
                     className='jfp-video-btn'
                     onClick={onClose}
-                    aria-label='Volver'
+                    aria-label={globalize.translate('ButtonBack')}
                 >
                     <PlayerIc.Back />
                 </button>
                 {videoPlayerVM.title.value && (
                     <div className='jfp-video-title'>{videoPlayerVM.title.value}</div>
                 )}
-                {touch && (
-                    <button
-                        type='button'
-                        className='jfp-video-btn jfp-video-top-lock'
-                        onClick={() => { haptic('select'); setLocked(true); }}
-                        aria-label='Bloquear controles'
-                    >
-                        <PlayerIc.LockOpen />
-                    </button>
-                )}
+                <div className='jfp-video-top-actions'>
+                    <CastButton itemId={itemId} />
+                    {touch && (
+                        <button
+                            type='button'
+                            className='jfp-video-btn'
+                            onClick={() => { haptic('select'); setLocked(true); }}
+                            aria-label={globalize.translate('LockControls')}
+                        >
+                            <PlayerIc.LockOpen />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Bloqueo (táctil): oculta OSD y gestos, deja solo el candado. */}
@@ -299,7 +343,7 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                     type='button'
                     className='jfp-video-unlock'
                     onClick={() => { haptic('select'); setLocked(false); }}
-                    aria-label='Desbloquear controles'
+                    aria-label={globalize.translate('UnlockControls')}
                 >
                     <PlayerIc.Lock />
                 </button>
@@ -309,29 +353,71 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
             {touch && suggestLandscape && !locked && (
                 <div className='jfp-video-rotate-hint' onClick={(e) => e.stopPropagation()}>
                     <PlayerIc.Rotate size={18} />
-                    Gira el dispositivo para pantalla completa
+                    {globalize.translate('MessageRotateForFullscreen')}
                 </div>
+            )}
+
+            {/* Siguiente episodio: un solo botón que se va llenando mientras
+                el capítulo termina; al llenarse, `ended` encadena solo.
+                Pulsarlo salta ya. Ocupa el sitio del botón de saltar
+                créditos, al que sustituye. */}
+            {autoNext != null && nextEpisode && !locked && (
+                <button
+                    type='button'
+                    className='jfp-video-nextup'
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        haptic('select');
+                        onPlayQueued({ itemId: nextEpisode.id, title: nextEpisode.title });
+                    }}
+                >
+                    <span
+                        className='jfp-video-nextup-fill'
+                        style={{ transform: `scaleX(${autoNext})` }}
+                    />
+                    <span className='jfp-video-nextup-text'>
+                        {globalize.translate('NextEpisode')}
+                    </span>
+                </button>
+            )}
+
+            {/* Saltar intro/resumen: solo mientras la posición cae dentro de
+                un segmento saltable. Los créditos no llevan botón: ahí manda
+                el aviso de siguiente episodio. */}
+            {activeSegment && !locked && (
+                <button
+                    type='button'
+                    className='jfp-video-skip'
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        haptic('select');
+                        videoPlayerVM.skipActiveSegment();
+                    }}
+                >
+                    {globalize.translate(segmentSkipLabelKey(activeSegment.kind))}
+                    <PlayerIc.SkipForward size={15} />
+                </button>
             )}
 
             {/* Hints de gestos en el primer uso. */}
             {touch && showHints && !locked && (
                 <div className='jfp-gesture-hints' onClick={dismissHints}>
                     <div className='jfp-gesture-hints-card'>
-                        <div className='jfp-gesture-hints-title'>Gestos del reproductor</div>
+                        <div className='jfp-gesture-hints-title'>{globalize.translate('HeaderPlayerGestures')}</div>
                         <ul className='jfp-gesture-hints-list'>
-                            <li>Toca para reproducir o pausar</li>
-                            <li>Doble toque a los lados: ±10 s</li>
-                            <li>Desliza horizontal para avanzar</li>
-                            <li>Vertical: brillo (izq.) y volumen (der.)</li>
-                            <li>Pellizca para ajustar el encuadre</li>
+                            <li>{globalize.translate('GestureTapPlayPause')}</li>
+                            <li>{globalize.translate('GestureDoubleTapSeek')}</li>
+                            <li>{globalize.translate('GestureSwipeSeek')}</li>
+                            <li>{globalize.translate('GestureVerticalBrightnessVolume')}</li>
+                            <li>{globalize.translate('GesturePinchZoom')}</li>
                         </ul>
-                        <div className='jfp-gesture-hints-dismiss'>Toca para cerrar</div>
+                        <div className='jfp-gesture-hints-dismiss'>{globalize.translate('GestureTapToClose')}</div>
                     </div>
                 </div>
             )}
 
             {(loading || buffering) && !error && (
-                <div className='jfp-video-loading' aria-label='Cargando'>
+                <div className='jfp-video-loading' aria-label={globalize.translate('Loading')}>
                     <PlayerIc.Spinner />
                 </div>
             )}
@@ -340,12 +426,40 @@ export function VideoPlayer({ itemId, startTicks, title, onClose }: Props) {
                 <div className='jfp-video-error' onClick={(e) => e.stopPropagation()}>
                     <div className='jfp-video-error-msg'>{error}</div>
                     <button type='button' className='jfp-video-error-btn' onClick={onClose}>
-                        Volver
+                        {globalize.translate('ButtonBack')}
                     </button>
                 </div>
             )}
 
-            <VideoControls />
+            {/* Cola de reproducción: panel lateral sobre el vídeo. */}
+            {queueOpen && (
+                <div
+                    className='jfp-video-queue'
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className='jfp-video-queue-head'>
+                        <span>{globalize.translate('HeaderPlayQueue')}</span>
+                        <button
+                            type='button'
+                            className='jfp-video-btn'
+                            onClick={() => setQueueOpen(false)}
+                            aria-label={globalize.translate('ButtonClose')}
+                        >
+                            <span aria-hidden='true'>✕</span>
+                        </button>
+                    </div>
+                    <QueuePanel
+                        dense
+                        onPlay={(entry) => {
+                            queueVM.takeFor(entry.itemId);
+                            setQueueOpen(false);
+                            onPlayQueued(entry);
+                        }}
+                    />
+                </div>
+            )}
+
+            <VideoControls onToggleQueue={() => setQueueOpen((v) => !v)} />
         </div>
     );
 }

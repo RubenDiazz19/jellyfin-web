@@ -3,6 +3,8 @@
 
 import { useEffect, useState } from 'react';
 
+import globalize from 'lib/globalize';
+
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
 
 export function OfflineIndicator() {
@@ -53,7 +55,7 @@ export function OfflineIndicator() {
                     stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'
                 />
             </svg>
-            Sin conexión
+            {globalize.translate('Offline')}
         </div>
     );
 }

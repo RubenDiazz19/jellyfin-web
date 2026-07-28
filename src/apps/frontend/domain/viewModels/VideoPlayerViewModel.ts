@@ -4,22 +4,181 @@
 // de progreso para que "continuar viendo" funcione.
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
+import globalize from 'lib/globalize';
+
 import { signal } from '@preact/signals-core';
 import type Hls from 'hls.js';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import type { MediaStreamInfo, PlaybackDecision } from '../../data/api/playback';
+import type {
+    ItemChapter, NextEpisode, PlaybackContext
+} from '../../data/api/playbackContext';
+import { segmentsFromChapters } from '../../data/api/chapterSegments';
+import type { MediaSegment, MediaSegmentKind } from '../../data/api/segments';
+import {
+    clearTitleLanguagePref, getTitleLanguagePref, setTitleLanguagePref,
+    type TitleLanguagePref
+} from '../../data/preferences/languagePrefs';
 import { currentMobileLayout } from '../../shared/layoutMode';
 
 const TICKS_PER_SECOND = 10_000_000;
 const PROGRESS_REPORT_MS = 10_000;
 const VOLUME_KEY = 'jfp-volume';
+/** Margen antes de reintentar una fuente que ha fallado al arrancar. */
+const RETRY_SOURCE_MS = 1200;
+/**
+ * Sin créditos detectados, el aviso de "siguiente episodio" sale en los
+ * últimos segundos del capítulo. Con créditos detectados manda su inicio: la
+ * cuenta acompaña a los créditos, como en Netflix.
+ */
+const AUTO_NEXT_WINDOW_SECONDS = 25;
+/** Un outro que acaba a menos de esto del final cierra el episodio. */
+const OUTRO_TAIL_SECONDS = 15;
 
 // Modos de relación de aspecto que ofrece el OSD. 'auto' = tal cual (contain),
 // 'cover' = rellena la pantalla recortando, 'fill' = estira ignorando la
 // proporción; el resto fuerza esa proporción de display.
 export type AspectRatio = 'auto' | 'cover' | 'fill' | '16:9' | '4:3' | '21:9';
 
-export type { MediaStreamInfo };
+export type { ItemChapter, MediaSegment, MediaStreamInfo, NextEpisode, TitleLanguagePref };
+
+/**
+ * Clave de traducción del botón de salto para cada tipo de segmento. Vive
+ * aquí y no junto al fetch porque la View no puede importar de data/ (regla
+ * de capas) y porque es un mapeo puro, sin dependencias.
+ */
+export function segmentSkipLabelKey(kind: MediaSegmentKind): string {
+    switch (kind) {
+        case 'Intro': return 'SkipIntro';
+        case 'Outro': return 'SkipCredits';
+        case 'Recap': return 'SkipRecap';
+        case 'Preview': return 'SkipPreview';
+        case 'Commercial': return 'SkipCommercial';
+        default: return 'Skip';
+    }
+}
+
+/**
+ * Marca de propiedad del <video>: el elemento lo comparten todas las
+ * instancias del VM que pasen por él (remontajes, HMR). Quien lo tenga
+ * marcado es el único que puede limpiarlo.
+ */
+type OwnedVideo = HTMLVideoElement & { jfpOwner?: number };
+
+function videoOwner(video: HTMLVideoElement): number | undefined {
+    return (video as OwnedVideo).jfpOwner;
+}
+
+let nextInstanceId = 0;
+
+/**
+ * Nombres de capítulo genéricos que ponen los encoders, siempre en inglés,
+ * con la clave de traducción que les corresponde. El grupo capturado, si lo
+ * hay, es el número que va dentro del nombre.
+ */
+const GENERIC_CHAPTER_NAMES: [RegExp, string][] = [
+    [/^scene\s*(\d+)$/i, 'ChapterScene'],
+    [/^chapter\s*(\d+)$/i, 'LabelChapterNumber'],
+    [/^part\s*(\d+)$/i, 'ChapterPart'],
+    [/^(?:intro|introduction|opening|opening credits|op\s?\d*)$/i, 'ChapterIntro'],
+    [/^(?:credits|end credits|closing credits|ending|outro|ed\s?\d*)$/i, 'ChapterCredits'],
+    [/^(?:recap|previously)$/i, 'ChapterRecap'],
+    [/^(?:preview|next episode)$/i, 'ChapterPreview']
+];
+
+/**
+ * Nombre presentable de un capítulo. Los ficheros suelen traer nombres
+ * genéricos del encoder («Scene 3», «Credits»): esos se traducen. Un nombre
+ * de verdad —el título real de la escena— se deja tal cual, que para eso lo
+ * puso quien preparó el fichero.
+ */
+export function chapterDisplayName(name: string | undefined, index: number): string {
+    const raw = name?.trim();
+    if (!raw) return globalize.translate('LabelChapterNumber', String(index + 1));
+    for (const [pattern, key] of GENERIC_CHAPTER_NAMES) {
+        const match = pattern.exec(raw);
+        if (match) return globalize.translate(key, match[1] ?? '');
+    }
+    return raw;
+}
+
+/** Nombre del tramo detectado, para las listas de saltos. */
+export function segmentDisplayName(kind: MediaSegmentKind): string {
+    switch (kind) {
+        case 'Intro': return globalize.translate('ChapterIntro');
+        case 'Outro': return globalize.translate('ChapterCredits');
+        case 'Recap': return globalize.translate('ChapterRecap');
+        case 'Preview': return globalize.translate('ChapterPreview');
+        default: return globalize.translate('Unknown');
+    }
+}
+
+/** Posición del capítulo que contiene un instante, o -1 si no hay ninguno. */
+export function chapterIndexAt(chapters: ItemChapter[], seconds: number): number {
+    let found = -1;
+    for (let i = 0; i < chapters.length; i++) {
+        if (chapters[i].start > seconds) break;
+        found = i;
+    }
+    return found;
+}
+
+/** Capítulo que contiene un instante, o null si el item no trae capítulos. */
+export function chapterAt(chapters: ItemChapter[], seconds: number): ItemChapter | null {
+    const index = chapterIndexAt(chapters, seconds);
+    return index >= 0 ? chapters[index] : null;
+}
+
+/** Dos cortes más próximos que esto son el mismo sitio: se pinta uno. */
+const DIVIDER_MERGE_SECONDS = 1;
+
+/**
+ * Puntos donde se corta la barra de progreso: el inicio de cada capítulo y
+ * los dos extremos de cada tramo detectado (así la intro o los créditos
+ * quedan delimitados aunque no haya un capítulo que los marque). Se devuelven
+ * en segundos, ordenados y sin duplicados; los extremos del vídeo no cuentan,
+ * que ahí ya está el borde de la barra.
+ */
+export function progressDividers(
+    chapters: ItemChapter[], segments: MediaSegment[], duration: number
+): number[] {
+    if (duration <= 0) return [];
+    const points = [
+        ...chapters.map((c) => c.start),
+        ...segments.flatMap((s) => [s.start, s.end])
+    ]
+        .filter((t) => t > DIVIDER_MERGE_SECONDS && t < duration - DIVIDER_MERGE_SECONDS)
+        .sort((a, b) => a - b);
+
+    return points.filter(
+        (t, i) => i === 0 || t - points[i - 1] > DIVIDER_MERGE_SECONDS
+    );
+}
+
+/**
+ * Marca de la barra de progreso: un capítulo del fichero o un tramo detectado
+ * (intro, créditos…). Sirve para el menú de saltos.
+ */
+export type PlayerMark = { start: number; name?: string; kind?: MediaSegmentKind };
+
+/** Distancia por debajo de la cual un segmento y un capítulo son el mismo sitio. */
+const MARK_MERGE_SECONDS = 5;
+
+/**
+ * Une capítulos y segmentos en una sola lista de saltos ordenada. Un segmento
+ * que empieza donde ya hay un capítulo no se duplica: el nombre del capítulo
+ * es más informativo que "Saltar intro".
+ */
+export function playerMarks(chapters: ItemChapter[], segments: MediaSegment[]): PlayerMark[] {
+    const marks: PlayerMark[] = chapters.map((c) => ({ start: c.start, name: c.name }));
+    for (const segment of segments) {
+        const covered = chapters.some(
+            (c) => Math.abs(c.start - segment.start) <= MARK_MERGE_SECONDS
+        );
+        if (!covered) marks.push({ start: segment.start, kind: segment.kind });
+    }
+    return marks.sort((a, b) => a.start - b.start);
+}
 
 export class VideoPlayerViewModel {
     // Estado observable que la View pinta.
@@ -61,6 +220,45 @@ export class VideoPlayerViewModel {
      */
     castAvailable = signal(false);
     castState = signal<RemotePlaybackState>('disconnected');
+    /**
+     * Segmento (intro, créditos, resumen…) que contiene la posición actual, o
+     * null. La View lo usa para ofrecer el botón de salto. Los segmentos ya
+     * saltados no vuelven a ofrecerse aunque el usuario pase por encima otra
+     * vez, para no tapar la imagen con un botón que acaba de descartar.
+     */
+    activeSegment = signal<MediaSegment | null>(null);
+    /**
+     * Todos los segmentos del item (no solo el que contiene la posición). La
+     * barra de progreso los pinta como tramos para ver de un vistazo dónde
+     * cae la intro o los créditos.
+     */
+    segmentList = signal<MediaSegment[]>([]);
+    /**
+     * Capítulos del item, para dividir la barra de progreso y poder saltar a
+     * uno por su nombre. Vacío si el fichero no trae capítulos.
+     */
+    chapters = signal<ItemChapter[]>([]);
+    /** Episodio que viene después del actual, o null (película o final). */
+    nextEpisode = signal<NextEpisode | null>(null);
+    /**
+     * Avance del aviso de "siguiente episodio" (0 → 1) mientras corren los
+     * créditos, o null si no toca mostrarlo. Al llegar a 1 el capítulo acaba
+     * y la View encadena con el siguiente.
+     */
+    autoNextProgress = signal<number | null>(null);
+    /**
+     * Sube a true cuando la reproducción llega al final. La View lo usa para
+     * encadenar con la cola; el VM no navega (regla MVVM).
+     */
+    ended = signal(false);
+    /**
+     * Idiomas recordados para este título (la serie entera si es un episodio),
+     * o null si nunca se han tocado. Mandan sobre la preferencia del usuario
+     * que aplica el servidor. La View los muestra en el menú de pistas.
+     */
+    titlePref = signal<TitleLanguagePref | null>(null);
+    /** El item en reproducción es un episodio: la preferencia es de la serie. */
+    titleIsSeries = signal(false);
 
     private video: HTMLVideoElement | null = null;
     private container: HTMLElement | null = null;
@@ -73,6 +271,30 @@ export class VideoPlayerViewModel {
     private closed = false;
     /** Subtítulo no-texto quemado en el transcode actual (índice Jellyfin). */
     private burnedSubtitle: number | null = null;
+    /** VTT a la espera de que arranque la reproducción (ver publishSubtitle). */
+    private pendingSubtitleUrl: string | null = null;
+    /** La reproducción ha llegado a arrancar al menos una vez en este item. */
+    private hasStarted = false;
+    /** El usuario ha cerrado el aviso de siguiente episodio. */
+    private autoNextDismissed = false;
+    /** Opciones de la última carga, para poder reintentarla igual. */
+    private lastSourceOpts: {
+        audioStreamIndex?: number;
+        subtitleStreamIndex?: number;
+        mediaSourceId?: string;
+    } = {};
+    /** Posición que hay que recuperar si el arranque falla y se reintenta. */
+    private resumeSeconds = 0;
+    private retriedSource = false;
+    private retryTimer: ReturnType<typeof setTimeout> | null = null;
+    private segments: MediaSegment[] = [];
+    /** Segmentos ya saltados o descartados, por inicio. */
+    private skippedSegments = new Set<number>();
+    /** Id bajo el que se recuerdan las pistas: la serie, o la película. */
+    private titleId = '';
+    private context: PlaybackContext | null = null;
+    /** Identifica a esta instancia como dueña del <video> (ver OwnedVideo). */
+    private readonly instanceId = ++nextInstanceId;
 
     constructor(private api: ApiService) {}
 
@@ -84,6 +306,7 @@ export class VideoPlayerViewModel {
         this.video = video;
         this.container = container;
         this.closed = false;
+        (video as OwnedVideo).jfpOwner = this.instanceId;
 
         const savedVolume = Number(localStorage.getItem(VOLUME_KEY) ?? '1');
         video.volume = Number.isFinite(savedVolume) ? Math.min(Math.max(savedVolume, 0), 1) : 1;
@@ -101,7 +324,11 @@ export class VideoPlayerViewModel {
             this.detachFns.push(() => video.removeEventListener(ev, fn));
         };
 
-        on('timeupdate', () => { this.currentTime.value = video.currentTime; });
+        on('timeupdate', () => {
+            this.currentTime.value = video.currentTime;
+            this.syncActiveSegment(video.currentTime);
+            this.syncAutoNext(video.currentTime);
+        });
         on('durationchange', () => {
             if (Number.isFinite(video.duration)) this.duration.value = video.duration;
         });
@@ -111,14 +338,25 @@ export class VideoPlayerViewModel {
             void this.reportProgress();
         });
         on('waiting', () => { this.buffering.value = true; });
-        on('playing', () => { this.buffering.value = false; this.loading.value = false; });
+        on('playing', () => {
+            this.buffering.value = false;
+            this.loading.value = false;
+            this.hasStarted = true;
+            // Con el vídeo ya en marcha, el servidor puede dedicarse a
+            // extraer subtítulos sin ahogar al transcode.
+            this.flushPendingSubtitle();
+        });
         on('canplay', () => { this.buffering.value = false; this.loading.value = false; });
         on('volumechange', () => {
             this.volume.value = video.volume;
             this.muted.value = video.muted;
             localStorage.setItem(VOLUME_KEY, String(video.volume));
         });
-        on('ended', () => { this.playing.value = false; void this.reportProgress(); });
+        on('ended', () => {
+            this.playing.value = false;
+            void this.reportProgress();
+            this.ended.value = true;
+        });
         on('ratechange', () => { this.playbackRate.value = video.playbackRate; });
 
         // Media Session (mobile/tablet): controles del sistema sincronizados.
@@ -138,7 +376,22 @@ export class VideoPlayerViewModel {
         this.watchRemotePlayback(video);
         on('error', () => {
             if (this.closed) return;
-            this.error.value = 'No se pudo reproducir el vídeo';
+            // Un <video> SIN fuente no es un fallo de reproducción: es el
+            // 'error' que dispara load() al limpiar el src (cierre o cambio
+            // de item). Ese evento se despacha en un tick posterior, así que
+            // llegaba cuando el siguiente attach ya había re-armado los
+            // listeners y pintaba "no se pudo reproducir" encima de una
+            // reproducción que estaba arrancando bien.
+            if (!video.currentSrc && !video.getAttribute('src')) return;
+            // El evento no dice qué ha pasado; el MediaError sí, y es lo
+            // primero que hace falta para distinguir un códec no soportado
+            // de un 401 o de un transcode caído.
+            console.error(
+                '[player] el <video> ha fallado',
+                { code: video.error?.code, message: video.error?.message, src: video.currentSrc }
+            );
+            if (this.retrySource()) return;
+            this.error.value = globalize.translate('MessagePlaybackFailed');
             this.loading.value = false;
         });
 
@@ -159,11 +412,199 @@ export class VideoPlayerViewModel {
         this.startSeconds = (opts.startTicks ?? 0) / TICKS_PER_SECOND;
         this.loading.value = true;
         this.error.value = null;
-        await this.loadSource({});
+        this.ended.value = false;
+        // Cada item estrena su reintento de arranque.
+        this.retriedSource = false;
+        this.hasStarted = false;
+        this.autoNextDismissed = false;
+        this.nextEpisode.value = null;
+        this.autoNextProgress.value = null;
+        this.resumeSeconds = this.startSeconds;
+        // El contexto se pide ANTES de la fuente: si este título tiene idiomas
+        // recordados, PlaybackInfo ya se pide con esas pistas y no hay que
+        // recargar nada nada más empezar.
+        await this.loadContext(itemId);
+        await this.loadSource(this.preferredTracks());
         void this.api.playback.reportPlaybackStart(itemId);
         this.startProgressTimer();
         this.setupMediaSession();
+        void this.loadSegments(itemId);
     }
+
+    /**
+     * Item + serie + capítulos + pistas, en una petición. Si falla, la
+     * reproducción sigue sin preferencias por título ni salto por capítulos:
+     * es información de apoyo, no un requisito.
+     */
+    private async loadContext(itemId: string) {
+        this.context = null;
+        this.titleId = itemId;
+        this.titleIsSeries.value = false;
+        this.titlePref.value = null;
+        try {
+            const context = await this.api.playback.getPlaybackContext(itemId);
+            if (this.closed || this.itemId !== itemId) return;
+            this.context = context;
+            this.titleId = context.titleId;
+            this.chapters.value = context.chapters;
+            this.titleIsSeries.value = context.isEpisode;
+            this.titlePref.value = getTitleLanguagePref(this.userId(), context.titleId);
+            // El siguiente episodio no bloquea el arranque: solo hace falta
+            // cuando el capítulo se acerca al final.
+            if (context.isEpisode) void this.loadNextEpisode(context.titleId, itemId);
+        } catch (e) {
+            console.debug('[player] sin contexto del item', e);
+        }
+    }
+
+    private async loadNextEpisode(seriesId: string, itemId: string) {
+        try {
+            const next = await this.api.playback.getNextEpisode(seriesId, itemId);
+            if (this.closed || this.itemId !== itemId) return;
+            this.nextEpisode.value = next;
+        } catch (e) {
+            console.debug('[player] sin siguiente episodio', e);
+        }
+    }
+
+    /** Las preferencias por título se guardan separadas por cuenta. */
+    private userId(): string {
+        return this.api.session.load()?.userId ?? '';
+    }
+
+    /**
+     * Traduce los idiomas recordados del título a índices de pista concretos.
+     * Lo que no esté recordado se deja sin pedir a propósito: así el servidor
+     * aplica la preferencia del usuario (Ajustes), que es el siguiente
+     * escalón de la cadena.
+     */
+    private preferredTracks(): {
+        audioStreamIndex?: number;
+        subtitleStreamIndex?: number;
+        mediaSourceId?: string;
+    } {
+        const pref = this.titlePref.value;
+        const context = this.context;
+        if (!pref || !context) return {};
+
+        const byLanguage = (streams: MediaStreamInfo[], language: string) =>
+            streams.find((s) => s.language === language)?.index;
+
+        const audioStreamIndex = pref.audio ?
+            byLanguage(context.audioStreams, pref.audio) :
+            undefined;
+        // -1 = "sin subtítulos" explícito; sin él el servidor reactivaría el
+        // default del usuario.
+        const subtitleStreamIndex = pref.subtitle === null ?
+            -1 :
+            pref.subtitle ? byLanguage(context.subtitleStreams, pref.subtitle) : undefined;
+
+        if (audioStreamIndex == null && subtitleStreamIndex == null) return {};
+        return { audioStreamIndex, subtitleStreamIndex, mediaSourceId: context.mediaSourceId };
+    }
+
+    /** Recuerda un idioma para este título (o para su serie). */
+    private rememberLanguage(patch: TitleLanguagePref) {
+        if (!this.titleId) return;
+        const userId = this.userId();
+        setTitleLanguagePref(userId, this.titleId, patch);
+        this.titlePref.value = getTitleLanguagePref(userId, this.titleId);
+    }
+
+    /**
+     * Olvida los idiomas recordados de este título: a partir de la próxima
+     * reproducción vuelve a mandar la preferencia del usuario.
+     */
+    clearTitlePref = () => {
+        if (!this.titleId) return;
+        clearTitleLanguagePref(this.userId(), this.titleId);
+        this.titlePref.value = null;
+    };
+
+    /**
+     * Segmentos del item (intro, créditos…). No bloquea la reproducción: si
+     * el servidor no los tiene, el botón de salto simplemente no aparece.
+     */
+    private async loadSegments(itemId: string) {
+        let segments: MediaSegment[];
+        try {
+            segments = await this.api.playback.getMediaSegments(itemId);
+        } catch (e) {
+            // Los segmentos son un extra: que fallen no puede tumbar la
+            // reproducción ni dejar una promesa rechazada suelta.
+            console.debug('[player] no se pudieron cargar los segmentos', e);
+            return;
+        }
+        // La carga es asíncrona: el usuario puede haber salido o cambiado de
+        // item mientras tanto.
+        if (this.closed || this.itemId !== itemId) return;
+        // Sin proveedor de segmentos en el servidor (el caso más común) se
+        // aprovechan los capítulos: uno llamado "Intro"/"Opening"/"Resumen"
+        // marca el mismo rango que haría falta saltar.
+        if (segments.length === 0 && this.context) {
+            segments = segmentsFromChapters(this.context.chapters, this.context.runtime);
+        }
+        this.segments = segments;
+        this.segmentList.value = segments;
+        this.syncActiveSegment(this.video?.currentTime ?? 0);
+    }
+
+    private syncActiveSegment(time: number) {
+        if (this.segments.length === 0) {
+            if (this.activeSegment.value) this.activeSegment.value = null;
+            return;
+        }
+        // Los créditos no ofrecen botón de salto: ese tramo es el del aviso
+        // de siguiente episodio, que hace el mismo trabajo y además encadena.
+        const found = this.segments.find(
+            (s) => s.kind !== 'Outro'
+                && time >= s.start && time < s.end
+                && !this.skippedSegments.has(s.start)
+        ) ?? null;
+        // Comparar por referencia evita repintar la View en cada timeupdate.
+        if (found !== this.activeSegment.value) this.activeSegment.value = found;
+    }
+
+    /**
+     * Instante en el que aparece el aviso de "siguiente episodio": el inicio
+     * de los créditos si el servidor (o los capítulos) los han marcado y
+     * llegan hasta el final, o los últimos segundos del capítulo si no.
+     */
+    private autoNextStart(duration: number): number {
+        const outro = this.segments.find(
+            (s) => s.kind === 'Outro' && s.end >= duration - OUTRO_TAIL_SECONDS
+        );
+        return outro ? outro.start : duration - AUTO_NEXT_WINDOW_SECONDS;
+    }
+
+    /**
+     * Avance del aviso mientras el capítulo termina. La barra se llena justo
+     * cuando se acaba el vídeo: ahí la View encadena con el siguiente.
+     */
+    private syncAutoNext(time: number) {
+        const duration = this.duration.value;
+        if (!this.nextEpisode.value || this.autoNextDismissed || duration <= 0) {
+            if (this.autoNextProgress.value != null) this.autoNextProgress.value = null;
+            return;
+        }
+        const start = this.autoNextStart(duration);
+        if (time < start) {
+            if (this.autoNextProgress.value != null) this.autoNextProgress.value = null;
+            return;
+        }
+        const span = Math.max(duration - start, 1);
+        const progress = Math.min(Math.max((time - start) / span, 0), 1);
+        // Redondeo al 1%: evita repintar el OSD en cada timeupdate por una
+        // diferencia invisible.
+        const rounded = Math.round(progress * 100) / 100;
+        if (rounded !== this.autoNextProgress.value) this.autoNextProgress.value = rounded;
+    }
+
+    /** El usuario descarta el aviso: no vuelve en este episodio. */
+    dismissAutoNext = () => {
+        this.autoNextDismissed = true;
+        this.autoNextProgress.value = null;
+    };
 
     // ── Comandos ────────────────────────────────────────────────────────────
 
@@ -174,12 +615,32 @@ export class VideoPlayerViewModel {
         else v.pause();
     };
 
+    /**
+     * Salto pedido por el usuario (barra, flechas, capítulos, mandos del
+     * sistema). Devuelve la oferta de saltar los tramos que el destino deja
+     * por delante: si vuelves a la intro, el botón tiene que estar ahí otra
+     * vez aunque ya la hubieras saltado.
+     */
     seek = (seconds: number) => {
+        this.unskipSegmentsFrom(seconds);
+        this.seekTo(seconds);
+    };
+
+    /** Mueve la posición sin tocar los tramos ya descartados. */
+    private seekTo(seconds: number) {
         const v = this.video;
         if (!v || !Number.isFinite(seconds)) return;
         v.currentTime = Math.min(Math.max(seconds, 0), this.duration.value || seconds);
         this.currentTime.value = v.currentTime;
-    };
+    }
+
+    /** Vuelve a ofrecer los segmentos que no han terminado en `time`. */
+    private unskipSegmentsFrom(time: number) {
+        if (this.skippedSegments.size === 0) return;
+        for (const segment of this.segments) {
+            if (segment.end > time) this.skippedSegments.delete(segment.start);
+        }
+    }
 
     seekBy = (delta: number) => this.seek((this.video?.currentTime ?? 0) + delta);
 
@@ -236,6 +697,36 @@ export class VideoPlayerViewModel {
         }
     };
 
+    /**
+     * Salta el segmento activo: lleva la reproducción a su final. Marca el
+     * segmento para no volver a ofrecerlo en esta sesión de reproducción.
+     */
+    skipActiveSegment = () => {
+        const segment = this.activeSegment.value;
+        if (!segment) return;
+        this.skippedSegments.add(segment.start);
+        this.activeSegment.value = null;
+        // Un outro suele acabar exactamente en el final del fichero; sin el
+        // recorte, el seek dispara 'ended' antes de que el <video> reporte la
+        // posición y el progreso se guardaría en 0.
+        const target = this.duration.value > 0 ?
+            Math.min(segment.end, this.duration.value - 0.25) :
+            segment.end;
+        // seekTo y no seek: este salto NO debe rehabilitar el tramo que se
+        // acaba de descartar (el destino cae dentro de él por el recorte).
+        this.seekTo(target);
+    };
+
+    /**
+     * Para la reproducción local porque se ha delegado en un Chromecast. No
+     * cierra la sesión ni reporta el stop: el receptor sigue el mismo item y
+     * es él quien reporta progreso al servidor a partir de ahora.
+     */
+    pauseForCast = () => {
+        this.video?.pause();
+        this.stopProgressTimer();
+    };
+
     /** Abre el selector de receptores del navegador (Cast/AirPlay). */
     promptCast = () => {
         const remote = this.video?.remote;
@@ -243,9 +734,15 @@ export class VideoPlayerViewModel {
         void remote.prompt().catch(() => {});
     };
 
-    /** Cambia la pista de audio: nuevo PlaybackInfo conservando la posición. */
+    /**
+     * Cambia la pista de audio: nuevo PlaybackInfo conservando la posición.
+     * El idioma elegido queda recordado para el título (o para la serie
+     * entera), que es la preferencia de máxima prioridad.
+     */
     setAudioTrack = (index: number) => {
         if (index === this.selectedAudio.value) return;
+        const language = this.audioTracks.value.find((a) => a.index === index)?.language;
+        if (language) this.rememberLanguage({ audio: language });
         void this.reload({ audioStreamIndex: index });
     };
 
@@ -259,6 +756,13 @@ export class VideoPlayerViewModel {
             null :
             this.subtitleTracks.value.find((s) => s.index === index) ?? null;
 
+        // Igual que con el audio: la elección manda sobre la preferencia del
+        // usuario en las siguientes reproducciones de este título. Apagarlos
+        // (null) también se recuerda; una pista sin idioma declarado no,
+        // porque no habría con qué reencontrarla en otro episodio.
+        if (index == null) this.rememberLanguage({ subtitle: null });
+        else if (stream?.language) this.rememberLanguage({ subtitle: stream.language });
+
         // Si había un subtítulo quemado, quitarlo (o cambiarlo) exige recarga.
         // -1 = "sin subtítulos" explícito para que el servidor no reactive
         // el default del usuario.
@@ -268,9 +772,9 @@ export class VideoPlayerViewModel {
         }
 
         this.selectedSubtitle.value = index;
-        this.subtitleUrl.value = stream && this.decision ?
+        this.publishSubtitle(stream && this.decision ?
             this.api.playback.subtitleVttUrl(this.itemId, this.decision.mediaSourceId, stream.index) :
-            null;
+            null);
     };
 
     /** Para la reproducción y reporta el stop. Idempotente. */
@@ -278,6 +782,8 @@ export class VideoPlayerViewModel {
         if (this.closed) return;
         this.closed = true;
         this.stopProgressTimer();
+        if (this.retryTimer) clearTimeout(this.retryTimer);
+        this.retryTimer = null;
         const position = Math.floor((this.video?.currentTime ?? 0) * TICKS_PER_SECOND);
         if (this.itemId) {
             void this.api.playback.reportPlaybackStop(
@@ -286,7 +792,16 @@ export class VideoPlayerViewModel {
         }
         this.hls?.destroy();
         this.hls = null;
-        if (this.video) {
+        // Los listeners se quitan ANTES de tocar el <video>: pause() y load()
+        // emiten eventos que ya no son de nadie.
+        this.teardownMediaSession();
+        this.detachFns.forEach((fn) => { fn(); });
+        this.detachFns = [];
+        // Solo se limpia el <video> si sigue siendo nuestro. Tras un recambio
+        // en caliente (HMR) o un remontaje puede haber otra instancia del VM
+        // ya reproduciendo en el MISMO elemento: ahí un load() de cortesía
+        // tumbaría la fuente buena y dejaría un "no se pudo reproducir".
+        if (this.video && videoOwner(this.video) === this.instanceId) {
             // La ventana PiP no debe sobrevivir a la salida del reproductor.
             if (document.pictureInPictureElement === this.video) {
                 void document.exitPictureInPicture().catch(() => {});
@@ -295,9 +810,6 @@ export class VideoPlayerViewModel {
             this.video.removeAttribute('src');
             this.video.load();
         }
-        this.teardownMediaSession();
-        this.detachFns.forEach((fn) => { fn(); });
-        this.detachFns = [];
         this.video = null;
         this.container = null;
         this.decision = null;
@@ -423,13 +935,31 @@ export class VideoPlayerViewModel {
         this.selectedAudio.value = null;
         this.selectedSubtitle.value = null;
         this.subtitleUrl.value = null;
+        this.pendingSubtitleUrl = null;
+        this.lastSourceOpts = {};
+        this.resumeSeconds = 0;
+        this.retriedSource = false;
+        this.hasStarted = false;
         this.playbackRate.value = 1;
         this.brightness.value = 1;
         this.pipActive.value = false;
         this.castAvailable.value = false;
         this.castState.value = 'disconnected';
         this.burnedSubtitle = null;
+        this.segments = [];
+        this.skippedSegments.clear();
+        this.activeSegment.value = null;
+        this.segmentList.value = [];
+        this.chapters.value = [];
+        this.nextEpisode.value = null;
+        this.autoNextProgress.value = null;
+        this.autoNextDismissed = false;
+        this.ended.value = false;
         this.itemId = '';
+        this.titleId = '';
+        this.context = null;
+        this.titlePref.value = null;
+        this.titleIsSeries.value = false;
     }
 
     /** Pide PlaybackInfo y engancha la fuente (direct o HLS) al <video>. */
@@ -440,6 +970,7 @@ export class VideoPlayerViewModel {
     }) {
         const video = this.video;
         if (!video) return;
+        this.lastSourceOpts = opts;
         try {
             // No pedimos startTimeTicks al servidor: las playlists HLS de
             // Jellyfin son VOD completas, así que basta con seek local tras
@@ -462,16 +993,17 @@ export class VideoPlayerViewModel {
                 const HlsMod = (await import('hls.js')).default;
                 if (this.closed) return;
                 if (!HlsMod.isSupported()) {
-                    this.error.value = 'Este navegador no soporta la reproducción HLS';
+                    this.error.value = globalize.translate('MessageHlsUnsupported');
                     this.loading.value = false;
                     return;
                 }
                 const hls = new HlsMod();
                 this.hls = hls;
                 hls.on(HlsMod.Events.ERROR, (_ev, data) => {
+                    console.warn('[player] hls.js', data.type, data.details, { fatal: data.fatal });
                     if (!data.fatal || this.closed) return;
-                    if (data.type === 'networkError') { hls.startLoad(); } else if (data.type === 'mediaError') { hls.recoverMediaError(); } else {
-                        this.error.value = 'Error fatal de reproducción HLS';
+                    if (data.type === 'networkError') { hls.startLoad(); } else if (data.type === 'mediaError') { hls.recoverMediaError(); } else if (!this.retrySource()) {
+                        this.error.value = globalize.translate('MessageHlsFatalError');
                         this.loading.value = false;
                     }
                 });
@@ -490,17 +1022,18 @@ export class VideoPlayerViewModel {
                 decision.subtitleStreams.find((s) => s.index === subIndex) ?? null;
             if (subStream?.isText) {
                 this.selectedSubtitle.value = subStream.index;
-                this.subtitleUrl.value = this.api.playback.subtitleVttUrl(
+                this.publishSubtitle(this.api.playback.subtitleVttUrl(
                     this.itemId, decision.mediaSourceId, subStream.index
-                );
+                ));
                 this.burnedSubtitle = null;
             } else {
                 this.selectedSubtitle.value = subStream?.index ?? null;
-                this.subtitleUrl.value = null;
+                this.publishSubtitle(null);
                 this.burnedSubtitle = subStream ? subStream.index : null;
             }
 
             const seekTo = this.startSeconds;
+            this.resumeSeconds = seekTo;
             this.startSeconds = 0;
             const onMeta = () => {
                 if (seekTo > 0) video.currentTime = seekTo;
@@ -514,9 +1047,64 @@ export class VideoPlayerViewModel {
             this.detachFns.push(() => video.removeEventListener('loadedmetadata', onMeta));
         } catch (e) {
             if (this.closed) return;
-            this.error.value = (e as Error).message || 'No se pudo iniciar la reproducción';
+            this.error.value = (e as Error).message || globalize.translate('MessagePlaybackStartFailed');
             this.loading.value = false;
         }
+    }
+
+    /**
+     * Publica el subtítulo activo, pero NO antes de que el vídeo esté
+     * reproduciendo.
+     *
+     * Motivo: pedir un solo VTT de un MKV hace que el servidor extraiga de
+     * golpe TODAS sus pistas de texto (medido: 63 ffmpeg en una tacada). Si
+     * eso coincide con el arranque del transcode, el transcode se ahoga y la
+     * reproducción muere antes de empezar. Lanzándolo después, el vídeo ya va
+     * y la extracción solo retrasa unos segundos la aparición del subtítulo.
+     */
+    private publishSubtitle(url: string | null) {
+        // El criterio es "ya ha llegado a reproducir alguna vez", no "está
+        // reproduciendo ahora": cambiar de subtítulo en pausa debe aplicarse
+        // al momento.
+        if (url == null || this.hasStarted) {
+            this.pendingSubtitleUrl = null;
+            this.subtitleUrl.value = url;
+            return;
+        }
+        this.pendingSubtitleUrl = url;
+        this.subtitleUrl.value = null;
+    }
+
+    /** Suelta el subtítulo que esperaba a que arrancara la reproducción. */
+    private flushPendingSubtitle() {
+        const url = this.pendingSubtitleUrl;
+        if (!url) return;
+        this.pendingSubtitleUrl = null;
+        this.subtitleUrl.value = url;
+    }
+
+    /**
+     * Un fallo en el arranque merece un segundo intento antes de rendirse: la
+     * causa típica es que el servidor estaba ocupado extrayendo subtítulos y
+     * no le dio tiempo a levantar el transcode. En el reintento ese trabajo ya
+     * está hecho (queda en caché) y entra a la primera.
+     *
+     * Devuelve true si ha programado el reintento; false si ya se gastó.
+     */
+    private retrySource(): boolean {
+        if (this.retriedSource || this.closed || !this.video) return false;
+        this.retriedSource = true;
+        this.loading.value = true;
+        this.error.value = null;
+        // Se reanuda donde estuviera (o donde se pidió abrir).
+        this.startSeconds = Math.max(this.video.currentTime, this.resumeSeconds);
+        console.warn('[player] fallo en el arranque: reintentando la fuente');
+        this.retryTimer = setTimeout(() => {
+            this.retryTimer = null;
+            if (this.closed) return;
+            void this.loadSource(this.lastSourceOpts);
+        }, RETRY_SOURCE_MS);
+        return true;
     }
 
     /** Recarga la fuente (cambio de pista) conservando posición y estado. */
@@ -525,6 +1113,8 @@ export class VideoPlayerViewModel {
         if (!video) return;
         this.startSeconds = video.currentTime;
         this.loading.value = true;
+        // Cambiar de pista es un arranque nuevo: vuelve a haber un reintento.
+        this.retriedSource = false;
         await this.loadSource({
             audioStreamIndex: opts.audioStreamIndex ?? this.selectedAudio.value ?? undefined,
             subtitleStreamIndex: opts.subtitleStreamIndex,

@@ -1,112 +1,58 @@
-# D2 — Migrar API legacy (`jellyfin-apiclient` → `@jellyfin/sdk`)
+# D3 — Nuevas características de reproducción
 
-## ¿Qué es?
+- [x] **Chromecast** — Botón "Cast" en el reproductor para enviar reproducción a dispositivos Chromecast.
+  Sender SDK de Google + receptor propio de Jellyfin (`CastReceiverId` del usuario, canal
+  `urn:x-cast:com.connectsdk`). Si no hay receptores Cast, el botón cae a la Remote Playback
+  API del navegador, que es lo que había antes (AirPlay y cast nativo de un `<video>` directo).
+  **Sin verificar contra hardware real**: la lógica está cubierta por tests con el SDK mockeado,
+  pero nadie lo ha probado contra un Chromecast físico.
+- [x] **Skip Intro / Skip Credits** — Botón en el OSD del reproductor para saltar intros y créditos detectados por Jellyfin.
+  Lee `/MediaSegments/{itemId}`; requiere que el servidor tenga un proveedor de segmentos
+  instalado (p. ej. Intro Skipper). Sin segmentos el botón no aparece.
+- [x] **Reproducir después** — Cola de reproducción (play queue) para encolar películas/episodios "para después", con UI para ver y reordenar la cola.
+  Persistida en localStorage. Se encola desde el menú "···" de cualquier item; se ve y reordena
+  en `/queue` y en el panel del reproductor. Al terminar un item, encadena con la cola.
 
-El código tiene **dos APIs paralelas**: la vieja (`jellyfin-apiclient`, sin tipos, sin mantenimiento) y la nueva (`@jellyfin/sdk`, tipada, oficial). Conviven, pero ~278 llamadas a la vieja siguen esparcidas por ~50 archivos. D2 es migrarlas todas y eliminar la dependencia legacy.
+---
 
-## ¿Qué mejora en la práctica?
+# Optimizaciones y mejora continua
 
-- **Tipado real.** SDK devuelve tipos de verdad. Si una API cambia, el compilador avisa. Con `jellyfin-apiclient` todo es `any`: un campo mal escrito da `undefined` en producción sin que nadie se entere.
-- **Menos código.** Las ~278 llamadas legacy se reemplazan por ~200 llamadas SDK más concisas. El wrapper `compat.ts` (que convierte un cliente legacy a SDK para poder usar ambos) desaparece. Los módulos `lib/jellyfin-apiclient/` y `utils/jellyfin-apiclient/` se eliminan enteros.
-- **Una sola forma de hacer las cosas.** Hoy hay patrones distintos para lo mismo: `apiClient.getItem()`, `getItemsApi(api).getItems()`, `fetch()` con cabeceras a mano. Después de D2 solo hay SDK.
-- **Menos imports raros.** `ServerConnections`, `window.ApiClient`, `jellyfin-apiclient` dejan de importarse. Todo pasa por `@jellyfin/sdk`.
-- **Menos riesgo al actualizar.** `jellyfin-apiclient` no sigue los cambios del servidor. El SDK sí. Si jellyfin 11 cambia un endpoint, el SDK lo refleja; el legacy no.
+## 1. Migración de código legacy (~98 archivos JS)
 
-## Estrategia
+- [ ] **Unificar API client** — Migrar completamente de `jellyfin-apiclient` (88 imports activos) a `@jellyfin/sdk`. Actualmente conviven ambos; eliminar el cliente antiguo.
+- [ ] **Migrar web components "emby-\*" a React TSX** — 15 componentes (`emby-button`, `emby-checkbox`, `emby-select`, `emby-tabs`, `emby-toggle`, etc.) que usan `innerHTML` y manipulación DOM imperativa. Migrar a React elimina un paradigma paralelo de renderizado.
+- [ ] **Reemplazar 13 archivos `.template.html`** — Componentes legacy (dialog, filterdialog, imageeditor, etc.) que cargan HTML + JS aparte. Convertir a componentes React.
+- [ ] **Migrar iconos a un solo sistema** — Eliminar `material-design-icons-iconfont` (~3.6MB) y unificar todos los iconos en `@mui/icons-material` (SVG React components).
 
-De fuera hacia dentro: **consumidores primero, infraestructura al final**. Cada consumidor se migra solo porque el puente `compat.ts` permite obtener un SDK `Api` desde un cliente legacy; no hace falta esperar a que `connectionManager.js` se haya tocado.
+## 2. Bundle y dependencias
 
-Cada migración sigue el mismo patrón:
-```typescript
-// ANTES (legacy)
-const apiClient = ServerConnections.getApiClient(serverId);
-const item = await apiClient.getItem(userId, itemId);
+- [ ] **Auditar bundles grandes** — Agregar `vite-plugin-visualizer` o `rollup-plugin-visualizer` para inspeccionar composición de chunks en producción.
+- [ ] **`webcomponents.js` (896KB)** — Polyfill obsoleto; los navegadores modernos soportan web components nativamente. Cargarlo condicionalmente solo para browsers que lo necesiten o eliminarlo.
+- [ ] **`react-blurhash` (920KB)** — Reemplazar por un hook simple sobre `blurhash` (88KB). Es un wrapper fino que no justifica su peso.
+- [ ] **`react-lazy-load-image-component` (216KB)** — Solo se usa en `Image.tsx`. Reemplazar con `loading="lazy"` nativo + blurhas.
+- [ ] **`@tanstack/react-query-devtools`** — Se bundlea siempre pero solo se renderiza condicionalmente. Convertir a `lazy()` para que sea un chunk separado.
+- [ ] **Evaluar date-fns v3** — v2 pesa ~25MB en disco. v3 es más pequeña y tree-shakeable mejor, pero requiere migración de imports y es breaking.
+- [ ] **Evaluar remplazo de lodash-es** — Solo se usan 7 funciones (`isEmpty`, `debounce`, `isEqual`, etc.). Con tree-shaking está bien, pero valorar utilidades inline para eliminar la dependencia.
 
-// DESPUÉS (SDK)
-const api = ServerConnections.getApi(serverId);
-const item = (await getLibraryApi(api).getItem({ itemId, userId })).data;
-```
+## 3. Calidad de código
 
-En esta versión del SDK los listados de items viven en `getLibraryApi`, no en
-un `getItemsApi`. Los consumidores que necesitan el id del usuario lo piden a
-`ServerConnections.getCurrentUserId(serverId)` en vez de sacarlo del cliente
-legacy; en la fase 4 esa función deja de mirar al `ApiClient`.
+- [ ] **Eliminar `console.log` en producción** — 18 ocurrencias (principalmente `connectionManager.js` y `webSettings.js`). Reemplazar con logger configurable o eliminarlos.
+- [ ] **Resolver 30 TODO + 8 FIXME** — Distribuidos por toda la codebase. Priorizar los FIXME (scrollManager, browserDeviceProfile, authentication-api, etc.).
+- [ ] **Reducir tipos `any`** — Persistentes en `apiclient.d.ts`, `global.d.ts` (`NativeShell: any`), y algunas utilidades. Tiparlos correctamente.
+- [ ] **Subir cobertura de tests** — Threshold global de líneas al 5% es extremadamente bajo. El dashboard (admin) tiene solo 1 test. Establecer metas progresivas (30% → 50% → 70%).
+- [ ] **Extender separación por capas** — La arquitectura MVVM con linting estricto solo existe en `apps/frontend/`. Aplicar reglas similares al dashboard y componentes compartidos.
 
-## Subtareas
+## 4. Rendimiento
 
-### Fase 1 — Consumidores pequeños (1-3 llamadas c/u)
+- [ ] **Agregar pistas de precarga en HTML** — `<link rel="preload">` para recursos críticos (service worker, manifest.json, fonts). `<link rel="preconnect">` para el servidor Jellyfin.
+- [ ] **Hacer `theme-color` dinámico** — Actualmente hardcodeado a `#202020` en `index.html`. Leer del tema activo.
+- [ ] **Evaluar registro de Service Worker en desktop** — Actualmente solo se registra en mobile/tablet. Desktop se queda sin offline support.
+- [ ] **Auditar renderizado** — Verificar que no haya re-renders innecesarios con React DevTools Profiler, especialmente en listas grandes (bibliotecas, grids).
 
-- [x] **Utilidades de imagen**: `backdropImage.ts` (3), `image.ts` (5), `getNowPlayingImageUrl.ts` (6)
-- [x] **Utilidades de items**: `getItems.ts` (3), `itemsByName.js` (2), `deleteHelper.js` (3)
-- [x] **Elementos emby-***: `emby-ratingbutton.js` (2), `emby-playstatebutton.js` (2), `emby-itemscontainer.js` (8), `emby-itemrefreshindicator.js` (1)
-- [x] **Scripts sueltos**: `taskbutton.js` (1), `libraryMenu.js` (1), `dashboard.js` (2)
-- [x] **Componentes varios**: `filterdialog.js` (2), `filtermenu.js` (2), `groupedcards.js` (2), `channelMapper.js` (1), `directorybrowser.js` (2), `mediaLibraryCreator.js` (1), `refreshdialog.js` (1), `userdatabuttons.js` (2), `playlistViewer.js` (3)
-- [x] **Card builder**: `cardBuilder.js` (3), `cardImage.ts` (1), `chaptercardbuilder.js` (1), `listview.js` (2)
-- [x] **Backdrop**: `backdrop.js` (2), `autoBackdrops.js` (2)
-- [x] **Dashboard con `window.ApiClient`**: `Access.tsx` (6), `UserCardBox.tsx` (1), `UserPasswordForm.tsx` (2), `ParentalControl.tsx` (1)
+## 5. Developer Experience
 
-### Fase 2 — Consumidores medianos (4-19 llamadas c/u)
-
-- [x] `imageeditor.js` (9)
-- [x] `multiSelect.js` (8)
-- [x] `guide.js` (6)
-- [x] `shortcuts.js` (5)
-- [x] `session.ts` (6)
-- [x] `itemContextMenu.js` (13)
-- [x] `notifications.js` (19)
-- [x] `serverNotifications.js` (9)
-- [x] `audioStreamUrl.ts` (4) — ya extraído en D1, pendiente de migrar
-- [x] `mediaResolution.ts` (7) — ya extraído en D1, pendiente de migrar
-
-### Fase 3 — Consumidor grande
-
-- [x] `playbackmanager.js` (29 llamadas) — migrar `getEndpointInfo`, `getCurrentUser`, `getItem`, `getEpisodes`, `getUrl`, `deviceId`, `accessToken`, `getLocalTrailers`, `getInstantMixFromItem`, `stopActiveEncodings`
-
-### Fase 4 — Infraestructura (al final, cuando ya nadie use legacy)
-
-**Consumidores fuera de la capa de conexión** — hecho:
-
-- [x] Los que no estaban en las listas de las fases 1-3 pero seguían con
-      `ApiClient`: `playbackReporting.ts`, `playlisteditor.ts`,
-      `imageUploader.js`, `imageDownloader.js`, `appRouter.js`,
-      `mediaSegmentManager.ts`, `getNowPlayingName.ts`, `autocast.js`,
-      `userSettings.js`, `libraryMenu.js`, `http.ts`, `useApi.tsx`,
-      `taskbutton.js`, `LibraryCard.tsx`, `Provider.tsx`
-- [x] `ServerConnections` expone lo que el SDK `Api` no sabe responder, para
-      que los consumidores no tengan que bajar al cliente legacy:
-      `getCurrentUserId`, `getCurrentServerId`, `getServerInfo`, `getServerIds`,
-      `getApis`, `getUserInfo`
-- [x] `useApi` deja de exponer `__legacyApiClient__` (nadie lo consumía)
-
-**Capa de conexión** — en curso:
-
-- [x] Red de pruebas de la capa de conexión (`connectionManager.test.ts`, 24
-      tests): qué se persiste, en qué orden se prueban las direcciones, cuándo
-      se invalida un token, qué sobrevive a un logout. Era el bloqueante para
-      poder tocar nada de aquí.
-- [x] Migrar lo que cuelga de esa capa: `auth.ts` (autentica por
-      `getAuthenticationApi` del SDK), `ServerContentPage.tsx` (html de
-      plugins por el `axiosInstance`), `ConnectionRequired.tsx` (`isLoggedIn` y
-      `getCurrentUser` al SDK), `serviceworker.js` (dependía de un
-      `window.connectionManager` inexistente) y `Dashboard.onServerChanged`
-      (estaba muerto)
-- [ ] Reescribir `connectionManager.js` para crear SDK `Api` directamente sin pasar por `ApiClient` legacy
-- [ ] Simplificar `ServerConnections.js` como wrapper fino del SDK
-- [ ] Eliminar `compat.ts` (el puente ya no hace falta)
-- [ ] Eliminar `createApiClient.ts`
-- [ ] Eliminar dependencia `jellyfin-apiclient` de `package.json`
-- [ ] Eliminar `src/lib/jellyfin-apiclient/` y `src/utils/jellyfin-apiclient/`
-- [ ] Limpiar `global.d.ts` y `apiclient.d.ts` (quitar `window.ApiClient`, `window.Events`)
-
-> Estado: ningún consumidor llama ya a la API del `ApiClient` legacy. Lo que
-> queda fuera de la capa son handles opacos (`auth.ts`,
-> `ConnectionRequired.tsx`) que se pasan de vuelta a la fachada y desaparecen
-> con la reescritura.
->
-> Lo que sigue pendiente es el núcleo: `connectionManager.js` son 846 líneas
-> que guardan las credenciales, descubren y fusionan servidores, prueban
-> direcciones y llevan `connect()` / `logout()` / `validateAuthentication()`.
-> Ahora hay red de pruebas sobre esa orquestación, así que la reescritura ya
-> no es a ciegas — pero los tests cubren la lógica, no los flujos de UI
-> (wizard, selección de servidor, login), que siguen sin cobertura y conviene
-> probar a mano tras tocar la capa.
+- [ ] **Crear `AGENTS.md`** — Configuración para opencode/herramientas AI que describa el proyecto, convenciones, y comandos frecuentes.
+- [ ] **Agregar `.env.example`** — Documentar variables de entorno necesarias para desarrollo.
+- [ ] **Modularizar ESLint config** — `eslint.config.mjs` tiene 563 líneas. Separar reglas por dominio (react, typescript, imports, stylistic).
+- [ ] **Configurar pre-commit hooks** — Husky + lint-staged para lint y typecheck automáticos antes de commits.
+- [ ] **Configurar commitlint** — Para estandarizar formato de mensajes de commit.

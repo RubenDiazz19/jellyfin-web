@@ -1,9 +1,11 @@
 // Image editing: upload from URL / File, delete, and browse alternatives from
 // remote providers (TMDB/TVDB).
 
+import globalize from 'lib/globalize';
+
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
-import { apiFetch, apiSend, authHeader, trimSlash } from './http';
+import { apiFetch, apiSend, authHeader, noSessionError, trimSlash } from './http';
 import type { ImageType } from './images';
 import { emitItemMutated } from './mutations';
 
@@ -38,7 +40,7 @@ export async function deleteImage(itemId: string, type: ImageType, index = 0): P
 // auto-detected from the payload header.
 export async function uploadImageFile(itemId: string, type: ImageType, file: File): Promise<void> {
     const session = loadSession();
-    if (!session?.accessToken) throw new Error('Sin sesión');
+    if (!session?.accessToken) throw noSessionError();
     const MAX_BYTES = 30 * 1024 * 1024;
     if (file.size > MAX_BYTES) {
         throw new Error(`La imagen supera 30 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
@@ -57,7 +59,7 @@ export async function uploadImageFile(itemId: string, type: ImageType, file: Fil
     });
     if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw new Error(`Upload falló: HTTP ${res.status} ${text}`);
+        throw new Error(globalize.translate('MessageUploadFailed', `${res.status} ${text}`));
     }
     clearShowCache();
     emitItemMutated(itemId);

@@ -1,4 +1,7 @@
 import { useEffect } from 'react';
+
+import globalize from 'lib/globalize';
+
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
@@ -21,7 +24,7 @@ export function LibraryPage({ kind, navigate }: Props) {
 
     const isSeries = kind === 'series';
     const items = isSeries ? libraryVM.shows.value : libraryVM.movies.value;
-    const title = isSeries ? 'Series' : 'Películas';
+    const title = globalize.translate(isSeries ? 'Shows' : 'Movies');
     const loading = libraryVM.loading.value || libraryVM.kind.value !== kind;
     const error = libraryVM.error.value;
 
@@ -47,18 +50,18 @@ export function LibraryPage({ kind, navigate }: Props) {
                     </h1>
                     {!loading && (
                         <span style={{ fontFamily: T.ui, fontSize: 13, color: T.dim }}>
-                            {items.length} {isSeries ? 'títulos' : 'películas'}
+                            {globalize.translate(isSeries ? 'ShowCount' : 'MovieCount', items.length)}
                         </span>
                     )}
                 </div>
                 {loading ? (
                     <SkeletonRow title='' />
                 ) : error ? (
-                    <EmptyState title='No se pudo cargar la biblioteca' hint={error} />
+                    <EmptyState title={globalize.translate('LibrariesLoadError')} hint={error} />
                 ) : items.length === 0 ? (
                     <EmptyState
-                        title={isSeries ? 'No hay series todavía' : 'No hay películas todavía'}
-                        hint='Añade contenido al servidor y lanza un rescan desde el panel de administración.'
+                        title={globalize.translate(isSeries ? 'MessageNoShowsYet' : 'MessageNoMoviesYet')}
+                        hint={globalize.translate('MessageAddContentAndRescan')}
                     />
                 ) : (
                     <div style={{

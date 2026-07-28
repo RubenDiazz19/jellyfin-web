@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useState } from 'react';
 import { Ic } from '../../theme/icons';
 import { IconButton } from '../controls/IconButton';
@@ -20,7 +22,7 @@ export function LibraryCardMenu({ libraryId, libraryName }: Props) {
         setScanning(true);
         try {
             await refreshItemMetadata(libraryId);
-            toast(`Escaneo de «${libraryName}» lanzado`, 'success');
+            toast(globalize.translate('MessageLibraryScanStartedFor', libraryName), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
         } finally {

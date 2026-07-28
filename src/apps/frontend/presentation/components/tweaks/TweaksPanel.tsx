@@ -221,9 +221,14 @@ type RadioProps<T> = {
     value: T;
     options: readonly T[];
     onChange: (v: T) => void;
+    // Los valores son claves estables que la app compara; `labelFor` es lo
+    // que se pinta, para poder traducirlo sin tocar la lógica.
+    labelFor?: (v: T) => string;
 };
 
-export function TweakRadio<T extends string>({ label, value, options, onChange }: RadioProps<T>) {
+export function TweakRadio<T extends string>({
+    label, value, options, onChange, labelFor
+}: RadioProps<T>) {
     const trackRef = useRef<HTMLDivElement>(null);
     const [dragging, setDragging] = useState(false);
     const valueRef = useRef(value);
@@ -274,7 +279,7 @@ export function TweakRadio<T extends string>({ label, value, options, onChange }
                 />
                 {options.map((opt) => (
                     <button key={opt} type='button' role='radio' aria-checked={opt === value}>
-                        {opt}
+                        {labelFor ? labelFor(opt) : opt}
                     </button>
                 ))}
             </div>

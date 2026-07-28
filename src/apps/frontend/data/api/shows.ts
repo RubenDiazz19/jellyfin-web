@@ -5,7 +5,7 @@ import type { CastMember, Episode, Season, Show } from '../models';
 import { loadSession } from '../session/session';
 import { WATCHED } from '../stores/watchedStore';
 import { showCache } from './cache';
-import { apiFetch } from './http';
+import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
 import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem, type JFMediaStream } from './types';
@@ -170,7 +170,7 @@ function mapEpisode(item: JFItem): Episode {
 export async function getShows(): Promise<Show[]> {
     await settlePlaybackReports();
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     const data = await apiFetch<{ Items: JFItem[] }>(
         `/Users/${session.userId}/Items?IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Fields=${FIELDS_LIST}`
     );
@@ -185,7 +185,7 @@ export async function getShow(id: string): Promise<Show> {
     if (cached) return cached;
     const p = (async () => {
         const session = loadSession();
-        if (!session?.userId) throw new Error('Sin sesión');
+        if (!session?.userId) throw noSessionError();
         const item = await apiFetch<JFItem>(
             `/Users/${session.userId}/Items/${id}?Fields=${FIELDS_DETAIL}`
         );
@@ -217,7 +217,7 @@ export async function getShow(id: string): Promise<Show> {
 
 async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     // Dos peticiones fijas (temporadas + TODOS los episodios) en vez de
     // 1 + N por temporada; los episodios se agrupan por ParentIndexNumber.
     const [seasonData, epData] = await Promise.all([

@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { T } from '../theme/tokens';
 import { PROTO_DATA } from '../../domain/models';
 import { Nav } from '../components/layout/Nav';
@@ -23,7 +25,10 @@ export function GenrePage({ genre, navigate }: Props) {
 
     return (
         <>
-            <Nav navigate={navigate} breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: `Género · ${genre}` }]} />
+            <Nav navigate={navigate} breadcrumb={[
+                { label: globalize.translate('Home'), to: { page: 'home' } },
+                { label: `${globalize.translate('Genre')} · ${genre}` }
+            ]} />
             <section style={{
                 background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
                 padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
@@ -36,13 +41,13 @@ export function GenrePage({ genre, navigate }: Props) {
                         {genre}
                     </h1>
                     <span style={{ fontFamily: T.ui, fontSize: 13, color: T.dim }}>
-                        {shows.length + movies.length} títulos
+                        {globalize.translate('TitleCount', shows.length + movies.length)}
                     </span>
                 </div>
 
                 {shows.length > 0 && (
                     <>
-                        <SectionHead label='Series' count={shows.length} />
+                        <SectionHead label={globalize.translate('Shows')} count={shows.length} />
                         <div style={grid}>
                             {shows.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
                         </div>
@@ -52,7 +57,7 @@ export function GenrePage({ genre, navigate }: Props) {
                 {movies.length > 0 && (
                     <>
                         <div style={{ height: 56 }} />
-                        <SectionHead label='Películas' count={movies.length} />
+                        <SectionHead label={globalize.translate('Movies')} count={movies.length} />
                         <div style={grid}>
                             {movies.map((m) => <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />)}
                         </div>
@@ -61,8 +66,8 @@ export function GenrePage({ genre, navigate }: Props) {
 
                 {shows.length === 0 && movies.length === 0 && (
                     <EmptyState
-                        title={`No hay títulos del género «${genre}»`}
-                        hint='Prueba a explorar otras filas de la Home o cambia de género.'
+                        title={globalize.translate('MessageNoTitlesForGenre', genre)}
+                        hint={globalize.translate('MessageNoTitlesForGenreHelp')}
                     />
                 )}
             </section>

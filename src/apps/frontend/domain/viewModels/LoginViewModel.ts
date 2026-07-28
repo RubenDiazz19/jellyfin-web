@@ -2,6 +2,8 @@
 // La View pinta los signals y muestra el resultado de submitLogin() como
 // toast; este VM no sabe nada de React ni de presentation/.
 
+import globalize from 'lib/globalize';
+
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 
@@ -49,7 +51,7 @@ export class LoginViewModel {
     submitLogin = async (): Promise<LoginResult> => {
         const user = this.username.value.trim();
         if (!user || !this.password.value) {
-            return { ok: false, message: 'Faltan usuario o contraseña' };
+            return { ok: false, message: globalize.translate('MessageMissingCredentials') };
         }
         this.busy.value = true;
         try {
@@ -57,10 +59,10 @@ export class LoginViewModel {
                 this.serverUrl.value.trim(), user, this.password.value
             );
             this.api.session.notifyChanged();
-            return { ok: true, message: `Sesión iniciada como ${auth.displayName}` };
+            return { ok: true, message: globalize.translate('MessageSignedInAs', auth.displayName) };
         } catch (err) {
             this.busy.value = false;
-            return { ok: false, message: (err as Error).message || 'No se pudo iniciar sesión' };
+            return { ok: false, message: (err as Error).message || globalize.translate('MessageSignInFailed') };
         }
     };
 }

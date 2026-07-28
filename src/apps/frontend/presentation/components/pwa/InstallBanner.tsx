@@ -2,6 +2,8 @@
 // navegador ofrece beforeinstallprompt y la app no corre ya instalada.
 // El rechazo se recuerda 14 días para no ser pesados.
 
+import globalize from 'lib/globalize';
+
 import { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -57,7 +59,7 @@ export function InstallBanner() {
     return (
         <div
             role='dialog'
-            aria-label='Instalar aplicación'
+            aria-label={globalize.translate('HeaderInstallApp')}
             style={{
                 position: 'fixed',
                 // Deja libre la bottom bar (móvil) o el rail (tablet).
@@ -82,14 +84,14 @@ export function InstallBanner() {
                 fontWeight: 500,
                 marginBottom: 4
             }}>
-                Instalar Jellyfin
+                {globalize.translate('HeaderInstallApp')}
             </div>
             <div style={{
                 fontSize: 'var(--md-sys-typescale-body-small-size, 12px)',
                 color: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.7))',
                 marginBottom: 14
             }}>
-                Pantalla completa, acceso directo y biblioteca disponible sin conexión.
+                {globalize.translate('MessageInstallAppHelp')}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button
@@ -100,7 +102,7 @@ export function InstallBanner() {
                         color: 'var(--md-sys-color-primary, #8ecff2)'
                     }}
                 >
-                    Ahora no
+                    {globalize.translate('ButtonNotNow')}
                 </button>
                 <button
                     onClick={install}
@@ -111,7 +113,7 @@ export function InstallBanner() {
                         color: 'var(--md-sys-color-on-primary, #00344a)'
                     }}
                 >
-                    Instalar
+                    {globalize.translate('HeaderInstall')}
                 </button>
             </div>
         </div>

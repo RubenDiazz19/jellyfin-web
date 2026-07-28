@@ -191,7 +191,7 @@ describe('navegación del frontend', () => {
             sessionState.hydrating = true;
             await renderAt('/');
             expect(host?.textContent).not.toContain('page:login');
-            expect(host?.textContent).toContain('Cargando');
+            expect(host?.textContent).toContain('Loading');
         });
 
         it('con sesión ignora el login aunque la URL sea la raíz', async () => {

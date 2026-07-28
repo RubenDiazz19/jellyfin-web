@@ -622,6 +622,8 @@ html body.jf-video-active .dialogBackdropOpened {
 }
 
 .jfp-video-title {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     font-size: 14px;
     font-weight: 500;
@@ -652,6 +654,7 @@ html body.jf-video-active .dialogBackdropOpened {
 /* ── Seek bar ── */
 
 .jfp-video-progress {
+    position: relative;
     padding: 10px 0;
     cursor: pointer;
     touch-action: none;
@@ -663,6 +666,44 @@ html body.jf-video-active .dialogBackdropOpened {
     background: rgba(255, 255, 255, 0.22);
     border-radius: 2px;
     transition: height 0.15s ease;
+}
+
+/* División de la barra: un corte fino, sin colorear el tramo. Marca el
+   inicio de cada capítulo y los extremos de intro/créditos. */
+.jfp-video-progress-mark {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(0, 0, 0, 0.75);
+    transform: translateX(-1px);
+}
+
+/* Etiqueta flotante: tiempo y capítulo bajo el puntero. */
+.jfp-video-progress-tip {
+    position: absolute;
+    bottom: calc(100% - 4px);
+    z-index: 1;
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    max-width: 280px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: #fff;
+    background: rgba(12, 12, 14, 0.92);
+    border-radius: 6px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.jfp-video-progress-tip-name {
+    overflow: hidden;
+    max-width: 210px;
+    color: rgba(255, 255, 255, 0.62);
+    text-overflow: ellipsis;
 }
 
 .jfp-video-progress:hover .jfp-video-progress-track {
@@ -790,11 +831,6 @@ html body.jf-video-active .dialogBackdropOpened {
 
 /* ── Menús de pistas (subtítulos / audio / velocidad) ── */
 
-.jfp-video-settings-cluster {
-    display: flex;
-    gap: 6px;
-}
-
 .jfp-video-settings {
     /* Sin `position: relative` a propósito: el panel se ancla a
        `.jfp-video-controls` (la barra, estable) y NO a este botón, que se
@@ -812,7 +848,8 @@ html body.jf-video-active .dialogBackdropOpened {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    min-width: 240px;
+    min-width: 268px;
+    max-width: 360px;
     max-height: 60vh;
     padding: 16px 8px;
     overflow-y: auto;
@@ -838,6 +875,68 @@ html body.jf-video-active .dialogBackdropOpened {
     letter-spacing: 2.5px;
     color: rgba(255, 255, 255, 0.45);
     text-transform: uppercase;
+}
+
+/* Primer nivel del panel: un ajuste por fila, con su valor actual. */
+.jfp-video-settings-row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 11px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    text-align: left;
+    color: #fff;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.jfp-video-settings-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.jfp-video-settings-row-label {
+    flex-shrink: 0;
+}
+
+.jfp-video-settings-row-value {
+    overflow: hidden;
+    flex: 1;
+    font-size: 12px;
+    text-align: right;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.5);
+    text-overflow: ellipsis;
+}
+
+.jfp-video-settings-row-chevron {
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Cabecera del segundo nivel: vuelve a la lista de ajustes. */
+.jfp-video-settings-back {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 4px;
+    padding: 6px 14px 10px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+
+.jfp-video-settings-back:hover {
+    color: #fff;
 }
 
 .jfp-video-settings-option {
@@ -874,6 +973,37 @@ html body.jf-video-active .dialogBackdropOpened {
 
 .jfp-video-settings-option.is-active .jfp-video-settings-dot {
     background: #fff;
+}
+
+/* Pie del menú de pistas: idioma recordado para este título / esta serie. */
+.jfp-video-settings-note {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding: 10px 14px 2px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.45);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jfp-video-settings-forget {
+    flex-shrink: 0;
+    padding: 0;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.jfp-video-settings-forget:hover {
+    color: #fff;
+    text-decoration: underline;
 }
 
 /* ── Loading / error ── */
@@ -1032,8 +1162,13 @@ html body.jf-video-active .dialogBackdropOpened {
     font-weight: 600;
 }
 
-/* Botón de bloqueo (arriba, empuja a la derecha) y candado de desbloqueo. */
-.jfp-video-top-lock {
+/* Acciones de la barra superior (emitir, bloquear): pegadas a la derecha.
+   `margin-left: auto` aquí y no en cada botón para que el grupo se mantenga
+   junto aunque alguno no se renderice. */
+.jfp-video-top-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
     margin-left: auto;
 }
 
@@ -1080,6 +1215,160 @@ html body.jf-video-active .dialogBackdropOpened {
     transform: translateX(-50%);
     pointer-events: none;
     animation: jfp-fade-in 0.3s ease-out both;
+}
+
+/* Saltar intro / créditos. Se ancla sobre la barra de controles para no
+   taparla, y se aparta cuando el OSD está visible. */
+.jfp-video-skip {
+    position: absolute;
+    right: 32px;
+    bottom: 132px;
+    z-index: 5;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 11px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.92);
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 6px 22px rgb(0 0 0 / 45%);
+    transition: background 0.15s, transform 0.3s ease, opacity 0.3s ease;
+    animation: jfp-fade-in 0.25s ease-out both;
+}
+
+.jfp-video-skip:hover {
+    background: #fff;
+    transform: translateY(-1px);
+}
+
+/* Sin actividad del usuario el botón se va con el resto del OSD, y vuelve
+   al mover el ratón (mientras la posición siga dentro del tramo). */
+.jfp-video.is-idle .jfp-video-skip {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+}
+
+.jfp-video.is-touch .jfp-video-skip {
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    bottom: 108px;
+    padding: 10px 18px;
+    font-size: 13px;
+}
+
+/* Siguiente episodio: un único botón, en el sitio del de saltar créditos al
+   que sustituye. Se llena mientras el capítulo termina y al completarse la
+   reproducción encadena sola. */
+.jfp-video-nextup {
+    position: absolute;
+    right: 32px;
+    bottom: 132px;
+    z-index: 5;
+    overflow: hidden;
+    padding: 11px 20px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    cursor: pointer;
+
+    /* Arranca translúcido y termina en blanco sólido: el propio botón es la
+       cuenta atrás. */
+    background: rgba(255, 255, 255, 0.34);
+    backdrop-filter: blur(10px);
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 6px 22px rgb(0 0 0 / 40%);
+    transition: bottom 0.3s ease;
+    animation: jfp-fade-in 0.3s ease-out both;
+}
+
+/* A diferencia del botón de saltar, este NO se esconde con el OSD: es una
+   cuenta atrás y hay que poder pararla. Solo baja al hueco que deja la
+   barra de controles. */
+.jfp-video.is-idle .jfp-video-nextup {
+    bottom: 48px;
+}
+
+/* El relleno avanza con el final del capítulo; al llegar al 100%, salto. */
+.jfp-video-nextup-fill {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.92);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.25s linear;
+}
+
+.jfp-video-nextup-text {
+    position: relative;
+}
+
+.jfp-video.is-touch .jfp-video-nextup {
+    right: calc(16px + env(safe-area-inset-right, 0px));
+    bottom: 108px;
+    padding: 10px 18px;
+    font-size: 13px;
+}
+
+.jfp-video.is-touch.is-idle .jfp-video-nextup {
+    bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Cola de reproducción: panel lateral sobre el vídeo. */
+.jfp-video-queue {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    width: min(380px, 88vw);
+    padding: 20px 20px calc(120px + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    color: #fff;
+    background: rgba(12, 12, 14, 0.94);
+    backdrop-filter: blur(14px);
+    border-left: 1px solid rgb(255 255 255 / 10%);
+    animation: jfp-fade-in 0.2s ease-out both;
+}
+
+.jfp-video-queue-head {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+}
+
+.jfp-video-queue-head button {
+    margin-left: auto;
+}
+
+/* Contador de la cola sobre el icono del OSD. */
+.jfp-video-queue-btn {
+    position: relative;
+}
+
+.jfp-video-queue-count {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    min-width: 15px;
+    padding: 0 4px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    color: #000;
+    text-align: center;
+    background: #fff;
+    border-radius: 999px;
 }
 
 /* Overlay de hints de primer uso. */

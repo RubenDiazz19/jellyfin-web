@@ -3,7 +3,7 @@
 
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
-import { apiSend, trimSlash } from './http';
+import { apiSend, noSessionError, trimSlash } from './http';
 import { emitItemMutated } from './mutations';
 
 export type MediaStreamInfo = {
@@ -79,7 +79,7 @@ function isTextSubtitle(codec?: string): boolean {
 }
 
 /** Pista tal cual la describe MediaSources[].MediaStreams del servidor. */
-type JFMediaStream = {
+export type JFMediaStream = {
     Index: number;
     Type?: string;
     Language?: string;
@@ -90,7 +90,7 @@ type JFMediaStream = {
     Codec?: string;
 };
 
-function mapMediaStream(s: JFMediaStream): MediaStreamInfo {
+export function mapMediaStream(s: JFMediaStream): MediaStreamInfo {
     return {
         index: s.Index,
         language: s.Language,
@@ -112,7 +112,7 @@ export async function getPlaybackDecision(
     } = {}
 ): Promise<PlaybackDecision> {
     const session = loadSession();
-    if (!session?.accessToken || !session?.userId) throw new Error('Sin sesión');
+    if (!session?.accessToken || !session?.userId) throw noSessionError();
     const q = new URLSearchParams({ userId: session.userId });
     if (opts.startTicks) q.set('startTimeTicks', String(opts.startTicks));
     if (opts.audioStreamIndex != null) q.set('audioStreamIndex', String(opts.audioStreamIndex));
@@ -143,30 +143,49 @@ export async function getPlaybackDecision(
         activeAudioIndex,
         activeSubtitleIndex
     };
-    if (src.SupportsDirectPlay || src.SupportsDirectStream) {
+    // Fuera del closure: dentro, TS pierde el estrechamiento del guard.
+    const accessToken = session.accessToken;
+
+    // `Static=true` sirve el fichero TAL CUAL, sin tocar el contenedor.
+    const directUrl = () => {
         const params = new URLSearchParams({
             // eslint-disable-next-line @typescript-eslint/naming-convention -- nombre fijado por la API de Jellyfin
-            api_key: session.accessToken,
+            api_key: accessToken,
             Static: 'true',
             MediaSourceId: src.Id
         });
         if (opts.startTicks) params.set('startTimeTicks', String(opts.startTicks));
-        return {
-            kind: 'direct',
-            url: `${server}/Videos/${itemId}/stream?${params.toString()}`,
-            container: src.Container,
-            ...common
-        };
+        return `${server}/Videos/${itemId}/stream?${params.toString()}`;
+    };
+
+    const hlsUrl = () => {
+        const rel: string = src.TranscodingUrl.startsWith('/') ? src.TranscodingUrl : '/' + src.TranscodingUrl;
+        return `${server}${rel}`;
+    };
+
+    // DirectPlay = el servidor ha contrastado el fichero con nuestro
+    // DeviceProfile y confirma que el navegador puede con él tal cual.
+    if (src.SupportsDirectPlay) {
+        return { kind: 'direct', url: directUrl(), container: src.Container, ...common };
     }
+
+    // DirectStream es OTRA cosa: los códecs valen pero el CONTENEDOR no. Es el
+    // caso típico del MKV (h264+aac dentro de Matroska, que ningún navegador
+    // demuxea). Servirlo con Static=true devuelve un video/x-matroska y el
+    // <video> falla con "no se pudo reproducir". Hay que remuxar, y eso es
+    // justo lo que hace la TranscodingUrl: el servidor copia los códecs y solo
+    // cambia el contenedor, así que no cuesta una recodificación.
     if (src.SupportsTranscoding && src.TranscodingUrl) {
-        const rel = src.TranscodingUrl.startsWith('/') ? src.TranscodingUrl : '/' + src.TranscodingUrl;
-        return {
-            kind: 'hls',
-            url: `${server}${rel}`,
-            container: src.TranscodingContainer,
-            ...common
-        };
+        return { kind: 'hls', url: hlsUrl(), container: src.TranscodingContainer, ...common };
     }
+
+    // Sin URL de transcode, el fichero crudo es lo único que queda: puede que
+    // el navegador lo reproduzca (algunos MKV con VP9 en Chrome), y si no, el
+    // error del <video> es mejor que no intentarlo.
+    if (src.SupportsDirectStream) {
+        return { kind: 'direct', url: directUrl(), container: src.Container, ...common };
+    }
+
     throw new Error('El servidor no puede reproducir este item');
 }
 
@@ -261,7 +280,8 @@ export async function reportPlaybackStop(
     }
 }
 
-function getDeviceId(): string {
+/** Id de dispositivo que el servidor asocia a esta sesión. */
+export function getDeviceId(): string {
     const KEY = 'jfp-device-id';
     return localStorage.getItem(KEY) ?? '';
 }

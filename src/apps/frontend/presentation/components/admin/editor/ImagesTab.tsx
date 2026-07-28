@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect, useRef, useState } from 'react';
 import {
     deleteImage,
@@ -54,7 +56,7 @@ export function ImagesTab({ itemId }: { itemId: string }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
             <SingleImageSection
-                label='Póster (Primary)' itemId={itemId} type='Primary' src={primary}
+                label={globalize.translate('Primary')} itemId={itemId} type='Primary' src={primary}
                 onDone={applyOk} onError={showErr}
             />
             <BackdropSection
@@ -62,7 +64,7 @@ export function ImagesTab({ itemId }: { itemId: string }) {
                 onDone={applyOk} onError={showErr}
             />
             <SingleImageSection
-                label='Logo' itemId={itemId} type='Logo' src={logo} wide
+                label={globalize.translate('Logo')} itemId={itemId} type='Logo' src={logo} wide
                 onDone={applyOk} onError={showErr}
             />
         </div>
@@ -90,12 +92,12 @@ function SingleImageSection({
     const doUploadFile = async (file: File) => {
         try {
             await uploadImageFile(itemId, type, file);
-            toast(`${label} subida (${(file.size / 1024).toFixed(0)} KB)`, 'success');
+            toast(globalize.translate('MessageImageUploaded', label), 'success');
             onDone();
         } catch (e) { onError(e); }
     };
     const doDelete = async () => {
-        if (!window.confirm(`¿Borrar ${label}?`)) return;
+        if (!window.confirm(globalize.translate('ConfirmDeleteImage'))) return;
         try {
             await deleteImage(itemId, type);
             onDone();
@@ -118,7 +120,7 @@ function SingleImageSection({
         setApplying(url);
         try {
             await setImageByUrl(itemId, type, url);
-            toast(`${label} aplicada`, 'success');
+            toast(globalize.translate('MessageImageApplied', label), 'success');
             onDone();
             setAlt('idle');
         } catch (e) { onError(e); } finally { setApplying(null); }
@@ -172,7 +174,7 @@ function BackdropSection({
             if (!f.type.startsWith('image/')) continue;
             try {
                 await uploadImageFile(itemId, 'Backdrop', f);
-                toast(`Fondo añadido (${(f.size / 1024).toFixed(0)} KB)`, 'success');
+                toast(globalize.translate('MessageBackdropAdded'), 'success');
             } catch (e) { onError(e); }
         }
         onDone();
@@ -181,14 +183,14 @@ function BackdropSection({
     const addByUrl = async () => {
         try {
             await setImageByUrl(itemId, 'Backdrop', newUrl);
-            toast('Fondo añadido', 'success');
+            toast(globalize.translate('MessageBackdropAdded'), 'success');
             setNewUrl('');
             onDone();
         } catch (e) { onError(e); }
     };
 
     const deleteAt = async (index: number) => {
-        if (!window.confirm(`¿Borrar el fondo ${index + 1}?`)) return;
+        if (!window.confirm(globalize.translate('ConfirmDeleteImage'))) return;
         try {
             await deleteImage(itemId, 'Backdrop', index);
             onDone();
@@ -211,7 +213,7 @@ function BackdropSection({
         setApplying(url);
         try {
             await setImageByUrl(itemId, 'Backdrop', url);
-            toast('Fondo añadido', 'success');
+            toast(globalize.translate('MessageBackdropAdded'), 'success');
             onDone();
         } catch (e) { onError(e); } finally { setApplying(null); }
     };
@@ -237,7 +239,7 @@ function BackdropSection({
                         }} />
                         <button
                             onClick={() => deleteAt(b.index)}
-                            aria-label='Borrar'
+                            aria-label={globalize.translate('Delete')}
                             style={{
                                 position: 'absolute', top: 6, right: 6,
                                 width: 26, height: 26, borderRadius: '50%',
@@ -266,7 +268,7 @@ function BackdropSection({
                         transition: 'border-color .15s'
                     }}
                 >
-                    + Añadir fondo
+                    + {globalize.translate('Backdrop')}
                 </div>
             </div>
             <input
@@ -275,9 +277,9 @@ function BackdropSection({
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <div style={{ flex: 1 }}>
-                    <TextInput value={newUrl} onChange={setNewUrl} placeholder='Añadir por URL: https://…' />
+                    <TextInput value={newUrl} onChange={setNewUrl} placeholder={globalize.translate('LabelImageUrl')} />
                 </div>
-                <SecondaryBtn onClick={addByUrl} disabled={!newUrl}>Añadir URL</SecondaryBtn>
+                <SecondaryBtn onClick={addByUrl} disabled={!newUrl}>{globalize.translate('ButtonAddImage')}</SecondaryBtn>
             </div>
             {alt === 'results' && (
                 <RemoteImagesGrid
@@ -354,8 +356,8 @@ function ImageEditor({
                     onChange={(e) => { void handleFiles(e.target.files); e.target.value = ''; }}
                 />
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <PrimaryBtn onClick={() => fileRef.current?.click()}>Subir archivo</PrimaryBtn>
-                    {onDelete && <SecondaryBtn onClick={onDelete}>Borrar actual</SecondaryBtn>}
+                    <PrimaryBtn onClick={() => fileRef.current?.click()}>{globalize.translate('Upload')}</PrimaryBtn>
+                    {onDelete && <SecondaryBtn onClick={onDelete}>{globalize.translate('DeleteImage')}</SecondaryBtn>}
                 </div>
                 <div style={{ fontSize: 11, color: T.dim, marginTop: 4 }}>o desde una URL:</div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -365,7 +367,7 @@ function ImageEditor({
                     <SecondaryBtn
                         onClick={() => { onApplyUrl(newUrl); setNewUrl(''); }}
                         disabled={!newUrl}
-                    >Aplicar URL</SecondaryBtn>
+                    >{globalize.translate('Apply')}</SecondaryBtn>
                 </div>
             </div>
         </div>
@@ -402,7 +404,7 @@ function RemoteImagesGrid({
                                 borderRadius: 6, padding: '4px 8px', fontSize: 12
                             }}
                         >
-                            <option value=''>Todos los idiomas</option>
+                            <option value=''>{globalize.translate('AllLanguages')}</option>
                             {langs.map((l) => (<option key={l} value={l}>{l}</option>))}
                         </select>
                     )}
@@ -413,7 +415,7 @@ function RemoteImagesGrid({
                         marginLeft: 'auto', background: 'none', border: 'none',
                         color: T.dim, cursor: 'pointer', fontSize: 12
                     }}
-                >Cerrar ×</button>
+                >{globalize.translate('ButtonClose')}</button>
             </div>
             <div style={{
                 display: 'grid',

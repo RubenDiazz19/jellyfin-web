@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { Ic } from '../../theme/icons';
 import { useFav } from '../../../domain/bridge/useFav';
 import { IconButton } from './IconButton';
@@ -11,10 +13,10 @@ export function FavButton({ id, size = 18, label }: Props) {
     const onClick = () => {
         toggle();
         const title = label ? ` · ${label}` : '';
-        toast(fav ? `Quitado de favoritos${title}` : `Añadido a favoritos${title}`);
+        toast(globalize.translate(fav ? 'MessageRemovedFromFavorites' : 'MessageAddedToFavorites') + title);
     };
     return (
-        <IconButton onClick={onClick} ariaLabel={fav ? 'Quitar de favoritos' : 'Añadir a favoritos'}>
+        <IconButton onClick={onClick} ariaLabel={globalize.translate(fav ? 'RemoveFromFavorites' : 'AddToFavorites')}>
             <Ic.Heart size={size} filled={fav} />
         </IconButton>
     );

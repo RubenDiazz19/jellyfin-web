@@ -8,6 +8,8 @@
 import { useEffect, type CSSProperties, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import globalize from 'lib/globalize';
+
 import HomeRounded from '@mui/icons-material/HomeRounded';
 import LiveTvRounded from '@mui/icons-material/LiveTvRounded';
 import MovieRounded from '@mui/icons-material/MovieRounded';
@@ -27,16 +29,16 @@ import { haptic } from '../../../shared/haptics';
 
 export const NAV_CLASS = 'jfp-has-nav';
 
-type Tab = { id: string; label: string; icon: ReactNode; route: Route };
+type Tab = { id: string; key: string; icon: ReactNode; route: Route };
 
 const ICON_STYLE = { fontSize: 22 } as const;
 
 const TABS: Tab[] = [
-    { id: 'home', label: 'Inicio', icon: <HomeRounded style={ICON_STYLE} />, route: { page: 'home' } },
-    { id: 'series', label: 'Series', icon: <LiveTvRounded style={ICON_STYLE} />, route: { page: 'series' } },
-    { id: 'movies', label: 'Películas', icon: <MovieRounded style={ICON_STYLE} />, route: { page: 'movies' } },
-    { id: 'search', label: 'Buscar', icon: <SearchRounded style={ICON_STYLE} />, route: { page: 'search' } },
-    { id: 'settings', label: 'Ajustes', icon: <SettingsRounded style={ICON_STYLE} />, route: { page: 'settings' } }
+    { id: 'home', key: 'Home', icon: <HomeRounded style={ICON_STYLE} />, route: { page: 'home' } },
+    { id: 'series', key: 'Shows', icon: <LiveTvRounded style={ICON_STYLE} />, route: { page: 'series' } },
+    { id: 'movies', key: 'Movies', icon: <MovieRounded style={ICON_STYLE} />, route: { page: 'movies' } },
+    { id: 'search', key: 'Search', icon: <SearchRounded style={ICON_STYLE} />, route: { page: 'search' } },
+    { id: 'settings', key: 'Settings', icon: <SettingsRounded style={ICON_STYLE} />, route: { page: 'settings' } }
 ];
 
 /** Tab que debe marcarse activa para la ruta actual (null en detalle). */
@@ -100,7 +102,7 @@ export function MobileNav() {
         };
 
     return (
-        <nav aria-label='Navegación principal' data-variant={isRail ? 'rail' : 'bar'} style={navStyle}>
+        <nav aria-label={globalize.translate('LabelMainNavigation')} data-variant={isRail ? 'rail' : 'bar'} style={navStyle}>
             {TABS.map((tab) => {
                 const isActive = tab.id === active;
                 return (
@@ -154,7 +156,7 @@ export function MobileNav() {
                             letterSpacing: 'var(--md-sys-typescale-label-medium-tracking, 0.5px)'
                         }}
                         >
-                            {tab.label}
+                            {globalize.translate(tab.key)}
                         </span>
                     </button>
                 );

@@ -19,6 +19,34 @@ const REPO_ROOT = path.resolve(__dirname);
 const SRC_DIR = path.join(REPO_ROOT, 'src');
 const NODE_MODULES_DIR = path.join(REPO_ROOT, 'node_modules');
 
+// Backend de desarrollo. El frontend habla con el servidor por URL ABSOLUTA
+// (la que se guarda al iniciar sesión), así que este proxy solo hace falta
+// cuando esa URL apunta al propio dev server — el caso de quien venía usando
+// el contenedor, que también servía en :8080.
+const BACKEND_URL = process.env.JELLYFIN_SERVER || 'http://localhost:8096';
+
+// Raíces de la API de Jellyfin que hay que reenviar al backend. Van en un solo
+// patrón y no en una tabla de claves literales porque las claves de
+// `server.proxy` distinguen mayúsculas de minúsculas, y aquí eso importa: ver
+// las dos últimas.
+const JF_API_ROOTS = [
+    'api', 'Audio', 'Videos', 'Images', 'System', 'Users', 'Items', 'Branding',
+    'DisplayPreferences', 'Music', 'Shows', 'Movies', 'LiveTv', 'Sessions',
+    'Devices', 'Playback', 'Subtitle', 'web', 'socket',
+    // Jellyfin construye SUS PROPIAS urls de streaming en minúscula: el
+    // `TranscodingUrl` que devuelve PlaybackInfo es `/videos/{id}/master.m3u8?…`
+    // (literales `/videos/` y `/audio/` de StreamInfo.ToUrl, en
+    // MediaBrowser.Model.dll), mientras que las que construye esta app van en
+    // PascalCase. Sin estas dos entradas, `/videos/…` no emparejaba con
+    // `/Videos` y el dev server contestaba su propio index.html con un 200: el
+    // reproductor recibía HTML en vez del playlist, moría en 0:00 y el
+    // transcode no llegaba ni a arrancar en el servidor.
+    'videos', 'audio'
+];
+
+// Solo las raíces enteras: `/video?item=…` (ruta de la SPA) no debe caer aquí.
+const JF_PROXY_PATTERN = `^/(?:${JF_API_ROOTS.join('|')})(?:/|$)`;
+
 // Compile-time globals declared in src/global.d.ts. The webpack build fills
 // these in from git/package.json — for dev we ship reasonable defaults.
 function getDefines(isServe: boolean): Record<string, string> {
@@ -141,7 +169,7 @@ function injectApp(): Plugin {
     };
 }
 
-// Dev-time static asset middleware: /libraries, /node-assets and
+// Dev-time static asset middleware: /libraries, /node-assets, /favicons and
 // /serviceworker.js live outside Vite's src/ root, so the built-in static
 // server ignores them. Serve them directly from node_modules / repo root.
 function devStaticAssets(): Plugin {
@@ -155,15 +183,66 @@ function devStaticAssets(): Plugin {
                     filePath = path.join(NODE_MODULES_DIR, url.slice('/libraries/'.length));
                 } else if (url.startsWith('/node-assets/')) {
                     filePath = path.join(NODE_MODULES_DIR, url.slice('/node-assets/'.length));
+                } else if (url.startsWith('/favicons/')) {
+                    // Igual que manifest.json (que referencia estos ficheros
+                    // por su nombre): viven en el paquete @jellyfin/ux-web,
+                    // no en src/.
+                    filePath = path.join(
+                        NODE_MODULES_DIR, '@jellyfin/ux-web/favicons', url.slice('/favicons/'.length)
+                    );
                 } else if (url === '/serviceworker.js') {
                     filePath = path.join(SRC_DIR, 'serviceworker.js');
                 }
-                if (!filePath || !fs.existsSync(filePath)) return next();
+                if (!filePath) return next();
+                // isFile(), no existsSync(): pedir un directorio (`/libraries/`)
+                // abría un ReadStream sobre él y el EISDIR resultante llega como
+                // 'error' sin manejar → se lleva por delante el dev server
+                // entero, que desde el navegador se ve como una página en negro.
+                if (!fs.statSync(filePath, { throwIfNoEntry: false })?.isFile()) return next();
                 res.setHeader('Content-Type', filePath.endsWith('.js') ?
                     'application/javascript' :
                     'application/octet-stream');
-                fs.createReadStream(filePath).pipe(res);
+                const stream = fs.createReadStream(filePath);
+                stream.on('error', () => {
+                    res.statusCode = 500;
+                    res.end();
+                });
+                stream.pipe(res);
             });
+        }
+    };
+}
+
+// El build de producción SOLO empaqueta lo alcanzable desde index.html (HTML/
+// CSS/JS) o lo importado como módulo: un fichero de texto plano en src/ que
+// nadie importa (config.json, robots.txt) o que vive fuera de src/ del todo
+// (favicons/) desaparece sin más. Y manifest.json es JSON estático — Vite no
+// reescribe las URLs que lleva dentro, así que sus iconos necesitan una ruta
+// ESTABLE que exista de verdad en el output, no la que Vite le habría puesto
+// de haber podido hashearlos.
+//
+// Mismo patrón que emitServiceWorker(): this.emitFile con un nombre fijo.
+function emitStaticFiles(): Plugin {
+    const favicons = path.join(NODE_MODULES_DIR, '@jellyfin/ux-web/favicons');
+    return {
+        name: 'jf-emit-static-files',
+        apply: 'build',
+        generateBundle() {
+            const emit = (fileName: string, source: Buffer | string) => {
+                this.emitFile({ type: 'asset', fileName, source });
+            };
+            emit('config.json', fs.readFileSync(path.join(SRC_DIR, 'config.json')));
+            emit('robots.txt', fs.readFileSync(path.join(SRC_DIR, 'robots.txt')));
+            for (const name of fs.readdirSync(favicons)) {
+                emit(`favicons/${name}`, fs.readFileSync(path.join(favicons, name)));
+            }
+            // Sin hash A PROPÓSITO: manifest.json (JSON estático) referencia
+            // estas dos rutas tal cual — un nombre hasheado por Vite sería
+            // distinto en cada build y manifest.json no tiene forma de
+            // enterarse de cuál le tocó.
+            for (const name of ['jellyfin-icon.png', 'jellyfin-icon-180.png']) {
+                emit(`assets/img/${name}`, fs.readFileSync(path.join(SRC_DIR, 'assets/img', name)));
+            }
         }
     };
 }
@@ -205,6 +284,7 @@ export default defineConfig(({ command }) => ({
         ...htmlTemplates(),
         workerImports(),
         emitServiceWorker(),
+        emitStaticFiles(),
         injectApp(),
         devStaticAssets(),
         devThemes()
@@ -239,6 +319,15 @@ export default defineConfig(({ command }) => ({
             // index.html references favicons directly from node_modules,
             // which lives outside the Vite root (src/)
             allow: [REPO_ROOT]
+        },
+        proxy: {
+            [JF_PROXY_PATTERN]: {
+                target: BACKEND_URL,
+                changeOrigin: true,
+                // `/socket` es el websocket por el que el servidor empuja los
+                // cambios de sesión y biblioteca.
+                ws: true
+            }
         }
     },
 
@@ -305,6 +394,10 @@ export default defineConfig(({ command }) => ({
         },
         environment: 'jsdom',
         restoreMocks: true,
+        // Carga el diccionario de traducciones antes de los tests: los
+        // componentes traducen en render y sin diccionario devolverían la
+        // clave cruda. jsdom reporta en-US, así que los tests ven en-us.json.
+        setupFiles: [path.resolve(SRC_DIR, 'lib/globalize/vitest.setup.ts')],
         server: {
             deps: {
                 // material-color-utilities publica ESM con imports sin

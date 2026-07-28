@@ -41,6 +41,13 @@ export {
     type JFRemoteImage
 } from './remote-images';
 export { searchSubtitles, downloadSubtitle, type RemoteSubtitle } from './subtitles';
+// Idiomas recordados por película/serie: mandan sobre la preferencia del
+// usuario, y desde Ajustes se pueden borrar todos de golpe.
+export {
+    countTitleLanguagePrefs,
+    clearAllTitleLanguagePrefs,
+    type TitleLanguagePref
+} from '../preferences/languagePrefs';
 export { getSystemInfo, refreshLibrary, dashboardUrl, type SystemInfo } from './admin';
 export { getMaxStreamingBitrate, setMaxStreamingBitrate } from './playback';
 export {

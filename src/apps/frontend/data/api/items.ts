@@ -2,12 +2,12 @@
 
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
-import { apiSend, trimSlash } from './http';
+import { apiSend, noSessionError, trimSlash } from './http';
 import { emitItemMutated } from './mutations';
 
 export async function markPlayed(itemId: string, played: boolean): Promise<void> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     await apiSend(
         `/Users/${session.userId}/PlayedItems/${itemId}`,
         played ? 'POST' : 'DELETE'
@@ -18,7 +18,7 @@ export async function markPlayed(itemId: string, played: boolean): Promise<void>
 
 export async function toggleFavorite(itemId: string, favorite: boolean): Promise<void> {
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     await apiSend(
         `/Users/${session.userId}/FavoriteItems/${itemId}`,
         favorite ? 'POST' : 'DELETE'

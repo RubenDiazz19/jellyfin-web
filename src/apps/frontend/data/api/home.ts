@@ -4,7 +4,7 @@
 
 import type { CarouselSlide, Show } from '../models';
 import { loadSession } from '../session/session';
-import { apiFetch } from './http';
+import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
 import { settlePlaybackReports } from './playback';
 import { getShows } from './shows';
@@ -37,7 +37,7 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
     // esperar, /Items/Resume devuelve la posición vieja.
     await settlePlaybackReports();
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     const uid = session.userId;
     const [resume, latestSeries, latestMovies] = await Promise.all([
         apiFetch<{ Items: JFItem[] }>(

@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { T } from '../theme/tokens';
 import { PROTO_DATA, type Show, type Movie } from '../../domain/models';
 import { Nav } from '../components/layout/Nav';
@@ -32,7 +34,7 @@ export function PersonPage({ name, navigate }: Props) {
 
     return (
         <>
-            <Nav navigate={navigate} breadcrumb={[{ label: 'Inicio', to: { page: 'home' } }, { label: name }]} />
+            <Nav navigate={navigate} breadcrumb={[{ label: globalize.translate('Home'), to: { page: 'home' } }, { label: name }]} />
             <section style={{
                 background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
                 padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
@@ -64,7 +66,7 @@ export function PersonPage({ name, navigate }: Props) {
                             fontSize: 11, letterSpacing: 4, textTransform: 'uppercase',
                             color: T.dim, marginBottom: 12
                         }}>
-                            Reparto
+                            {globalize.translate('People')}
                         </div>
                         <h1 style={{
                             fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
@@ -78,15 +80,14 @@ export function PersonPage({ name, navigate }: Props) {
                             </div>
                         )}
                         <div style={{ fontSize: 13, color: T.dim, marginTop: 30, maxWidth: 560, lineHeight: 1.6 }}>
-                            Perfil generado desde tu biblioteca local. Cuando se conecte con
-                            Jellyfin/TMDb aquí aparecerá la biografía completa.
+                            {globalize.translate('MessagePersonProfileLocalOnly')}
                         </div>
                     </div>
                 </div>
 
                 {shows.length > 0 && (
                     <>
-                        <SectionHead label='Series' count={shows.length} />
+                        <SectionHead label={globalize.translate('Shows')} count={shows.length} />
                         <div style={grid}>
                             {shows.map(({ show }) => <PosterCard key={show.id} slide={show} navigate={navigate} />)}
                         </div>
@@ -95,7 +96,7 @@ export function PersonPage({ name, navigate }: Props) {
                 {movies.length > 0 && (
                     <>
                         <div style={{ height: 56 }} />
-                        <SectionHead label='Películas' count={movies.length} />
+                        <SectionHead label={globalize.translate('Movies')} count={movies.length} />
                         <div style={grid}>
                             {movies.map(({ movie }) => <LibraryMovieCard key={movie.id} movie={movie} navigate={navigate} />)}
                         </div>
@@ -103,8 +104,8 @@ export function PersonPage({ name, navigate }: Props) {
                 )}
                 {shows.length === 0 && movies.length === 0 && (
                     <EmptyState
-                        title={`Sin apariciones de ${name} en tu biblioteca`}
-                        hint='Cuando conectemos con Jellyfin, aquí verás su filmografía completa.'
+                        title={globalize.translate('MessageNoAppearancesFor', name)}
+                        hint={globalize.translate('MessageNoAppearancesForHelp')}
                     />
                 )}
             </section>

@@ -2,6 +2,8 @@
 // authenticateUserByName — ya sobre el SDK — obtiene el AccessToken y deja
 // las credenciales persistidas.
 
+import globalize from 'lib/globalize';
+
 import { ServerConnections, ConnectionState } from 'lib/jellyfin-apiclient';
 import { setSessionDisplayName } from '../session/session';
 import { normalizeServerUrl } from './http';
@@ -24,7 +26,7 @@ export async function authenticate(
         connection = await ServerConnections.connectToAddress(base);
     } catch {
         throw new Error(
-            `No se pudo alcanzar ${base}. Comprueba que el servidor está corriendo y la URL es correcta.`
+            globalize.translate('MessageServerUnreachable', base)
         );
     }
     if (!connection || connection.State === ConnectionState.Unavailable) {
@@ -46,7 +48,7 @@ export async function authenticate(
         const status = response?.status;
         throw new Error(
             status === 401 ?
-                'Usuario o contraseña incorrectos' :
+                globalize.translate('MessageInvalidCredentials') :
                 `Error del servidor (${typeof status === 'number' ? status : '?'})`
         );
     }
@@ -55,7 +57,7 @@ export async function authenticate(
     // fallar aquí que dejar a la app con un token undefined.
     const { AccessToken: accessToken, User: user, ServerId: serverId } = auth;
     if (!accessToken || !user?.Id) {
-        throw new Error('El servidor aceptó las credenciales pero no devolvió una sesión válida.');
+        throw new Error(globalize.translate('MessageNoSessionReturned'));
     }
 
     const displayName = user.Name ?? username;

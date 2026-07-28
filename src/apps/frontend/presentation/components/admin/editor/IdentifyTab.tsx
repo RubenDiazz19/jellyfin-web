@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect, useState } from 'react';
 import {
     applyRemoteSearchResult,
@@ -42,7 +44,7 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                 year: year ? Number(year) : undefined
             });
             setResults(rs);
-            if (rs.length === 0) toast('Sin resultados', 'info');
+            if (rs.length === 0) toast(globalize.translate('MessageNoResults'), 'info');
         } catch (e) {
             toast((e as Error).message, 'warn');
         } finally {
@@ -55,7 +57,7 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
         setApplying(i);
         try {
             await applyRemoteSearchResult(itemId, results[i]);
-            toast('Identificado — se está refrescando la metadata', 'success');
+            toast(globalize.translate('MessageIdentifiedRefreshing'), 'success');
             onClose();
         } catch (e) {
             toast((e as Error).message, 'warn');
@@ -71,15 +73,15 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                 actual por otra distinta.
             </Muted>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 12 }}>
-                <Field label='Nombre'>
+                <Field label={globalize.translate('LabelName')}>
                     <TextInput value={name} onChange={setName} />
                 </Field>
-                <Field label='Año'>
-                    <TextInput value={year} onChange={setYear} placeholder='opcional' />
+                <Field label={globalize.translate('LabelYear')}>
+                    <TextInput value={year} onChange={setYear} placeholder={globalize.translate('Optional')} />
                 </Field>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                     <PrimaryBtn onClick={doSearch} disabled={searching}>
-                        {searching ? 'Buscando…' : 'Buscar'}
+                        {globalize.translate(searching ? 'Searching' : 'Search')}
                     </PrimaryBtn>
                 </div>
             </div>
@@ -117,7 +119,7 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                                 <SecondaryBtn onClick={() => apply(i)} disabled={applying === i}>
-                                    {applying === i ? 'Aplicando…' : 'Aplicar'}
+                                    {globalize.translate(applying === i ? 'Applying' : 'Apply')}
                                 </SecondaryBtn>
                             </div>
                         </div>

@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { useEffect } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
@@ -79,7 +81,7 @@ function EpisodeHero({
     // está visto, minutos restantes si está a medias. El resto del tiempo el
     // botón muestra el tick / el play, sin ningún texto suelto debajo.
     const hoverText = watched ?
-        'Ver de nuevo' :
+        globalize.translate('WatchAgain') :
         inProgress && ep.runtime ?
             formatRemainingCompact(Math.round((1 - ep.watched) * ep.runtime)) :
             null;
@@ -100,7 +102,7 @@ function EpisodeHero({
             <Nav
                 navigate={navigate}
                 breadcrumb={[
-                    { label: 'Series', to: { page: 'home' } },
+                    { label: globalize.translate('Shows'), to: { page: 'home' } },
                     { label: show.title, to: { page: 'show', showId: show.id } },
                     { label: `Temporada ${season.n}`, to: { page: 'season', showId: show.id, seasonN: season.n } },
                     { label: `Episodio ${ep.n}` }
@@ -160,6 +162,8 @@ function EpisodeHero({
                             <MoreButton
                                 id={ep.jfId ?? `${show.id}-s${season.n}-e${ep.n}`}
                                 size={28} type='episode' itemTitle={ep.title}
+                                queueSubtitle={`${show.title} · ${globalize.translate('ValueSeasonEpisode', season.n, ep.n)}`}
+                                queuePoster={ep.thumb ?? show.poster}
                             />
                         </span>
                     </div>
@@ -183,7 +187,7 @@ function EpisodeHero({
                 </div>
             </div>
 
-            <ScrollHint label='Detalles' />
+            <ScrollHint label={globalize.translate('HeaderDetails')} />
         </section>
     );
 }
@@ -209,7 +213,7 @@ function EpisodeDetail({
                         fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                         color: T.dim, marginBottom: 18
                     }}>
-                        Sinopsis
+                        {globalize.translate('Overview')}
                     </div>
                     <p style={{
                         fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
@@ -219,7 +223,7 @@ function EpisodeDetail({
                     </p>
 
                     <div style={{ marginTop: 56 }}>
-                        <CastList cast={show.cast} navigate={navigate} label='Reparto' />
+                        <CastList cast={show.cast} navigate={navigate} label={globalize.translate('HeaderCastAndCrew')} />
                     </div>
                 </div>
 
@@ -228,26 +232,26 @@ function EpisodeDetail({
                         fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                         color: T.dim, marginBottom: 18
                     }}>
-                        Datos técnicos
+                        {globalize.translate('HeaderTechnicalInfo')}
                     </div>
                     <div style={{
                         display: 'grid', gridTemplateColumns: '130px 1fr', rowGap: 14, fontSize: 13
                     }}>
                         {show.directors && (
                             <>
-                                <span style={{ color: T.dim }}>Dirige</span>
+                                <span style={{ color: T.dim }}>{globalize.translate('Director')}</span>
                                 <span>{show.directors}</span>
                             </>
                         )}
                         {show.creator && (
                             <>
-                                <span style={{ color: T.dim }}>Guion</span>
+                                <span style={{ color: T.dim }}>{globalize.translate('Writer')}</span>
                                 <span>{show.creator}</span>
                             </>
                         )}
                         {ep.date && (
                             <>
-                                <span style={{ color: T.dim }}>Emisión</span>
+                                <span style={{ color: T.dim }}>{globalize.translate('AirDate')}</span>
                                 <span>
                                     {formatDateLong(ep.date)}
                                 </span>
@@ -255,25 +259,25 @@ function EpisodeDetail({
                         )}
                         {ep.runtime != null && (
                             <>
-                                <span style={{ color: T.dim }}>Duración</span>
+                                <span style={{ color: T.dim }}>{globalize.translate('LabelRuntimeMinutes')}</span>
                                 <span>{ep.runtime} min</span>
                             </>
                         )}
-                        <span style={{ color: T.dim }}>Vídeo</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Video')}</span>
                         <span>{ep.video ?? '—'}</span>
-                        <span style={{ color: T.dim }}>Audio</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Audio')}</span>
                         <span>{ep.audio ?? '—'}</span>
-                        <span style={{ color: T.dim }}>Subtítulos</span>
+                        <span style={{ color: T.dim }}>{globalize.translate('Subtitles')}</span>
                         <span>{ep.subtitles ?? '—'}</span>
                         {ep.container && (
                             <>
-                                <span style={{ color: T.dim }}>Contenedor</span>
+                                <span style={{ color: T.dim }}>{globalize.translate('MediaInfoContainer')}</span>
                                 <span>{ep.container.toUpperCase()}</span>
                             </>
                         )}
                         {show.studio && (
                             <>
-                                <span style={{ color: T.dim }}>Estudio</span>
+                                <span style={{ color: T.dim }}>{globalize.translate('Studio')}</span>
                                 <span>{show.studio}</span>
                             </>
                         )}
@@ -285,7 +289,7 @@ function EpisodeDetail({
                                 fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
                                 color: T.dim, marginBottom: 18
                             }}>
-                                Siguiente
+                                {globalize.translate('Next')}
                             </div>
                             <div
                                 onClick={() => navigate({

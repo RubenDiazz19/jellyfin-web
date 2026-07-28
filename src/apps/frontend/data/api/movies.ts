@@ -1,7 +1,7 @@
 import type { CastMember, Movie } from '../models';
 import { loadSession } from '../session/session';
 import { WATCHED } from '../stores/watchedStore';
-import { apiFetch } from './http';
+import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
 import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem } from './types';
@@ -62,7 +62,7 @@ function mapMovie(item: JFItem): Movie {
 export async function getMovies(): Promise<Movie[]> {
     await settlePlaybackReports();
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     const data = await apiFetch<{ Items: JFItem[] }>(
         `/Users/${session.userId}/Items?IncludeItemTypes=Movie&Recursive=true&SortBy=SortName&Fields=${FIELDS_LIST}`
     );
@@ -78,7 +78,7 @@ export async function getMovies(): Promise<Movie[]> {
 export async function getMovie(id: string): Promise<Movie> {
     await settlePlaybackReports();
     const session = loadSession();
-    if (!session?.userId) throw new Error('Sin sesión');
+    if (!session?.userId) throw noSessionError();
     const item = await apiFetch<JFItem>(
         `/Users/${session.userId}/Items/${id}?Fields=${FIELDS_DETAIL}`
     );

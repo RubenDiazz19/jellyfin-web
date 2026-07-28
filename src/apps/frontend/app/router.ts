@@ -25,7 +25,8 @@ export type Route =
   | { page: 'genre'; genre: string }
   | { page: 'person'; name: string }
   | { page: 'settings' }
-  | { page: 'profile' };
+  | { page: 'profile' }
+  | { page: 'queue' };
 
 export type Navigate = (r: Route) => void;
 
@@ -45,6 +46,7 @@ export function routeToPath(r: Route): string {
         case 'person': return `/person/${encodeURIComponent(r.name)}`;
         case 'settings': return '/settings';
         case 'profile': return '/profile';
+        case 'queue': return '/queue';
     }
 }
 
@@ -63,6 +65,7 @@ export function pathToRoute(pathname: string): Route {
         case 'search': return { page: 'search' };
         case 'settings': return { page: 'settings' };
         case 'profile': return { page: 'profile' };
+        case 'queue': return { page: 'queue' };
 
         case 'show': {
             const [showId, kw1, seasonS, kw2, epS] = rest;

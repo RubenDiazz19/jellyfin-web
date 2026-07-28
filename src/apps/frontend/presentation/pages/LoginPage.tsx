@@ -1,3 +1,5 @@
+import globalize from 'lib/globalize';
+
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { loginVM } from '../../domain/viewModels/LoginViewModel';
@@ -49,7 +51,7 @@ export function LoginPage() {
                 {step === 'server' ? (
                     <form onSubmit={chooseServer}>
                         <label htmlFor='jfp-login-server' style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: T.dim }}>
-                            Servidor
+                            {globalize.translate('TabServer')}
                         </label>
                         <input
                             id='jfp-login-server'
@@ -60,11 +62,10 @@ export function LoginPage() {
                             style={inputStyle}
                         />
                         <div style={{ fontSize: 12, color: T.dim, marginTop: 12, lineHeight: 1.5 }}>
-                            Introduce la URL pública de tu servidor Jellyfin. Este dato se
-                            guarda para la próxima vez que abras la app.
+                            {globalize.translate('LabelServerUrlHelp')}
                         </div>
                         <button type='submit' style={primaryBtn} disabled={!serverUrl.trim()}>
-                            Conectar
+                            {globalize.translate('ButtonConnect')}
                         </button>
                     </form>
                 ) : (
@@ -78,24 +79,24 @@ export function LoginPage() {
                                 fontSize: 12, cursor: 'pointer', padding: 0, marginBottom: 20
                             }}
                         >
-                            <Ic.Arrow size={12} /> Cambiar servidor
+                            <Ic.Arrow size={12} /> {globalize.translate('ButtonChangeServer')}
                         </button>
                         <div style={{ fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: T.dim, marginBottom: 8 }}>
                             {serverUrl}
                         </div>
 
-                        <label htmlFor='jfp-login-user' style={labelStyle}>Usuario</label>
+                        <label htmlFor='jfp-login-user' style={labelStyle}>{globalize.translate('LabelUsername')}</label>
                         <input
                             id='jfp-login-user'
                             autoFocus
                             value={username}
                             onChange={(e) => loginVM.setUsername(e.target.value)}
-                            placeholder='tu usuario'
+                            placeholder={globalize.translate('LabelUsername')}
                             autoComplete='username'
                             style={inputStyle}
                         />
 
-                        <label htmlFor='jfp-login-pass' style={{ ...labelStyle, marginTop: 16 }}>Contraseña</label>
+                        <label htmlFor='jfp-login-pass' style={{ ...labelStyle, marginTop: 16 }}>{globalize.translate('LabelPassword')}</label>
                         <input
                             id='jfp-login-pass'
                             type='password'
@@ -107,10 +108,10 @@ export function LoginPage() {
                         />
 
                         <button type='submit' style={primaryBtn} disabled={busy || !username || !password}>
-                            {busy ? 'Iniciando…' : 'Iniciar sesión'}
+                            {globalize.translate(busy ? 'SigningIn' : 'ButtonSignIn')}
                         </button>
                         <div style={{ fontSize: 11, color: T.dim, marginTop: 18, lineHeight: 1.6, textAlign: 'center' }}>
-                            Usa las credenciales del usuario que creaste en el wizard de Jellyfin.
+                            {globalize.translate('MessageUseJellyfinCredentials')}
                         </div>
                     </form>
                 )}

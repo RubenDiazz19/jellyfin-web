@@ -1,4 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
+
+import globalize from 'lib/globalize';
+
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
@@ -38,44 +41,44 @@ export function FavoritesPage({ navigate }: Props) {
                     fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
                     fontSize: 52, margin: 0, letterSpacing: -0.5, marginBottom: 44
                 }}>
-                    Favoritos
+                    {globalize.translate('Favorites')}
                 </h1>
 
                 {loading.value ? (
                     <SkeletonRow title='' />
                 ) : error.value ? (
-                    <EmptyState title='No se pudieron cargar los favoritos' hint={error.value} />
+                    <EmptyState title={globalize.translate('FavoritesLoadError')} hint={error.value} />
                 ) : isEmpty ? (
                     <EmptyState
-                        title='Todavía no tienes favoritos'
-                        hint='Pulsa el corazón en una serie, película o episodio para añadirlo aquí.'
+                        title={globalize.translate('MessageNoFavoritesYet')}
+                        hint={globalize.translate('MessageNoFavoritesYetHelp')}
                         icon='♡'
                     />
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 56 }}>
                         {shows.value.length > 0 && (
-                            <FavSection title='Series'>
+                            <FavSection title={globalize.translate('Shows')}>
                                 {shows.value.map((s) => (
                                     <PosterCard key={s.id} slide={s} navigate={navigate} />
                                 ))}
                             </FavSection>
                         )}
                         {movies.value.length > 0 && (
-                            <FavSection title='Películas'>
+                            <FavSection title={globalize.translate('Movies')}>
                                 {movies.value.map((m) => (
                                     <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />
                                 ))}
                             </FavSection>
                         )}
                         {seasons.value.length > 0 && (
-                            <FavSection title='Temporadas'>
+                            <FavSection title={globalize.translate('HeaderSeasons')}>
                                 {seasons.value.map(({ show, season }) => (
                                     <SeasonCard key={`${show.id}-s${season.n}`} show={show} season={season} navigate={navigate} />
                                 ))}
                             </FavSection>
                         )}
                         {episodes.value.length > 0 && (
-                            <FavSection title='Episodios' minWidth={260}>
+                            <FavSection title={globalize.translate('Episodes')} minWidth={260}>
                                 {episodes.value.map(({ show, season, episode }) => (
                                     <EpCard
                                         key={`${show.id}-s${season.n}-e${episode.n}`}
