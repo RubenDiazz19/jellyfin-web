@@ -30,7 +30,11 @@
 - [ ] **`webcomponents.js` (896KB)** — Polyfill obsoleto; los navegadores modernos soportan web components nativamente. Cargarlo condicionalmente solo para browsers que lo necesiten o eliminarlo.
 - [ ] **`react-blurhash` (920KB)** — Reemplazar por un hook simple sobre `blurhash` (88KB). Es un wrapper fino que no justifica su peso.
 - [ ] **`react-lazy-load-image-component` (216KB)** — Solo se usa en `Image.tsx`. Reemplazar con `loading="lazy"` nativo + blurhas.
-- [ ] **`@tanstack/react-query-devtools`** — Se bundlea siempre pero solo se renderiza condicionalmente. Convertir a `lazy()` para que sea un chunk separado.
+- [x] **`@tanstack/react-query-devtools`** — ~~Se bundlea siempre~~ **ya no**: nada que hacer, medido.
+  Desde la v5 el paquete se resuelve a `() => null` salvo con `NODE_ENV=development`, y como
+  declara `sideEffects: false`, Rollup dobla la constante y lo elimina entero. En `dist/assets/*.js`
+  hay **0** coincidencias de `TanStack`, `ReactQueryDevtools`, `query-devtools` y `@tanstack`.
+  Pasarlo a `lazy()` solo añadiría un `Suspense` y un chunk async a cambio de nada.
 - [ ] **Evaluar date-fns v3** — v2 pesa ~25MB en disco. v3 es más pequeña y tree-shakeable mejor, pero requiere migración de imports y es breaking.
 - [ ] **Evaluar remplazo de lodash-es** — Solo se usan 7 funciones (`isEmpty`, `debounce`, `isEqual`, etc.). Con tree-shaking está bien, pero valorar utilidades inline para eliminar la dependencia.
 
