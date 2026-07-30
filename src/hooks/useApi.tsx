@@ -1,12 +1,11 @@
 import type { Api } from '@jellyfin/sdk';
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client';
-import type { Event } from 'jellyfin-apiclient';
 import { type FC, type PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 
 import { ServerConnections } from 'lib/jellyfin-apiclient';
-import events from 'utils/events';
+import events, { type Event } from 'utils/events';
 
 export interface JellyfinApiContext {
     api?: Api

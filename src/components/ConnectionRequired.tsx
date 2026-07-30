@@ -1,9 +1,7 @@
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { FunctionComponent, useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import type { ConnectResponse } from 'jellyfin-apiclient';
-
-import { ConnectionState, ServerConnections } from 'lib/jellyfin-apiclient';
+import { type ConnectResponse, ConnectionState, ServerConnections } from 'lib/jellyfin-apiclient';
 
 import ConnectionErrorPage from './ConnectionErrorPage';
 import Loading from './loading/LoadingComponent';
