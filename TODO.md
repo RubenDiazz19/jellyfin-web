@@ -115,4 +115,13 @@
   `VITE_`. `loadEnv` la busca en el `.env` de la raíz del repo; el entorno real tiene prioridad.
 - [ ] **Modularizar ESLint config** — `eslint.config.mjs` tiene 563 líneas. Separar reglas por dominio (react, typescript, imports, stylistic).
 - [ ] **Configurar pre-commit hooks** — Husky + lint-staged para lint y typecheck automáticos antes de commits.
+  ⚠️ **Husky no serviría aquí.** Este repo se commitea con **jj**, y `jj commit` **no ejecuta los
+  hooks de git** (comprobado: un `pre-commit` en `.git/hooks` no se dispara con `jj commit` y sí
+  con `git commit`). Instalar husky dejaría una red de seguridad que nunca salta, que es peor que
+  no tenerla. Alternativas reales: el hook nativo de jj (`fix` / `jj util exec`), un
+  `jj fix` configurado en `.jj/repo/config.toml`, o dejarlo en CI.
 - [ ] **Configurar commitlint** — Para estandarizar formato de mensajes de commit.
+  Mismo problema que el punto anterior: commitlint se engancha por `commit-msg`, otro hook de git
+  que jj no ejecuta. Y antes de decidir el formato, ojo: los mensajes de este repo son prosa en
+  español explicando el *por qué*, no Conventional Commits — imponer `feat:`/`fix:` sería cambiar
+  la convención existente, no estandarizarla.
