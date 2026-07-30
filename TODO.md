@@ -26,7 +26,11 @@
 
 ## 2. Bundle y dependencias
 
-- [ ] **Auditar bundles grandes** — Agregar `vite-plugin-visualizer` o `rollup-plugin-visualizer` para inspeccionar composición de chunks en producción.
+- [x] **Auditar bundles grandes** — Agregar `vite-plugin-visualizer` o `rollup-plugin-visualizer` para inspeccionar composición de chunks en producción.
+  `bun run build:analyze` escribe `bundle-stats.html` (treemap con tamaños gzip y brotli) en la
+  raíz del repo — fuera de `dist/`, que es lo que se despliega. Es opt-in: el build normal no
+  paga el coste. Punto de partida medido: 15 MB de JS en total, y los chunks mayores son
+  `index` (1016 KB → 280 KB gz), `hls` (516 → 158) y `AppLayout` (280 → 65).
 - [ ] **`webcomponents.js` (896KB)** — Polyfill obsoleto; los navegadores modernos soportan web components nativamente. Cargarlo condicionalmente solo para browsers que lo necesiten o eliminarlo.
 - [ ] **`react-blurhash` (920KB)** — Reemplazar por un hook simple sobre `blurhash` (88KB). Es un wrapper fino que no justifica su peso.
 - [ ] **`react-lazy-load-image-component` (216KB)** — Solo se usa en `Image.tsx`. Reemplazar con `loading="lazy"` nativo + blurhas.

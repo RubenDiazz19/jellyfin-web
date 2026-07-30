@@ -6,6 +6,9 @@ node_modules
 # test coverage
 coverage
 
+# informe de composición de chunks (bun run build:analyze)
+bundle-stats.html
+
 # config
 config.json
 

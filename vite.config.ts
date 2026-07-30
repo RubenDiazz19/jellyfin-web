@@ -283,6 +283,26 @@ function devThemes(): Plugin {
     };
 }
 
+/**
+ * Informe de composición de los chunks de producción. Opt-in (`bun run
+ * build:analyze`) porque añade tiempo al build y escribe un HTML que no tiene
+ * nada que hacer en un despliegue: por eso sale a la raíz del repo y no a
+ * dist/, que es lo que se sirve.
+ */
+// El import es dinámico porque el paquete es ESM-only y este config se carga
+// como CJS (usa __dirname y require('sass')). Vite acepta promesas en
+// `plugins`, así que además el módulo solo se toca cuando se pide el análisis.
+function bundleVisualizer(): Promise<Plugin> | false {
+    if (!process.env.ANALYZE) return false;
+    return import('rollup-plugin-visualizer').then(({ visualizer }) => visualizer({
+        filename: path.join(REPO_ROOT, 'bundle-stats.html'),
+        template: 'treemap',
+        // Lo que de verdad paga el usuario es el transferido, no el crudo.
+        gzipSize: true,
+        brotliSize: true
+    }) as Plugin);
+}
+
 export default defineConfig(({ command, mode }) => ({
     // The app is rooted in src/ — index.html, config.json, manifest.json,
     // robots.txt and assets/ are all served from there as-is.
@@ -298,7 +318,8 @@ export default defineConfig(({ command, mode }) => ({
         emitStaticFiles(),
         injectApp(),
         devStaticAssets(),
-        devThemes()
+        devThemes(),
+        bundleVisualizer()
     ],
 
     define: getDefines(command === 'serve'),
