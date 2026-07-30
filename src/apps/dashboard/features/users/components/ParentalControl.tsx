@@ -58,8 +58,10 @@ function handleSaveUser(
         userPolicy.AccessSchedules = getSchedulesFromPage();
         userPolicy.AllowedTags = getAllowedTagsFromPage();
         userPolicy.BlockedTags = getBlockedTagsFromPage();
-        ServerConnections.getCurrentApiClientAsync()
-            .then(apiClient => apiClient.updateUserPolicy(userId, userPolicy))
+        const api = ServerConnections.getApi();
+        if (!api) return;
+
+        getUserApi(api).updateUserPolicy({ userId, userPolicy })
             .then(() => onSaveComplete())
             .catch(err => {
                 console.error('[userparentalcontrol] failed to update user policy', err);
