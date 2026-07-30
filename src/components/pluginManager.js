@@ -65,7 +65,7 @@ class PluginManager {
 
         if (typeof pluginSpec === 'string') {
             if (pluginSpec in window) {
-                console.log(`Loading plugin (via window): ${pluginSpec}`);
+                console.debug(`Loading plugin (via window): ${pluginSpec}`);
 
                 const pluginDefinition = await window[pluginSpec];
                 if (typeof pluginDefinition !== 'function') {

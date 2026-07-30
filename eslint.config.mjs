@@ -103,6 +103,11 @@ export default tseslint.config(
                     'newIsCapExceptionPattern': String.raw`\.default$`
                 }
             ],
+            // console.log no dice nada de para qué es el mensaje y no se puede
+            // filtrar en el navegador: los niveles sí. Traza de desarrollo →
+            // debug (el navegador la oculta por defecto), algo raro pero
+            // recuperable → warn, fallo de verdad → error.
+            'no-console': ['error', { allow: ['debug', 'info', 'warn', 'error'] }],
             'no-duplicate-imports': 'error',
             'no-empty-function': 'error',
             'no-extend-native': 'error',

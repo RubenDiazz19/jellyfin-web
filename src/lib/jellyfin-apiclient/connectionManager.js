@@ -59,7 +59,7 @@ function sortByAccess(a, b) {
 
 export default class ConnectionManager {
     constructor(credentialProvider, appName, appVersion, deviceName, deviceId, capabilities) {
-        console.log('Begin ConnectionManager constructor');
+        console.debug('Begin ConnectionManager constructor');
 
         const self = this;
         this._apiClients = [];
@@ -133,7 +133,7 @@ export default class ConnectionManager {
         };
 
         self.clearData = () => {
-            console.log('connection manager clearing data');
+            console.debug('connection manager clearing data');
 
             const credentials = credentialProvider.credentials();
             credentials.Servers = [];
@@ -154,7 +154,7 @@ export default class ConnectionManager {
             }
             apiClient._sdk ??= toApi(apiClient);
 
-            console.log('returning instance from getOrAddApiClient');
+            console.debug('returning instance from getOrAddApiClient');
             return apiClient;
         };
 
@@ -475,13 +475,13 @@ export default class ConnectionManager {
         }
 
         self.connectToServers = (servers, options) => {
-            console.log(`Begin connectToServers, with ${servers.length} servers`);
+            console.debug(`Begin connectToServers, with ${servers.length} servers`);
 
             const firstServer = servers.length ? servers[0] : null;
             // See if we have any saved credentials and can auto sign in
             if (firstServer) {
                 return self.connectToServer(firstServer, options).then((result) => {
-                    console.log('resolving connectToServers with result.State: ' + result.State);
+                    console.debug('resolving connectToServers with result.State: ' + result.State);
                     return result;
                 });
             }
@@ -493,7 +493,7 @@ export default class ConnectionManager {
         };
 
         function getTryConnectPromise(url, connectionMode, state, resolve, reject) {
-            console.log('getTryConnectPromise ' + url);
+            console.debug('getTryConnectPromise ' + url);
 
             ajax({
                 url: `${url}/System/Info/Public`,
@@ -505,7 +505,7 @@ export default class ConnectionManager {
                     if (!state.resolved) {
                         state.resolved = true;
 
-                        console.log('Reconnect succeeded to ' + url);
+                        console.debug('Reconnect succeeded to ' + url);
                         resolve({
                             url: url,
                             connectionMode: connectionMode,
@@ -514,7 +514,7 @@ export default class ConnectionManager {
                     }
                 },
                 () => {
-                    console.log('Reconnect failed to ' + url);
+                    console.debug('Reconnect failed to ' + url);
 
                     if (!state.resolved) {
                         state.rejects++;
@@ -743,7 +743,7 @@ export default class ConnectionManager {
             let i = 0;
 
             function onFail() {
-                console.log(`connectToAddress ${urls[i]} failed`);
+                console.debug(`connectToAddress ${urls[i]} failed`);
 
                 if (++i < urls.length) {
                     return tryConnectToAddress(urls[i], options).catch(onFail);
@@ -783,7 +783,7 @@ export default class ConnectionManager {
     }
 
     connect(options) {
-        console.log('Begin connect');
+        console.debug('Begin connect');
 
         return this.getAvailableServers().then((servers) => {
             return this.connectToServers(servers, options);
@@ -799,7 +799,7 @@ export default class ConnectionManager {
                     try {
                         msg.Data = JSON.parse(msg.Data);
                     } catch (err) {
-                        console.log('unable to parse json content: ' + err);
+                        console.warn('unable to parse json content: ' + err);
                     }
                 }
 

@@ -44,7 +44,12 @@
 
 ## 3. Calidad de código
 
-- [ ] **Eliminar `console.log` en producción** — 18 ocurrencias (principalmente `connectionManager.js` y `webSettings.js`). Reemplazar con logger configurable o eliminarlos.
+- [x] **Eliminar `console.log` en producción** — 18 ocurrencias (principalmente `connectionManager.js` y `webSettings.js`). Reemplazar con logger configurable o eliminarlos.
+  No hacía falta un logger nuevo: el repo ya usaba niveles (60 `debug`, 34 `warn`, 144 `error`) y
+  `console.log` era el único outlier. Cada una pasa al nivel que le toca — trazas de ciclo de vida
+  y de sondeo de direcciones a `debug` (el navegador las oculta por defecto, y ahí fallar es lo
+  normal: prueba varias URLs), fallo inesperado con fallback silencioso a `warn`. La regla
+  `no-console` de ESLint impide que vuelvan a colarse, permitiendo los cuatro niveles útiles.
 - [ ] **Resolver 30 TODO + 8 FIXME** — Distribuidos por toda la codebase. Priorizar los FIXME (scrollManager, browserDeviceProfile, authentication-api, etc.).
 - [ ] **Reducir tipos `any`** — Persistentes en `apiclient.d.ts`, `global.d.ts` (`NativeShell: any`), y algunas utilidades. Tiparlos correctamente.
 - [ ] **Subir cobertura de tests** — Threshold global de líneas al 5% es extremadamente bajo. El dashboard (admin) tiene solo 1 test. Establecer metas progresivas (30% → 50% → 70%).
