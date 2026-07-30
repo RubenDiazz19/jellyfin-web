@@ -51,18 +51,33 @@ Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
 > **D2** (migrar al SDK) se hicieron en fases numeradas, cada una con su commit y la suite en
 > verde. Misma receta aquí.
 
-- [ ] **Unificar API client** — terminar **D2**, cuya fase 4 quedó parcial.
+- [ ] **Unificar API client** — terminar **D2**, cuya fase 4 quedó parcial. **En marcha.**
   **Medido, y sale mejor de lo que decía la nota vieja**: no son 88 imports repartidos. De los 78
   ficheros que tocan el cliente legacy, **67 solo usan la fachada `ServerConnections`** y no se
-  enteran de lo que haya detrás. Todo `src/lib/jellyfin-apiclient/` son **1136 líneas**, de las
-  que `connectionManager.js` es 877 y `ServerConnections.js` 239.
-  **Siguiente paso**: reescribir `connectionManager.js` sobre el SDK **conservando la forma de la
-  fachada**; los 67 consumidores no se tocan. Lo dice el último commit de D2: «lo que queda del
-  cliente legacy en los consumidores son handles opacos que se pasan de vuelta a la fachada, no
-  llamadas a su API — eso desaparece al reescribir connectionManager».
-  Después quedan **6 imports del paquete npm** `jellyfin-apiclient` (4 son solo tipos):
-  `ApiClient` en `utils/jellyfin-apiclient/{compat,createApiClient}.ts` y `Credentials` en
-  `ServerConnections.js`. Con eso fuera, el paquete se puede desinstalar.
+  enteran de lo que haya detrás. De los 173 usos de `ServerConnections`, **112 son `getApi()`**,
+  que ya devuelve SDK. Y de los 74 usos del `ApiClient` legacy, **60 están dentro de la propia
+  capa de conexión**: las fases anteriores ya limpiaron los consumidores.
+  - [x] **`Credentials` deja de venir del paquete** — reimplementada en `credentials.ts`,
+    conservando la clave de almacenamiento y la forma del objeto (si cambian, todo el mundo se
+    queda desconectado al desplegar). 15 tests.
+  - [x] **`getCurrentApiClientAsync` borrado** — su último consumidor (`ParentalControl`) pasa a
+    `getUserApi(api).updateUserPolicy()`. La fachada ya no reparte clientes legacy bajo demanda.
+  - [ ] **Quedan 4 ficheros con llamadas de negocio al `ApiClient` legacy**, todas con equivalente
+    directo en el SDK. Son independientes entre sí, así que van de una en una:
+    - `components/mediaLibraryEditor/mediaLibraryEditor.js` (5) → `getLibraryStructureApi`
+    - `components/libraryoptionseditor/libraryoptionseditor.js` (4) → `getLocalizationApi` (cultures,
+      countries) y `api.getUri` para el `getJSON`
+    - `components/viewContainer.js` (1) → `getUrl` es solo construir una URL: `api.getUri`
+    - `hooks/useApi.tsx` y `components/ConnectionRequired.tsx` → solo importan **tipos**
+      (`Event`, `ConnectResponse`), que además salen de nuestro propio `src/apiclient.d.ts`, no del
+      paquete. Mover esos tipos a un módulo propio.
+  - [ ] **Y entonces sí, el núcleo**: con los consumidores fuera, el `ApiClient` legacy queda solo
+    como contenedor de datos dentro de `connectionManager.js` (877 líneas). Sustituirlo por un
+    registro propio (info del servidor + `Api` del SDK) y borrar `utils/jellyfin-apiclient/`
+    (`compat.ts`, `createApiClient.ts`), que es lo único que instancia la clase del paquete.
+    Red de seguridad: los **24 tests** de `__tests__/connectionManager.test.ts` fijan la
+    orquestación (sondeo de direcciones, versión mínima, validación de token, logout). ⚠️ Usan un
+    proveedor de credenciales **falso**, así que no cubren `credentials.ts`; eso lo cubren sus 15.
 - [ ] **Migrar web components `emby-*` a React TSX** — quedan **16** (eran 18), **2575 líneas** en
   `src/elements/`. Usan `innerHTML` y DOM imperativo: es un segundo motor de renderizado en
   paralelo a React.
