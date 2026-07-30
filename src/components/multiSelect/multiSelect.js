@@ -336,20 +336,10 @@ function showMenuForSelectedItems(e) {
 }
 
 function dispatchNeedsRefresh() {
-    const elems = [];
-
-    [].forEach.call(selectedElements, i => {
-        const container = dom.parentWithAttribute(i, 'is', 'emby-itemscontainer');
-
-        if (container && !elems.includes(container)) {
-            elems.push(container);
-        }
-    });
-
-    for (let i = 0, length = elems.length; i < length; i++) {
-        elems[i].notifyRefreshNeeded(true);
-    }
-
+    // Aquí se recorrían antes los contenedores legacy para llamarles a
+    // `notifyRefreshNeeded()`. Ese web component ya no existe, y el evento
+    // global de abajo —que ya se disparaba igualmente— es lo que escucha el
+    // `ItemsContainer` de React.
     Events.trigger(document, EventType.REFRESH_NEEDED);
 }
 

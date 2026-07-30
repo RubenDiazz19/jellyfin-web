@@ -94,19 +94,44 @@ Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
     `ConnectedServerHandle` y `ApiClientParams` se retiran: describían por forma una clase ajena
     para poder cambiar lo de detrás sin tocar a quien la recibe. Cumplido eso, un espejo escrito a
     mano de una clase propia solo es una copia que se desincroniza.
-- [ ] **Migrar web components `emby-*` a React TSX** — quedan **16** (eran 18), **2575 líneas** en
+- [ ] **Migrar web components `emby-*` a React TSX** — quedan **13** (eran 18), **1600 líneas** en
   `src/elements/`. Usan `innerHTML` y DOM imperativo: es un segundo motor de renderizado en
   paralelo a React.
-  ⚠️ **Los 16 se registran con `document.registerElement`, la API v0 de custom elements, que los
+  ⚠️ **Se registran con `document.registerElement`, la API v0 de custom elements, que los
   navegadores eliminaron**. Ninguno usa `customElements.define`. O sea: hoy solo funcionan porque
   el polyfill `webcomponents.js` resucita una API muerta. Ese es el argumento de peso para migrar,
   más que el `innerHTML`.
   - [x] **Paso 0 — borrar los muertos**: `emby-programcell` y `emby-radio` no tenían ni una
     referencia en el repo. Fuera, 212 líneas.
-  - [ ] **Paso 1 — por número de usos, de menos a más** (que es también de menos a más riesgo):
-    `emby-progressring` (solo lo usa `emby-itemrefreshindicator`) y `emby-scrollbuttons` (solo
-    `emby-scroller` y un `.scss` del tema) → los de 1-2 usos → `emby-checkbox` (7),
-    `emby-select` (8), `emby-input` (12) → **`emby-button` el último, con 29**.
+  - [x] **Paso 1 — resultó no ser una migración, sino un entierro.** El plan era migrar
+    `emby-progressring` y `emby-scrollbuttons` por ser los de menos usos. Al ir a hacerlo, **ninguno
+    de los dos estaba vivo**: sus versiones React ya existían al lado desde antes y nadie importaba
+    ya el `.js`, así que su `document.registerElement` no llegaba a ejecutarse nunca.
+    **Cómo se comprueba de verdad**: un `emby-*` no se usa importándolo, se usa poniendo
+    `is="emby-x"` en el HTML. Hay que mirar las dos cosas — quién lo importa (lo registra) y quién
+    escribe el atributo (lo instancia). Si falta la primera, el atributo es decorativo.
+    Borrados **1448 líneas** en dos tirones, y el **bundle sale byte a byte idéntico** (mismo hash
+    `index-DHgkCk9c.js`), que es la prueba de que nada de esto se estaba enviando:
+    - `emby-itemscontainer.js` (482), `emby-scroller.js` (198), `emby-scrollbuttons.js` (192) y
+      `ItemsScrollerContainerElement.tsx` (43), que era el único que escribía
+      `is="emby-scroller"` y a su vez no lo usaba nadie.
+    - `listview.js` (509) y `peoplecardbuilder.js` (24): mismo patrón un nivel más arriba. Sus
+      consumidores (`playlistViewer`, `itemsByName`) ya no existen. ⚠️ `listview.scss` **sí sigue
+      vivo** — lo importan el `List/` de React y 4 diálogos.
+    ⚠️ **Ojo con `src/coverage/`**: es un informe viejo, sin trackear, que menciona ficheros ya
+    borrados. Ensucia todos los `grep`; hay que excluirlo o creerás que algo tiene usos.
+  - [ ] **Paso 2 — los que quedan, por número de usos**: `emby-progressbar` y `emby-collapse` (1-2
+    usos) → `emby-checkbox` (7), `emby-select` (8), `emby-input` (12) → **`emby-button` el último,
+    con 29** (más `paper-icon-button-light`, que con 132 usos es en realidad el más extendido).
+  - [ ] **Recortar `cardBuilder.js` (1261 líneas) a sus 2 exports vivos** — al morir `listview.js`
+    y `peoplecardbuilder.js`, se quedaron **sin un solo consumidor** `getCardsHtml`, `buildCards`,
+    `onTimerCreated`, `onTimerCancelled` y `onSeriesTimerCancelled`. Solo siguen vivos `setCardData`
+    (lo usa `Card/Cards.tsx`, ya en React) y `getDefaultText` (`cardImage.ts`).
+    Eso arrastra al último `emby-*` de esta zona: el `buildCard` muerto es quien importa
+    `emby-itemrefreshindicator` → `emby-progressring` (174 líneas + su `.template.html`).
+    **No corre prisa: ya está tree-shakeado** — 0 coincidencias de `progressring` en `dist/`. Es
+    deuda de código fuente, no peso enviado. Pero es surgery en un fichero de 1261 líneas con ~40
+    helpers internos entrelazados, así que va aparte y no de propina.
 - [ ] **Reemplazar 13 `.template.html`** — **889 líneas** de HTML que se cargan aparte de su JS
   (dialog, filterdialog, imageeditor…).
   **Siguiente paso**: van atados a los `emby-*`, así que después del punto anterior. Cada plantilla
@@ -134,7 +159,7 @@ Punto de partida medido: **15 MB de JS**; chunks mayores `index` (1016 KB → 28
   elimina entero: **0 coincidencias** de `TanStack`, `ReactQueryDevtools`, `query-devtools` ni
   `@tanstack` en `dist/assets/*.js`. Pasarlo a `lazy()` solo añadiría un `Suspense` para nada.
 - [ ] **`webcomponents.js` (896 KB)** — polyfill obsoleto; los navegadores actuales soportan web
-  components de forma nativa. Lo importan **15 de los 18 `emby-*`**, cada uno por su cuenta.
+  components de forma nativa. Lo importan **11 `emby-*`** (eran 15), cada uno por su cuenta.
   Se puede cargar condicionalmente, pero **muere solo** con el punto de migrar los `emby-*` (§1):
   ese es el orden barato, y explica por qué no compensa tocarlo antes.
 - [ ] **`react-lazy-load-image-component`** — solo se usa en `Image.tsx`. Sustituible por
@@ -157,6 +182,15 @@ Punto de partida medido: **15 MB de JS**; chunks mayores `index` (1016 KB → 28
   era el único outlier. Trazas de ciclo de vida y de sondeo de direcciones a `debug` (ahí fallar es
   lo normal: prueba varias URLs hasta que una responde, así que un `warn` por intento sería ruido);
   fallo inesperado con fallback silencioso a `warn`. La regla **`no-console`** impide que vuelvan.
+- [x] **Arreglado: el menú contextual de una playlist no ofrecía «mover arriba/abajo»** —
+  apareció al enterrar los `emby-*` de §1. `shortcuts.js` buscaba el contenedor por
+  `is="emby-itemscontainer"`, atributo que ponía el web component legacy; el `ItemsContainer` de
+  React que lo sustituyó renderiza un `div.itemsContainer` normal. La búsqueda no encontraba nada,
+  así que `PlaylistIndex` y `PlaylistItemCount` se quedaban sin asignar y las dos comparaciones de
+  `itemContextMenu.js` (`PlaylistIndex > 0` y `< PlaylistItemCount - 1`) daban falso siempre —
+  la segunda además comparaba contra `NaN`. Ahora se busca por `.closest('.itemsContainer')`.
+  **La lección**: al migrar un web component hay que buscar también quién leía su atributo `is=`
+  desde fuera, no solo quién lo importaba. Esos lectores fallan en silencio.
 - [ ] **Resolver 28 TODO + 11 FIXME** — repartidos por la codebase. Prioridad a los FIXME
   (`scrollManager`, `browserDeviceProfile`, `authentication-api`…).
 - [ ] **Reducir tipos `any`** — **el grueso ya cayó con D2**: `apiclient.d.ts` eran 359 líneas de

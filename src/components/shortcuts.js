@@ -88,8 +88,6 @@ function getItem(button) {
 }
 
 function notifyRefreshNeeded(childElement, itemsContainer) {
-    itemsContainer = itemsContainer || dom.parentWithAttribute(childElement, 'is', 'emby-itemscontainer');
-
     if (itemsContainer) {
         // Legacy webcomponent: directly call a method on the items container if it exists.
         itemsContainer.notifyRefreshNeeded(true);
@@ -108,7 +106,13 @@ function showContextMenu(card, options = {}) {
             const elem = dom.parentWithAttribute(card, 'data-playlistitemid');
             item.PlaylistItemId = elem ? elem.getAttribute('data-playlistitemid') : null;
 
-            const itemsContainer = dom.parentWithAttribute(card, 'is', 'emby-itemscontainer');
+            // El contenedor se busca por su clase y no por `is="emby-itemscontainer"`:
+            // ese atributo lo ponía el web component legacy, y el `ItemsContainer`
+            // de React que lo sustituyó renderiza un `div.itemsContainer` normal.
+            // Mientras se buscó por el atributo viejo esto no encontraba nada, así
+            // que `PlaylistIndex` se quedaba sin asignar y el menú contextual de
+            // una playlist no ofrecía «mover arriba» ni «mover abajo».
+            const itemsContainer = card.closest('.itemsContainer');
             if (itemsContainer) {
                 let index = 0;
                 for (const listItem of itemsContainer.querySelectorAll('.listItem')) {
