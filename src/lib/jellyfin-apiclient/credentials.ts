@@ -22,13 +22,20 @@ import Events from 'utils/events';
 /** Clave heredada. No se toca: es donde están las sesiones ya guardadas. */
 const STORAGE_KEY = 'jellyfin_credentials';
 
-/** Servidor conocido, tal cual se guarda. */
+/**
+ * Servidor conocido, tal cual se guarda.
+ *
+ * Los tres campos de sesión admiten `null` porque así es como se invalidan —
+ * cerrar sesión o caducar un token los pone a `null`, no los borra. La
+ * diferencia se ve al releer: un `null` sobrevive al `JSON.stringify` y un
+ * `undefined` desaparece del objeto guardado.
+ */
 export interface ServerCredentials {
     Id?: string;
     Name?: string;
-    AccessToken?: string;
-    UserId?: string;
-    ExchangeToken?: string;
+    AccessToken?: string | null;
+    UserId?: string | null;
+    ExchangeToken?: string | null;
     UserLinkType?: string;
     LocalAddress?: string;
     ManualAddress?: string;

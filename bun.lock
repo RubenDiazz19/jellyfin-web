@@ -29,7 +29,6 @@
         "history": "5.3.0",
         "hls.js": "1.6.16",
         "idb-keyval": "6.2.6",
-        "jellyfin-apiclient": "1.11.0",
         "lodash-es": "4.18.1",
         "markdown-it": "14.3.0",
         "material-design-icons-iconfont": "6.7.0",
@@ -1297,8 +1296,6 @@
     "iterator.prototype": ["iterator.prototype@1.1.5", "", { "dependencies": { "define-data-property": "^1.1.4", "es-object-atoms": "^1.0.0", "get-intrinsic": "^1.2.6", "get-proto": "^1.0.0", "has-symbols": "^1.1.0", "set-function-name": "^2.0.2" } }, "sha512-H0dkQoCa3b2VEeKQBOxFph+JAbcrQdE7KC0UkqwpLmv2EC4P41QXP+rqo9wYodACiG5/WM5s9oDApTU8utwj9g=="],
 
     "jackspeak": ["jackspeak@3.4.3", "", { "dependencies": { "@isaacs/cliui": "^8.0.2" }, "optionalDependencies": { "@pkgjs/parseargs": "^0.11.0" } }, "sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw=="],
-
-    "jellyfin-apiclient": ["jellyfin-apiclient@1.11.0", "", {}, "sha512-XpYHdvoK8gT6CHSMquITz8Zk/z3Vo8Jwp5gIRX5p1FEVQQqDSoCxturhx45SXiCktcAaZesrq8f+Ay+xi/lrVQ=="],
 
     "jiti": ["jiti@2.6.1", "", { "bin": "lib/jiti-cli.mjs" }, "sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ=="],
 

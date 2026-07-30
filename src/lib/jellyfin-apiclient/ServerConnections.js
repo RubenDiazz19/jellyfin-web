@@ -7,30 +7,10 @@ import { setUserInfo } from 'scripts/settings/userSettings';
 import { detectBitrate } from 'utils/bitrateTest';
 import Dashboard from 'utils/dashboard';
 import Events from 'utils/events';
-import { createApiClient } from 'utils/jellyfin-apiclient/createApiClient';
 
 import ConnectionManager from './connectionManager';
 import Credentials from './credentials';
-
-const normalizeImageOptions = options => {
-    if (!options.quality && (options.maxWidth || options.width || options.maxHeight || options.height || options.fillWidth || options.fillHeight)) {
-        options.quality = 90;
-    }
-};
-
-const getMaxBandwidth = () => {
-    if (navigator.connection) {
-        let max = navigator.connection.downlinkMax;
-        if (max && max > 0 && max < Number.POSITIVE_INFINITY) {
-            max /= 8;
-            max *= 1000000;
-            max *= 0.7;
-            return parseInt(max, 10);
-        }
-    }
-
-    return null;
-};
+import ServerHandle from './serverHandle';
 
 class ServerConnections extends ConnectionManager {
     firstConnection = false;
@@ -49,29 +29,18 @@ class ServerConnections extends ConnectionManager {
                 window.NativeShell.onLocalUserSignedOut(logoutInfo);
             }
         });
-
-        Events.on(this, 'apiclientcreated', (_e, apiClient) => {
-            apiClient.getMaxBandwidth = getMaxBandwidth;
-            apiClient.normalizeImageOptions = normalizeImageOptions;
-
-            // Calling getApi will ensure apiClient._sdk is initialized.
-            this.getApi(apiClient.serverId());
-            apiClient.subscribe = apiClient._sdk.subscribe.bind(apiClient._sdk);
-        });
     }
 
     initApiClient(server) {
         console.debug('creating ApiClient singleton');
 
-        const apiClient = createApiClient(
-            server,
-            appHost.appName(),
-            appHost.appVersion(),
-            appHost.deviceName(),
-            appHost.deviceId()
-        );
+        const apiClient = new ServerHandle(server, {
+            appName: appHost.appName(),
+            appVersion: appHost.appVersion(),
+            deviceName: appHost.deviceName(),
+            deviceId: appHost.deviceId()
+        });
 
-        apiClient.enableAutomaticNetworking = false;
         apiClient.manualAddressOnly = true;
 
         this.addApiClient(apiClient);
@@ -82,7 +51,7 @@ class ServerConnections extends ConnectionManager {
     }
 
     /**
-     * @returns {Promise<import('jellyfin-apiclient').ConnectResponse>} The result of the connection attempt.
+     * @returns {Promise<import('./connectResponse').ConnectResponse>} The result of the connection attempt.
      */
     connect(options) {
         return super.connect({
@@ -95,8 +64,6 @@ class ServerConnections extends ConnectionManager {
         if (apiClient) {
             this.localApiClient = apiClient;
             window.ApiClient = apiClient;
-            // Calling getApi will ensure apiClient._sdk is initialized.
-            this.getApi(apiClient.serverId());
         }
     }
 
@@ -105,8 +72,8 @@ class ServerConnections extends ConnectionManager {
     }
 
     /**
-     * Gets the ApiClient that is currently connected.
-     * @returns {import('jellyfin-apiclient').ApiClient|undefined} apiClient
+     * Gets the handle of the server that is currently connected.
+     * @returns {import('./serverHandle').default|undefined} The server handle.
      */
     currentApiClient() {
         let apiClient = this.getLocalApiClient();
@@ -127,9 +94,7 @@ class ServerConnections extends ConnectionManager {
      * @returns {import('@jellyfin/sdk').Api[]} The Api instances.
      */
     getApis() {
-        return this.getApiClients()
-            .map((apiClient) => this.getApi(apiClient.serverId()))
-            .filter(Boolean);
+        return this.getApiClients().map((apiClient) => apiClient.api);
     }
 
     /**

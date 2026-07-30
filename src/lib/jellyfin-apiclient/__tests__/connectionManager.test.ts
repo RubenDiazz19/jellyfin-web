@@ -26,50 +26,74 @@ vi.mock('utils/fetch', () => ({
     getFetchPromise: () => Promise.reject(new Error('no usado'))
 }));
 
-// El cliente legacy se falsea: aquí no se prueba el cliente, se prueba quién
-// decide qué credenciales se guardan y a qué dirección se conecta.
-function makeFakeClient(url: string) {
-    let info: Record<string, unknown> = {};
-    let token: string | undefined;
-    let userId: string | undefined;
-    const client = {
-        _sdk: undefined as unknown,
-        enableAutomaticBitrateDetection: true,
-        onAuthenticated: undefined as unknown,
-        capabilitiesReported: 0,
-        systemInfo: undefined as unknown,
-        serverAddress: () => url,
-        serverId: () => info.Id as string | undefined,
-        serverInfo: (next?: Record<string, unknown>) => {
-            if (next !== undefined) info = next;
-            return info;
-        },
-        accessToken: () => token,
-        getCurrentUserId: () => userId,
-        setAuthenticationInfo: (t: string, u: string) => {
-            token = t;
-            userId = u;
-        },
-        updateServerInfo: () => undefined,
-        setSystemInfo: (i: unknown) => { client.systemInfo = i; },
-        getCurrentUser: () => Promise.resolve({ Id: 'u1', Name: 'Ruben', ServerId: info.Id }),
-        reportCapabilities: () => { client.capabilitiesReported++; },
-        logout: () => Promise.resolve(),
-        appName: () => 'test',
-        appVersion: () => '1.0.0',
-        deviceName: () => 'dev',
-        deviceId: () => 'devid'
-    };
-    return client;
-}
+// El handle del servidor se falsea: aquí no se prueba el handle —eso lo hacen
+// sus propios tests—, se prueba quién decide qué credenciales se guardan y a
+// qué dirección se conecta. El doble imita el contrato que de verdad usa el
+// manager, incluido que `accessToken()` solo devuelve algo si hay token Y
+// usuario, de lo que depende a quién se le cierra la sesión.
+//
+// La clase se declara DENTRO de la factoría a propósito: `vi.mock` se iza por
+// encima del cuerpo del fichero y una `class` no se iza, así que declararla
+// fuera la dejaría en zona muerta cuando el mock se resuelve.
+vi.mock('../serverHandle', () => {
+    class FakeServerHandle {
+        info: Record<string, unknown> = {};
+        token: string | undefined;
+        userId: string | undefined;
+        manualAddressOnly = false;
+        capabilitiesReported = 0;
+        systemInfo: unknown;
+        api = { update: () => undefined, subscribe: () => undefined };
 
-vi.mock('utils/jellyfin-apiclient/createApiClient', () => ({
-    createApiClient: (url: string) => makeFakeClient(url)
-}));
+        constructor(private url: string) { /* la app/device info aquí da igual */ }
 
-vi.mock('utils/jellyfin-apiclient/compat', () => ({
-    toApi: () => ({ update: () => undefined, subscribe: () => undefined })
-}));
+        serverAddress() {
+            return this.url;
+        }
+        serverId() {
+            return this.info.Id as string | undefined;
+        }
+        serverInfo() {
+            return this.info;
+        }
+        setServerInfo(next: Record<string, unknown>) {
+            this.info = next;
+        }
+        accessToken() {
+            return this.token && this.userId ? this.token : undefined;
+        }
+        getCurrentUserId() {
+            return this.token && this.userId ? this.userId : undefined;
+        }
+        setAuthenticationInfo(t?: string | null, u?: string | null) {
+            this.token = t ?? undefined;
+            this.userId = u ?? undefined;
+            // Verbatim, como el real: un `null` guardado no es un campo ausente.
+            this.info.AccessToken = t;
+            this.info.UserId = u;
+        }
+        updateServerInfo(info: Record<string, unknown>, url: string) {
+            this.info = info;
+            this.url = url;
+        }
+        setSystemInfo(i: unknown) {
+            this.systemInfo = i;
+        }
+        getCurrentUser() {
+            return Promise.resolve({ Id: 'u1', Name: 'Ruben', ServerId: this.info.Id });
+        }
+        reportCapabilities() {
+            this.capabilitiesReported++;
+            return Promise.resolve();
+        }
+        logout() {
+            this.setAuthenticationInfo(null, null);
+            return Promise.resolve();
+        }
+    }
+
+    return { default: FakeServerHandle };
+});
 
 // La autenticación pasa por el SDK; lo que importa aquí es qué se hace con
 // el resultado, no la llamada HTTP en sí.

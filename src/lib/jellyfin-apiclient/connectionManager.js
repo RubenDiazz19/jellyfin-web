@@ -2,18 +2,15 @@ import { AUTHORIZATION_HEADER } from '@jellyfin/sdk/lib/constants';
 import { getAuthorizationHeader } from '@jellyfin/sdk/lib/utils';
 import { MINIMUM_VERSION } from '@jellyfin/sdk/lib/versions';
 import { getAuthenticationApi } from '@jellyfin/sdk/lib/utils/api/authentication-api';
-import { getSessionApi } from '@jellyfin/sdk/lib/utils/api/session-api';
 
 import events from 'utils/events';
 import { ajax } from 'utils/fetch';
-import { createApiClient } from 'utils/jellyfin-apiclient/createApiClient';
 import { equalsIgnoreCase } from 'utils/string';
 import { compareVersions } from 'utils/versions';
 
 import { ConnectionMode } from './connectionMode';
 import { ConnectionState } from './connectionState';
-import { toApi } from 'utils/jellyfin-apiclient/compat';
-import { safeDecodeURIComponent } from 'utils/url';
+import ServerHandle from './serverHandle';
 
 const DEFAULT_CONNECTION_TIMEOUT = 20000;
 
@@ -97,9 +94,16 @@ export default class ConnectionManager {
             return servers[0];
         };
 
+        /** Cómo se identifica esta app; se lee al crear cada servidor. */
+        self.appInfo = () => ({
+            appName: self.appName(),
+            appVersion: self.appVersion(),
+            deviceName: self.deviceName(),
+            deviceId: self.deviceId()
+        });
+
         self.addApiClient = (apiClient) => {
             self._apiClients.push(apiClient);
-            apiClient._sdk ??= toApi(apiClient);
 
             const existingServers = credentialProvider
                 .credentials()
@@ -119,9 +123,7 @@ export default class ConnectionManager {
                 existingServer.manualAddressOnly = true;
             }
 
-            apiClient.serverInfo(existingServer);
-
-            apiClient.onAuthenticated = (instance, result) => onAuthenticated(instance, result, {}, true);
+            apiClient.setServerInfo(existingServer);
 
             if (!existingServers.length) {
                 const credentials = credentialProvider.credentials();
@@ -144,15 +146,11 @@ export default class ConnectionManager {
             let apiClient = self.getApiClient(server.Id);
 
             if (!apiClient) {
-                apiClient = createApiClient(serverUrl, self.appName(), self.appVersion(), self.deviceName(), self.deviceId());
+                apiClient = new ServerHandle(serverUrl, self.appInfo());
                 self._apiClients.push(apiClient);
-                apiClient.serverInfo(server);
-                apiClient.onAuthenticated = (instance, result) => {
-                    return onAuthenticated(instance, result, {}, true);
-                };
+                apiClient.setServerInfo(server);
                 events.trigger(self, 'apiclientcreated', [apiClient]);
             }
-            apiClient._sdk ??= toApi(apiClient);
 
             console.debug('returning instance from getOrAddApiClient');
             return apiClient;
@@ -193,25 +191,8 @@ export default class ConnectionManager {
             credentialProvider.addOrUpdateServer(credentials.Servers, server);
             credentialProvider.credentials(credentials);
 
-            // Disable the legacy apiclient's bitrate detection as this feature is now upstreamed.
-            apiClient.enableAutomaticBitrateDetection = false;
-
-            apiClient.serverInfo(server);
+            apiClient.setServerInfo(server);
             apiClient.setAuthenticationInfo(result.AccessToken, result.User.Id);
-
-            // Update SDK Api instance
-            apiClient._sdk?.update({
-                basePath: apiClient.serverAddress(),
-                accessToken: apiClient.accessToken(),
-                clientInfo: {
-                    name: safeDecodeURIComponent(apiClient.appName()),
-                    version: safeDecodeURIComponent(apiClient.appVersion())
-                },
-                deviceInfo: {
-                    name: safeDecodeURIComponent(apiClient.deviceName()),
-                    id: safeDecodeURIComponent(apiClient.deviceId())
-                }
-            });
 
             afterConnected(apiClient, options);
 
@@ -236,9 +217,7 @@ export default class ConnectionManager {
                 throw new Error('[ConnectionManager] no hay cliente contra el que autenticar');
             }
 
-            apiClient._sdk ??= toApi(apiClient);
-
-            const { data: result } = await getAuthenticationApi(apiClient._sdk)
+            const { data: result } = await getAuthenticationApi(apiClient.api)
                 .authenticateUserByName({
                     authenticateUserByName: { Username: username, Pw: password }
                 });
@@ -250,9 +229,13 @@ export default class ConnectionManager {
 
         function afterConnected(apiClient, options = {}) {
             if (options.reportCapabilities !== false) {
-                apiClient.reportCapabilities(capabilities);
+                // No se espera a propósito: anunciar las capacidades es para que
+                // el servidor pueda mandarnos órdenes de control remoto, y nada
+                // de lo que viene detrás depende de ello.
+                apiClient.reportCapabilities(capabilities).catch((err) => {
+                    console.warn('[ConnectionManager] no se pudieron anunciar las capacidades', err);
+                });
             }
-            apiClient.enableAutomaticBitrateDetection = false;
         }
 
         function onLocalUserSignIn(server, serverUrl, user) {
@@ -298,52 +281,6 @@ export default class ConnectionManager {
             );
         }
 
-        function getImageUrl(localUser) {
-            if (localUser && localUser.PrimaryImageTag) {
-                const apiClient = self.getApiClient(localUser);
-
-                const url = apiClient.getUserImageUrl(localUser.Id, {
-                    tag: localUser.PrimaryImageTag,
-                    type: 'Primary'
-                });
-
-                return {
-                    url,
-                    supportsParams: true
-                };
-            }
-
-            return {
-                url: null,
-                supportsParams: false
-            };
-        }
-
-        self.user = (apiClient) =>
-            new Promise((resolve) => {
-                let localUser;
-
-                function onLocalUserDone() {
-                    if (apiClient && apiClient.getCurrentUserId()) {
-                        apiClient.getCurrentUser().then((u) => {
-                            localUser = u;
-                            const image = getImageUrl(localUser);
-
-                            resolve({
-                                localUser,
-                                name: localUser ? localUser.Name : null,
-                                imageUrl: image.url,
-                                supportsImageParams: image.supportsParams
-                            });
-                        });
-                    }
-                }
-
-                if (apiClient && apiClient.getCurrentUserId()) {
-                    onLocalUserDone();
-                }
-            });
-
         self.logout = () => {
             const promises = [];
 
@@ -371,32 +308,18 @@ export default class ConnectionManager {
         };
 
         function logoutOfServer(apiClient) {
-            const serverInfo = apiClient.serverInfo() || {};
-
             const logoutInfo = {
-                serverId: serverInfo.Id
+                serverId: apiClient.serverInfo()?.Id
             };
 
             const onLogout = () => {
                 events.trigger(self, 'localusersignedout', [logoutInfo]);
             };
 
-            apiClient._sdk ??= toApi(apiClient);
-            const api = apiClient._sdk;
-
-            const sessionApi = api ? getSessionApi(api) : undefined;
-
-            const logoutPromises = [
-                apiClient.logout(),
-                sessionApi?.reportSessionEnded()
-            ].filter(Boolean);
-
-            return Promise
-                .allSettled(logoutPromises)
-                .then(
-                    onLogout,
-                    onLogout
-                );
+            // Antes esto mandaba DOS peticiones: la del cliente legacy y la del
+            // SDK. Ambas eran POST /Sessions/Logout — el servidor recibía el
+            // cierre de sesión por duplicado en cada salida.
+            return apiClient.logout().then(onLogout, onLogout);
         }
 
         self.getSavedServers = () => {
@@ -657,25 +580,8 @@ export default class ConnectionManager {
 
             result.Servers.push(server);
 
-            // Disable the legacy apiclient's bitrate detection as this feature is now upstreamed.
-            result.ApiClient.enableAutomaticBitrateDetection = false;
-
             result.ApiClient.updateServerInfo(server, serverUrl);
             result.ApiClient.setAuthenticationInfo(server.AccessToken, server.UserId);
-
-            // Update SDK Api instance
-            result.ApiClient._sdk?.update({
-                basePath: result.ApiClient.serverAddress(),
-                accessToken: result.ApiClient.accessToken(),
-                clientInfo: {
-                    name: safeDecodeURIComponent(result.ApiClient.appName()),
-                    version: safeDecodeURIComponent(result.ApiClient.appVersion())
-                },
-                deviceInfo: {
-                    name: safeDecodeURIComponent(result.ApiClient.deviceName()),
-                    id: safeDecodeURIComponent(result.ApiClient.deviceId())
-                }
-            });
 
             const resolveActions = function () {
                 resolve(result);
@@ -790,24 +696,6 @@ export default class ConnectionManager {
         });
     }
 
-    handleMessageReceived(msg) {
-        const serverId = msg.ServerId;
-        if (serverId) {
-            const apiClient = this.getApiClient(serverId);
-            if (apiClient) {
-                if (typeof msg.Data === 'string') {
-                    try {
-                        msg.Data = JSON.parse(msg.Data);
-                    } catch (err) {
-                        console.warn('unable to parse json content: ' + err);
-                    }
-                }
-
-                apiClient.handleMessageReceived(msg);
-            }
-        }
-    }
-
     getApiClients() {
         const servers = this.getSavedServers();
 
@@ -822,9 +710,9 @@ export default class ConnectionManager {
     }
 
     /**
-     * Gets the ApiClient for a given BaseItem or ServerId.
+     * Gets the server handle for a given BaseItem or ServerId.
      * @param {import('@jellyfin/sdk/lib/generated-client').BaseItemDto | string | null | undefined} item
-     * @returns {import('jellyfin-apiclient').ApiClient | undefined}
+     * @returns {import('./serverHandle').default | undefined}
      */
     getApiClient(item) {
         if (!item) {
@@ -862,9 +750,7 @@ export default class ConnectionManager {
             return undefined;
         }
 
-        const apiClient = this.getApiClient(serverId);
-        apiClient._sdk ??= toApi(apiClient);
-        return apiClient._sdk;
+        return this.getApiClient(serverId)?.api;
     }
 
     minServerVersion(val) {

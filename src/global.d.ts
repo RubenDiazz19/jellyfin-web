@@ -1,14 +1,12 @@
 export declare global {
-    import { ConnectedServerHandle } from 'lib/jellyfin-apiclient/connectResponse';
+    import ServerHandle from 'lib/jellyfin-apiclient/serverHandle';
 
     interface Window {
         /**
-         * Cliente del servidor activo, que la capa de conexión publica aquí
-         * para el código legacy. Se tipa por forma (los getters que se leen de
-         * él) y no con la clase del paquete: así lo de detrás puede cambiar sin
-         * tocar a quien lo lee. Hoy el único lector es `utils/dashboard`.
+         * El servidor activo, que la capa de conexión publica aquí para el
+         * código legacy. Hoy el único lector es `utils/dashboard`.
          */
-        ApiClient: ConnectedServerHandle;
+        ApiClient: ServerHandle;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         NativeShell: any;
         Loading: {

@@ -40,9 +40,9 @@ Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
 
 # Optimizaciones y mejora continua
 
-## 1. Migración de código legacy (90 ficheros `.js`)
+## 1. Migración de código legacy (92 ficheros `.js`)
 
-> **Estos cuatro puntos no son tarea de una sesión, y empezarlos a medias deja el repo peor que
+> **Estos puntos no son tarea de una sesión, y empezarlos a medias deja el repo peor que
 > ahora**: un paradigma de renderizado a medio migrar es más difícil de entender que el legacy
 > entero. Cada uno lleva abajo su alcance medido y el siguiente paso concreto, para que se puedan
 > atacar de uno en uno y con un final visible.
@@ -51,7 +51,9 @@ Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
 > **D2** (migrar al SDK) se hicieron en fases numeradas, cada una con su commit y la suite en
 > verde. Misma receta aquí.
 
-- [ ] **Unificar API client** — terminar **D2**, cuya fase 4 quedó parcial. **En marcha.**
+- [x] **Unificar API client** — **D2 terminado**: el paquete `jellyfin-apiclient` está desinstalado
+  y no queda ni un import suyo. **−686 líneas netas**, y el chunk `index` baja de **1016 a 950 KB**
+  (280 → 268 KB gz).
   **Medido, y sale mejor de lo que decía la nota vieja**: no son 88 imports repartidos. De los 78
   ficheros que tocan el cliente legacy, **67 solo usan la fachada `ServerConnections`** y no se
   enteran de lo que haya detrás. De los 173 usos de `ServerConnections`, **112 son `getApi()`**,
@@ -71,17 +73,27 @@ Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
     pasa a `connectResponse.ts`, `Event` sale de `utils/events`, y `window.Events` se borra porque
     no lo usaba nadie. Se tipa **por forma** (los getters que de verdad se leen), que es lo que
     permite cambiar lo de detrás sin tocar a quien lo recibe.
-  - [ ] **El núcleo, lo único que queda**: `utils/jellyfin-apiclient/createApiClient.ts` es **el
-    único import del paquete en todo el repo** y lo único que instancia la clase. Con los
-    consumidores fuera, el `ApiClient` legacy ya solo es un contenedor de datos dentro de
-    `connectionManager.js` (877 líneas): sustituirlo por un registro propio (info del servidor +
-    `Api` del SDK), borrar `utils/jellyfin-apiclient/` y desinstalar el paquete.
-    **La lista de la compra está escrita**: la interfaz `ConnectedServerHandle` de
-    `connectResponse.ts` y la `ApiClientParams` de `compat.ts` son, entre las dos, la medida exacta
-    de lo que el reemplazo tiene que ofrecer.
-    Red de seguridad: los **24 tests** de `__tests__/connectionManager.test.ts` fijan la
-    orquestación (sondeo de direcciones, versión mínima, validación de token, logout). ⚠️ Usan un
-    proveedor de credenciales **falso**, así que no cubren `credentials.ts`; eso lo cubren sus 15.
+  - [x] **El núcleo** — `ServerHandle` (`serverHandle.ts`, **20 tests**) sustituye al `ApiClient`
+    legacy: info del servidor + el `Api` del SDK, que ahora se mantiene solo (antes había **tres
+    bloques copiados** de `_sdk.update({...})` en `connectionManager.js`, y quien creara un cliente
+    tenía que acordarse de sincronizarlo). Con los consumidores ya fuera, de aquella clase de
+    ~2000 líneas solo quedaban en uso unos getters y tres peticiones, que pasan al SDK.
+    Se borran `utils/jellyfin-apiclient/`, `apiclient.d.ts` (359 líneas de declaraciones) y el
+    código que solo existía para alimentar al cliente legacy (`user()`, `getImageUrl`,
+    `handleMessageReceived`, `getMaxBandwidth`, `normalizeImageOptions`, `onAuthenticated`,
+    `enableAutomaticNetworking`).
+    **Tres cosas que aparecieron al desmontarlo**, y que son la mitad del valor de esta fase:
+    - **El logout iba por duplicado.** `logoutOfServer` mandaba `apiClient.logout()` *y*
+      `sessionApi.reportSessionEnded()`, y ambas son el mismo `POST /Sessions/Logout`.
+    - **El evento `requestfail` llevaba muerto desde que las llamadas pasaron al SDK.** Es lo que
+      usa `index.jsx` para sacar al usuario de una página bloqueada por control parental: el
+      handler seguía enganchado, pero a un cliente que ya no pedía nada. Revive colgado del axios
+      del SDK, con 3 tests.
+    - **`null` y `undefined` no dan igual al guardar la sesión.** Invalidar un token lo pone a
+      `null`, y un `undefined` desaparece del `JSON.stringify`. Lo pilló el test de token caducado.
+    `ConnectedServerHandle` y `ApiClientParams` se retiran: describían por forma una clase ajena
+    para poder cambiar lo de detrás sin tocar a quien la recibe. Cumplido eso, un espejo escrito a
+    mano de una clase propia solo es una copia que se desincroniza.
 - [ ] **Migrar web components `emby-*` a React TSX** — quedan **16** (eran 18), **2575 líneas** en
   `src/elements/`. Usan `innerHTML` y DOM imperativo: es un segundo motor de renderizado en
   paralelo a React.
@@ -147,8 +159,9 @@ Punto de partida medido: **15 MB de JS**; chunks mayores `index` (1016 KB → 28
   fallo inesperado con fallback silencioso a `warn`. La regla **`no-console`** impide que vuelvan.
 - [ ] **Resolver 28 TODO + 11 FIXME** — repartidos por la codebase. Prioridad a los FIXME
   (`scrollManager`, `browserDeviceProfile`, `authentication-api`…).
-- [ ] **Reducir tipos `any`** — `apiclient.d.ts`, `global.d.ts` (`NativeShell: any`) y algunas
-  utilidades. Buena parte de `apiclient.d.ts` desaparece al terminar D2 (§1), así que va después.
+- [ ] **Reducir tipos `any`** — **el grueso ya cayó con D2**: `apiclient.d.ts` eran 359 líneas de
+  declaraciones plagadas de `any` y está borrado entero. Queda `global.d.ts` (`NativeShell: any`)
+  y algunas utilidades.
 - [ ] **Subir cobertura de tests** — el umbral global de líneas está al **5 %**, y el dashboard
   tiene 1 test. `src/apps/frontend/**` ya tiene el suyo propio al **22 %**.
   Como los cuatro puntos de §1, esto **no se hace de una tacada**: subir el umbral global sin
