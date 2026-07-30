@@ -62,19 +62,23 @@ Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
     queda desconectado al desplegar). 15 tests.
   - [x] **`getCurrentApiClientAsync` borrado** — su último consumidor (`ParentalControl`) pasa a
     `getUserApi(api).updateUserPolicy()`. La fachada ya no reparte clientes legacy bajo demanda.
-  - [ ] **Quedan 4 ficheros con llamadas de negocio al `ApiClient` legacy**, todas con equivalente
-    directo en el SDK. Son independientes entre sí, así que van de una en una:
-    - `components/mediaLibraryEditor/mediaLibraryEditor.js` (5) → `getLibraryStructureApi`
-    - `components/libraryoptionseditor/libraryoptionseditor.js` (4) → `getLocalizationApi` (cultures,
-      countries) y `api.getUri` para el `getJSON`
-    - `components/viewContainer.js` (1) → `getUrl` es solo construir una URL: `api.getUri`
-    - `hooks/useApi.tsx` y `components/ConnectionRequired.tsx` → solo importan **tipos**
-      (`Event`, `ConnectResponse`), que además salen de nuestro propio `src/apiclient.d.ts`, no del
-      paquete. Mover esos tipos a un módulo propio.
-  - [ ] **Y entonces sí, el núcleo**: con los consumidores fuera, el `ApiClient` legacy queda solo
-    como contenedor de datos dentro de `connectionManager.js` (877 líneas). Sustituirlo por un
-    registro propio (info del servidor + `Api` del SDK) y borrar `utils/jellyfin-apiclient/`
-    (`compat.ts`, `createApiClient.ts`), que es lo único que instancia la clase del paquete.
+  - [x] **Los 4 ficheros con llamadas de negocio, al SDK** — `mediaLibraryEditor` (5) por
+    `getLibraryStructureApi`, `libraryoptionseditor` (4) por `getLocalizationApi` y
+    `getLibraryApi().getLibraryOptionsInfo()`, `viewContainer` (1) por `api.getUri`. **Ya no queda
+    ninguna llamada de negocio al `ApiClient` legacy fuera de la capa de conexión.**
+  - [x] **Los tipos dejan de venir del paquete** — los 4 imports que quedaban eran de tipos que el
+    paquete ni publica: salían de nuestro `src/apiclient.d.ts` vía `declare module`. `ConnectResponse`
+    pasa a `connectResponse.ts`, `Event` sale de `utils/events`, y `window.Events` se borra porque
+    no lo usaba nadie. Se tipa **por forma** (los getters que de verdad se leen), que es lo que
+    permite cambiar lo de detrás sin tocar a quien lo recibe.
+  - [ ] **El núcleo, lo único que queda**: `utils/jellyfin-apiclient/createApiClient.ts` es **el
+    único import del paquete en todo el repo** y lo único que instancia la clase. Con los
+    consumidores fuera, el `ApiClient` legacy ya solo es un contenedor de datos dentro de
+    `connectionManager.js` (877 líneas): sustituirlo por un registro propio (info del servidor +
+    `Api` del SDK), borrar `utils/jellyfin-apiclient/` y desinstalar el paquete.
+    **La lista de la compra está escrita**: la interfaz `ConnectedServerHandle` de
+    `connectResponse.ts` y la `ApiClientParams` de `compat.ts` son, entre las dos, la medida exacta
+    de lo que el reemplazo tiene que ofrecer.
     Red de seguridad: los **24 tests** de `__tests__/connectionManager.test.ts` fijan la
     orquestación (sondeo de direcciones, versión mínima, validación de token, logout). ⚠️ Usan un
     proveedor de credenciales **falso**, así que no cubren `credentials.ts`; eso lo cubren sus 15.
