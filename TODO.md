@@ -175,9 +175,15 @@ Punto de partida medido: **15 MB de JS**; chunks mayores `index` (1016 KB → 28
   bundle ni necesita prefijo `VITE_`. Para que el fichero no fuese decorativo se cableó con
   `loadEnv`, que lo busca en la raíz del repo (el `root` de Vite es `src/`, donde nadie lo
   pondría); el entorno real tiene prioridad sobre el fichero.
-- [ ] **Modularizar ESLint config** — `eslint.config.mjs` va por 568 líneas. Separar por dominio
-  (react, typescript, imports, stylistic). Cambio mecánico, pero verifica que la severidad de cada
-  regla sobrevive: `AGENTS.md` documenta cuáles fallan y cuáles solo avisan.
+- [x] **Modularizar ESLint config** — de 568 líneas en un fichero a **57** que solo deciden el
+  orden, más 8 módulos en `eslint/` (`base`, `ignores`, `style`, `node`, `app`, `react`,
+  `frontend`, `legacy`) y un `messages.mjs` para el texto que comparten dos de ellos.
+  Los bloques se movieron **literalmente**, sin reescribir ninguna regla. Verificado como toca en
+  un refactor que no debe cambiar nada: salida completa del lint en JSON antes y después,
+  comparada mensaje a mensaje (fichero, regla, línea, columna, severidad) sobre los 749 ficheros
+  del repo → **186 mensajes idénticos, 0 regresiones, 0 pérdidas**.
+  ⚠️ Al tocar esto, lo que importa es **el orden**: en flat config gana lo último, y `legacy` va
+  el último a propósito porque apaga reglas para el JS heredado.
 - [ ] **Pre-commit hooks y commitlint** — ⚠️ **tal como están planteados, no funcionarían**: husky
   se engancha por `pre-commit` y commitlint por `commit-msg`, y **`jj` no ejecuta los hooks de git**
   (ver la nota del principio). Instalarlos dejaría una red de seguridad que nunca salta, que es
