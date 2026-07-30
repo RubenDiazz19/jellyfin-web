@@ -22,9 +22,18 @@
 - [ ] **Unificar API client** — Migrar completamente de `jellyfin-apiclient` (88 imports activos) a `@jellyfin/sdk`. Actualmente conviven ambos; eliminar el cliente antiguo.
 - [ ] **Migrar web components "emby-\*" a React TSX** — 15 componentes (`emby-button`, `emby-checkbox`, `emby-select`, `emby-tabs`, `emby-toggle`, etc.) que usan `innerHTML` y manipulación DOM imperativa. Migrar a React elimina un paradigma paralelo de renderizado.
 - [ ] **Reemplazar 13 archivos `.template.html`** — Componentes legacy (dialog, filterdialog, imageeditor, etc.) que cargan HTML + JS aparte. Convertir a componentes React.
-- [ ] **Migrar iconos a un solo sistema** — Eliminar `material-design-icons-iconfont` (~3.6MB) y unificar todos los iconos en `@mui/icons-material` (SVG React components).
+- [ ] **Migrar iconos a un solo sistema** — Eliminar `material-design-icons-iconfont` (~~3.6MB~~ 124 KB enviados) y unificar todos los iconos en `@mui/icons-material` (SVG React components).
+  De los 3,6 MB del disco, 2,0 MB son `docs/`. Lo que se envía es `MaterialIcons-Regular.woff2`:
+  **124 KB**, más su `@font-face` en el CSS de entrada. El argumento bueno para migrar no es el
+  peso sino el `font-display: block` que trae ese `@font-face`: hasta que la fuente baja, los
+  iconos se quedan **invisibles**. Un SVG no tiene ese problema.
 
 ## 2. Bundle y dependencias
+
+> **Ojo con los tamaños de esta sección**: los que venían anotados eran el `du` de la carpeta en
+> `node_modules`, que mide documentación, demos y fuentes sin compilar — no lo que se envía al
+> navegador. Al medir el código publicado de verdad, varios se caen solos (ver más abajo). Para
+> decidir sobre los que quedan, usa `bun run build:analyze`, no `du`.
 
 - [x] **Auditar bundles grandes** — Agregar `vite-plugin-visualizer` o `rollup-plugin-visualizer` para inspeccionar composición de chunks en producción.
   `bun run build:analyze` escribe `bundle-stats.html` (treemap con tamaños gzip y brotli) en la
@@ -32,14 +41,25 @@
   paga el coste. Punto de partida medido: 15 MB de JS en total, y los chunks mayores son
   `index` (1016 KB → 280 KB gz), `hls` (516 → 158) y `AppLayout` (280 → 65).
 - [ ] **`webcomponents.js` (896KB)** — Polyfill obsoleto; los navegadores modernos soportan web components nativamente. Cargarlo condicionalmente solo para browsers que lo necesiten o eliminarlo.
-- [ ] **`react-blurhash` (920KB)** — Reemplazar por un hook simple sobre `blurhash` (88KB). Es un wrapper fino que no justifica su peso.
-- [ ] **`react-lazy-load-image-component` (216KB)** — Solo se usa en `Image.tsx`. Reemplazar con `loading="lazy"` nativo + blurhas.
+- [x] **`react-blurhash` (~~920KB~~ 2,6 KB)** — no se toca, medido: el peso no era real.
+  De los 920 KB, **828 KB son `docs/`** (una demo que el paquete arrastra y que nunca se publica).
+  El código que entra al bundle es `dist/index.js`: **2612 bytes**. Escribir el hook a mano
+  ahorraría ~2,6 KB en crudo (menos aún comprimido) a cambio de mantener código propio de canvas
+  y decodificación. Es un wrapper fino, sí — y por eso mismo sustituirlo no compra nada.
+- [ ] **`react-lazy-load-image-component` (~~216KB~~ 27 KB publicados)** — Solo se usa en `Image.tsx`. Reemplazar con `loading="lazy"` nativo + blurhash.
+  Sigue teniendo sentido, pero por quitar una dependencia, no por peso: de los 216 KB del disco,
+  el `build/` publicado son 27 KB de JS. Ojo, no es un cambio gratis: el paquete hace lazy loading
+  con IntersectionObserver y efectos de entrada, y el `loading="lazy"` nativo no usa los mismos
+  umbrales, así que cambia cuándo entra cada imagen.
 - [x] **`@tanstack/react-query-devtools`** — ~~Se bundlea siempre~~ **ya no**: nada que hacer, medido.
   Desde la v5 el paquete se resuelve a `() => null` salvo con `NODE_ENV=development`, y como
   declara `sideEffects: false`, Rollup dobla la constante y lo elimina entero. En `dist/assets/*.js`
   hay **0** coincidencias de `TanStack`, `ReactQueryDevtools`, `query-devtools` y `@tanstack`.
   Pasarlo a `lazy()` solo añadiría un `Suspense` y un chunk async a cambio de nada.
-- [ ] **Evaluar date-fns v3** — v2 pesa ~25MB en disco. v3 es más pequeña y tree-shakeable mejor, pero requiere migración de imports y es breaking.
+- [ ] **Evaluar date-fns v3** — ~~v2 pesa ~25MB en disco~~ (34 MB, y da igual: el disco no es el bundle). v3 es más pequeña y tree-shakeable mejor, pero requiere migración de imports y es breaking.
+  Aquí sí hay algo que mirar, al contrario que en los anteriores: date-fns aparece en 57 chunks del
+  build, así que el tree-shaking ya funciona por función pero está muy repartido. Antes de decidir,
+  mide su aportación real con `bun run build:analyze`.
 - [ ] **Evaluar remplazo de lodash-es** — Solo se usan 7 funciones (`isEmpty`, `debounce`, `isEqual`, etc.). Con tree-shaking está bien, pero valorar utilidades inline para eliminar la dependencia.
 
 ## 3. Calidad de código
