@@ -3,7 +3,10 @@
  * @module components/mediaLibraryEditor/mediaLibraryEditor
  */
 
+import { getLibraryStructureApi } from '@jellyfin/sdk/lib/utils/api/library-structure-api';
 import escapeHtml from 'escape-html';
+
+import { ServerConnections } from 'lib/jellyfin-apiclient';
 import loading from '../loading/loading';
 import dialogHelper from '../dialogHelper/dialogHelper';
 import dom from '../../utils/dom';
@@ -42,7 +45,12 @@ function onEditLibrary() {
     }
     let libraryOptions = libraryoptionseditor.getLibraryOptions(dlg.querySelector('.libraryOptions'));
     libraryOptions = Object.assign(currentOptions.library.LibraryOptions || {}, libraryOptions);
-    ApiClient.updateVirtualFolderOptions(currentOptions.library.ItemId, libraryOptions).then(() => {
+    getLibraryStructureApi(ServerConnections.getApi()).updateLibraryOptions({
+        updateLibraryOptionsDto: {
+            Id: currentOptions.library.ItemId,
+            LibraryOptions: libraryOptions
+        }
+    }).then(() => {
         hasChanges = true;
         isCreating = false;
         loading.hide();
@@ -62,7 +70,15 @@ function addMediaLocation(page, path) {
     const isPathInLibrary = virtualFolder.Locations.some(p => path === p);
     if (isPathInLibrary) return;
 
-    ApiClient.addMediaPath(virtualFolder.Name, path, null, refreshAfterChange).then(() => {
+    getLibraryStructureApi(ServerConnections.getApi()).addMediaPath({
+        mediaPathDto: {
+            Name: virtualFolder.Name,
+            // El tercer argumento del cliente legacy era `networkSharePath`, y
+            // aquí siempre iba null: esta ruta es local.
+            PathInfo: { Path: path }
+        },
+        refreshLibrary: refreshAfterChange
+    }).then(() => {
         hasChanges = true;
         refreshLibraryFromServer(page);
     }, () => {
@@ -72,8 +88,11 @@ function addMediaLocation(page, path) {
 
 function updateMediaLocation(page, path) {
     const virtualFolder = currentOptions.library;
-    ApiClient.updateMediaPath(virtualFolder.Name, {
-        Path: path
+    getLibraryStructureApi(ServerConnections.getApi()).updateMediaPath({
+        updateMediaPathRequestDto: {
+            Name: virtualFolder.Name,
+            PathInfo: { Path: path }
+        }
     }).then(() => {
         hasChanges = true;
         refreshLibraryFromServer(page);
@@ -93,7 +112,11 @@ function onRemoveClick(btnRemovePath, location) {
         primary: 'delete'
     }).then(() => {
         const refreshAfterChange = currentOptions.refresh;
-        ApiClient.removeMediaPath(virtualFolder.Name, location, refreshAfterChange).then(() => {
+        getLibraryStructureApi(ServerConnections.getApi()).removeMediaPath({
+            name: virtualFolder.Name,
+            path: location,
+            refreshLibrary: refreshAfterChange
+        }).then(() => {
             hasChanges = true;
             refreshLibraryFromServer(dom.parentWithClass(button, 'dlg-libraryeditor'));
         }, () => {
@@ -140,7 +163,7 @@ function getFolderHtml(pathInfo, index) {
 }
 
 function refreshLibraryFromServer(page) {
-    ApiClient.getVirtualFolders().then(result => {
+    getLibraryStructureApi(ServerConnections.getApi()).getVirtualFolders().then(({ data: result }) => {
         const library = result.filter(f => {
             return f.Name === currentOptions.library.Name;
         })[0];
