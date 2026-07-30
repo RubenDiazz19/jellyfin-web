@@ -52,7 +52,22 @@
 
 ## 4. Rendimiento
 
-- [ ] **Agregar pistas de precarga en HTML** — `<link rel="preload">` para recursos críticos (service worker, manifest.json, fonts). `<link rel="preconnect">` para el servidor Jellyfin.
+- [x] **Agregar pistas de precarga en HTML** — hecho el `preconnect`; los `preload` se descartan, medidos uno a uno.
+  El `preconnect` al servidor **no puede ir en el HTML**: el servidor lo elige el usuario al
+  iniciar sesión y puede ser cualquier host. Se hace en runtime (`utils/preconnect.ts`) en cuanto
+  el arranque resuelve la URL, antes de `initApiClient`. Van dos al mismo host a propósito: el
+  navegador tiene pools separados para conexiones anónimas y con credenciales, y la app usa las
+  dos (la API por `fetch` CORS anónimo, las imágenes por `<img src>` sin `crossorigin`).
+  Los tres `preload` que pedía este punto harían daño, no bien:
+  - **service worker**: lo pide `register()` fuera de la ruta crítica; precargarlo solo competiría
+    con lo que sí bloquea el primer pintado.
+  - **manifest.json**: ya está su `<link rel="manifest">`, que el navegador baja a baja prioridad
+    porque no hace falta para pintar. Precargarlo no adelanta nada.
+  - **fonts**: la única fuente del build es `MaterialIcons-Regular.woff2` (124 KB). Su URL va
+    hasheada (un `<link>` estático no puede nombrarla), solo la usa el dashboard, y ahí vive bajo
+    `display: none`, que no dispara la descarga. Precargarla serían 124 KB tirados en cada carga
+    del frontend. Si se toca, lo que arregla de verdad su `font-display: block` es el punto de
+    migrar los iconos a SVG.
 - [x] **Hacer `theme-color` dinámico** — Actualmente hardcodeado a `#202020` en `index.html`. Leer del tema activo.
   En mobile/tablet ya lo movía `MobileThemeProvider` (al surface de M3); faltaba desktop y el
   dashboard, que ahora lo leen del tema activo en `themes/themeColor.ts`. El valor del HTML se

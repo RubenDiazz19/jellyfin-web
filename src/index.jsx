@@ -11,6 +11,7 @@ import { loadCoreDictionary } from 'lib/globalize/loader';
 import { currentSettings as userSettings } from './scripts/settings/userSettings';
 import { serverAddress } from './utils/dashboard';
 import Events from './utils/events';
+import { preconnectToServer } from './utils/preconnect';
 
 import RootApp from './RootApp';
 
@@ -35,6 +36,10 @@ build: ${__JF_BUILD_VERSION__}`);
     // Initialize the api client
     const serverUrl = await serverAddress();
     if (serverUrl) {
+        // Antes de initApiClient: así el handshake con el servidor corre en
+        // paralelo con lo que queda de arranque (diccionario, tema) en vez de
+        // pagarse enterito en la primera petición de la API.
+        preconnectToServer(serverUrl);
         ServerConnections.initApiClient(serverUrl);
     }
 
