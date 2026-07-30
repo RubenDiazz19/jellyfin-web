@@ -1,4 +1,5 @@
 import './viewManager/viewContainer.scss';
+import { ServerConnections } from 'lib/jellyfin-apiclient';
 import Dashboard from '../utils/dashboard';
 
 const getMainAnimatedPages = () => {
@@ -18,7 +19,14 @@ function setControllerClass(view, options) {
         }
 
         controllerUrl = Dashboard.getPluginUrl(controllerUrl);
-        const apiUrl = ApiClient.getUrl('/web/' + controllerUrl);
+        const api = ServerConnections.getApi();
+        if (!api) {
+            return Promise.reject(new Error(`No hay servidor con el que resolver el controlador ${controllerUrl}`));
+        }
+        // Solo se construye la URL del módulo: `getUri` concatena base y ruta,
+        // igual que hacía el `getUrl` del cliente legacy. No hay autenticación
+        // de por medio, el import se la juega a que el servidor lo sirva.
+        const apiUrl = api.getUri('/web/' + controllerUrl);
         // Plugin controllers live on the server, so the specifier is only known
         // at runtime: @vite-ignore keeps the bundler from trying to resolve it.
         // Native dynamic import resolves to the module namespace, exactly like

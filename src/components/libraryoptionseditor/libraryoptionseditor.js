@@ -5,7 +5,11 @@
  */
 
 import { CollectionType } from '@jellyfin/sdk/lib/generated-client/models/collection-type';
+import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
+import { getLocalizationApi } from '@jellyfin/sdk/lib/utils/api/localization-api';
 import escapeHtml from 'escape-html';
+
+import { ServerConnections } from 'lib/jellyfin-apiclient';
 
 import globalize from '../../lib/globalize';
 import dom from '../../utils/dom';
@@ -17,10 +21,12 @@ import './style.scss';
 import template from './libraryoptionseditor.template.html';
 
 function populateLanguages(parent) {
-    return ApiClient.getCultures().then(languages => {
-        populateLanguagesIntoSelect(parent.querySelector('#selectLanguage'), languages);
-        populateLanguagesIntoList(parent.querySelector('.subtitleDownloadLanguages'), languages);
-    });
+    return getLocalizationApi(ServerConnections.getApi())
+        .getCultures()
+        .then(({ data: languages }) => {
+            populateLanguagesIntoSelect(parent.querySelector('#selectLanguage'), languages);
+            populateLanguagesIntoList(parent.querySelector('.subtitleDownloadLanguages'), languages);
+        });
 }
 
 function populateLanguagesIntoSelect(select, languages) {
@@ -41,14 +47,16 @@ function populateLanguagesIntoList(element, languages) {
 }
 
 function populateCountries(select) {
-    return ApiClient.getCountries().then(allCountries => {
-        let html = '';
-        html += "<option value=''></option>";
-        for (const culture of allCountries) {
-            html += `<option value='${culture.TwoLetterISORegionName}'>${culture.DisplayName}</option>`;
-        }
-        select.innerHTML = html;
-    });
+    return getLocalizationApi(ServerConnections.getApi())
+        .getCountries()
+        .then(({ data: allCountries }) => {
+            let html = '';
+            html += "<option value=''></option>";
+            for (const culture of allCountries) {
+                html += `<option value='${culture.TwoLetterISORegionName}'>${culture.DisplayName}</option>`;
+            }
+            select.innerHTML = html;
+        });
 }
 
 function populateRefreshInterval(select) {
@@ -392,10 +400,10 @@ function renderSimilarItemProviders(page, availableOptions, libraryOptions) {
 
 function populateMetadataSettings(parent, contentType) {
     const isNewLibrary = parent.classList.contains('newlibrary');
-    return ApiClient.getJSON(ApiClient.getUrl('Libraries/AvailableOptions', {
-        LibraryContentType: contentType,
-        IsNewLibrary: isNewLibrary
-    })).then(availableOptions => {
+    return getLibraryApi(ServerConnections.getApi()).getLibraryOptionsInfo({
+        libraryContentType: contentType,
+        isNewLibrary
+    }).then(({ data: availableOptions }) => {
         currentAvailableOptions = availableOptions;
         parent.availableOptions = availableOptions;
         renderMetadataSavers(parent, availableOptions.MetadataSavers);
