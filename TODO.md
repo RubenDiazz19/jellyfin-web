@@ -103,7 +103,12 @@
 
 ## 5. Developer Experience
 
-- [ ] **Crear `AGENTS.md`** — Configuración para opencode/herramientas AI que describa el proyecto, convenciones, y comandos frecuentes.
+- [x] **Crear `AGENTS.md`** — Configuración para opencode/herramientas AI que describa el proyecto, convenciones, y comandos frecuentes.
+  Cada afirmación está comprobada contra el código, no supuesta: las reglas de capas y su
+  severidad salen de `eslint.config.mjs`, y el idioma de los comentarios de contarlos (español en
+  el frontend propio, inglés en el legacy heredado). Incluye las trampas que cuestan una tarde:
+  el HMR de los controladores legacy, las URLs en minúscula de Jellyfin, y que el dev server
+  responde `index.html` con un 200 a lo que no empareje el proxy.
 - [x] **Agregar `.env.example`** — Documentar variables de entorno necesarias para desarrollo.
   Solo hay una variable propia (`JELLYFIN_SERVER`, el backend al que apunta el proxy del dev
   server) y la lee `vite.config.ts` en Node, así que no llega al bundle ni necesita prefijo
