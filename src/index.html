@@ -20,7 +20,11 @@
     <meta name="robots" content="noindex, nofollow, noarchive">
     <meta name="referrer" content="no-referrer">
 
-    <meta id="themeColor" name="theme-color" content="#202020">
+    <!-- Color del PRIMER PINTADO: tiene que estar en el HTML porque se aplica
+         antes de que corra nada de JS. De ahí en adelante lo reescribe el tema
+         activo (themes/themeColor.ts). El valor es el fondo del tema oscuro,
+         que es el de por defecto, para que no haya salto al cargar. -->
+    <meta id="themeColor" name="theme-color" content="#101010">
 
     <!-- Icono propio: la silueta del logo en blanco sobre el negro del tema.
          El .ico del paquete queda de respaldo para navegadores que no acepten

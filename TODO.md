@@ -45,7 +45,11 @@
 ## 4. Rendimiento
 
 - [ ] **Agregar pistas de precarga en HTML** — `<link rel="preload">` para recursos críticos (service worker, manifest.json, fonts). `<link rel="preconnect">` para el servidor Jellyfin.
-- [ ] **Hacer `theme-color` dinámico** — Actualmente hardcodeado a `#202020` en `index.html`. Leer del tema activo.
+- [x] **Hacer `theme-color` dinámico** — Actualmente hardcodeado a `#202020` en `index.html`. Leer del tema activo.
+  En mobile/tablet ya lo movía `MobileThemeProvider` (al surface de M3); faltaba desktop y el
+  dashboard, que ahora lo leen del tema activo en `themes/themeColor.ts`. El valor del HTML se
+  queda (es el color del primer pintado, antes de que haya JS) pero pasa a `#101010`, el fondo
+  real del tema oscuro y el que ya declaraba `manifest.json`.
 - [ ] **Evaluar registro de Service Worker en desktop** — Actualmente solo se registra en mobile/tablet. Desktop se queda sin offline support.
 - [ ] **Auditar renderizado** — Verificar que no haya re-renders innecesarios con React DevTools Profiler, especialmente en listas grandes (bibliotecas, grids).
 

@@ -2,6 +2,7 @@ import { type FC, useEffect, useState } from 'react';
 
 import { useUserTheme } from 'hooks/useUserTheme';
 import { getDefaultTheme } from 'scripts/settings/webSettings';
+import { applyThemeColor } from 'themes/themeColor';
 
 interface ThemeCssProps {
     dashboard?: boolean
@@ -19,7 +20,13 @@ const ThemeCss: FC<ThemeCssProps> = ({
 
     useEffect(() => {
         const id = dashboard ? dashboardTheme : theme;
-        if (id) setThemeUrl(getThemeUrl(id));
+        if (!id) return;
+        setThemeUrl(getThemeUrl(id));
+        // La barra de estado del sistema sigue al tema en vez de quedarse con
+        // el color fijo del primer pintado que trae index.html. En mobile la
+        // pisa MobileThemeProvider con el surface de M3, que es más específico;
+        // al volver a desktop restaura lo que se haya puesto aquí.
+        applyThemeColor(id);
     }, [dashboard, dashboardTheme, theme]);
 
     return (
