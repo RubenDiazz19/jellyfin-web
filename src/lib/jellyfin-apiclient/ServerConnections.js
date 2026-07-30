@@ -1,4 +1,3 @@
-import { Credentials } from 'jellyfin-apiclient';
 import { getImageApi } from '@jellyfin/sdk/lib/utils/api/image-api';
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 
@@ -11,6 +10,7 @@ import Events from 'utils/events';
 import { createApiClient } from 'utils/jellyfin-apiclient/createApiClient';
 
 import ConnectionManager from './connectionManager';
+import Credentials from './credentials';
 
 const normalizeImageOptions = options => {
     if (!options.quality && (options.maxWidth || options.width || options.maxHeight || options.height || options.fillWidth || options.fillHeight)) {
