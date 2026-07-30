@@ -1,127 +1,185 @@
-# D3 — Nuevas características de reproducción
+# TODO
 
-- [x] **Chromecast** — Botón "Cast" en el reproductor para enviar reproducción a dispositivos Chromecast.
-  Sender SDK de Google + receptor propio de Jellyfin (`CastReceiverId` del usuario, canal
-  `urn:x-cast:com.connectsdk`). Si no hay receptores Cast, el botón cae a la Remote Playback
-  API del navegador, que es lo que había antes (AirPlay y cast nativo de un `<video>` directo).
-  **Sin verificar contra hardware real**: la lógica está cubierta por tests con el SDK mockeado,
-  pero nadie lo ha probado contra un Chromecast físico.
-- [x] **Skip Intro / Skip Credits** — Botón en el OSD del reproductor para saltar intros y créditos detectados por Jellyfin.
-  Lee `/MediaSegments/{itemId}`; requiere que el servidor tenga un proveedor de segmentos
-  instalado (p. ej. Intro Skipper). Sin segmentos el botón no aparece.
-- [x] **Reproducir después** — Cola de reproducción (play queue) para encolar películas/episodios "para después", con UI para ver y reordenar la cola.
-  Persistida en localStorage. Se encola desde el menú "···" de cualquier item; se ve y reordena
-  en `/queue` y en el panel del reproductor. Al terminar un item, encadena con la cola.
+Cualquier cosa de esta lista se da por terminada cuando pasan las tres:
+
+```bash
+bun run build:check   # tsc --noEmit — el build NO typechequea
+bun run lint
+bun run test
+```
+
+Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
+
+- **Para decidir sobre el peso de una dependencia, `bun run build:analyze`, nunca `du`.** Los
+  tamaños que había anotados en §2 eran el `du` de `node_modules`, que cuenta documentación y
+  demos. Al medir el código publicado: **dos items se cerraron sin tocar código** (`react-blurhash`
+  y `react-query-devtools`) y otros **dos cambiaron de motivo**, porque su peso real era 30× y 8×
+  menor que lo anotado (los iconos, 3,6 MB → 124 KB; `react-lazy-load-image-component`,
+  216 → 27 KB). De `date-fns` sigue sin medirse lo único que importa —cuánto aporta al bundle—,
+  y por eso continúa como «evaluar».
+- **Este repo se commitea con `jj`, y `jj` no ejecuta los hooks de git.** Comprobado: un
+  `pre-commit` en `.git/hooks` no salta con `jj commit` y sí con `git commit`. Cualquier
+  automatismo que dependa de un hook de git aquí es un no-op.
+
+---
+
+# D3 — Nuevas características de reproducción ✅
+
+- [x] **Chromecast** — Sender SDK de Google + receptor de Jellyfin (`CastReceiverId` del usuario,
+  canal `urn:x-cast:com.connectsdk`). Sin receptores Cast cae a la Remote Playback API del
+  navegador, que es lo que había antes.
+  ⚠️ **Sin verificar contra hardware real**: la lógica está cubierta con el SDK mockeado, pero
+  nadie lo ha probado contra un Chromecast físico.
+- [x] **Skip Intro / Skip Credits** — Lee `/MediaSegments/{itemId}`. Requiere un proveedor de
+  segmentos en el servidor (p. ej. Intro Skipper); sin segmentos el botón no aparece.
+- [x] **Reproducir después** — Cola persistida en localStorage. Se encola desde el menú «···» de
+  cualquier item, se ve y reordena en `/queue` y en el panel del reproductor, y al terminar un
+  item encadena con la cola.
 
 ---
 
 # Optimizaciones y mejora continua
 
-## 1. Migración de código legacy (~98 archivos JS)
+## 1. Migración de código legacy (90 ficheros `.js`)
 
-- [ ] **Unificar API client** — Migrar completamente de `jellyfin-apiclient` (88 imports activos) a `@jellyfin/sdk`. Actualmente conviven ambos; eliminar el cliente antiguo.
-- [ ] **Migrar web components "emby-\*" a React TSX** — 15 componentes (`emby-button`, `emby-checkbox`, `emby-select`, `emby-tabs`, `emby-toggle`, etc.) que usan `innerHTML` y manipulación DOM imperativa. Migrar a React elimina un paradigma paralelo de renderizado.
-- [ ] **Reemplazar 13 archivos `.template.html`** — Componentes legacy (dialog, filterdialog, imageeditor, etc.) que cargan HTML + JS aparte. Convertir a componentes React.
-- [ ] **Migrar iconos a un solo sistema** — Eliminar `material-design-icons-iconfont` (~~3.6MB~~ 124 KB enviados) y unificar todos los iconos en `@mui/icons-material` (SVG React components).
-  De los 3,6 MB del disco, 2,0 MB son `docs/`. Lo que se envía es `MaterialIcons-Regular.woff2`:
-  **124 KB**, más su `@font-face` en el CSS de entrada. El argumento bueno para migrar no es el
-  peso sino el `font-display: block` que trae ese `@font-face`: hasta que la fuente baja, los
-  iconos se quedan **invisibles**. Un SVG no tiene ese problema.
+> **Estos cuatro puntos no son tarea de una sesión, y empezarlos a medias deja el repo peor que
+> ahora**: un paradigma de renderizado a medio migrar es más difícil de entender que el legacy
+> entero. Cada uno lleva abajo su alcance medido y el siguiente paso concreto, para que se puedan
+> atacar de uno en uno y con un final visible.
+>
+> El precedente de cómo hacerlo está en el historial: **D1** (descomponer `playbackmanager.js`) y
+> **D2** (migrar al SDK) se hicieron en fases numeradas, cada una con su commit y la suite en
+> verde. Misma receta aquí.
+
+- [ ] **Unificar API client** — terminar **D2**, cuya fase 4 quedó parcial.
+  **Medido, y sale mejor de lo que decía la nota vieja**: no son 88 imports repartidos. De los 78
+  ficheros que tocan el cliente legacy, **67 solo usan la fachada `ServerConnections`** y no se
+  enteran de lo que haya detrás. Todo `src/lib/jellyfin-apiclient/` son **1136 líneas**, de las
+  que `connectionManager.js` es 877 y `ServerConnections.js` 239.
+  **Siguiente paso**: reescribir `connectionManager.js` sobre el SDK **conservando la forma de la
+  fachada**; los 67 consumidores no se tocan. Lo dice el último commit de D2: «lo que queda del
+  cliente legacy en los consumidores son handles opacos que se pasan de vuelta a la fachada, no
+  llamadas a su API — eso desaparece al reescribir connectionManager».
+  Después quedan **6 imports del paquete npm** `jellyfin-apiclient` (4 son solo tipos):
+  `ApiClient` en `utils/jellyfin-apiclient/{compat,createApiClient}.ts` y `Credentials` en
+  `ServerConnections.js`. Con eso fuera, el paquete se puede desinstalar.
+- [ ] **Migrar web components `emby-*` a React TSX** — **18 componentes** (no 15), **2666 líneas**
+  en `src/elements/`, usados desde **40 ficheros**. Usan `innerHTML` y DOM imperativo: es un
+  segundo motor de renderizado en paralelo a React.
+  **Siguiente paso — antes de migrar nada, borrar**: `emby-programcell` y `emby-radio` no tienen
+  **ni una** referencia en todo el repo (ni import, ni etiqueta en un `.template.html`, ni clase en
+  un `.scss`). Confírmalo y bórralos: dos componentes menos gratis.
+  **Luego, por número de usos de menos a más**, que es también de menos a más riesgo:
+  `emby-progressring` (solo lo usa `emby-itemrefreshindicator`) y `emby-scrollbuttons` (solo
+  `emby-scroller` y un `.scss` del tema) → los de 1-2 usos → `emby-checkbox` (7), `emby-select` (8),
+  `emby-input` (12) → **`emby-button` el último, con 29**.
+- [ ] **Reemplazar 13 `.template.html`** — **889 líneas** de HTML que se cargan aparte de su JS
+  (dialog, filterdialog, imageeditor…).
+  **Siguiente paso**: van atados a los `emby-*`, así que después del punto anterior. Cada plantilla
+  con su JS es un componente React de una pieza.
+- [ ] **Migrar iconos a un solo sistema** — quitar `material-design-icons-iconfont` y unificar en
+  `@mui/icons-material` (SVG). **38 ficheros** usan la fuente.
+  **El motivo bueno no es el peso**: se envían **124 KB** (el `woff2`), no los 3,6 MB del disco —
+  2,0 MB de ese paquete son `docs/`. El motivo es que su `@font-face` trae **`font-display: block`**,
+  así que hasta que la fuente baja los iconos se quedan **invisibles**. Un SVG no tiene ese
+  problema, y de paso muere el `@font-face` del CSS de entrada.
 
 ## 2. Bundle y dependencias
 
-> **Ojo con los tamaños de esta sección**: los que venían anotados eran el `du` de la carpeta en
-> `node_modules`, que mide documentación, demos y fuentes sin compilar — no lo que se envía al
-> navegador. Al medir el código publicado de verdad, varios se caen solos (ver más abajo). Para
-> decidir sobre los que quedan, usa `bun run build:analyze`, no `du`.
+Punto de partida medido: **15 MB de JS**; chunks mayores `index` (1016 KB → 280 KB gz),
+`hls` (516 → 158) y `AppLayout` (280 → 65).
 
-- [x] **Auditar bundles grandes** — Agregar `vite-plugin-visualizer` o `rollup-plugin-visualizer` para inspeccionar composición de chunks en producción.
-  `bun run build:analyze` escribe `bundle-stats.html` (treemap con tamaños gzip y brotli) en la
-  raíz del repo — fuera de `dist/`, que es lo que se despliega. Es opt-in: el build normal no
-  paga el coste. Punto de partida medido: 15 MB de JS en total, y los chunks mayores son
-  `index` (1016 KB → 280 KB gz), `hls` (516 → 158) y `AppLayout` (280 → 65).
-- [ ] **`webcomponents.js` (896KB)** — Polyfill obsoleto; los navegadores modernos soportan web components nativamente. Cargarlo condicionalmente solo para browsers que lo necesiten o eliminarlo.
-- [x] **`react-blurhash` (~~920KB~~ 2,6 KB)** — no se toca, medido: el peso no era real.
-  De los 920 KB, **828 KB son `docs/`** (una demo que el paquete arrastra y que nunca se publica).
-  El código que entra al bundle es `dist/index.js`: **2612 bytes**. Escribir el hook a mano
-  ahorraría ~2,6 KB en crudo (menos aún comprimido) a cambio de mantener código propio de canvas
-  y decodificación. Es un wrapper fino, sí — y por eso mismo sustituirlo no compra nada.
-- [ ] **`react-lazy-load-image-component` (~~216KB~~ 27 KB publicados)** — Solo se usa en `Image.tsx`. Reemplazar con `loading="lazy"` nativo + blurhash.
-  Sigue teniendo sentido, pero por quitar una dependencia, no por peso: de los 216 KB del disco,
-  el `build/` publicado son 27 KB de JS. Ojo, no es un cambio gratis: el paquete hace lazy loading
-  con IntersectionObserver y efectos de entrada, y el `loading="lazy"` nativo no usa los mismos
-  umbrales, así que cambia cuándo entra cada imagen.
-- [x] **`@tanstack/react-query-devtools`** — ~~Se bundlea siempre~~ **ya no**: nada que hacer, medido.
-  Desde la v5 el paquete se resuelve a `() => null` salvo con `NODE_ENV=development`, y como
-  declara `sideEffects: false`, Rollup dobla la constante y lo elimina entero. En `dist/assets/*.js`
-  hay **0** coincidencias de `TanStack`, `ReactQueryDevtools`, `query-devtools` y `@tanstack`.
-  Pasarlo a `lazy()` solo añadiría un `Suspense` y un chunk async a cambio de nada.
-- [ ] **Evaluar date-fns v3** — ~~v2 pesa ~25MB en disco~~ (34 MB, y da igual: el disco no es el bundle). v3 es más pequeña y tree-shakeable mejor, pero requiere migración de imports y es breaking.
-  Aquí sí hay algo que mirar, al contrario que en los anteriores: date-fns aparece en 57 chunks del
-  build, así que el tree-shaking ya funciona por función pero está muy repartido. Antes de decidir,
-  mide su aportación real con `bun run build:analyze`.
-- [ ] **Evaluar remplazo de lodash-es** — Solo se usan 7 funciones (`isEmpty`, `debounce`, `isEqual`, etc.). Con tree-shaking está bien, pero valorar utilidades inline para eliminar la dependencia.
+- [x] **Auditar bundles grandes** — `bun run build:analyze` escribe `bundle-stats.html` (treemap
+  con gzip y brotli) en la raíz del repo, fuera de `dist/`, que es lo que se despliega. Es opt-in:
+  el build normal no paga los ~14 s extra.
+- [x] **`react-blurhash`** — **no se toca**: el peso no era real. De sus 920 KB, **828 son
+  `docs/`**; lo que entra al bundle es `dist/index.js` = **2612 bytes**. Escribir el hook a mano
+  ahorraría 2,6 KB en crudo a cambio de mantener código propio de canvas y decodificación.
+- [x] **`@tanstack/react-query-devtools`** — **ya no entra en producción**. Desde la v5 se resuelve
+  a `() => null` fuera de `NODE_ENV=development` y declara `sideEffects: false`, así que Rollup lo
+  elimina entero: **0 coincidencias** de `TanStack`, `ReactQueryDevtools`, `query-devtools` ni
+  `@tanstack` en `dist/assets/*.js`. Pasarlo a `lazy()` solo añadiría un `Suspense` para nada.
+- [ ] **`webcomponents.js` (896 KB)** — polyfill obsoleto; los navegadores actuales soportan web
+  components de forma nativa. Lo importan **15 de los 18 `emby-*`**, cada uno por su cuenta.
+  Se puede cargar condicionalmente, pero **muere solo** con el punto de migrar los `emby-*` (§1):
+  ese es el orden barato, y explica por qué no compensa tocarlo antes.
+- [ ] **`react-lazy-load-image-component`** — solo se usa en `Image.tsx`. Sustituible por
+  `loading="lazy"` nativo + blurhash, pero **por quitar una dependencia, no por peso**: son
+  **27 KB publicados**, no 216.
+  ⚠️ No es gratis: el paquete hace lazy loading con IntersectionObserver y efectos de entrada, y el
+  `loading="lazy"` nativo usa otros umbrales — cambia **cuándo** entra cada imagen.
+- [ ] **Evaluar date-fns v3** — el único de esta sección donde de verdad hay algo que medir: los
+  34 MB del disco son irrelevantes, pero aparece en **57 chunks** del build. El tree-shaking ya va
+  por función, solo que muy repartido. Mide su aportación real con `build:analyze` antes de
+  decidir; la migración es breaking.
+- [ ] **Evaluar reemplazo de `lodash-es`** — 7 funciones en uso (`isEmpty`, `debounce`,
+  `isEqual`…). Con tree-shaking no molesta; valorar utilidades inline solo para bajar el número de
+  dependencias.
 
 ## 3. Calidad de código
 
-- [x] **Eliminar `console.log` en producción** — 18 ocurrencias (principalmente `connectionManager.js` y `webSettings.js`). Reemplazar con logger configurable o eliminarlos.
-  No hacía falta un logger nuevo: el repo ya usaba niveles (60 `debug`, 34 `warn`, 144 `error`) y
-  `console.log` era el único outlier. Cada una pasa al nivel que le toca — trazas de ciclo de vida
-  y de sondeo de direcciones a `debug` (el navegador las oculta por defecto, y ahí fallar es lo
-  normal: prueba varias URLs), fallo inesperado con fallback silencioso a `warn`. La regla
-  `no-console` de ESLint impide que vuelvan a colarse, permitiendo los cuatro niveles útiles.
-- [ ] **Resolver 30 TODO + 8 FIXME** — Distribuidos por toda la codebase. Priorizar los FIXME (scrollManager, browserDeviceProfile, authentication-api, etc.).
-- [ ] **Reducir tipos `any`** — Persistentes en `apiclient.d.ts`, `global.d.ts` (`NativeShell: any`), y algunas utilidades. Tiparlos correctamente.
-- [ ] **Subir cobertura de tests** — Threshold global de líneas al 5% es extremadamente bajo. El dashboard (admin) tiene solo 1 test. Establecer metas progresivas (30% → 50% → 70%).
-- [ ] **Extender separación por capas** — La arquitectura MVVM con linting estricto solo existe en `apps/frontend/`. Aplicar reglas similares al dashboard y componentes compartidos.
+- [x] **Eliminar `console.log` en producción** — los 18 pasan al nivel que les toca. No hacía falta
+  un logger nuevo: el repo ya usaba niveles (60 `debug`, 34 `warn`, 144 `error`) y `console.log`
+  era el único outlier. Trazas de ciclo de vida y de sondeo de direcciones a `debug` (ahí fallar es
+  lo normal: prueba varias URLs hasta que una responde, así que un `warn` por intento sería ruido);
+  fallo inesperado con fallback silencioso a `warn`. La regla **`no-console`** impide que vuelvan.
+- [ ] **Resolver 28 TODO + 11 FIXME** — repartidos por la codebase. Prioridad a los FIXME
+  (`scrollManager`, `browserDeviceProfile`, `authentication-api`…).
+- [ ] **Reducir tipos `any`** — `apiclient.d.ts`, `global.d.ts` (`NativeShell: any`) y algunas
+  utilidades. Buena parte de `apiclient.d.ts` desaparece al terminar D2 (§1), así que va después.
+- [ ] **Subir cobertura de tests** — el umbral global de líneas está al **5 %**, y el dashboard
+  tiene 1 test. `src/apps/frontend/**` ya tiene el suyo propio al **22 %**.
+  Como los cuatro puntos de §1, esto **no se hace de una tacada**: subir el umbral global sin
+  escribir los tests solo rompe el build. Metas progresivas (30 % → 50 % → 70 %), y subir el número
+  del umbral **en el mismo commit** que los tests que lo sostienen, para que nunca esté en rojo.
+- [ ] **Extender separación por capas** — el MVVM con linting estricto solo cubre `apps/frontend/`.
+  Aplicar reglas equivalentes al dashboard y a los componentes compartidos.
 
 ## 4. Rendimiento
 
-- [x] **Agregar pistas de precarga en HTML** — hecho el `preconnect`; los `preload` se descartan, medidos uno a uno.
-  El `preconnect` al servidor **no puede ir en el HTML**: el servidor lo elige el usuario al
-  iniciar sesión y puede ser cualquier host. Se hace en runtime (`utils/preconnect.ts`) en cuanto
-  el arranque resuelve la URL, antes de `initApiClient`. Van dos al mismo host a propósito: el
-  navegador tiene pools separados para conexiones anónimas y con credenciales, y la app usa las
-  dos (la API por `fetch` CORS anónimo, las imágenes por `<img src>` sin `crossorigin`).
-  Los tres `preload` que pedía este punto harían daño, no bien:
-  - **service worker**: lo pide `register()` fuera de la ruta crítica; precargarlo solo competiría
-    con lo que sí bloquea el primer pintado.
-  - **manifest.json**: ya está su `<link rel="manifest">`, que el navegador baja a baja prioridad
-    porque no hace falta para pintar. Precargarlo no adelanta nada.
-  - **fonts**: la única fuente del build es `MaterialIcons-Regular.woff2` (124 KB). Su URL va
-    hasheada (un `<link>` estático no puede nombrarla), solo la usa el dashboard, y ahí vive bajo
-    `display: none`, que no dispara la descarga. Precargarla serían 124 KB tirados en cada carga
-    del frontend. Si se toca, lo que arregla de verdad su `font-display: block` es el punto de
-    migrar los iconos a SVG.
-- [x] **Hacer `theme-color` dinámico** — Actualmente hardcodeado a `#202020` en `index.html`. Leer del tema activo.
-  En mobile/tablet ya lo movía `MobileThemeProvider` (al surface de M3); faltaba desktop y el
-  dashboard, que ahora lo leen del tema activo en `themes/themeColor.ts`. El valor del HTML se
-  queda (es el color del primer pintado, antes de que haya JS) pero pasa a `#101010`, el fondo
-  real del tema oscuro y el que ya declaraba `manifest.json`.
-- [ ] **Evaluar registro de Service Worker en desktop** — Actualmente solo se registra en mobile/tablet. Desktop se queda sin offline support.
-- [ ] **Auditar renderizado** — Verificar que no haya re-renders innecesarios con React DevTools Profiler, especialmente en listas grandes (bibliotecas, grids).
+- [x] **Hacer `theme-color` dinámico** — en mobile/tablet ya lo movía `MobileThemeProvider` (al
+  surface de M3); faltaban desktop y el dashboard, que ahora lo leen del tema activo en
+  `themes/themeColor.ts`, de la **definición** del tema y no del CSS calculado (el `<link>` del
+  tema puede llegar después del render, y un objeto plano se puede probar). El valor del HTML se
+  queda —es el color del primer pintado, cuando no hay JS— pero pasa de `#202020` a **`#101010`**,
+  el fondo real del tema oscuro y el que ya declaraba `manifest.json`: estaban desalineados.
+- [x] **Pistas de precarga** — hecho el `preconnect`; los tres `preload` **se descartan, medidos
+  uno a uno**.
+  El `preconnect` **no puede ir en el HTML**: el servidor lo elige el usuario al iniciar sesión y
+  puede ser cualquier host, así que se hace en runtime (`utils/preconnect.ts`) en cuanto el
+  arranque resuelve la URL, antes de `initApiClient`. Van **dos al mismo host** a propósito: el
+  navegador tiene pools separados para conexiones anónimas y con credenciales, y la app usa las dos
+  (API por `fetch` CORS anónimo, imágenes por `<img src>` sin `crossorigin`).
+  Por qué los `preload` harían daño: el **service worker** lo pide `register()` fuera de la ruta
+  crítica; **manifest.json** ya tiene su `<link rel="manifest">`, que el navegador baja a baja
+  prioridad porque no hace falta para pintar; y la única **fuente** del build va con URL hasheada
+  (un `<link>` estático no puede nombrarla), solo la usa el dashboard y allí vive bajo
+  `display: none`, que no dispara la descarga — serían 124 KB tirados en cada carga.
+- [ ] **Evaluar registro de Service Worker en desktop** — hoy solo se registra en mobile/tablet, así
+  que desktop se queda sin offline.
+- [ ] **Auditar renderizado** — buscar re-renders innecesarios con el Profiler de React DevTools,
+  sobre todo en listas grandes (bibliotecas, grids).
 
 ## 5. Developer Experience
 
-- [x] **Crear `AGENTS.md`** — Configuración para opencode/herramientas AI que describa el proyecto, convenciones, y comandos frecuentes.
-  Cada afirmación está comprobada contra el código, no supuesta: las reglas de capas y su
-  severidad salen de `eslint.config.mjs`, y el idioma de los comentarios de contarlos (español en
-  el frontend propio, inglés en el legacy heredado). Incluye las trampas que cuestan una tarde:
-  el HMR de los controladores legacy, las URLs en minúscula de Jellyfin, y que el dev server
-  responde `index.html` con un 200 a lo que no empareje el proxy.
-- [x] **Agregar `.env.example`** — Documentar variables de entorno necesarias para desarrollo.
-  Solo hay una variable propia (`JELLYFIN_SERVER`, el backend al que apunta el proxy del dev
-  server) y la lee `vite.config.ts` en Node, así que no llega al bundle ni necesita prefijo
-  `VITE_`. `loadEnv` la busca en el `.env` de la raíz del repo; el entorno real tiene prioridad.
-- [ ] **Modularizar ESLint config** — `eslint.config.mjs` tiene 563 líneas. Separar reglas por dominio (react, typescript, imports, stylistic).
-- [ ] **Configurar pre-commit hooks** — Husky + lint-staged para lint y typecheck automáticos antes de commits.
-  ⚠️ **Husky no serviría aquí.** Este repo se commitea con **jj**, y `jj commit` **no ejecuta los
-  hooks de git** (comprobado: un `pre-commit` en `.git/hooks` no se dispara con `jj commit` y sí
-  con `git commit`). Instalar husky dejaría una red de seguridad que nunca salta, que es peor que
-  no tenerla. Alternativas reales: el hook nativo de jj (`fix` / `jj util exec`), un
-  `jj fix` configurado en `.jj/repo/config.toml`, o dejarlo en CI.
-- [ ] **Configurar commitlint** — Para estandarizar formato de mensajes de commit.
-  Mismo problema que el punto anterior: commitlint se engancha por `commit-msg`, otro hook de git
-  que jj no ejecuta. Y antes de decidir el formato, ojo: los mensajes de este repo son prosa en
-  español explicando el *por qué*, no Conventional Commits — imponer `feat:`/`fix:` sería cambiar
-  la convención existente, no estandarizarla.
+- [x] **Crear `AGENTS.md`** — qué es cada zona del repo, comandos, las tres capas del MVVM con la
+  severidad real de cada regla, y las trampas que cuestan una tarde. Cada afirmación comprobada
+  contra el código: iba a documentar «comentarios en inglés» y resultó que **153 de los 197**
+  ficheros del frontend propio los tienen en español, mientras el legacy los conserva en inglés
+  (8 de 133) — la convención real es seguir el idioma del fichero que se toca.
+- [x] **Agregar `.env.example`** — solo hay una variable propia, `JELLYFIN_SERVER` (el backend al
+  que apunta el proxy del dev server), y la lee `vite.config.ts` en Node, así que no llega al
+  bundle ni necesita prefijo `VITE_`. Para que el fichero no fuese decorativo se cableó con
+  `loadEnv`, que lo busca en la raíz del repo (el `root` de Vite es `src/`, donde nadie lo
+  pondría); el entorno real tiene prioridad sobre el fichero.
+- [ ] **Modularizar ESLint config** — `eslint.config.mjs` va por 568 líneas. Separar por dominio
+  (react, typescript, imports, stylistic). Cambio mecánico, pero verifica que la severidad de cada
+  regla sobrevive: `AGENTS.md` documenta cuáles fallan y cuáles solo avisan.
+- [ ] **Pre-commit hooks y commitlint** — ⚠️ **tal como están planteados, no funcionarían**: husky
+  se engancha por `pre-commit` y commitlint por `commit-msg`, y **`jj` no ejecuta los hooks de git**
+  (ver la nota del principio). Instalarlos dejaría una red de seguridad que nunca salta, que es
+  peor que no tenerla porque se confía en ella.
+  Alternativas reales: `jj fix` configurado en la config del repo, o dejar lint y typecheck en CI.
+  Y sobre el formato de los mensajes: los de este repo son **prosa en español explicando el por
+  qué**, no Conventional Commits — imponer `feat:`/`fix:` sería cambiar la convención, no
+  estandarizarla.
