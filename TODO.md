@@ -63,16 +63,19 @@ Dos reglas que se han pagado con tiempo y conviene no volver a aprender:
   Después quedan **6 imports del paquete npm** `jellyfin-apiclient` (4 son solo tipos):
   `ApiClient` en `utils/jellyfin-apiclient/{compat,createApiClient}.ts` y `Credentials` en
   `ServerConnections.js`. Con eso fuera, el paquete se puede desinstalar.
-- [ ] **Migrar web components `emby-*` a React TSX** — **18 componentes** (no 15), **2666 líneas**
-  en `src/elements/`, usados desde **40 ficheros**. Usan `innerHTML` y DOM imperativo: es un
-  segundo motor de renderizado en paralelo a React.
-  **Siguiente paso — antes de migrar nada, borrar**: `emby-programcell` y `emby-radio` no tienen
-  **ni una** referencia en todo el repo (ni import, ni etiqueta en un `.template.html`, ni clase en
-  un `.scss`). Confírmalo y bórralos: dos componentes menos gratis.
-  **Luego, por número de usos de menos a más**, que es también de menos a más riesgo:
-  `emby-progressring` (solo lo usa `emby-itemrefreshindicator`) y `emby-scrollbuttons` (solo
-  `emby-scroller` y un `.scss` del tema) → los de 1-2 usos → `emby-checkbox` (7), `emby-select` (8),
-  `emby-input` (12) → **`emby-button` el último, con 29**.
+- [ ] **Migrar web components `emby-*` a React TSX** — quedan **16** (eran 18), **2575 líneas** en
+  `src/elements/`. Usan `innerHTML` y DOM imperativo: es un segundo motor de renderizado en
+  paralelo a React.
+  ⚠️ **Los 16 se registran con `document.registerElement`, la API v0 de custom elements, que los
+  navegadores eliminaron**. Ninguno usa `customElements.define`. O sea: hoy solo funcionan porque
+  el polyfill `webcomponents.js` resucita una API muerta. Ese es el argumento de peso para migrar,
+  más que el `innerHTML`.
+  - [x] **Paso 0 — borrar los muertos**: `emby-programcell` y `emby-radio` no tenían ni una
+    referencia en el repo. Fuera, 212 líneas.
+  - [ ] **Paso 1 — por número de usos, de menos a más** (que es también de menos a más riesgo):
+    `emby-progressring` (solo lo usa `emby-itemrefreshindicator`) y `emby-scrollbuttons` (solo
+    `emby-scroller` y un `.scss` del tema) → los de 1-2 usos → `emby-checkbox` (7),
+    `emby-select` (8), `emby-input` (12) → **`emby-button` el último, con 29**.
 - [ ] **Reemplazar 13 `.template.html`** — **889 líneas** de HTML que se cargan aparte de su JS
   (dialog, filterdialog, imageeditor…).
   **Siguiente paso**: van atados a los `emby-*`, así que después del punto anterior. Cada plantilla
