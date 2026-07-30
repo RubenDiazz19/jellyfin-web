@@ -12,18 +12,29 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const REPO_ROOT = path.resolve(__dirname);
 const SRC_DIR = path.join(REPO_ROOT, 'src');
 const NODE_MODULES_DIR = path.join(REPO_ROOT, 'node_modules');
 
-// Backend de desarrollo. El frontend habla con el servidor por URL ABSOLUTA
-// (la que se guarda al iniciar sesión), así que este proxy solo hace falta
-// cuando esa URL apunta al propio dev server — el caso de quien venía usando
-// el contenedor, que también servía en :8080.
-const BACKEND_URL = process.env.JELLYFIN_SERVER || 'http://localhost:8096';
+/**
+ * Backend de desarrollo. El frontend habla con el servidor por URL ABSOLUTA
+ * (la que se guarda al iniciar sesión), así que el proxy de abajo solo hace
+ * falta cuando esa URL apunta al propio dev server — el caso de quien venía
+ * usando el contenedor, que también servía en :8080.
+ *
+ * `loadEnv` con prefijo vacío lee el `.env` de la RAÍZ DEL REPO (no de `root`,
+ * que aquí es src/) y sin exigir el prefijo `VITE_`: esta variable la consume
+ * el config en Node, no el navegador, así que no debe acabar en el bundle. El
+ * entorno real manda sobre el fichero, que es lo que se espera al hacer
+ * `JELLYFIN_SERVER=… bun start`.
+ */
+function backendUrl(mode: string): string {
+    const fromFile = loadEnv(mode, REPO_ROOT, '').JELLYFIN_SERVER;
+    return process.env.JELLYFIN_SERVER || fromFile || 'http://localhost:8096';
+}
 
 // Raíces de la API de Jellyfin que hay que reenviar al backend. Van en un solo
 // patrón y no en una tabla de claves literales porque las claves de
@@ -272,7 +283,7 @@ function devThemes(): Plugin {
     };
 }
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
     // The app is rooted in src/ — index.html, config.json, manifest.json,
     // robots.txt and assets/ are all served from there as-is.
     root: SRC_DIR,
@@ -322,7 +333,7 @@ export default defineConfig(({ command }) => ({
         },
         proxy: {
             [JF_PROXY_PATTERN]: {
-                target: BACKEND_URL,
+                target: backendUrl(mode),
                 changeOrigin: true,
                 // `/socket` es el websocket por el que el servidor empuja los
                 // cambios de sesión y biblioteca.

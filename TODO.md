@@ -52,7 +52,10 @@
 ## 5. Developer Experience
 
 - [ ] **Crear `AGENTS.md`** — Configuración para opencode/herramientas AI que describa el proyecto, convenciones, y comandos frecuentes.
-- [ ] **Agregar `.env.example`** — Documentar variables de entorno necesarias para desarrollo.
+- [x] **Agregar `.env.example`** — Documentar variables de entorno necesarias para desarrollo.
+  Solo hay una variable propia (`JELLYFIN_SERVER`, el backend al que apunta el proxy del dev
+  server) y la lee `vite.config.ts` en Node, así que no llega al bundle ni necesita prefijo
+  `VITE_`. `loadEnv` la busca en el `.env` de la raíz del repo; el entorno real tiene prioridad.
 - [ ] **Modularizar ESLint config** — `eslint.config.mjs` tiene 563 líneas. Separar reglas por dominio (react, typescript, imports, stylistic).
 - [ ] **Configurar pre-commit hooks** — Husky + lint-staged para lint y typecheck automáticos antes de commits.
 - [ ] **Configurar commitlint** — Para estandarizar formato de mensajes de commit.

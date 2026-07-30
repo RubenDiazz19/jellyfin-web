@@ -29,3 +29,7 @@ docker-media/
 
 # environment related
 .envrc
+# El fichero real, con los valores de cada máquina. Se versiona el ejemplo
+# (.env.example), no esto.
+.env
+.env.local
