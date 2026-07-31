@@ -1,11 +1,8 @@
 // Image editing: upload from URL / File, delete, and browse alternatives from
 // remote providers (TMDB/TVDB).
 
-import globalize from 'lib/globalize';
-
-import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
-import { apiFetch, apiSend, authHeader, noSessionError, trimSlash } from './http';
+import { apiFetch, apiSend, uploadImage } from './http';
 import type { ImageType } from './images';
 import { emitItemMutated } from './mutations';
 
@@ -39,28 +36,7 @@ export async function deleteImage(itemId: string, type: ImageType, index = 0): P
 // Jellyfin expects the body as base64 with the image Content-Type. Format is
 // auto-detected from the payload header.
 export async function uploadImageFile(itemId: string, type: ImageType, file: File): Promise<void> {
-    const session = loadSession();
-    if (!session?.accessToken) throw noSessionError();
-    const MAX_BYTES = 30 * 1024 * 1024;
-    if (file.size > MAX_BYTES) {
-        throw new Error(`La imagen supera 30 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
-    }
-    const buf = await file.arrayBuffer();
-    const base64 = arrayBufferToBase64(buf);
-    const mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
-    const res = await fetch(`${trimSlash(session.serverUrl)}/Items/${itemId}/Images/${type}`, {
-        method: 'POST',
-        headers: {
-            'Authorization': authHeader(session.accessToken),
-            'X-Emby-Authorization': authHeader(session.accessToken),
-            'Content-Type': mime
-        },
-        body: base64
-    });
-    if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error(globalize.translate('MessageUploadFailed', `${res.status} ${text}`));
-    }
+    await uploadImage(`/Items/${itemId}/Images/${type}`, file);
     clearShowCache();
     emitItemMutated(itemId);
 }
@@ -82,13 +58,3 @@ export async function getRemoteImages(
     return { images: data.Images ?? [], providers: data.Providers ?? [] };
 }
 
-// Base64 without spread-fromCharCode: it blows the stack on large arrays.
-function arrayBufferToBase64(buf: ArrayBuffer): string {
-    const bytes = new Uint8Array(buf);
-    const CHUNK = 0x8000;
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
-    }
-    return btoa(bin);
-}

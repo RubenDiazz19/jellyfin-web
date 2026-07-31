@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { useEffect, useState } from 'react';
-import { T, HERO_POS, HERO_SCRIM, type HeroPosKey, type HeroScrimKey } from '../theme/tokens';
+import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatRemaining } from '../theme/format';
 import { WATCHED } from '../../domain/stores';
@@ -9,7 +9,9 @@ import { useWatchedVersion } from '../../domain/bridge/useWatched';
 import { PROTO_DATA, type Show } from '../../domain/models';
 import { showVM } from '../../domain/viewModels/ShowViewModel';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
-import { Backdrop } from '../components/layout/Backdrop';
+import {
+    HeroFrame, HeroGenres, HeroTitle, useHeroLayout, type HeroTweaks
+} from '../components/layout/DetailHero';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
@@ -19,12 +21,6 @@ import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
-
-export type HeroTweaks = {
-    heroPos?: HeroPosKey;
-    heroInfo?: 'Mínima' | 'Completa';
-    heroScrim?: HeroScrimKey;
-};
 
 type PageProps = { showId: string; navigate: Navigate; hero?: HeroTweaks };
 
@@ -83,9 +79,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     const [btnHover, setBtnHover] = useState(false);
     const epLabel = `T${target.seasonN} E${String(target.epN).padStart(2, '0')}`;
     const remaining = cont ? formatRemaining(cont.remaining, { suffix: '' }) : '';
-    const pos = HERO_POS[hero?.heroPos ?? 'Esquina'];
-    const minimal = hero?.heroInfo === 'Mínima';
-    const scrim = HERO_SCRIM[hero?.heroScrim ?? 'Media'];
+    const { minimal, inlineJustify } = useHeroLayout(hero);
     const r = useResponsive();
     const { play } = usePlayer();
     const targetEp = show.seasons
@@ -106,95 +100,51 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
         }
     };
     return (
-        <section style={{
-            position: 'relative',
-            height: r.touch ? (r.mobile ? '68vh' : '78vh') : '100vh',
-            minHeight: r.touch ? 420 : undefined,
-            width: '100%', overflow: 'hidden', background: '#000'
-        }}>
-            <Nav
-                navigate={navigate}
-                breadcrumb={[
-                    { label: globalize.translate('Shows'), to: { page: 'home' } },
-                    { label: 'Drama' },
-                    { label: show.title }
-                ]}
-                actionId={show.id}
-                actionData={{ type: 'show', id: show.id }}
-            />
-            <Backdrop
-                src={show.backdrop || ''} srcs={show.backdrops}
-                fadeBottom={0.92} itemId={show.id} sharp
-            />
-            <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none',
-                background: `linear-gradient(to top, rgba(0,0,0,${scrim}) 0%, rgba(0,0,0,${(scrim * 0.45).toFixed(2)}) 24%, transparent 56%)`
-            }} />
-
-            <div style={{
-                position: 'absolute', inset: 0,
-                padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : pos.pad,
-                display: 'flex', flexDirection: 'column',
-                alignItems: pos.align, justifyContent: pos.justify,
-                textAlign: pos.text
-            }}>
+        <HeroFrame
+            hero={hero}
+            backdrop={show.backdrop || ''}
+            backdrops={show.backdrops}
+            itemId={show.id}
+            nav={
+                <Nav
+                    navigate={navigate}
+                    breadcrumb={[
+                        { label: globalize.translate('Shows'), to: { page: 'home' } },
+                        { label: 'Drama' },
+                        { label: show.title }
+                    ]}
+                    actionId={show.id}
+                    actionData={{ type: 'show', id: show.id }}
+                />
+            }
+            footer={<ScrollHint label={globalize.translate('Episodes')} />}
+        >
+            <>
                 {!minimal && (
-                    <div style={{
-                        fontFamily: T.ui, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                        color: 'rgba(255,255,255,0.7)', marginBottom: 18,
-                        display: 'flex', gap: 10, flexWrap: 'wrap',
-                        justifyContent: pos.justify === 'flex-end' && pos.align === 'flex-start' ? 'flex-start' : 'center'
-                    }}>
-                        {show.genres.map((g, i) => (
-                            <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); navigate({ page: 'genre', genre: g }); }}
-                                    style={{
-                                        background: 'none', border: 'none', padding: 0,
-                                        font: 'inherit', color: 'inherit',
-                                        letterSpacing: 'inherit', textTransform: 'inherit',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.color = '')}
-                                >
-                                    {g}
-                                </button>
-                                {i < show.genres.length - 1 && <span style={{ opacity: 0.5 }}>·</span>}
-                            </span>
-                        ))}
-                    </div>
+                    <HeroGenres
+                        genres={show.genres}
+                        navigate={navigate}
+                        fontSize={10}
+                        marginBottom={18}
+                        justifyContent={inlineJustify}
+                    />
                 )}
 
-                {show.logo ? (
-                    <img
-                        src={show.logo}
-                        alt={show.title}
-                        decoding='async'
-                        style={{
-                            maxWidth: r.touch ? 'min(78vw, 340px)' : 500,
-                            maxHeight: r.touch ? 110 : 170,
-                            width: 'auto', height: 'auto',
-                            filter: 'drop-shadow(0 4px 60px rgba(0,0,0,0.5))', objectFit: 'contain'
-                        }}
-                    />
-                ) : (
-                    <h1 style={{
-                        fontFamily: T.display,
-                        fontSize: r.touch ? 'clamp(36px, 9vw, 68px)' : 'clamp(76px, 9vw, 134px)',
-                        lineHeight: 0.92,
-                        margin: 0, fontWeight: 250, letterSpacing: r.touch ? -1 : -3,
-                        textShadow: '0 4px 60px rgba(0,0,0,0.6)'
-                    }}>
-                        {show.title}
-                    </h1>
-                )}
+                <HeroTitle
+                    logo={show.logo}
+                    title={show.title}
+                    logoMaxWidth={r.touch ? 'min(78vw, 340px)' : 500}
+                    logoMaxHeight={r.touch ? 110 : 170}
+                    logoShadow='rgba(0,0,0,0.5)'
+                    fontSize={r.touch ? 'clamp(36px, 9vw, 68px)' : 'clamp(76px, 9vw, 134px)'}
+                    letterSpacing={r.touch ? -1 : -3}
+                />
 
                 {!minimal && (
                     <div style={{
                         marginTop: 18, display: 'flex', alignItems: 'center', gap: 14,
                         flexWrap: 'wrap',
-                        justifyContent: pos.justify === 'flex-end' && pos.align === 'flex-start' ? 'flex-start' : 'center',
+                        justifyContent: inlineJustify,
                         fontFamily: T.ui, fontSize: 13, color: 'rgba(255,255,255,0.78)'
                     }}>
                         <span>{show.year}</span><Ic.Dot />
@@ -291,10 +241,8 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                         queuePoster={show.poster}
                     />
                 </div>
-            </div>
-
-            <ScrollHint label={globalize.translate('Episodes')} />
-        </section>
+            </>
+        </HeroFrame>
     );
 }
 

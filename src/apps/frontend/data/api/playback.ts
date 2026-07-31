@@ -5,6 +5,7 @@ import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
 import { apiSend, noSessionError, trimSlash } from './http';
 import { emitItemMutated } from './mutations';
+import type { JFMediaStream } from './types';
 
 export type MediaStreamInfo = {
     index: number;
@@ -77,18 +78,6 @@ function isTextSubtitle(codec?: string): boolean {
     const c = codec.toLowerCase();
     return c === 'subrip' || c === 'srt' || c === 'ass' || c === 'ssa' || c === 'vtt' || c === 'webvtt';
 }
-
-/** Pista tal cual la describe MediaSources[].MediaStreams del servidor. */
-export type JFMediaStream = {
-    Index: number;
-    Type?: string;
-    Language?: string;
-    DisplayTitle?: string;
-    Title?: string;
-    IsDefault?: boolean;
-    IsForced?: boolean;
-    Codec?: string;
-};
 
 export function mapMediaStream(s: JFMediaStream): MediaStreamInfo {
     return {

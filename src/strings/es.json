@@ -2130,5 +2130,19 @@
     "TableOfContents": "Índice",
     "Creators": "Creadores",
     "NoCastTargets": "No hay dispositivos de transmisión disponibles",
-    "IndexNumber": "Número de índice"
+    "IndexNumber": "Número de índice",
+    "EditTags": "Editar etiquetas",
+    "LabelNewTag": "Nueva etiqueta…",
+    "MessageNoTagsYet": "Todavía no hay etiquetas. Añade la primera abajo.",
+    "MessageTagsSaved": "Etiquetas guardadas",
+    "MessageTagsAddedToCount": "Etiquetas añadidas a {0} elementos",
+    "HeaderMyViews": "Mis vistas",
+    "SaveCurrentView": "Guardar vista actual",
+    "LabelViewName": "Nombre de la vista…",
+    "MessageViewSaved": "Vista guardada",
+    "MessageNoViewsYet": "Guarda un conjunto de filtros para volver a él de un clic.",
+    "HeaderSelectedCount": "{0} seleccionados",
+    "ClearSelection": "Quitar selección",
+    "SelectItems": "Seleccionar",
+    "SortByLabel": "Ordenar por"
 }

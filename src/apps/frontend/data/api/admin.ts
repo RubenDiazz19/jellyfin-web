@@ -3,8 +3,7 @@
 
 import globalize from 'lib/globalize';
 
-import { loadSession } from '../session/session';
-import { apiFetch, authHeader, noSessionError, trimSlash } from './http';
+import { apiFetch, apiSend, HttpError } from './http';
 
 export type SystemInfo = {
     serverName: string;
@@ -34,20 +33,14 @@ export async function getSystemInfo(): Promise<SystemInfo> {
 // Kicks off a full rescan across every library (native Dashboard → Library →
 // Scan). POST without a body, returns 204.
 export async function refreshLibrary(): Promise<void> {
-    const session = loadSession();
-    if (!session?.accessToken) throw noSessionError();
-    const res = await fetch(`${trimSlash(session.serverUrl)}/Library/Refresh`, {
-        method: 'POST',
-        headers: {
-            'Authorization': authHeader(session.accessToken),
-            'X-Emby-Authorization': authHeader(session.accessToken)
+    try {
+        await apiSend('/Library/Refresh', 'POST');
+    } catch (e) {
+        // El mensaje llega al usuario por un toast, así que se traduce; el
+        // de `apiSend` es para la consola.
+        if (e instanceof HttpError) {
+            throw new Error(globalize.translate('MessageRefreshFailed', e.status));
         }
-    });
-    if (!res.ok) throw new Error(globalize.translate('MessageRefreshFailed', res.status));
-}
-
-export function dashboardUrl(): string {
-    const session = loadSession();
-    if (!session?.serverUrl) return '';
-    return `${trimSlash(session.serverUrl)}/web/#/dashboard`;
+        throw e;
+    }
 }

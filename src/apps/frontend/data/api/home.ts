@@ -6,15 +6,15 @@ import type { CarouselSlide, Show } from '../models';
 import { loadSession } from '../session/session';
 import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
+import { backdropUrls, logoUrl, posterUrl } from './itemMapping';
 import { settlePlaybackReports } from './playback';
 import { getShows } from './shows';
 import { FIELDS_LIST, type JFItem } from './types';
 
 /**
- * Todos los fondos de un item, con su tag. El tag es imprescindible: sin él
- * el navegador cachea la URL para siempre y el hero sigue mostrando la
- * imagen vieja después de cambiarla desde la ficha.
- * Si el item no tiene backdrops, cae al póster (también con tag).
+ * Los fondos del item y, si no tiene ninguno, el póster como sustituto: el
+ * hero ocupa la pantalla entera y quedarse sin imagen se nota mucho más que
+ * usar una con la proporción equivocada.
  */
 function backdropsOf(
     itemId: string | undefined,
@@ -22,12 +22,8 @@ function backdropsOf(
     primaryTag?: string
 ): string[] {
     if (!itemId) return [];
-    const tags = backdropTags ?? [];
-    if (tags.length > 0) {
-        return tags
-            .map((tag, i) => imageUrl(itemId, 'Backdrop', { tag, maxWidth: 2560, index: i }))
-            .filter((u): u is string => !!u);
-    }
+    const backdrops = backdropUrls(itemId, backdropTags);
+    if (backdrops.length > 0) return backdrops;
     const primary = imageUrl(itemId, 'Primary', { maxHeight: 1440, tag: primaryTag });
     return primary ? [primary] : [];
 }
@@ -82,15 +78,8 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
                 remaining,
                 backdrop,
                 backdrops,
-                poster: imageUrl(it.SeriesId, 'Primary', {
-                    maxHeight: 900, tag: it.SeriesPrimaryImageTag
-                }) ?? '',
-                logo: it.ParentLogoItemId ?
-                    imageUrl(it.ParentLogoItemId, 'Logo', {
-                        tag: it.ParentLogoImageTag,
-                        maxHeight: 400
-                    }) :
-                    null,
+                poster: posterUrl(it.SeriesId, it.SeriesPrimaryImageTag),
+                logo: logoUrl(it.ParentLogoItemId, it.ParentLogoImageTag),
                 jfEpisodeId: it.Id,
                 positionTicks: it.UserData?.PlaybackPositionTicks
             });
@@ -110,12 +99,8 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
                 remaining,
                 backdrop: backdrops[0] ?? '',
                 backdrops,
-                poster: imageUrl(it.Id, 'Primary', {
-                    maxHeight: 900, tag: it.ImageTags?.Primary
-                }) ?? '',
-                logo: it.ImageTags?.Logo ?
-                    imageUrl(it.Id, 'Logo', { tag: it.ImageTags.Logo, maxHeight: 400 }) :
-                    null,
+                poster: posterUrl(it.Id, it.ImageTags?.Primary),
+                logo: logoUrl(it.Id, it.ImageTags?.Logo),
                 jfEpisodeId: it.Id,
                 positionTicks: it.UserData?.PlaybackPositionTicks
             });
@@ -148,12 +133,8 @@ export async function getHomeCarousel(): Promise<CarouselSlide[]> {
             remaining: '',
             backdrop: backdrops[0] ?? '',
             backdrops,
-            poster: imageUrl(it.Id, 'Primary', {
-                maxHeight: 900, tag: it.ImageTags?.Primary
-            }) ?? '',
-            logo: it.ImageTags?.Logo ?
-                imageUrl(it.Id, 'Logo', { tag: it.ImageTags.Logo, maxHeight: 400 }) :
-                null
+            poster: posterUrl(it.Id, it.ImageTags?.Primary),
+            logo: logoUrl(it.Id, it.ImageTags?.Logo)
         });
     }
 

@@ -24,7 +24,7 @@ import { clearShowCache } from './cache';
 import { getShows, getShow } from './shows';
 import { getMovie, getMovies } from './movies';
 import { getHomeCarousel } from './home';
-import { imageUrl, getItemBackdrops } from './images';
+import { imageUrl } from './images';
 import {
     markPlayed,
     toggleFavorite,
@@ -48,7 +48,9 @@ import {
     getItemRaw,
     updateItemMetadata,
     remoteSearch,
-    applyRemoteSearchResult
+    applyRemoteSearchResult,
+    setItemTags,
+    setItemsTags
 } from './metadata';
 import {
     setImageByUrl,
@@ -57,7 +59,7 @@ import {
     getRemoteImages
 } from './remote-images';
 import { searchSubtitles, downloadSubtitle } from './subtitles';
-import { getSystemInfo, refreshLibrary, dashboardUrl } from './admin';
+import { getSystemInfo, refreshLibrary } from './admin';
 import {
     getCurrentUser,
     updateUserConfig,
@@ -85,7 +87,7 @@ const authService = { authenticate, normalizeServerUrl };
 
 const catalogService = { getShows, getShow, getMovie, getMovies, getHomeCarousel, clearShowCache };
 
-const imageService = { imageUrl, getItemBackdrops };
+const imageService = { imageUrl };
 
 const itemService = {
     markPlayed,
@@ -113,7 +115,9 @@ const metadataService = {
     getItemRaw,
     updateItemMetadata,
     remoteSearch,
-    applyRemoteSearchResult
+    applyRemoteSearchResult,
+    setItemTags,
+    setItemsTags
 };
 
 const remoteImageService = {
@@ -125,7 +129,7 @@ const remoteImageService = {
 
 const subtitleService = { searchSubtitles, downloadSubtitle };
 
-const adminService = { getSystemInfo, refreshLibrary, dashboardUrl };
+const adminService = { getSystemInfo, refreshLibrary };
 
 const userService = {
     getCurrentUser,

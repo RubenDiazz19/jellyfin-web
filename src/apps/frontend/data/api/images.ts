@@ -27,15 +27,3 @@ export function imageUrl(
     const path = opts.index != null ? `${type}/${opts.index}` : type;
     return `${trimSlash(session.serverUrl)}/Items/${itemId}/Images/${path}?${qs}`;
 }
-
-// URLs for every backdrop of the item, for hero rotation.
-export function getItemBackdrops(itemId: string, tags: string[] = []): string[] {
-    const session = loadSession();
-    if (!session?.serverUrl) return [];
-    const base = trimSlash(session.serverUrl);
-    return tags.length > 0 ?
-        tags.map(
-            (tag, i) => `${base}/Items/${itemId}/Images/Backdrop/${i}?tag=${tag}&maxWidth=2560&format=webp`
-        ) :
-        [`${base}/Items/${itemId}/Images/Backdrop/0?maxWidth=2560&format=webp`];
-}

@@ -41,6 +41,14 @@ export type Show = {
     runtime: string;
     rating: Rating;
     genres: string[];
+    /** Etiquetas del servidor. Ocultas en las tarjetas: solo filtran y ordenan. */
+    tags?: string[];
+    /**
+     * Etiquetas del vocabulario cerrado, generadas por `bun run autotag`.
+     * Aparte de `tags` a propósito: viven en un JSON local, no en el servidor,
+     * y así el diálogo de etiquetas no puede subirlas sin querer.
+     */
+    autoTags?: string[];
     creator: string;
     directors: string;
     studio: string;
@@ -65,6 +73,14 @@ export type Movie = {
     runtime: string;
     rating: Rating;
     genres: string[];
+    /** Etiquetas del servidor. Ocultas en las tarjetas: solo filtran y ordenan. */
+    tags?: string[];
+    /**
+     * Etiquetas del vocabulario cerrado, generadas por `bun run autotag`.
+     * Aparte de `tags` a propósito: viven en un JSON local, no en el servidor,
+     * y así el diálogo de etiquetas no puede subirlas sin querer.
+     */
+    autoTags?: string[];
     director: string;
     studio: string;
     country: string;

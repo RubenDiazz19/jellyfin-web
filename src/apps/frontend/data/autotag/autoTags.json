@@ -1,0 +1,50 @@
+{
+  "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
+  "_generatedAt": "2026-07-31T20:51:11.240Z",
+  "items": {
+    "2581c8f29f2043730ea7921e9103ff09": [
+      "Crimen",
+      "Misterio",
+      "Suspense",
+      "Superhéroes",
+      "Corrupción y poder"
+    ],
+    "9ec49ebd14f6a75ff339be859cafe2db": [
+      "Drama",
+      "Anime",
+      "Ciencia ficción",
+      "Steampunk"
+    ],
+    "ff496ed9b19f06142ddd09e24057db21": [
+      "Drama",
+      "Anime",
+      "Fantasía",
+      "Romance"
+    ],
+    "b377c1ab1c1c8b389bbf428f120bd49d": [
+      "Aventura",
+      "Fantasía",
+      "Misterio",
+      "Anime"
+    ],
+    "7937a941f7638ac1a5c7b80506ba3c42": [
+      "Terror",
+      "Suspense",
+      "Perturbadora",
+      "Terror psicológico",
+      "Romance"
+    ],
+    "87f7b9335074081ed8209219896abcf2": [
+      "Drama",
+      "Anime",
+      "Romance",
+      "Instituto"
+    ],
+    "8a49fa11d72d034a1d6dbef1ef9f3d3f": [
+      "Drama",
+      "Anime",
+      "Romance",
+      "Mayoría de edad"
+    ]
+  }
+}

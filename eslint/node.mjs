@@ -24,5 +24,16 @@ export default [
         rules: {
             '@typescript-eslint/no-require-imports': 'off'
         }
+    },
+
+    // Herramientas de línea de comandos (scripts/). Escribir por consola es lo
+    // que hacen: sin `no-console` no habría forma de informar del progreso, y
+    // en una pasada larga contra una API con cuota eso es justo lo que hace
+    // falta ver.
+    {
+        files: [ 'scripts/**/*.ts' ],
+        rules: {
+            'no-console': 'off'
+        }
     }
 ];

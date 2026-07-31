@@ -14,6 +14,8 @@ import {
 } from '../../../domain/api';
 import { MetadataEditor, type EditorKind } from '../admin/editor';
 import { AddToDialog } from './AddToDialog';
+import { TagsDialog } from './TagsDialog';
+import { knownTags } from '../../../domain/viewModels/knownTags';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import { usePlayer } from '../player/PlayerProvider';
 import { BottomSheet } from '../m3/BottomSheet';
@@ -48,6 +50,7 @@ export function MoreButton({
     const [open, setOpen] = useState(false);
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
     const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
+    const [tagsOpen, setTagsOpen] = useState(false);
     const [menuPos, setMenuPos] = useState<{
         top?: number; bottom?: number; right: number; maxHeight: number;
     } | null>(null);
@@ -178,6 +181,7 @@ export function MoreButton({
             { label: t('Identify'), fn: () => setEditor('identify') },
             { label: t('RefreshMetadata'), fn: doRefresh },
             { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditTags'), fn: () => setTagsOpen(true) },
             { label: t('EditImages'), fn: () => setEditor('images') },
             { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
             { isDivider: true },
@@ -198,6 +202,7 @@ export function MoreButton({
             { label: t('Identify'), fn: () => setEditor('identify') },
             { label: t('RefreshMetadata'), fn: doRefresh },
             { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditTags'), fn: () => setTagsOpen(true) },
             { label: t('EditImages'), fn: () => setEditor('images') },
             { isDivider: true },
             { label: t('Delete'), fn: doDelete, danger: true }
@@ -217,6 +222,7 @@ export function MoreButton({
             // propia en Jellyfin, se identifican desde la serie.
             { label: t('RefreshMetadata'), fn: doRefresh },
             { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditTags'), fn: () => setTagsOpen(true) },
             { label: t('EditImages'), fn: () => setEditor('images') },
             { isDivider: true },
             { label: t('Delete'), fn: doDelete, danger: true }
@@ -232,6 +238,7 @@ export function MoreButton({
             { label: t('Identify'), fn: () => setEditor('identify') },
             { label: t('RefreshMetadata'), fn: doRefresh },
             { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+            { label: t('EditTags'), fn: () => setTagsOpen(true) },
             { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
             { isDivider: true },
             { label: t('Delete'), fn: doDelete, danger: true }
@@ -340,6 +347,14 @@ export function MoreButton({
                     itemId={id}
                     itemTitle={itemTitle}
                     onClose={() => setAddTo(null)}
+                />
+            )}
+            {tagsOpen && (
+                <TagsDialog
+                    itemId={id}
+                    itemTitle={itemTitle}
+                    suggestions={knownTags()}
+                    onClose={() => setTagsOpen(false)}
                 />
             )}
         </div>

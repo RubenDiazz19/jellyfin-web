@@ -13,13 +13,12 @@ export class ShowViewModel {
     error = signal<string | null>(null);
 
     private seq = 0;
-    private subscribed = false;
+    private mutationHandler: ((e: Event) => void) | null = null;
 
-    constructor(private api: ApiService) {
-        this.subscribeToMutations();
-    }
+    constructor(private api: ApiService) {}
 
     async load(id: string) {
+        this.subscribeToMutations();
         const seq = ++this.seq;
         // Si ya tenemos datos para esta id, no mostramos loading (optimistic):
         // la UI ve los datos anteriores hasta que llegue el refresh.
@@ -56,16 +55,19 @@ export class ShowViewModel {
     // p. ej. al cambiar la carátula de una temporada — y ese contenido vive
     // dentro del Show que tenemos cargado. Si solo se comparase con el id de
     // la serie, esos cambios no se verían hasta recargar la página.
+    //
+    // Se engancha en el primer `load()`, no en el constructor: ver la nota en
+    // HomeViewModel.subscribeToMutations.
     private subscribeToMutations() {
-        if (this.subscribed || typeof window === 'undefined') return;
-        this.subscribed = true;
-        window.addEventListener(ITEM_MUTATED_EVENT, (e: Event) => {
+        if (this.mutationHandler || typeof window === 'undefined') return;
+        this.mutationHandler = (e: Event) => {
             const detail = (e as CustomEvent<ItemMutatedDetail>).detail;
             const current = this.show.value;
             if (!current) return;
             if (detail?.itemId && !belongsToShow(current, detail.itemId)) return;
             void this.load(current.id);
-        });
+        };
+        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
     }
 }
 

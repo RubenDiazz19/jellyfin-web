@@ -3,7 +3,7 @@
 
 export { normalizeServerUrl } from './http';
 export { authenticate, type AuthResult } from './auth';
-export { imageUrl, getItemBackdrops, type ImageType } from './images';
+export { imageUrl, type ImageType } from './images';
 export { clearShowCache } from './cache';
 export { getShows, getShow } from './shows';
 export { getMovie, getMovies } from './movies';
@@ -30,6 +30,9 @@ export {
     updateItemMetadata,
     remoteSearch,
     applyRemoteSearchResult,
+    setItemTags,
+    setItemsTags,
+    normalizeTags,
     type ItemMetadataPatch,
     type RemoteSearchResult
 } from './metadata';
@@ -48,7 +51,7 @@ export {
     clearAllTitleLanguagePrefs,
     type TitleLanguagePref
 } from '../preferences/languagePrefs';
-export { getSystemInfo, refreshLibrary, dashboardUrl, type SystemInfo } from './admin';
+export { getSystemInfo, refreshLibrary, type SystemInfo } from './admin';
 export { getMaxStreamingBitrate, setMaxStreamingBitrate } from './playback';
 export {
     getPlaylists,

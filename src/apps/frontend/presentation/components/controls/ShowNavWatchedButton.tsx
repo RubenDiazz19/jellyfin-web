@@ -1,14 +1,12 @@
 import { Ic } from '../../theme/icons';
 import { WATCHED } from '../../../domain/stores';
 import { useWatched, useWatchedVersion } from '../../../domain/bridge/useWatched';
-import { useSession } from '../../../domain/bridge/useSession';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { showVM } from '../../../domain/viewModels/ShowViewModel';
 import { PROTO_DATA } from '../../../domain/models';
-import { markPlayed } from '../../../domain/api';
 import { IconButton } from './IconButton';
 import { WatchedBadge } from './WatchedBadge';
-import { useToast } from '../toast/ToastProvider';
+import { useWatchedToggle } from './useWatchedToggle';
 
 // "Visto" para series — calcula el estado agregado desde todos los episodios
 // de todas las temporadas y marca/desmarca todos a la vez. Con sesión real,
@@ -21,9 +19,6 @@ type Props = { showId: string; size?: number; badge?: boolean };
 export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props) {
     useWatchedVersion();
     useViewModel(showVM);
-    const toast = useToast();
-    const { session } = useSession();
-    const isReal = !!session?.accessToken;
     const proto = PROTO_DATA.shows[showId];
     const show = proto ?? showVM.showFor(showId);
     const allEpIds = show ?
@@ -39,28 +34,16 @@ export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props
         allEpIds.every((id) => WATCHED.has(id)) :
         fallback;
 
-    const toggle = async () => {
-        const next = !allWatched;
-        if (allEpIds.length > 0) WATCHED.setMany(allEpIds, next);
-        else toggleFallback();
-        if (!isReal) {
-            toast(next ?
-                `Serie marcada como vista · ${show?.title ?? ''}` :
-                `Serie marcada como no vista · ${show?.title ?? ''}`);
-            return;
-        }
-        try {
-            await markPlayed(showId, next);
-            toast(next ?
-                `Serie marcada como vista · ${show?.title ?? ''}` :
-                `Serie marcada como no vista · ${show?.title ?? ''}`, 'success');
-        } catch (e) {
-            // Revert local si el server falla.
-            if (allEpIds.length > 0) WATCHED.setMany(allEpIds, !next);
+    const toggle = useWatchedToggle({
+        active: allWatched,
+        applyLocal: (next) => {
+            if (allEpIds.length > 0) WATCHED.setMany(allEpIds, next);
             else toggleFallback();
-            toast((e as Error).message, 'warn');
-        }
-    };
+        },
+        serverId: showId,
+        message: (next) =>
+            `Serie marcada como ${next ? 'vista' : 'no vista'} · ${show?.title ?? ''}`
+    });
     return (
         <IconButton
             onClick={toggle}

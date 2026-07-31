@@ -9,13 +9,12 @@ export class MovieViewModel {
     error = signal<string | null>(null);
 
     private seq = 0;
-    private subscribed = false;
+    private mutationHandler: ((e: Event) => void) | null = null;
 
-    constructor(private api: ApiService) {
-        this.subscribeToMutations();
-    }
+    constructor(private api: ApiService) {}
 
     async load(id: string, force = false) {
+        this.subscribeToMutations();
         // Si ya tenemos esa película cargada desde API y no ha cambiado la id,
         // solo refrescamos si viene de PROTO_DATA (primera carga) o si el caller
         // fuerza (p. ej. tras editar imagen/metadatos del item activo).
@@ -60,16 +59,19 @@ export class MovieViewModel {
     // Refresca la película actual si alguien mutó ese mismo item (edición de
     // imagen, metadatos, played, favorito). Sin esto el usuario necesitaría
     // recargar la página para ver la nueva portada.
+    //
+    // Se engancha en el primer `load()`, no en el constructor: ver la nota en
+    // HomeViewModel.subscribeToMutations.
     private subscribeToMutations() {
-        if (this.subscribed || typeof window === 'undefined') return;
-        this.subscribed = true;
-        window.addEventListener(ITEM_MUTATED_EVENT, (e: Event) => {
+        if (this.mutationHandler || typeof window === 'undefined') return;
+        this.mutationHandler = (e: Event) => {
             const detail = (e as CustomEvent<ItemMutatedDetail>).detail;
             const current = this.movie.value;
             if (!current) return;
             if (detail?.itemId && detail.itemId !== current.id) return;
             void this.load(current.id, true);
-        });
+        };
+        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
     }
 }
 

@@ -31,6 +31,22 @@ vi.mock('components/loading/loading', () => ({
     hide: () => undefined
 }));
 
+// El ViewModel del reproductor llega a `data/session`, y con él a
+// ServerConnections: importarlo arrastra medio bootstrap legacy, que al
+// evaluarse construye el hash router raíz y engancha playbackmanager a
+// ServerConnections. Nada de eso pinta aquí, pero sus efectos de módulo se
+// escapan del test como errores no capturados (y tumban el exit code aunque
+// los 849 tests pasen). Se corta en la misma frontera que playbackHarness.
+vi.mock('lib/jellyfin-apiclient', () => ({
+    ServerConnections: {
+        getApi: () => null,
+        getCurrentUserId: () => null,
+        getCurrentServerId: () => null,
+        connect: () => Promise.resolve(),
+        logout: () => Promise.resolve()
+    }
+}));
+
 vi.mock('../shared/adaptiveLayout', () => ({
     initAdaptiveLayout: () => () => undefined,
     resetAdaptiveLayout: () => undefined

@@ -2,10 +2,8 @@
 // avatar, views and (admin) user listing. Powers the custom Ajustes page so
 // the native web UI isn't needed for day-to-day preferences.
 
-import globalize from 'lib/globalize';
-
 import { loadSession } from '../session/session';
-import { apiFetch, apiSend, authHeader, noSessionError, trimSlash } from './http';
+import { apiFetch, apiSend, noSessionError, trimSlash, uploadImage } from './http';
 
 export type SubtitleMode = 'Default' | 'Always' | 'OnlyForced' | 'None' | 'Smart';
 
@@ -116,32 +114,10 @@ export function avatarUrl(tag?: string): string {
     return `${trimSlash(session.serverUrl)}/Users/${session.userId}/Images/Primary${q}`;
 }
 
-// Mismo formato que uploadImageFile: body base64 con el Content-Type real.
 export async function uploadAvatar(file: File): Promise<void> {
     const session = loadSession();
-    if (!session?.accessToken || !session.userId) throw noSessionError();
-    const MAX_BYTES = 30 * 1024 * 1024;
-    if (file.size > MAX_BYTES) {
-        throw new Error(`La imagen supera 30 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
-    }
-    const buf = await file.arrayBuffer();
-    const bytes = new Uint8Array(buf);
-    const CHUNK = 0x8000;
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
-    }
-    const mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
-    const res = await fetch(`${trimSlash(session.serverUrl)}/Users/${session.userId}/Images/Primary`, {
-        method: 'POST',
-        headers: {
-            'Authorization': authHeader(session.accessToken),
-            'X-Emby-Authorization': authHeader(session.accessToken),
-            'Content-Type': mime
-        },
-        body: btoa(bin)
-    });
-    if (!res.ok) throw new Error(globalize.translate('MessageUploadFailed', String(res.status)));
+    if (!session?.userId) throw noSessionError();
+    await uploadImage(`/Users/${session.userId}/Images/Primary`, file);
 }
 
 export async function deleteAvatar(): Promise<void> {

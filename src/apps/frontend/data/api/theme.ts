@@ -35,6 +35,12 @@ export async function getServerThemePrefs(): Promise<ServerThemePrefs | null> {
 /**
  * Sube la preferencia local. Lee-modifica-escribe el objeto completo para
  * no perder otras CustomPrefs que pudieran existir bajo el mismo client.
+ *
+ * Si la lectura falla NO se escribe: el POST reemplaza el documento entero,
+ * así que partir de un `{}` inventado borraría del servidor todas las demás
+ * CustomPrefs del usuario. Un fallo aquí es recuperable —el llamante ya ha
+ * guardado en localStorage y reintentará al siguiente cambio—, perder las
+ * preferencias del servidor no lo es.
  */
 export async function saveServerThemePrefs(
     theme: { mode: string; seed: string | null }
@@ -42,7 +48,7 @@ export async function saveServerThemePrefs(
     const session = loadSession();
     if (!session?.userId) return;
     const path = prefsPath(session.userId);
-    const current = await apiFetch<DisplayPrefs>(path).catch((): DisplayPrefs => ({}));
+    const current = await apiFetch<DisplayPrefs>(path);
     const body: DisplayPrefs = {
         ...current,
         Id: current.Id ?? 'usersettings',

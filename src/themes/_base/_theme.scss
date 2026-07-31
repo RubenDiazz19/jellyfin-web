@@ -300,10 +300,6 @@ a[data-role="button"],
     background-color: var(--jf-palette-action-hover, $action-hover);
 }
 
-.progressring-spiner {
-    border-color: var(--jf-palette-primary-main, $primary-main);
-}
-
 .button-flat:hover {
     color: var(--jf-palette-primary-main, $primary-main);
 }

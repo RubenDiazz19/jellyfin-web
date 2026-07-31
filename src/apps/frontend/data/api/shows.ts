@@ -1,44 +1,30 @@
 // Series listing + detail. Detail hydrates seasons/episodes eagerly so the
 // ShowPage → SeasonPage → EpisodePage flow can navigate without re-fetching.
 
-import type { CastMember, Episode, Season, Show } from '../models';
+import { autoTagsFor } from '../autotag';
+import type { Episode, Season, Show } from '../models';
 import { loadSession } from '../session/session';
 import { WATCHED } from '../stores/watchedStore';
 import { showCache } from './cache';
 import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
+import {
+    backdropUrls, logoUrl, mapCast, posterUrl, ratingOf, runtimeLabel, watchedFraction
+} from './itemMapping';
 import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem, type JFMediaStream } from './types';
 
-function mapCast(item: JFItem): CastMember[] {
-    return (item.People ?? [])
-        .filter((p) => p.Type === 'Actor')
-        .slice(0, 14)
-        .map((p) => ({
-            name: p.Name,
-            role: p.Role || '',
-            photo: p.PrimaryImageTag && p.Id ?
-                imageUrl(p.Id, 'Primary', { tag: p.PrimaryImageTag, maxHeight: 320 }) :
-                null
-        }));
-}
-
 function mapShow(item: JFItem): Show {
-    const runtimeMin = ticksToMinutes(item.RunTimeTicks);
-    const backdrops = (item.BackdropImageTags ?? [])
-        .map((tag, i) => imageUrl(item.Id, 'Backdrop', { tag, maxWidth: 2560, index: i }) ?? '')
-        .filter(Boolean);
+    const backdrops = backdropUrls(item.Id, item.BackdropImageTags);
     return {
         id: item.Id,
         title: item.Name,
         year: item.ProductionYear ?? 0,
-        runtime: runtimeMin ? `${runtimeMin} min` : '—',
-        rating: {
-            imdb: item.CommunityRating ?? 0,
-            rt: 0,
-            age: item.OfficialRating ?? 'N/A'
-        },
+        runtime: runtimeLabel(item),
+        rating: ratingOf(item),
         genres: item.Genres ?? [],
+        tags: item.Tags ?? [],
+        autoTags: autoTagsFor(item.Id),
         creator: '',
         directors: '',
         studio: item.Studios?.[0]?.Name ?? '',
@@ -52,15 +38,8 @@ function mapShow(item: JFItem): Show {
         seasons: [],
         backdrop: backdrops[0] ?? '',
         backdrops,
-        // El tag es el etag de esa imagen concreta: sin él, cambiar el póster
-        // en el editor no invalida el cache del navegador porque la URL sigue
-        // siendo la misma.
-        poster: imageUrl(item.Id, 'Primary', {
-            tag: item.ImageTags?.Primary, maxHeight: 900
-        }) ?? '',
-        logo: item.ImageTags?.Logo ?
-            imageUrl(item.Id, 'Logo', { tag: item.ImageTags.Logo, maxHeight: 400 }) ?? null :
-            null
+        poster: posterUrl(item.Id, item.ImageTags?.Primary),
+        logo: logoUrl(item.Id, item.ImageTags?.Logo)
     };
 }
 
@@ -131,9 +110,7 @@ function summarizeSubtitles(streams: JFMediaStream[] = []): string | undefined {
 }
 
 function mapEpisode(item: JFItem): Episode {
-    const played = item.UserData?.Played ?? false;
-    const pct = item.UserData?.PlayedPercentage;
-    const watched = played ? 1 : pct != null ? pct / 100 : 0;
+    const watched = watchedFraction(item);
     const source = item.MediaSources?.[0];
     const streams = source?.MediaStreams ?? [];
     // Thumb (16:9, encuadre pensado para miniatura) > Primary del episodio >
@@ -181,13 +158,17 @@ export async function getShow(id: string): Promise<Show> {
     // Antes de mirar el caché: un stop en vuelo está a punto de limpiarlo y
     // de mover las posiciones en el servidor.
     await settlePlaybackReports();
-    const cached = showCache.get(id);
+    // La sesión se lee ANTES de mirar el caché: el usuario forma parte de la
+    // clave, y capturarlo aquí evita que un cambio de cuenta a media petición
+    // haga que el `catch` de abajo borre la entrada de otra cuenta.
+    const session = loadSession();
+    if (!session?.userId) throw noSessionError();
+    const { userId } = session;
+    const cached = showCache.get(userId, id);
     if (cached) return cached;
     const p = (async () => {
-        const session = loadSession();
-        if (!session?.userId) throw noSessionError();
         const item = await apiFetch<JFItem>(
-            `/Users/${session.userId}/Items/${id}?Fields=${FIELDS_DETAIL}`
+            `/Users/${userId}/Items/${id}?Fields=${FIELDS_DETAIL}`
         );
         const show = mapShow(item);
         show.seasons = await getSeasonsWithEpisodes(id);
@@ -210,8 +191,8 @@ export async function getShow(id: string): Promise<Show> {
         }
         return show;
     })();
-    showCache.set(id, p);
-    p.catch(() => showCache.delete(id));
+    showCache.set(userId, id, p);
+    p.catch(() => showCache.delete(userId, id));
     return p;
 }
 

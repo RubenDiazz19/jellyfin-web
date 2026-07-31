@@ -85,8 +85,3 @@ export function loadCastSender(timeoutMs = 8000): Promise<CastApi | null> {
 
     return loader;
 }
-
-/** Solo para tests: olvida la carga en curso. */
-export function resetCastSenderForTests() {
-    loader = null;
-}

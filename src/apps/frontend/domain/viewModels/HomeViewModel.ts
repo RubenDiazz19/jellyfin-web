@@ -22,13 +22,12 @@ export class HomeViewModel {
     // Token de carga: si el usuario navega y vuelve antes de que termine un
     // load() anterior, solo la última llamada escribe estado.
     private seq = 0;
-    private subscribed = false;
+    private mutationHandler: (() => void) | null = null;
 
-    constructor(private api: ApiService) {
-        this.subscribeToMutations();
-    }
+    constructor(private api: ApiService) {}
 
     async load() {
+        this.subscribeToMutations();
         const seq = ++this.seq;
         this.heroLoading.value = true;
         this.showsLoading.value = true;
@@ -75,13 +74,22 @@ export class HomeViewModel {
     // Cualquier mutación de item recarga la Home si ya hay datos: la lista
     // de series/películas y el hero pueden contener el item afectado y no
     // queremos que el usuario tenga que recargar para verlo.
+    //
+    // Se engancha en el primer `load()`, no en el constructor: el VM es un
+    // singleton de módulo, así que hacerlo al construirlo dejaba un listener
+    // global colgado por el mero hecho de importar el fichero — y si `window`
+    // no existía en ese momento, no había segunda oportunidad. Hasta que hay
+    // datos el handler no haría nada de todos modos.
+    //
+    // No hay `dispose()`: el listener dura lo que el singleton, que dura lo
+    // que el documento. Desengancharlo no tendría a quién beneficiar.
     private subscribeToMutations() {
-        if (this.subscribed || typeof window === 'undefined') return;
-        this.subscribed = true;
-        window.addEventListener(ITEM_MUTATED_EVENT, () => {
+        if (this.mutationHandler || typeof window === 'undefined') return;
+        this.mutationHandler = () => {
             if (!this.showsReady.value) return;
             void this.load();
-        });
+        };
+        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
     }
 }
 

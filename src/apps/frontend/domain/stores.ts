@@ -5,3 +5,4 @@
 
 export { FAVS } from '../data/stores/favsStore';
 export { WATCHED } from '../data/stores/watchedStore';
+export { VIEWS, type SavedView } from '../data/stores/viewsStore';

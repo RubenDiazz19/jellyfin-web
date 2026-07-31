@@ -13,22 +13,32 @@ type Entry = { promise: Promise<Show>; at: number };
 
 const entries = new Map<string, Entry>();
 
-// API compatible con Map para que shows.ts no cambie de forma.
+// Un Show lleva dentro estado POR USUARIO (visto, progreso, "continuar
+// por"), así que el id del item no basta como clave: al cambiar de cuenta en
+// la misma pestaña, la nueva sesión leía el Show de la anterior hasta que
+// expirara el TTL. El userId va en la clave y no como filtro para que las
+// entradas de cada cuenta coexistan sin pisarse.
+// `.` como separador: no puede aparecer en un userId ni en un item id.
+function keyFor(userId: string, id: string): string {
+    return `${userId}.${id}`;
+}
+
 export const showCache = {
-    get(id: string): Promise<Show> | undefined {
-        const e = entries.get(id);
+    get(userId: string, id: string): Promise<Show> | undefined {
+        const key = keyFor(userId, id);
+        const e = entries.get(key);
         if (!e) return undefined;
         if (Date.now() - e.at > TTL_MS) {
-            entries.delete(id);
+            entries.delete(key);
             return undefined;
         }
         return e.promise;
     },
-    set(id: string, promise: Promise<Show>): void {
-        entries.set(id, { promise, at: Date.now() });
+    set(userId: string, id: string, promise: Promise<Show>): void {
+        entries.set(keyFor(userId, id), { promise, at: Date.now() });
     },
-    delete(id: string): void {
-        entries.delete(id);
+    delete(userId: string, id: string): void {
+        entries.delete(keyFor(userId, id));
     }
 };
 

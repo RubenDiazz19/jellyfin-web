@@ -11,7 +11,7 @@ import {
     chapterDisplayName, playerMarks, segmentDisplayName, videoPlayerVM,
     type AspectRatio, type PlayerMark
 } from '../../../domain/viewModels/VideoPlayerViewModel';
-import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -52,7 +52,19 @@ function rateLabel(rate: number): string {
 type SectionId = 'chapters' | 'subs' | 'audio' | 'speed' | 'aspect';
 
 export function VideoSettingsMenu() {
-    useViewModel(videoPlayerVM);
+    // Este botón vive montado todo el rato dentro de la barra de controles.
+    // Con `useViewModel` quedaba suscrito a los 28 signals del VM —incluido
+    // currentTime— y se repintaba ~4 veces por segundo durante toda la
+    // reproducción solo para tener listo un panel que casi siempre está
+    // cerrado. Aquí van los signals que se leen SIEMPRE; currentTime lo
+    // consumen los dos subcomponentes de capítulos, que solo se montan con el
+    // panel abierto (`useVmSignals` exige una lista fija, así que no puede
+    // entrar y salir de esta).
+    useVmSignals(videoPlayerVM, (vm) => [
+        vm.audioTracks, vm.subtitleTracks, vm.playbackRate, vm.aspectRatio,
+        vm.titlePref, vm.titleIsSeries, vm.selectedSubtitle, vm.selectedAudio,
+        vm.chapters, vm.segmentList
+    ]);
     const [open, setOpen] = useState(false);
     const [section, setSection] = useState<SectionId | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -80,13 +92,7 @@ export function VideoSettingsMenu() {
     // créditos) que no caigan ya sobre un capítulo.
     const chapters = videoPlayerVM.chapters.value;
     const segments = videoPlayerVM.segmentList.value;
-    // Este componente re-renderiza en cada timeupdate (useViewModel escucha
-    // todos los signals): la lista solo se rehace si cambian sus fuentes.
     const marks = useMemo(() => playerMarks(chapters, segments), [chapters, segments]);
-    const currentTime = videoPlayerVM.currentTime.value;
-    const currentMark = marks.reduce<PlayerMark | null>(
-        (acc, mark) => (mark.start <= currentTime ? mark : acc), null
-    );
 
     const subLabel = selectedSubtitle == null ?
         globalize.translate('Off') :
@@ -137,13 +143,7 @@ export function VideoSettingsMenu() {
                     {section === null ? (
                         <section>
                             {marks.length > 0 && (
-                                <SectionRow
-                                    label={globalize.translate('Chapters')}
-                                    value={currentMark ?
-                                        markLabel(currentMark, marks.indexOf(currentMark)) :
-                                        ''}
-                                    onOpen={() => setSection('chapters')}
-                                />
+                                <ChaptersRow marks={marks} onOpen={() => setSection('chapters')} />
                             )}
                             {subs.length > 0 && (
                                 <SectionRow
@@ -180,17 +180,15 @@ export function VideoSettingsMenu() {
                                 {section === 'aspect' && globalize.translate('AspectRatio')}
                             </SectionHeader>
 
-                            {section === 'chapters' && marks.map((mark, i) => (
-                                <MenuOption
-                                    key={mark.start}
-                                    label={`${markLabel(mark, i)} · ${markTime(mark.start)}`}
-                                    active={mark === currentMark}
-                                    onSelect={() => {
-                                        videoPlayerVM.seek(mark.start);
+                            {section === 'chapters' && (
+                                <ChapterOptions
+                                    marks={marks}
+                                    onSelect={(start) => {
+                                        videoPlayerVM.seek(start);
                                         close();
                                     }}
                                 />
-                            ))}
+                            )}
 
                             {section === 'subs' && (
                                 <>
@@ -247,6 +245,53 @@ export function VideoSettingsMenu() {
                 </div>
             )}
         </div>
+    );
+}
+
+/**
+ * Marca en la que cae la posición actual.
+ *
+ * Se suscribe a currentTime (~4 Hz), así que solo debe usarse desde partes
+ * del panel que estén montadas: son las únicas que enseñan el resaltado, y
+ * mientras el panel está cerrado nadie debe pagar ese re-render.
+ */
+function useCurrentMark(marks: PlayerMark[]): PlayerMark | null {
+    const currentTime = useSignalValue(videoPlayerVM.currentTime);
+    return marks.reduce<PlayerMark | null>(
+        (acc, mark) => (mark.start <= currentTime ? mark : acc), null
+    );
+}
+
+/** Fila de capítulos del primer nivel: enseña en cuál se está ahora. */
+function ChaptersRow({ marks, onOpen }: { marks: PlayerMark[]; onOpen: () => void }) {
+    const currentMark = useCurrentMark(marks);
+    return (
+        <SectionRow
+            label={globalize.translate('Chapters')}
+            value={currentMark ? markLabel(currentMark, marks.indexOf(currentMark)) : ''}
+            onOpen={onOpen}
+        />
+    );
+}
+
+/** Lista de capítulos, con el actual marcado. */
+function ChapterOptions({
+    marks, onSelect
+}: {
+    marks: PlayerMark[]; onSelect: (start: number) => void;
+}) {
+    const currentMark = useCurrentMark(marks);
+    return (
+        <>
+            {marks.map((mark, i) => (
+                <MenuOption
+                    key={mark.start}
+                    label={`${markLabel(mark, i)} · ${markTime(mark.start)}`}
+                    active={mark === currentMark}
+                    onSelect={() => onSelect(mark.start)}
+                />
+            ))}
+        </>
     );
 }
 

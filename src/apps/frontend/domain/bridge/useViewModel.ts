@@ -1,15 +1,18 @@
 // Bridge ViewModel ↔ React. Único lugar del frontend (junto con los
 // providers) donde se permite usar hooks de React para consumir signals.
 //
-// Dos maneras de suscribirse desde una View:
+// Tres maneras de suscribirse desde una View, de menos a más fina:
 //
 //   1. `useViewModel(vm)` — suscribe TODOS los signals públicos del
 //      ViewModel y re-renderiza el componente cuando cualquiera cambia.
 //      Devuelve el propio ViewModel, así el render lee `vm.foo.value`
-//      con tipado completo.
+//      con tipado completo. Solo para Views que de verdad dependen de casi
+//      todo: si el VM tiene un signal que cambia a menudo (currentTime del
+//      reproductor, ~4 Hz), esto repinta la vista entera a esa frecuencia.
 //
-//   2. `useSignals()` (re-export de @preact/signals-react) — auto-detecta
-//      los accesos a `.value` durante el render y suscribe solo esos.
+//   2. `useVmSignals(vm, pick)` — igual pero solo a los signals elegidos.
+//
+//   3. `useSignalValue(signal)` — un único signal, devuelve su valor.
 //
 // NOTA: getSnapshot de useSyncExternalStore debe devolver un valor cacheado
 // (comparado con Object.is entre renders). Construir un objeto nuevo en cada
@@ -93,6 +96,3 @@ export function useSignalValue<T>(signal: Signal<T>): T {
         () => signal.peek()
     );
 }
-
-// Alternativa: auto-tracking de accesos a `.value` en el render.
-export { useSignals } from '@preact/signals-react/runtime';

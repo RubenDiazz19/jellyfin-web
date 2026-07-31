@@ -1,14 +1,16 @@
 import globalize from 'lib/globalize';
 
 import { useEffect, useState } from 'react';
-import { T, HERO_POS, HERO_SCRIM } from '../theme/tokens';
+import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatRuntime, formatRemaining } from '../theme/format';
 import { useWatched } from '../../domain/bridge/useWatched';
 import type { Movie } from '../../domain/models';
 import { movieVM } from '../../domain/viewModels/MovieViewModel';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
-import { Backdrop } from '../components/layout/Backdrop';
+import {
+    HeroFrame, HeroGenres, HeroTitle, useHeroLayout, type HeroTweaks
+} from '../components/layout/DetailHero';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
@@ -17,7 +19,6 @@ import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
-import type { HeroTweaks } from './ShowPage';
 
 type PageProps = { movieId: string; navigate: Navigate; hero?: HeroTweaks };
 
@@ -72,9 +73,7 @@ function MovieHero({
     const remaining = inProgress && runtimeMin ?
         formatRemaining(Math.max(1, Math.round((1 - progress) * runtimeMin)), { suffix: '' }) :
         '';
-    const pos = HERO_POS[hero?.heroPos ?? 'Esquina'];
-    const minimal = hero?.heroInfo === 'Mínima';
-    const scrim = HERO_SCRIM[hero?.heroScrim ?? 'Media'];
+    const { minimal } = useHeroLayout(hero);
     const r = useResponsive();
     const { play } = usePlayer();
     const startPlay = () => {
@@ -87,192 +86,148 @@ function MovieHero({
         });
     };
     return (
-        <section style={{
-            position: 'relative',
-            height: r.touch ? (r.mobile ? '68vh' : '78vh') : '100vh',
-            minHeight: r.touch ? 420 : undefined,
-            width: '100%', overflow: 'hidden', background: '#000'
-        }}>
-            <Nav
-                navigate={navigate}
-                breadcrumb={[
-                    { label: globalize.translate('Movies'), to: { page: 'home' } },
-                    { label: movie.genres[0] },
-                    { label: movie.title }
-                ]}
-                actionId={`movie-${movie.id}`}
-                actionData={{ type: 'movie', movie }}
-            />
-            <Backdrop
-                src={movie.backdrop || ''} srcs={movie.backdrops}
-                fadeBottom={0.92} itemId={movie.id} sharp
-            />
+        <HeroFrame
+            hero={hero}
+            backdrop={movie.backdrop || ''}
+            backdrops={movie.backdrops}
+            itemId={movie.id}
+            nav={
+                <Nav
+                    navigate={navigate}
+                    breadcrumb={[
+                        { label: globalize.translate('Movies'), to: { page: 'home' } },
+                        { label: movie.genres[0] },
+                        { label: movie.title }
+                    ]}
+                    actionId={`movie-${movie.id}`}
+                    actionData={{ type: 'movie', movie }}
+                />
+            }
+            footer={<ScrollHint label={globalize.translate('HeaderDetails')} />}
+        >
+            {/* La ficha de película centra su bloque de texto dentro de la
+                colocación general del hero; la de serie lo alinea a la izquierda. */}
             <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none',
-                background: `linear-gradient(to top, rgba(0,0,0,${scrim}) 0%, rgba(0,0,0,${(scrim * 0.45).toFixed(2)}) 24%, transparent 56%)`
-            }} />
-
-            <div style={{
-                position: 'absolute', inset: 0,
-                padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : pos.pad,
                 display: 'flex', flexDirection: 'column',
-                alignItems: pos.align, justifyContent: pos.justify,
-                textAlign: pos.text
+                alignItems: 'center', textAlign: 'center'
             }}>
-                <div style={{
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', textAlign: 'center'
-                }}>
-                    {!minimal && (
-                        <div style={{
-                            fontFamily: T.ui, fontSize: 12, letterSpacing: 4, textTransform: 'uppercase',
-                            color: 'rgba(255,255,255,0.7)', marginBottom: 26,
-                            display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center'
-                        }}>
-                            {movie.genres.map((g, i) => (
-                                <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); navigate({ page: 'genre', genre: g }); }}
-                                        style={{
-                                            background: 'none', border: 'none', padding: 0,
-                                            font: 'inherit', color: 'inherit',
-                                            letterSpacing: 'inherit', textTransform: 'inherit',
-                                            cursor: 'pointer'
-                                        }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.color = '')}
-                                    >
-                                        {g}
-                                    </button>
-                                    {i < movie.genres.length - 1 && <span style={{ opacity: 0.5 }}>·</span>}
-                                </span>
-                            ))}
-                        </div>
-                    )}
+                {!minimal && (
+                    <HeroGenres
+                        genres={movie.genres}
+                        navigate={navigate}
+                        fontSize={12}
+                        marginBottom={26}
+                        justifyContent='center'
+                    />
+                )}
 
-                    {movie.logo ? (
-                        <img
-                            src={movie.logo}
-                            alt={movie.title}
-                            decoding='async'
-                            style={{
-                                maxWidth: r.touch ? 'min(78vw, 360px)' : 580,
-                                maxHeight: r.touch ? 120 : 200,
-                                width: 'auto', height: 'auto',
-                                filter: 'drop-shadow(0 4px 60px rgba(0,0,0,0.6))', objectFit: 'contain'
-                            }}
-                        />
-                    ) : (
-                        <h1 style={{
-                            fontFamily: T.display,
-                            fontSize: r.touch ? 'clamp(38px, 10vw, 72px)' : 'clamp(82px, 10vw, 150px)',
-                            lineHeight: 0.92,
-                            margin: 0, fontWeight: 250, letterSpacing: r.touch ? -1 : -2,
-                            textShadow: '0 4px 60px rgba(0,0,0,0.6)', textWrap: 'balance'
-                        }}>
-                            {movie.title}
-                        </h1>
-                    )}
+                <HeroTitle
+                    logo={movie.logo}
+                    title={movie.title}
+                    logoMaxWidth={r.touch ? 'min(78vw, 360px)' : 580}
+                    logoMaxHeight={r.touch ? 120 : 200}
+                    logoShadow='rgba(0,0,0,0.6)'
+                    fontSize={r.touch ? 'clamp(38px, 10vw, 72px)' : 'clamp(82px, 10vw, 150px)'}
+                    letterSpacing={r.touch ? -1 : -2}
+                    balance
+                />
 
-                    {!minimal && (
-                        <div style={{
-                            marginTop: 22, display: 'flex', alignItems: 'center', gap: 18,
-                            flexWrap: 'wrap', justifyContent: 'center',
-                            fontFamily: T.ui, fontSize: 13, color: 'rgba(255,255,255,0.78)'
-                        }}>
-                            <span>{movie.year}</span><Ic.Dot />
-                            <span>{formatRuntime(movie.runtime)}</span><Ic.Dot />
-                            <span style={{
-                                border: '1px solid rgba(255,255,255,0.35)', padding: '2px 6px',
-                                fontSize: 10, letterSpacing: 1
-                            }}>
-                                {movie.rating.age}
-                            </span>
-                            <Ic.Dot />
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                <Ic.Imdb /> {movie.rating.imdb}
-                            </span>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                <Ic.Tomato /> {movie.rating.rt}%
-                            </span>
-                        </div>
-                    )}
-
+                {!minimal && (
                     <div style={{
-                        marginTop: r.touch ? 22 : 36, display: 'flex', alignItems: 'center',
-                        gap: r.touch ? 12 : 18, flexWrap: 'wrap', justifyContent: 'center'
+                        marginTop: 22, display: 'flex', alignItems: 'center', gap: 18,
+                        flexWrap: 'wrap', justifyContent: 'center',
+                        fontFamily: T.ui, fontSize: 13, color: 'rgba(255,255,255,0.78)'
                     }}>
-                        <button
-                            onClick={startPlay}
-                            // Mismo motivo que el hero de series: sin bloquear el focus
-                            // nativo, Chrome scrollea unos px al pulsar (botón en hero
-                            // 100vh) y el click puede no disparar a la primera.
-                            onMouseDown={(e) => e.preventDefault()}
-                            style={{
-                                position: 'relative', overflow: 'hidden',
-                                display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px',
-                                background: watched ? '#fff' : 'transparent',
-                                color: watched ? '#000' : '#fff',
-                                border: watched ? 'none' : '1px solid rgba(255,255,255,0.4)',
-                                borderRadius: 999,
-                                fontFamily: T.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
-                                cursor: 'pointer', transition: 'background .2s ease, border-color .2s ease'
-                            }}
-                            onMouseEnter={() => setBtnHover(true)}
-                            onMouseLeave={() => setBtnHover(false)}
-                        >
-                            {inProgress && (
-                                <span style={{
-                                    position: 'absolute', top: 0, bottom: 0, left: 0,
-                                    width: `${progress * 100}%`,
-                                    background: 'rgba(255,255,255,0.22)', pointerEvents: 'none'
-                                }} />
-                            )}
+                        <span>{movie.year}</span><Ic.Dot />
+                        <span>{formatRuntime(movie.runtime)}</span><Ic.Dot />
+                        <span style={{
+                            border: '1px solid rgba(255,255,255,0.35)', padding: '2px 6px',
+                            fontSize: 10, letterSpacing: 1
+                        }}>
+                            {movie.rating.age}
+                        </span>
+                        <Ic.Dot />
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <Ic.Imdb /> {movie.rating.imdb}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <Ic.Tomato /> {movie.rating.rt}%
+                        </span>
+                    </div>
+                )}
+
+                <div style={{
+                    marginTop: r.touch ? 22 : 36, display: 'flex', alignItems: 'center',
+                    gap: r.touch ? 12 : 18, flexWrap: 'wrap', justifyContent: 'center'
+                }}>
+                    <button
+                        onClick={startPlay}
+                        // Mismo motivo que el hero de series: sin bloquear el focus
+                        // nativo, Chrome scrollea unos px al pulsar (botón en hero
+                        // 100vh) y el click puede no disparar a la primera.
+                        onMouseDown={(e) => e.preventDefault()}
+                        style={{
+                            position: 'relative', overflow: 'hidden',
+                            display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px',
+                            background: watched ? '#fff' : 'transparent',
+                            color: watched ? '#000' : '#fff',
+                            border: watched ? 'none' : '1px solid rgba(255,255,255,0.4)',
+                            borderRadius: 999,
+                            fontFamily: T.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
+                            cursor: 'pointer', transition: 'background .2s ease, border-color .2s ease'
+                        }}
+                        onMouseEnter={() => setBtnHover(true)}
+                        onMouseLeave={() => setBtnHover(false)}
+                    >
+                        {inProgress && (
                             <span style={{
-                                position: 'relative', zIndex: 1,
-                                display: 'flex', alignItems: 'center', gap: 10
-                            }}>
-                                {watched ?
-                                    <Ic.Check size={14} stroke='#000' /> :
-                                    <Ic.Play size={14} fill='#fff' />}
-                                {/* Con el ratón encima el botón dice qué va a
+                                position: 'absolute', top: 0, bottom: 0, left: 0,
+                                width: `${progress * 100}%`,
+                                background: 'rgba(255,255,255,0.22)', pointerEvents: 'none'
+                            }} />
+                        )}
+                        <span style={{
+                            position: 'relative', zIndex: 1,
+                            display: 'flex', alignItems: 'center', gap: 10
+                        }}>
+                            {watched ?
+                                <Ic.Check size={14} stroke='#000' /> :
+                                <Ic.Play size={14} fill='#fff' />}
+                            {/* Con el ratón encima el botón dice qué va a
                                     pasar al pulsarlo: los minutos que quedan,
                                     o «ver de nuevo» si ya está visto. */}
-                                {inProgress ? (btnHover ? remaining : globalize.translate('ContinueWatching')) :
-                                    watched ? globalize.translate(btnHover ? 'WatchAgain' : 'Watched') :
-                                        globalize.translate('Play')}
-                            </span>
-                        </button>
-                        {/* "Mi lista" es decorativo (sin handler); en touch se
+                            {inProgress ? (btnHover ? remaining : globalize.translate('ContinueWatching')) :
+                                watched ? globalize.translate(btnHover ? 'WatchAgain' : 'Watched') :
+                                    globalize.translate('Play')}
+                        </span>
+                    </button>
+                    {/* "Mi lista" es decorativo (sin handler); en touch se
                             oculta para dejar sitio — sus acciones reales viven
                             en el bottom sheet del botón de más opciones. */}
-                        {!r.touch && (
-                            <>
-                                <button style={{
-                                    display: 'flex', alignItems: 'center', gap: 8, padding: '13px 22px',
-                                    background: 'transparent', color: '#fff',
-                                    border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
-                                    fontFamily: T.ui, fontSize: 13, fontWeight: 500, cursor: 'pointer'
-                                }}>
-                                    <Ic.Plus size={14} /> Mi lista
-                                </button>
-                                <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
-                            </>
-                        )}
-                        {/* id real del server: descarga/metadata/imágenes lo
+                    {!r.touch && (
+                        <>
+                            <button style={{
+                                display: 'flex', alignItems: 'center', gap: 8, padding: '13px 22px',
+                                background: 'transparent', color: '#fff',
+                                border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
+                                fontFamily: T.ui, fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                            }}>
+                                <Ic.Plus size={14} /> Mi lista
+                            </button>
+                            <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
+                        </>
+                    )}
+                    {/* id real del server: descarga/metadata/imágenes lo
                             necesitan; el prefijo movie- es solo de los stores
                             locales y lo aplica MoreButton internamente. */}
-                        <MoreButton
-                            id={movie.id} size={18} type='movie' itemTitle={movie.title}
-                            queueSubtitle={String(movie.year)}
-                            queuePoster={movie.poster}
-                        />
-                    </div>
+                    <MoreButton
+                        id={movie.id} size={18} type='movie' itemTitle={movie.title}
+                        queueSubtitle={String(movie.year)}
+                        queuePoster={movie.poster}
+                    />
                 </div>
             </div>
-
-            <ScrollHint label={globalize.translate('HeaderDetails')} />
-        </section>
+        </HeroFrame>
     );
 }
 

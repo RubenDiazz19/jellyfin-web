@@ -2,12 +2,55 @@
 // Con sesión Jellyfin ambas vienen del server; sin sesión, del catálogo proto.
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
-import { signal } from '@preact/signals-core';
+import { computed, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
+import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/librarySortStore';
 
 export type LibraryKind = 'series' | 'movies';
+export type { SortKey };
+
+/** Lo que hace falta de un item para ordenarlo; lo cumplen Show y Movie. */
+type Sortable = Pick<Show | Movie, 'id' | 'title' | 'year' | 'rating' | 'runtime'>;
+
+// `numeric` para que «Temporada 2» vaya antes que «Temporada 10», y
+// `sensitivity: 'base'` para que los acentos no manden a «Ángel» al final.
+const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+/** El runtime del modelo es texto («120 min», «—»); para ordenar hace falta el número. */
+function runtimeMinutes(item: Sortable): number {
+    return parseInt(item.runtime, 10) || 0;
+}
+
+// Hash estable (FNV-1a) del id + semilla. El orden aleatorio tiene que
+// sobrevivir a los re-renders: barajar dentro del computed reordenaría la
+// rejilla en cada pintada.
+function hash(str: string): number {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+
+function compareBy(key: SortKey, seed: number) {
+    return (a: Sortable, b: Sortable): number => {
+        switch (key) {
+            // Lo más nuevo y lo mejor valorado primero: en esos dos criterios
+            // lo que se busca es la cabeza de la lista, no la cola.
+            case 'year': return (b.year || 0) - (a.year || 0) || COLLATOR.compare(a.title, b.title);
+            case 'rating':
+                return (b.rating?.imdb || 0) - (a.rating?.imdb || 0)
+                    || COLLATOR.compare(a.title, b.title);
+            case 'runtime':
+                return runtimeMinutes(a) - runtimeMinutes(b) || COLLATOR.compare(a.title, b.title);
+            case 'random': return hash(a.id + seed) - hash(b.id + seed);
+            default: return COLLATOR.compare(a.title, b.title);
+        }
+    };
+}
 
 export class LibraryViewModel {
     kind = signal<LibraryKind>('series');
@@ -15,15 +58,40 @@ export class LibraryViewModel {
     movies = signal<Movie[]>([]);
     loading = signal(false);
     error = signal<string | null>(null);
+    /** Criterio de orden, recordado entre visitas. */
+    sortKey = signal<SortKey>(DEFAULT_SORT);
 
+    // Cambia al volver a elegir «aleatorio»: es la forma de pedir otra baraja.
+    private randomSeed = signal(0);
     private seq = 0;
-    private subscribed = false;
+    private mutationHandler: (() => void) | null = null;
 
     constructor(private api: ApiService) {
-        this.subscribeToMutations();
+        // El servidor ya manda por SortName; el resto de criterios se aplican
+        // aquí sobre la lista que ya está en memoria.
+        this.sortKey.value = LIBRARY_SORT.load();
     }
 
+    /** Series ya ordenadas según `sortKey`. Es lo que pinta la vista. */
+    sortedShows = computed<Show[]>(() =>
+        [...this.shows.value].sort(compareBy(this.sortKey.value, this.randomSeed.value))
+    );
+
+    /** Películas ya ordenadas según `sortKey`. */
+    sortedMovies = computed<Movie[]>(() =>
+        [...this.movies.value].sort(compareBy(this.sortKey.value, this.randomSeed.value))
+    );
+
+    setSort = (key: SortKey) => {
+        // Volver a pulsar «aleatorio» rebaraja en vez de no hacer nada.
+        if (key === 'random') this.randomSeed.value++;
+        else if (key === this.sortKey.peek()) return;
+        this.sortKey.value = key;
+        LIBRARY_SORT.save(key);
+    };
+
     async load(kind: LibraryKind) {
+        this.subscribeToMutations();
         const seq = ++this.seq;
         this.kind.value = kind;
         this.error.value = null;
@@ -58,16 +126,19 @@ export class LibraryViewModel {
     // Cualquier mutación de item recarga la biblioteca activa: no sabemos si
     // el item afectado está en la lista visible, y una lista de N pósters es
     // barata frente a la fricción de recargar la página a mano.
+    //
+    // Se engancha en el primer `load()`, no en el constructor: ver la nota en
+    // HomeViewModel.subscribeToMutations.
     private subscribeToMutations() {
-        if (this.subscribed || typeof window === 'undefined') return;
-        this.subscribed = true;
-        window.addEventListener(ITEM_MUTATED_EVENT, () => {
+        if (this.mutationHandler || typeof window === 'undefined') return;
+        this.mutationHandler = () => {
             // Solo refetcheamos si la lista ya se pintó (no en montaje inicial
             // sin datos, para no forzar cargas concurrentes).
             const hasData = this.shows.value.length > 0 || this.movies.value.length > 0;
             if (!hasData) return;
             void this.load(this.kind.value);
-        });
+        };
+        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
     }
 }
 

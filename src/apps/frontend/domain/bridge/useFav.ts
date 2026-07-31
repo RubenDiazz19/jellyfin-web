@@ -12,17 +12,6 @@ export function useFav(id: string): [boolean, () => void] {
     return [fav, () => FAVS.toggle(id)];
 }
 
-// Fuerza un re-render cuando cambia cualquier favorito. Útil para las
-// vistas que agregan estado (buscador con filtro de favoritos, etc.).
-export function useFavVersion() {
-    const [, force] = useState(0);
-    useEffect(() => {
-        const update = () => force((n) => n + 1);
-        window.addEventListener(FAVS.event, update);
-        return () => window.removeEventListener(FAVS.event, update);
-    }, []);
-}
-
 // Ejecuta `onChange` cada vez que cambia cualquier favorito (toggle en
 // cualquier tarjeta). Para vistas que necesitan reaccionar con lógica propia
 // en vez de solo re-renderizar (p.ej. podar la lista de la pantalla de

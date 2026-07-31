@@ -426,6 +426,13 @@ export default defineConfig(({ command, mode }) => ({
         },
         environment: 'jsdom',
         restoreMocks: true,
+        // `root` es `src/`, así que por defecto los tests de `scripts/` no se
+        // recogerían. Se añaden explícitamente: `scripts/autotag` tiene lógica
+        // propia (construcción del prompt) que merece red.
+        include: [
+            '**/*.{test,spec}.?(c|m)[jt]s?(x)',
+            path.resolve(REPO_ROOT, 'scripts/**/*.{test,spec}.?(c|m)[jt]s?(x)')
+        ],
         // Carga el diccionario de traducciones antes de los tests: los
         // componentes traducen en render y sin diccionario devolverían la
         // clave cruda. jsdom reporta en-US, así que los tests ven en-us.json.

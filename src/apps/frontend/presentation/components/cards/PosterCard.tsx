@@ -1,12 +1,12 @@
 import React from 'react';
-import { T } from '../../theme/tokens';
 import { WATCHED } from '../../../domain/stores';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { FavButton } from '../controls/FavButton';
-import { Progress } from '../controls/Progress';
 import { PROTO_DATA } from '../../../domain/models';
 import { useResponsive } from '../../theme/responsive';
+import { PosterShell } from './PosterShell';
+import { useSelectionMode } from '../controls/useSelectionMode';
 import type { Navigate } from '../../../app/router';
 
 // El "slide" mínimo que necesita esta card. Encaja tanto con un show
@@ -42,63 +42,23 @@ export const PosterCard = React.memo(function PosterCardBase({ slide, navigate, 
         return a + Math.max(live, s.watched || 0);
     }, 0);
     const progress = totalEps ? Math.min(watchedEps / totalEps, 1) : 0;
-    const cover = slide.poster || slide.backdrop;
+    const sel = useSelectionMode(
+        { id: slide.id, title: slide.title, kind: 'show', poster: slide.poster, year: slide.year },
+        () => navigate({ page: 'show', showId: slide.id })
+    );
     return (
-        <div
-            onClick={() => navigate({ page: 'show', showId: slide.id })}
-            style={fluid ?
-                { width: '100%', cursor: 'pointer' } :
-                { width: w, flex: `0 0 ${w}px`, cursor: 'pointer' }}
-            className='jfp-hoverlift'
-        >
-            <div
-                className='jfp-card-m3'
-                style={{
-                    aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden', position: 'relative',
-                    backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center'
-                }}
-            >
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))' }} />
-                <div style={{ position: 'absolute', top: 10, left: 12 }}>
-                    <ShowNavWatchedButton showId={slide.id} size={16} badge />
-                </div>
-                <div style={{ position: 'absolute', top: 10, right: 12 }}>
-                    <FavButton id={slide.id} size={16} />
-                </div>
-                <div style={{ position: 'absolute', left: 16, right: 16, bottom: 16 }}>
-                    {slide.logo ? (
-                        <img
-                            src={slide.logo}
-                            alt={slide.title}
-                            loading='lazy'
-                            decoding='async'
-                            style={{
-                                maxWidth: 140, maxHeight: 44, width: 'auto', height: 'auto',
-                                objectFit: 'contain', objectPosition: 'left center',
-                                filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))'
-                            }}
-                        />
-                    ) : (
-                        <div style={{
-                            fontFamily: T.display, fontSize: 20, lineHeight: 1.05,
-                            textShadow: '0 2px 20px rgba(0,0,0,0.5)'
-                        }}>
-                            {slide.title}
-                        </div>
-                    )}
-                </div>
-                {progress > 0 && progress < 1 && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 3 }}>
-                        <Progress value={progress} height={3} />
-                    </div>
-                )}
-            </div>
-            <div style={{
-                marginTop: 10, fontFamily: T.ui, fontSize: 11, color: T.dim,
-                letterSpacing: 1, textTransform: 'uppercase'
-            }}>
-                {slide.year} · Serie
-            </div>
-        </div>
+        <PosterShell
+            cover={slide.poster || slide.backdrop}
+            onClick={sel.onClick}
+            selecting={sel.selecting}
+            selected={sel.selected}
+            width={fluid ? null : w}
+            watchedButton={<ShowNavWatchedButton showId={slide.id} size={16} badge />}
+            favButton={<FavButton id={slide.id} size={16} />}
+            logo={slide.logo}
+            title={slide.title}
+            progress={progress}
+            caption={`${slide.year} · Serie`}
+        />
     );
 });

@@ -7,7 +7,8 @@
 import { loadSession } from '../session/session';
 import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
-import { mapMediaStream, type JFMediaStream, type MediaStreamInfo } from './playback';
+import { mapMediaStream, type MediaStreamInfo } from './playback';
+import type { JFMediaStream } from './types';
 
 const TICKS_PER_SECOND = 10_000_000;
 

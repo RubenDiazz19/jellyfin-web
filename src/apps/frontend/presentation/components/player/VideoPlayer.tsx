@@ -8,7 +8,7 @@ import { QueuePanel } from '../queue/QueuePanel';
 import {
     segmentSkipLabelKey, videoPlayerVM, type AspectRatio
 } from '../../../domain/viewModels/VideoPlayerViewModel';
-import { useSignalValue, useViewModel } from '../../../domain/bridge/useViewModel';
+import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
 import { haptic } from '../../../shared/haptics';
 import { PlayerIc } from './playerIcons';
@@ -54,7 +54,16 @@ type Props = {
 export function VideoPlayer({
     itemId, startTicks, title, onClose, onEnded, onPlayQueued
 }: Props) {
-    useViewModel(videoPlayerVM);
+    // Suscripción selectiva, no `useViewModel`: este componente no pinta ni
+    // currentTime ni duration, y suscribirse a TODOS los signals del VM
+    // significaba re-renderizar el reproductor entero ~4 veces por segundo
+    // durante la reproducción — anulando de paso la suscripción fina que ya
+    // hace VideoControls. La lista es exactamente lo que se lee más abajo.
+    useVmSignals(videoPlayerVM, (vm) => [
+        vm.activeSegment, vm.aspectRatio, vm.autoNextProgress, vm.brightness,
+        vm.buffering, vm.ended, vm.error, vm.fullscreen, vm.loading,
+        vm.nextEpisode, vm.playing, vm.subtitleUrl, vm.title
+    ]);
     // La cola cambia desde fuera del reproductor (menú de un item, otra
     // pestaña): sin suscripción, el aviso de "a continuación" se quedaría
     // anunciando lo que ya no toca.
