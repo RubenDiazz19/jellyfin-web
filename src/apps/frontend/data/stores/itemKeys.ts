@@ -34,6 +34,20 @@ export type ParsedItemKey =
     | { kind: 'show'; showId: string };
 
 /**
+ * Id del item en el servidor, si la clave lo lleva dentro.
+ *
+ * Películas y series se guardan con su id real, así que basta con destaparlo.
+ * Temporadas y episodios se referencian por posición dentro de la serie y su
+ * id hay que traerlo de fuera (el `jfId` del modelo): para esos devuelve null.
+ */
+export function serverIdFromKey(key: string): string | null {
+    const ref = parseItemKey(key);
+    if (ref.kind === 'movie') return ref.movieId || null;
+    if (ref.kind === 'show') return ref.showId || null;
+    return null;
+}
+
+/**
  * Deshace una clave. Lo que no encaje en ningún patrón es una serie: es el
  * único caso sin marca propia, así que hace de cajón de sastre.
  */

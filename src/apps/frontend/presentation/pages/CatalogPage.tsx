@@ -8,7 +8,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { T } from '../theme/tokens';
 import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
-import { EmptyState } from '../components/skeleton/Skeleton';
+import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import type { Movie, Show } from '../../domain/models';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
@@ -33,10 +33,16 @@ type Props = {
     movies: Movie[];
     /** Qué decir cuando no hay ni series ni películas. */
     empty: { title: string; hint: string };
+    /** Mientras el servidor contesta: esqueleto, no el estado vacío. */
+    loading?: boolean;
+    /** Mensaje del servidor si la consulta falló. */
+    error?: string | null;
     navigate: Navigate;
 };
 
-export function CatalogPage({ nav, header, shows, movies, empty, navigate }: Props) {
+export function CatalogPage({
+    nav, header, shows, movies, empty, loading, error, navigate
+}: Props) {
     const r = useResponsive();
     return (
         <>
@@ -69,7 +75,14 @@ export function CatalogPage({ nav, header, shows, movies, empty, navigate }: Pro
                 )}
 
                 {shows.length === 0 && movies.length === 0 && (
-                    <EmptyState title={empty.title} hint={empty.hint} />
+                    loading ? (
+                        <SkeletonRow />
+                    ) : (
+                        <EmptyState
+                            title={error ? globalize.translate('MessageCatalogQueryFailed') : empty.title}
+                            hint={error ?? empty.hint}
+                        />
+                    )
                 )}
             </section>
         </>

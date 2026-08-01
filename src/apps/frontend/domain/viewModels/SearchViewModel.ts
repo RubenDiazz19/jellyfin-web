@@ -1,8 +1,15 @@
 // ViewModel de la búsqueda: query + filtros como signals y resultados como
 // computed. Toda la lógica de filtrado vive aquí; la View solo pinta.
+//
+// Los resultados salen de dos sitios. El catálogo cargado se filtra en el
+// navegador, que responde a cada tecla sin ir a la red; y en paralelo se le
+// pregunta al servidor, que además de ignorar acentos y mayúsculas ve las
+// bibliotecas que este frontend no lista. Lo que trae el servidor y no estaba
+// cargado se añade al final.
+//
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
-import { computed, signal } from '@preact/signals-core';
+import { computed, effect, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
@@ -82,6 +89,28 @@ function isMovieWatched(movie: Movie): boolean {
     return (movie.watched ?? 0) >= 1 || WATCHED.has(movieKey(movie.id));
 }
 
+/** Dónde busca el texto libre dentro de un título del catálogo cargado. */
+function matchesText(item: SearchResult, q: string): boolean {
+    return !!(
+        item.title?.toLowerCase().includes(q)
+        || item.synopsis?.toLowerCase().includes(q)
+        || item.genres?.some((g) => g.toLowerCase().includes(q))
+        || item.cast?.some((c) => c.name?.toLowerCase().includes(q))
+    );
+}
+
+/**
+ * A partir de cuántas letras se le pregunta al servidor. Con una sola el
+ * ranking no dice nada y la petición se dispararía en cuanto se toca el campo.
+ */
+const MIN_REMOTE_QUERY = 2;
+
+/**
+ * Espera antes de salir a la red. Se teclea letra a letra: sin esto, escribir
+ * «expediente» son diez búsquedas y solo importa la última.
+ */
+const REMOTE_DEBOUNCE_MS = 250;
+
 export class SearchViewModel {
     query = signal('');
     typeFilter = signal<TypeFilter>('todo');
@@ -107,6 +136,17 @@ export class SearchViewModel {
     movies = signal<Movie[]>([]);
     loading = signal(false);
 
+    /**
+     * Lo que ha encontrado el buscador del servidor para el texto actual. Se
+     * guarda aparte de la biblioteca cargada porque no se filtra igual: el
+     * servidor ya ha decidido que casan con el texto, y volver a comprobarlo
+     * aquí descartaría justo lo que él encuentra mejor que nosotros —«senyor»
+     * contra «Señor»—.
+     */
+    remote = signal<SearchResult[]>([]);
+    /** true mientras el servidor contesta a la búsqueda actual. */
+    searching = signal(false);
+
     // Los stores de favoritos/vistos notifican por eventos del DOM; estos
     // contadores los convierten en dependencias reactivas del computed.
     private favsVersion = signal(0);
@@ -116,6 +156,8 @@ export class SearchViewModel {
     private mutationVersion = signal(0);
 
     private loads = new LoadGuard();
+    private remoteLoads = new LoadGuard();
+    private remoteTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(private api: ApiService) {
         registerTagSource(() => [...this.shows.peek(), ...this.movies.peek()]);
@@ -151,7 +193,9 @@ export class SearchViewModel {
             ...this.tagFilters.value.map((t) => t.toLowerCase())
         ];
 
-        return all.filter((item) => {
+        // Los chips y el tipo se aplican igual vengan de donde vengan los
+        // resultados; el texto solo a los de casa (ver `remote`).
+        const passesFilters = (item: SearchResult) => {
             if (type === 'series' && item.kind !== 'show') return false;
             if (type === 'peliculas' && item.kind !== 'movie') return false;
 
@@ -171,15 +215,17 @@ export class SearchViewModel {
                 if (state === 'vistos' && !isWatched) return false;
                 if (state === 'no-vistos' && isWatched) return false;
             }
+            return true;
+        };
 
-            if (!q) return true;
-            return (
-                item.title?.toLowerCase().includes(q)
-                || item.synopsis?.toLowerCase().includes(q)
-                || item.genres?.some((g) => g.toLowerCase().includes(q))
-                || item.cast?.some((c) => c.name?.toLowerCase().includes(q))
-            );
-        });
+        const local = all.filter((item) => passesFilters(item) && (!q || matchesText(item, q)));
+
+        // Lo del servidor que no estuviera ya cargado, al final: son los
+        // títulos que la búsqueda local no podía encontrar.
+        const known = new Set(all.map((i) => i.id));
+        const extra = this.remote.value.filter((i) => !known.has(i.id) && passesFilters(i));
+
+        return [...local, ...extra];
     });
 
     /**
@@ -307,6 +353,45 @@ export class SearchViewModel {
         }
     }
 
+    /**
+     * Programa la búsqueda en el servidor para `text`. No sale a la red hasta
+     * que se deja de teclear, y por debajo del mínimo se limpia lo anterior:
+     * borrar la caja tiene que borrar también lo que trajo el servidor.
+     */
+    private scheduleRemoteSearch(text: string) {
+        if (this.remoteTimer) clearTimeout(this.remoteTimer);
+        if (text.length < MIN_REMOTE_QUERY) {
+            // Invalida la petición en vuelo: si no, su respuesta repoblaría
+            // los resultados de una búsqueda que el usuario ya ha borrado.
+            this.remoteLoads.begin();
+            this.remoteTimer = null;
+            this.searching.value = false;
+            this.remote.value = [];
+            return;
+        }
+        this.remoteTimer = setTimeout(() => { void this.searchRemote(text); }, REMOTE_DEBOUNCE_MS);
+    }
+
+    private async searchRemote(text: string) {
+        if (!this.api.session.load()?.accessToken) return;
+        const isLatest = this.remoteLoads.begin();
+        this.searching.value = true;
+        try {
+            const { shows, movies } = await this.api.discover.searchCatalog(text);
+            if (!isLatest()) return;
+            this.remote.value = [
+                ...shows.map((s) => ({ ...s, kind: 'show' as const })),
+                ...movies.map((m) => ({ ...m, kind: 'movie' as const }))
+            ];
+        } catch {
+            // El servidor no contesta: quedan los resultados locales, que es
+            // exactamente lo que había antes de que existiera esta llamada.
+            if (isLatest()) this.remote.value = [];
+        } finally {
+            if (isLatest()) this.searching.value = false;
+        }
+    }
+
     /** Suscribe el VM a favoritos/vistos y a las mutaciones. Devuelve cleanup. */
     start(): () => void {
         if (typeof window === 'undefined') return () => {};
@@ -321,10 +406,18 @@ export class SearchViewModel {
         window.addEventListener(FAVS.event, bumpFavs);
         window.addEventListener(WATCHED.event, bumpWatched);
         window.addEventListener(ITEM_MUTATED_EVENT, onMutated);
+        // Se vigila el signal y no se engancha a `setQuery`: la caja no es el
+        // único sitio desde donde cambia el texto (aplicar una vista guardada,
+        // cerrar la superposición), y todos tienen que buscar igual.
+        const stopWatchingQuery = effect(() => {
+            this.scheduleRemoteSearch(parseQuery(this.query.value).text);
+        });
         return () => {
             window.removeEventListener(FAVS.event, bumpFavs);
             window.removeEventListener(WATCHED.event, bumpWatched);
             window.removeEventListener(ITEM_MUTATED_EVENT, onMutated);
+            stopWatchingQuery();
+            if (this.remoteTimer) clearTimeout(this.remoteTimer);
         };
     }
 }

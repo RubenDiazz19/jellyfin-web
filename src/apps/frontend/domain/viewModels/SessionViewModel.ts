@@ -28,7 +28,7 @@ export class SessionViewModel {
         this.hydrated = true;
         this.refresh();
         void this.api.session.restore().then((session) => {
-            this.session.value = session ?? this.api.session.load();
+            this.adopt(session ?? this.api.session.load());
             this.hydrating.value = false;
         });
     }
@@ -47,8 +47,26 @@ export class SessionViewModel {
     }
 
     refresh = () => {
-        this.session.value = this.api.session.load();
+        this.adopt(this.api.session.load());
     };
+
+    /**
+     * Deja `session` como la activa y, si es una cuenta distinta de la que
+     * había, baja sus favoritos del servidor.
+     *
+     * El corazón de cada tarjeta lo pinta el store local, así que sin esta
+     * hidratación un navegador recién estrenado los enseñaría todos vacíos y
+     * uno que cambia de cuenta enseñaría los del usuario anterior. Si el
+     * servidor no contesta se ignora: el store se queda como estaba, que es
+     * mejor que vaciarlo.
+     */
+    private adopt(session: Session | null) {
+        const otherUser = session?.userId !== this.session.peek()?.userId;
+        this.session.value = session;
+        if (session?.accessToken && otherUser) {
+            void this.api.items.hydrateFavorites().catch(() => {});
+        }
+    }
 
     logout = () => {
         this.api.catalog.clearShowCache();

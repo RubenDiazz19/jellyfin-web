@@ -1,45 +1,32 @@
+import { useEffect } from 'react';
+
 import globalize from 'lib/globalize';
 
 import { T } from '../../theme/tokens';
-import { PROTO_DATA, type Show, type Movie } from '../../../domain/models';
 import { PosterCard } from '../cards/PosterCard';
 import { MovieCard } from '../cards/MovieCard';
+import { similarVM } from '../../../domain/viewModels/DiscoverViewModel';
+import { useViewModel } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 
 type Props = {
     currentId: string;
-    currentGenres: string[];
-    kind: 'show' | 'movie';
     navigate: Navigate;
 };
 
-// "Más como esto": otros títulos de la misma biblioteca que comparten al
-// menos un género con el actual. Se mezclan series y películas ordenadas
-// por número de géneros coincidentes (mayor a menor).
-export function Similar({ currentId, currentGenres, kind, navigate }: Props) {
-    const genreSet = new Set(currentGenres.map((g) => g.toLowerCase()));
+// "Más como esto": las sugerencias que da el servidor para este título,
+// cruzando géneros, estudio, reparto y etiquetas sobre la biblioteca entera.
+// La fila desaparece si no hay nada que sugerir — y mientras carga, que es
+// otra forma de no tener nada todavía.
+export function Similar({ currentId, navigate }: Props) {
+    useViewModel(similarVM);
+    useEffect(() => {
+        void similarVM.load(currentId);
+    }, [currentId]);
 
-    const score = (genres: string[]) =>
-        genres.reduce((n, g) => (genreSet.has(g.toLowerCase()) ? n + 1 : n), 0);
-
-    const shows: (Show & { _score: number })[] = Object.values(PROTO_DATA.shows)
-        .filter((s) => !(kind === 'show' && s.id === currentId))
-        .map((s) => ({ ...s, _score: score(s.genres) }))
-        .filter((s) => s._score > 0);
-
-    const movies: (Movie & { _score: number })[] = Object.values(PROTO_DATA.movies)
-        .filter((m) => !(kind === 'movie' && m.id === currentId))
-        .map((m) => ({ ...m, _score: score(m.genres) }))
-        .filter((m) => m._score > 0);
-
-    const combined = [
-        ...shows.map((s) => ({ item: s as Show, _score: s._score, kind: 'show' as const })),
-        ...movies.map((m) => ({ item: m as Movie, _score: m._score, kind: 'movie' as const }))
-    ]
-        .sort((a, b) => b._score - a._score)
-        .slice(0, 8);
-
-    if (combined.length === 0) return null;
+    const shows = similarVM.shows.value;
+    const movies = similarVM.movies.value;
+    if (shows.length === 0 && movies.length === 0) return null;
 
     return (
         <div style={{ marginTop: 88 }}>
@@ -54,11 +41,8 @@ export function Similar({ currentId, currentGenres, kind, navigate }: Props) {
                 </div>
             </div>
             <div style={{ display: 'flex', gap: 24, overflowX: 'auto' }}>
-                {combined.map(({ item, kind: k }) =>
-                    k === 'show' ?
-                        <PosterCard key={`s-${item.id}`} slide={item as Show} navigate={navigate} /> :
-                        <MovieCard key={`m-${item.id}`} movie={item as Movie} navigate={navigate} />
-                )}
+                {shows.map((s) => <PosterCard key={`s-${s.id}`} slide={s} navigate={navigate} />)}
+                {movies.map((m) => <MovieCard key={`m-${m.id}`} movie={m} navigate={navigate} />)}
             </div>
         </div>
     );

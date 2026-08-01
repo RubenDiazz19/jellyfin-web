@@ -227,6 +227,33 @@ export default class ConnectionManager {
             return result;
         };
 
+        /**
+         * Autentica con un secreto de Quick Connect ya aprobado.
+         *
+         * Es el gemelo de `authenticateUserByName`: lo único distinto es la
+         * llamada HTTP —aquí no hay usuario ni contraseña, sino el secreto que
+         * el usuario acaba de aprobar desde una sesión donde ya estaba dentro—
+         * y todo lo que viene detrás (persistir el token, dejar el cliente
+         * autenticado, disparar `localusersignedin`) es el mismo
+         * `onAuthenticated`. Por eso la sesión resultante es indistinguible de
+         * la de un login normal.
+         * @param {object} [apiClient] El cliente del servidor contra el que autenticar.
+         * @param {string} secret Secreto devuelto por `/QuickConnect/Initiate`.
+         * @returns {Promise<import('@jellyfin/sdk/lib/generated-client/models/authentication-result').AuthenticationResult>} El resultado de autenticación.
+         */
+        self.authenticateWithQuickConnect = async (apiClient, secret) => {
+            if (!apiClient) {
+                throw new Error('[ConnectionManager] no hay cliente contra el que autenticar');
+            }
+
+            const { data: result } = await getAuthenticationApi(apiClient.api)
+                .authenticateWithQuickConnect({ quickConnectDto: { Secret: secret } });
+
+            await onAuthenticated(apiClient, result, {}, true);
+
+            return result;
+        };
+
         function afterConnected(apiClient, options = {}) {
             if (options.reportCapabilities !== false) {
                 // No se espera a propósito: anunciar las capacidades es para que

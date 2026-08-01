@@ -12,7 +12,10 @@ import { firstImageUrl, mapCommonFields, watchedFraction } from './itemMapping';
 import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem, type JFMediaStream } from './types';
 
-function mapShow(item: JFItem): Show {
+// Exportado para las consultas de `discover` (género, persona, similares),
+// que traen series y películas mezcladas en la misma respuesta y necesitan
+// mapear cada una con el mismo criterio que su listado de origen.
+export function mapShow(item: JFItem): Show {
     return {
         ...mapCommonFields(item),
         creator: '',

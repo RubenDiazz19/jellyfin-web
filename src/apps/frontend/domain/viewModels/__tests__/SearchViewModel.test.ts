@@ -1,7 +1,7 @@
-// Filtrado por etiquetas: chips, sintaxis `#tag` y la unión que alimenta la
-// fila de chips.
+// Filtrado por etiquetas (chips, sintaxis `#tag` y la unión que alimenta la
+// fila de chips) y la búsqueda que sale al servidor.
 
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 // El VM importa ApiService, que llega a ServerConnections y con él al
 // bootstrap legacy (router raíz + playbackmanager) con efectos a nivel de
@@ -343,5 +343,163 @@ describe('capa de búsqueda', () => {
         expect(v.typeFilter.value).toBe('todo');
         expect(v.stateFilter.value).toBe('todo');
         expect(v.anyFilterActive.value).toBe(false);
+    });
+});
+
+describe('búsqueda en el servidor', () => {
+    /** VM con sesión y un buscador de servidor controlable. */
+    function makeRemoteVm(shows: Show[] = [], movies: Movie[] = []) {
+        const searchCatalog = vi.fn(() => Promise.resolve({ shows, movies }));
+        const api = {
+            session: { load: () => ({ accessToken: 'tok' }) },
+            catalog: { getShows: vi.fn(), getMovies: vi.fn() },
+            discover: { searchCatalog }
+        } as unknown as ApiService;
+        return { vm: new SearchViewModel(api), searchCatalog };
+    }
+
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    /** Deja pasar el debounce y la respuesta pendiente. */
+    async function settle() {
+        await vi.runAllTimersAsync();
+    }
+
+    test('lo que encuentra el servidor se añade a lo local', async () => {
+        const { vm } = makeRemoteVm([show('remoto', 'De otra biblioteca')]);
+        vm.shows.value = [show('local', 'De casa')];
+        const stop = vm.start();
+
+        vm.setQuery('de');
+        await settle();
+
+        expect(ids(vm)).toEqual(['local', 'remoto']);
+        stop();
+    });
+
+    test('los del servidor no se vuelven a filtrar por texto', async () => {
+        // Es el motivo de existir de la llamada: el servidor ignora acentos y
+        // aquí «senyor» nunca casaría con «Señor».
+        const { vm } = makeRemoteVm([show('remoto', 'El Señor de los Anillos')]);
+        const stop = vm.start();
+
+        vm.setQuery('senyor');
+        await settle();
+
+        expect(ids(vm)).toEqual(['remoto']);
+        stop();
+    });
+
+    test('pero sí por los chips y el tipo', async () => {
+        const { vm } = makeRemoteVm(
+            [show('remoto-serie', 'Serie')],
+            [movie('remoto-peli', 'Peli')]
+        );
+        const stop = vm.start();
+
+        vm.setQuery('cosa');
+        vm.setTypeFilter('peliculas');
+        await settle();
+
+        expect(ids(vm)).toEqual(['remoto-peli']);
+        stop();
+    });
+
+    test('no duplica lo que ya estaba cargado', async () => {
+        const { vm } = makeRemoteVm([show('s1', 'Serie A')]);
+        vm.shows.value = [show('s1', 'Serie A')];
+        const stop = vm.start();
+
+        vm.setQuery('serie');
+        await settle();
+
+        expect(ids(vm)).toEqual(['s1']);
+        stop();
+    });
+
+    test('teclear no dispara una petición por letra', async () => {
+        const { vm, searchCatalog } = makeRemoteVm();
+        const stop = vm.start();
+
+        vm.setQuery('ex');
+        vm.setQuery('exp');
+        vm.setQuery('expediente');
+        await settle();
+
+        expect(searchCatalog).toHaveBeenCalledTimes(1);
+        expect(searchCatalog).toHaveBeenCalledWith('expediente');
+        stop();
+    });
+
+    test('una letra suelta no sale a la red', async () => {
+        const { vm, searchCatalog } = makeRemoteVm();
+        const stop = vm.start();
+
+        vm.setQuery('a');
+        await settle();
+
+        expect(searchCatalog).not.toHaveBeenCalled();
+        stop();
+    });
+
+    test('borrar la caja retira lo que había traído el servidor', async () => {
+        const { vm } = makeRemoteVm([show('remoto', 'De otra biblioteca')]);
+        const stop = vm.start();
+
+        vm.setQuery('otra');
+        await settle();
+        expect(ids(vm)).toEqual(['remoto']);
+
+        vm.clearQuery();
+        await settle();
+        expect(ids(vm)).toEqual([]);
+        stop();
+    });
+
+    test('un fallo del servidor deja la búsqueda local en pie', async () => {
+        const api = {
+            session: { load: () => ({ accessToken: 'tok' }) },
+            catalog: { getShows: vi.fn(), getMovies: vi.fn() },
+            discover: { searchCatalog: () => Promise.reject(new Error('HTTP 500')) }
+        } as unknown as ApiService;
+        const vm = new SearchViewModel(api);
+        vm.shows.value = [show('local', 'De casa')];
+        const stop = vm.start();
+
+        vm.setQuery('casa');
+        await settle();
+
+        expect(ids(vm)).toEqual(['local']);
+        expect(vm.searching.value).toBe(false);
+        stop();
+    });
+
+    test('sin sesión no se le pregunta a nadie', async () => {
+        const searchCatalog = vi.fn();
+        const api = {
+            session: { load: () => null },
+            catalog: { getShows: vi.fn(), getMovies: vi.fn() },
+            discover: { searchCatalog }
+        } as unknown as ApiService;
+        const vm = new SearchViewModel(api);
+        const stop = vm.start();
+
+        vm.setQuery('lo que sea');
+        await settle();
+
+        expect(searchCatalog).not.toHaveBeenCalled();
+        stop();
+    });
+
+    test('el cleanup de start() cancela la petición programada', async () => {
+        const { vm, searchCatalog } = makeRemoteVm();
+        const stop = vm.start();
+
+        vm.setQuery('expediente');
+        stop();
+        await settle();
+
+        expect(searchCatalog).not.toHaveBeenCalled();
     });
 });

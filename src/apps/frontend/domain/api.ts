@@ -33,9 +33,11 @@ export { getMaxStreamingBitrate, setMaxStreamingBitrate } from '../data/api';
 // usuario, y desde Ajustes se pueden borrar todos de golpe.
 export { countTitleLanguagePrefs, clearAllTitleLanguagePrefs } from '../data/api';
 
-// ── Acciones sobre un item (menú de «más opciones») ─────────────────────────
+// ── Acciones sobre un item (menú de «más opciones» y corazón) ───────────────
 export {
     markPlayed,
+    toggleFavorite,
+    favoriteServerId,
     refreshItemMetadata,
     deleteItem,
     downloadUrl,

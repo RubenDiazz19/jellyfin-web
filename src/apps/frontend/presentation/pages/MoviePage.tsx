@@ -202,7 +202,7 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                 </div>
             </DetailColumns>
 
-            <Similar currentId={movie.id} currentGenres={movie.genres} kind='movie' navigate={navigate} />
+            <Similar currentId={movie.id} navigate={navigate} />
         </DetailBody>
     );
 }

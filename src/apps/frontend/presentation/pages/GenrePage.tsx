@@ -1,28 +1,36 @@
+import { useEffect } from 'react';
+
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { PROTO_DATA } from '../../domain/models';
 import { Nav } from '../components/layout/Nav';
 import { CatalogPage } from './CatalogPage';
+import { genreVM } from '../../domain/viewModels/DiscoverViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
 import type { Navigate } from '../../app/router';
 
 type Props = { genre: string; navigate: Navigate };
 
-// Página de género: agrupa series y películas cuyo `genres` contiene el género.
+// Página de género: series y películas que el servidor clasifica bajo él. La
+// consulta va al servidor y no al catálogo en memoria porque este puede no
+// haberse cargado —se llega aquí desde el chip de género de una ficha, sin
+// pasar por la biblioteca— y porque así se ve la biblioteca entera.
 export function GenrePage({ genre, navigate }: Props) {
-    const g = genre.toLowerCase();
-    const shows = Object.values(PROTO_DATA.shows).filter((s) =>
-        s.genres.some((x) => x.toLowerCase() === g)
-    );
-    const movies = Object.values(PROTO_DATA.movies).filter((m) =>
-        m.genres.some((x) => x.toLowerCase() === g)
-    );
+    useViewModel(genreVM);
+    useEffect(() => {
+        void genreVM.load(genre);
+    }, [genre]);
+
+    const shows = genreVM.shows.value;
+    const movies = genreVM.movies.value;
 
     return (
         <CatalogPage
             navigate={navigate}
             shows={shows}
             movies={movies}
+            loading={genreVM.loading.value}
+            error={genreVM.error.value}
             nav={
                 <Nav navigate={navigate} breadcrumb={[
                     { label: globalize.translate('Home'), to: { page: 'home' } },

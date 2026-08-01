@@ -3,10 +3,18 @@
 
 export { normalizeServerUrl } from './http';
 export { authenticate, type AuthResult } from './auth';
+export {
+    isQuickConnectEnabled,
+    startQuickConnect,
+    waitForQuickConnect,
+    authenticateWithQuickConnect,
+    type QuickConnectRequest
+} from './quickConnect';
 export { imageUrl, type ImageType } from './images';
 export { clearShowCache } from './cache';
 export { getShows, getShow } from './shows';
 export { getMovie, getMovies } from './movies';
+export { getByGenre, getByPerson, getSimilar, searchCatalog, type CatalogSlice } from './discover';
 export { getHomeCarousel } from './home';
 export {
     getPlaybackDecision,
@@ -25,6 +33,7 @@ export {
     downloadUrl,
     nativeItemUrl
 } from './items';
+export { getFavoriteKeys, favoriteServerId, hydrateFavorites } from './favorites';
 export {
     getItemRaw,
     updateItemMetadata,

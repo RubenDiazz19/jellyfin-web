@@ -1,6 +1,7 @@
-// ViewModel de la pantalla de Favoritos. Los favoritos se guardan solo en
-// localStorage (FAVS) como claves compuestas (ver itemKeys). Aquí las
-// desambiguamos e hidratamos contra el catálogo real.
+// ViewModel de la pantalla de Favoritos. El store local (FAVS) guarda claves
+// compuestas (ver itemKeys) que son un espejo de lo marcado en el servidor;
+// aquí se refresca ese espejo, se desambiguan las claves y se hidratan contra
+// el catálogo real.
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
 import { signal } from '@preact/signals-core';
@@ -32,6 +33,13 @@ export class FavoritesViewModel {
         const isLatest = this.loads.begin();
         this.loading.value = true;
         this.error.value = null;
+
+        // Esta pantalla es la que más se nota si el espejo local va desfasado:
+        // se abre justamente para ver «todo lo que he marcado». Si el servidor
+        // no contesta seguimos con lo que hubiera en local en vez de no
+        // enseñar nada.
+        await this.api.items.hydrateFavorites().catch(() => {});
+        if (!isLatest()) return;
 
         const ids = FAVS.all();
         const movieIds: string[] = [];

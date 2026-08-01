@@ -16,6 +16,14 @@ export async function markPlayed(itemId: string, played: boolean): Promise<void>
     emitItemMutated(itemId);
 }
 
+/**
+ * Marca o desmarca el item como favorito en el servidor.
+ *
+ * A diferencia de `markPlayed` no invalida cachés ni emite `itemMutated`: el
+ * estado de favorito no viaja en ningún modelo cacheado (ni `Show` ni `Movie`
+ * lo llevan), lo pinta el store local. Tirar la caché de series y forzar un
+ * refetch de la biblioteca entera en cada corazón sería trabajo perdido.
+ */
 export async function toggleFavorite(itemId: string, favorite: boolean): Promise<void> {
     const session = loadSession();
     if (!session?.userId) throw noSessionError();
@@ -23,8 +31,6 @@ export async function toggleFavorite(itemId: string, favorite: boolean): Promise
         `/Users/${session.userId}/FavoriteItems/${itemId}`,
         favorite ? 'POST' : 'DELETE'
     );
-    clearShowCache();
-    emitItemMutated(itemId);
 }
 
 export async function refreshItemMetadata(itemId: string): Promise<void> {

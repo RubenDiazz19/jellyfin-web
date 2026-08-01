@@ -4,7 +4,7 @@
 
 import globalize from 'lib/globalize';
 
-import { ServerConnections, ConnectionState } from 'lib/jellyfin-apiclient';
+import { ServerConnections, ConnectionState, type ServerHandle } from 'lib/jellyfin-apiclient';
 import { setSessionDisplayName } from '../session/session';
 import { normalizeServerUrl } from './http';
 
@@ -15,11 +15,12 @@ export type AuthResult = {
     displayName: string;
 };
 
-export async function authenticate(
-    serverUrl: string,
-    username: string,
-    password: string
-): Promise<AuthResult> {
+/**
+ * Registra el servidor y devuelve su cliente, listo para hablar con él aunque
+ * todavía no haya sesión. Lo comparten el login por contraseña y el de Quick
+ * Connect: los dos necesitan lo mismo antes de poder pedir nada.
+ */
+export async function connectTo(serverUrl: string): Promise<ServerHandle> {
     const base = normalizeServerUrl(serverUrl);
     let connection;
     try {
@@ -34,6 +35,15 @@ export async function authenticate(
     }
     const apiClient = connection.ApiClient ?? ServerConnections.currentApiClient?.();
     if (!apiClient) throw new Error('No hay servidor disponible tras conectar.');
+    return apiClient;
+}
+
+export async function authenticate(
+    serverUrl: string,
+    username: string,
+    password: string
+): Promise<AuthResult> {
+    const apiClient = await connectTo(serverUrl);
 
     let auth;
     try {

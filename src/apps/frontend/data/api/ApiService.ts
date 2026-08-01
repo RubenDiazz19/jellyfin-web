@@ -19,10 +19,17 @@ import {
     type Session
 } from '../session/session';
 import { authenticate } from './auth';
+import {
+    isQuickConnectEnabled,
+    startQuickConnect,
+    waitForQuickConnect,
+    authenticateWithQuickConnect
+} from './quickConnect';
 import { normalizeServerUrl } from './http';
 import { clearShowCache } from './cache';
 import { getShows, getShow } from './shows';
 import { getMovie, getMovies } from './movies';
+import { getByGenre, getByPerson, getSimilar, searchCatalog } from './discover';
 import { getHomeCarousel } from './home';
 import { imageUrl } from './images';
 import {
@@ -33,6 +40,7 @@ import {
     downloadUrl,
     nativeItemUrl
 } from './items';
+import { favoriteServerId, hydrateFavorites } from './favorites';
 import {
     getPlaybackDecision,
     subtitleVttUrl,
@@ -83,15 +91,26 @@ const sessionService = {
     changeEvent: SESSION_EVENT
 };
 
-const authService = { authenticate, normalizeServerUrl };
+const authService = {
+    authenticate,
+    normalizeServerUrl,
+    isQuickConnectEnabled,
+    startQuickConnect,
+    waitForQuickConnect,
+    authenticateWithQuickConnect
+};
 
 const catalogService = { getShows, getShow, getMovie, getMovies, getHomeCarousel, clearShowCache };
+
+const discoverService = { getByGenre, getByPerson, getSimilar, searchCatalog };
 
 const imageService = { imageUrl };
 
 const itemService = {
     markPlayed,
     toggleFavorite,
+    favoriteServerId,
+    hydrateFavorites,
     refreshItemMetadata,
     deleteItem,
     downloadUrl,
@@ -145,6 +164,7 @@ const userService = {
 export type SessionService = typeof sessionService;
 export type AuthService = typeof authService;
 export type CatalogService = typeof catalogService;
+export type DiscoverService = typeof discoverService;
 export type ImageService = typeof imageService;
 export type ItemService = typeof itemService;
 export type PlaybackService = typeof playbackService;
@@ -160,6 +180,7 @@ export class ApiService {
         readonly session: SessionService = sessionService,
         readonly auth: AuthService = authService,
         readonly catalog: CatalogService = catalogService,
+        readonly discover: DiscoverService = discoverService,
         readonly images: ImageService = imageService,
         readonly items: ItemService = itemService,
         readonly playback: PlaybackService = playbackService,

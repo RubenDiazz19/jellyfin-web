@@ -7,7 +7,8 @@ import { mapCommonFields, watchedFraction } from './itemMapping';
 import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, FIELDS_LIST, type JFItem } from './types';
 
-function mapMovie(item: JFItem): Movie {
+// Exportado para las consultas de `discover`: ver la nota en shows.ts.
+export function mapMovie(item: JFItem): Movie {
     return {
         ...mapCommonFields(item),
         director: (item.People ?? []).find((p) => p.Type === 'Director')?.Name ?? '',

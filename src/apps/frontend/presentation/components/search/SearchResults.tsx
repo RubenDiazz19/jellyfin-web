@@ -20,6 +20,11 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
 
     if (filtered.length === 0) {
         if (q) {
+            // El servidor todavía puede traer algo que aquí no estaba cargado:
+            // decir «sin resultados» ahora es desmentirse medio segundo después.
+            if (searchVM.searching.value) {
+                return <EmptyState title={globalize.translate('SearchLookingOnServer')} icon='⌕' />;
+            }
             return (
                 <EmptyState
                     title={globalize.translate('SearchNoResultsFor', q)}

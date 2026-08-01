@@ -229,7 +229,7 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                 </div>
             </div>
 
-            <Similar currentId={show.id} currentGenres={show.genres} kind='show' navigate={navigate} />
+            <Similar currentId={show.id} navigate={navigate} />
         </DetailBody>
     );
 }

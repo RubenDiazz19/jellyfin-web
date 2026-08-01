@@ -1,9 +1,13 @@
+import { useEffect } from 'react';
+
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { PROTO_DATA, type Show, type Movie } from '../../domain/models';
 import { Nav } from '../components/layout/Nav';
 import { CatalogPage } from './CatalogPage';
+import { personVM } from '../../domain/viewModels/DiscoverViewModel';
+import { useViewModel } from '../../domain/bridge/useViewModel';
+import type { CastMember } from '../../domain/models';
 import type { Navigate } from '../../app/router';
 
 type Props = { name: string; navigate: Navigate };
@@ -11,31 +15,32 @@ type Props = { name: string; navigate: Navigate };
 /** Cuántos papeles distintos se enseñan bajo el nombre. */
 const ROLES_SHOWN = 4;
 
-// Ficha de una persona (actor, director, etc.): filmografía derivada de
-// los datos locales — todo item cuyo `cast[]` contenga a esa persona.
-// El "papel" que se muestra en la ficha es el primer role encontrado.
+// Ficha de una persona: su filmografía dentro de la biblioteca, filtrada por
+// el servidor. El retrato y el papel salen del reparto de los propios títulos
+// —cada uno trae su ficha de esta persona—, así que solo aparecen para quien
+// figure como intérprete; de un director se lista su obra sin foto.
 export function PersonPage({ name, navigate }: Props) {
-    const shows: { show: Show; role: string; photo?: string | null }[] = [];
-    const movies: { movie: Movie; role: string; photo?: string | null }[] = [];
+    useViewModel(personVM);
+    useEffect(() => {
+        void personVM.load(name);
+    }, [name]);
 
-    Object.values(PROTO_DATA.shows).forEach((s) => {
-        const c = s.cast.find((x) => x.name === name);
-        if (c) shows.push({ show: s, role: c.role, photo: c.photo });
-    });
-    Object.values(PROTO_DATA.movies).forEach((m) => {
-        const c = m.cast.find((x) => x.name === name);
-        if (c) movies.push({ movie: m, role: c.role, photo: c.photo });
-    });
+    const shows = personVM.shows.value;
+    const movies = personVM.movies.value;
 
-    const photo = shows[0]?.photo || movies[0]?.photo;
-    const roles = [...shows.map((x) => x.role), ...movies.map((x) => x.role)];
-    const uniqueRoles = [...new Set(roles)].slice(0, ROLES_SHOWN);
+    const credits = [...shows, ...movies]
+        .map((item) => item.cast.find((c: CastMember) => c.name === name))
+        .filter((c): c is CastMember => !!c);
+    const photo = credits.find((c) => c.photo)?.photo;
+    const uniqueRoles = [...new Set(credits.map((c) => c.role).filter(Boolean))].slice(0, ROLES_SHOWN);
 
     return (
         <CatalogPage
             navigate={navigate}
-            shows={shows.map((x) => x.show)}
-            movies={movies.map((x) => x.movie)}
+            shows={shows}
+            movies={movies}
+            loading={personVM.loading.value}
+            error={personVM.error.value}
             nav={
                 <Nav navigate={navigate} breadcrumb={[
                     { label: globalize.translate('Home'), to: { page: 'home' } },
@@ -89,7 +94,7 @@ export function PersonPage({ name, navigate }: Props) {
                         <div style={{
                             fontSize: 13, color: T.dim, marginTop: 30, maxWidth: 560, lineHeight: 1.6
                         }}>
-                            {globalize.translate('MessagePersonProfileLocalOnly')}
+                            {globalize.translate('MessagePersonProfileFromLibrary')}
                         </div>
                     </div>
                 </div>
