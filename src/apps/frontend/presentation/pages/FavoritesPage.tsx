@@ -9,6 +9,7 @@ import { SeasonCard } from '../components/cards/SeasonCard';
 import { EpCard } from '../components/cards/EpCard';
 import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
+import { ListBackLink } from './ListsPage';
 import { favoritesVM } from '../../domain/viewModels/FavoritesViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
 import { useFavListener } from '../../domain/bridge/useFav';
@@ -32,11 +33,12 @@ export function FavoritesPage({ navigate }: Props) {
 
     return (
         <>
-            <Nav navigate={navigate} active='favorites' />
+            <Nav navigate={navigate} active='lists' />
             <section style={{
                 background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
                 padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
             }}>
+                <ListBackLink navigate={navigate} />
                 <h1 style={{
                     fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
                     fontSize: 52, margin: 0, letterSpacing: -0.5, marginBottom: 44

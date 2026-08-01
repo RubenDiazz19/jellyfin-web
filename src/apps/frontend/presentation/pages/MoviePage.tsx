@@ -14,6 +14,7 @@ import {
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
+import { MyListButton } from '../components/controls/MyListButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
@@ -201,19 +202,11 @@ function MovieHero({
                                     globalize.translate('Play')}
                         </span>
                     </button>
-                    {/* "Mi lista" es decorativo (sin handler); en touch se
-                            oculta para dejar sitio — sus acciones reales viven
-                            en el bottom sheet del botón de más opciones. */}
+                    {/* En touch se oculta para dejar sitio — «añadir a lista»
+                            vive en el bottom sheet del botón de más opciones. */}
                     {!r.touch && (
                         <>
-                            <button style={{
-                                display: 'flex', alignItems: 'center', gap: 8, padding: '13px 22px',
-                                background: 'transparent', color: '#fff',
-                                border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
-                                fontFamily: T.ui, fontSize: 13, fontWeight: 500, cursor: 'pointer'
-                            }}>
-                                <Ic.Plus size={14} /> Mi lista
-                            </button>
+                            <MyListButton itemId={movie.id} itemTitle={movie.title} />
                             <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
                         </>
                     )}

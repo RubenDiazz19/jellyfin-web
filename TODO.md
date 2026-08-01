@@ -126,6 +126,34 @@ gratuita). Tres fallos que solo aparecieron al pasarlo de verdad:
   nada. Se resuelve en código (`dropRedundant`), no pidiéndoselo al modelo,
   que lo ignoraba aun con la pista puesta.
 
+---
+
+# D6 — Búsqueda como capa, filtros de varias etiquetas
+
+- [x] `SearchOverlay`: la lupa de la barra abre la búsqueda **encima** de la
+  página actual en vez de navegar a `/search`. Montada en `App.tsx` fuera del
+  wrapper de ruta, para quedar por encima de los heroes a pantalla completa.
+  Cierra con Escape o con la ✕, y al cerrar limpia los filtros: se abre sobre
+  otra página y volver a ella con una búsqueda vieja puesta desorienta.
+- [x] Extraídos `SearchInput`, `SearchFilters` y `SearchResults` a
+  `components/search/`: la página `/search` y la capa son la misma UI sobre el
+  mismo VM, y duplicarla era garantizar que se separasen a la primera
+  corrección. `/search` se conserva para enlaces directos y para la navegación
+  inferior de móvil, donde una página entera funciona mejor que una capa.
+- [x] `tagFilter: string` → `tagFilters: string[]`, cruzándose en Y. Es lo que
+  hace útil tener géneros y matices en el mismo vocabulario: el género acota y
+  el matiz afina («Anime» + «Instituto»).
+- [x] `SavedView.tags?: string[]`; se sigue leyendo el `tag` singular del
+  formato viejo para no invalidar las vistas ya guardadas en localStorage.
+- [x] `--prune` en el script: borra del JSON los títulos que ya no están en la
+  biblioteca. Cero llamadas a la API — es comparar listas de ids.
+
+El envío incremental **ya funcionaba** (`pendingItems` filtra por
+`!(item.id in out.items)`); lo que faltaba era hacerlo visible. Ahora se dice
+«Ya etiquetados: N» y «→ N llamadas a la API» antes de empezar. Verificado con
+un servidor de prueba cuya biblioteca crece de 3 a 5: en la segunda pasada solo
+viajan las 2 nuevas.
+
 Decisión posterior a petición: el vocabulario incluye ahora los géneros
 generales (Comedia, Terror, Ciencia ficción…) y se quitaron los `Basado en …`.
 Los géneros de Jellyfin no se reutilizan tal cual porque vienen con los idiomas

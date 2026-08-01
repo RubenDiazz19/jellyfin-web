@@ -31,6 +31,8 @@ const USAGE = `Uso: bun run autotag [opciones]
 
   --dry-run        No escribe el fichero; enseña lo que saldría.
   --force          Reetiqueta también lo ya etiquetado.
+  --prune          Borra del fichero los títulos que ya no están en la
+                   biblioteca. No gasta ninguna llamada a la API.
   --limit N        Procesa como mucho N títulos (para probar).
   --only movies    Solo películas (o «series»).
   --batch N        Títulos por llamada (por defecto 20).
@@ -55,6 +57,7 @@ function fail(message: string): never {
 type Options = {
     dryRun: boolean;
     force: boolean;
+    prune: boolean;
     limit?: number;
     batchSize: number;
     delayMs: number;
@@ -65,6 +68,7 @@ function parseArgs(argv: string[]): Options {
     const opts: Options = {
         dryRun: false,
         force: false,
+        prune: false,
         batchSize: Number(process.env.AUTOTAG_BATCH ?? 20),
         // Las capas gratuitas limitan por minuto. Un respiro entre lotes evita
         // pasarse la mitad de la pasada en reintentos por 429.
@@ -80,6 +84,9 @@ function parseArgs(argv: string[]): Options {
                 break;
             case '--force':
                 opts.force = true;
+                break;
+            case '--prune':
+                opts.prune = true;
                 break;
             case '--limit':
                 opts.limit = Number(value());
@@ -202,6 +209,25 @@ async function runBatch(
     return result.tags.size;
 }
 
+/**
+ * Quita del fichero los títulos que ya no están en la biblioteca. Es la otra
+ * mitad de reescanear: lo nuevo se etiqueta solo, pero lo borrado se quedaba
+ * ahí para siempre, engordando el JSON que va en el bundle.
+ *
+ * No cuesta ninguna llamada a la API — es comparar dos listas de ids.
+ */
+function pruneMissing(library: PromptItem[], out: OutFile): number {
+    const alive = new Set(library.map((i) => i.id));
+    let removed = 0;
+    for (const id of Object.keys(out.items)) {
+        if (!alive.has(id)) {
+            delete out.items[id];
+            removed++;
+        }
+    }
+    return removed;
+}
+
 function pendingItems(library: PromptItem[], out: OutFile, opts: Options): PromptItem[] {
     // La comprobación es «¿está la clave?», no «¿tiene etiquetas?»: un título
     // al que el modelo no supo ponerle nada se guarda como lista vacía, y sin
@@ -269,9 +295,19 @@ async function main() {
     console.log(`Biblioteca: ${library.length} títulos`);
 
     const out = readExisting();
+    const known = Object.keys(out.items).length;
+    if (known > 0) console.log(`Ya etiquetados: ${known}`);
+
+    if (opts.prune) {
+        const removed = pruneMissing(library, out);
+        console.log(`Borrados del fichero: ${removed} que ya no están en la biblioteca`);
+        if (removed > 0 && !opts.dryRun) write(out);
+    }
+
     const pending = pendingItems(library, out, opts);
     if (pending.length === 0) {
-        console.log('\n✓ No hay nada pendiente. Usa --force para reetiquetar.');
+        console.log('\n✓ No hay nada pendiente: la biblioteca ya está al día.');
+        console.log('  --force reetiqueta todo de nuevo.');
         return;
     }
 

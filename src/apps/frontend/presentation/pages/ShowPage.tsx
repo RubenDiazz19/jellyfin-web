@@ -15,6 +15,7 @@ import {
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
+import { MyListButton } from '../components/controls/MyListButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { CastList } from '../components/cast/CastList';
@@ -211,18 +212,11 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                             )}
                         </span>
                     </button>
-                    {/* "Mi lista" es decorativo; en touch se oculta (las
-                        acciones reales van al bottom sheet de más opciones). */}
+                    {/* En touch se oculta (añadir a lista vive en el bottom
+                        sheet del botón de más opciones). */}
                     {!r.touch && (
                         <>
-                            <button style={{
-                                display: 'flex', alignItems: 'center', gap: 8, padding: '11px 18px',
-                                background: 'transparent', color: '#fff',
-                                border: '1px solid rgba(255,255,255,0.4)', borderRadius: 999,
-                                fontFamily: T.ui, fontSize: 12, fontWeight: 500, cursor: 'pointer'
-                            }}>
-                                <Ic.Plus size={14} /> Mi lista
-                            </button>
+                            <MyListButton itemId={show.id} itemTitle={show.title} size='sm' />
                             <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
                         </>
                     )}

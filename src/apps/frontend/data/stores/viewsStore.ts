@@ -15,8 +15,14 @@ export type SavedView = {
     name: string;
     typeFilter: string;
     stateFilter: string;
-    /** Etiqueta seleccionada; ausente = sin filtro de etiqueta. */
+    /**
+     * Etiqueta seleccionada. Formato viejo, de cuando solo se podía filtrar
+     * por una; se sigue leyendo para no invalidar las vistas ya guardadas en
+     * el localStorage de nadie. Lo que se escribe hoy es `tags`.
+     */
     tag?: string;
+    /** Etiquetas seleccionadas; ausente = sin filtro de etiqueta. */
+    tags?: string[];
     /** Texto de búsqueda; ausente = vacío. */
     query?: string;
 };

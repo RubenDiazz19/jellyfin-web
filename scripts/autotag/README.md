@@ -44,6 +44,32 @@ de ese fichero. Si mañana el proveedor desaparece, las etiquetas siguen ahí.
    bun run autotag
    ```
 
+## Al añadir contenido nuevo
+
+Vuelve a lanzar el mismo comando:
+
+```bash
+bun run autotag
+```
+
+**Solo se manda a la IA lo que no estuviera ya etiquetado.** Si añades dos
+series a una biblioteca de mil, se mandan esas dos: una llamada, no cincuenta.
+Antes de empezar te dice exactamente qué va a hacer:
+
+```
+Biblioteca: 5 títulos
+Ya etiquetados: 3
+Pendientes: 2 en 1 lotes de 10
+→ 1 llamadas a la API
+```
+
+Para limpiar lo que hayas **borrado** de la biblioteca, añade `--prune`. No
+gasta ninguna llamada — es comparar dos listas de ids:
+
+```bash
+bun run autotag --prune
+```
+
 ## Detalles que importan
 
 **Es reanudable.** Guarda después de cada lote y al relanzarlo se salta lo ya
@@ -80,6 +106,7 @@ la calidad baja algo con modelos de 8B.
 ```
 --dry-run        No escribe; enseña lo que saldría.
 --force          Reetiqueta también lo ya etiquetado.
+--prune          Borra del fichero lo que ya no está en la biblioteca.
 --limit N        Procesa como mucho N títulos.
 --only movies    Solo películas (o «series»).
 --batch N        Títulos por llamada (por defecto 20).

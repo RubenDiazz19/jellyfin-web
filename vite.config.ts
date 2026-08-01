@@ -44,6 +44,12 @@ const JF_API_ROOTS = [
     'api', 'Audio', 'Videos', 'Images', 'System', 'Users', 'Items', 'Branding',
     'DisplayPreferences', 'Music', 'Shows', 'Movies', 'LiveTv', 'Sessions',
     'Devices', 'Playback', 'Subtitle', 'web', 'socket',
+    // Listas de reproducción y colecciones. `/Playlists` y `/Collections` son
+    // raíces propias (no cuelgan de `/Items`), así que sin estas dos entradas
+    // el dev server no las reenviaba y crear una lista daba 404 — pero solo
+    // con `bun start`; contra el backend directo funcionaba, que es lo que
+    // despista al depurarlo.
+    'Playlists', 'Collections',
     // Jellyfin construye SUS PROPIAS urls de streaming en minúscula: el
     // `TranscodingUrl` que devuelve PlaybackInfo es `/videos/{id}/master.m3u8?…`
     // (literales `/videos/` y `/audio/` de StreamInfo.ToUrl, en
@@ -56,7 +62,12 @@ const JF_API_ROOTS = [
 ];
 
 // Solo las raíces enteras: `/video?item=…` (ruta de la SPA) no debe caer aquí.
-const JF_PROXY_PATTERN = `^/(?:${JF_API_ROOTS.join('|')})(?:/|$)`;
+//
+// La `?` del final del grupo importa: Vite empareja contra `req.url`, que trae
+// la query. Sin ella, `POST /Collections?name=…` —una raíz llamada con
+// parámetros y sin subruta— no casaba y el dev server contestaba un 404,
+// mientras que contra el backend directo funcionaba.
+const JF_PROXY_PATTERN = `^/(?:${JF_API_ROOTS.join('|')})(?:[/?]|$)`;
 
 // Compile-time globals declared in src/global.d.ts. The webpack build fills
 // these in from git/package.json — for dev we ship reasonable defaults.

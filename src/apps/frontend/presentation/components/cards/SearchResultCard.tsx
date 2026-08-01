@@ -6,10 +6,12 @@ import { useSelectionMode } from '../controls/useSelectionMode';
 import type { SearchResult } from '../../../domain/viewModels/SearchViewModel';
 import type { Navigate } from '../../../app/router';
 
-// Resultado del buscador. No usa PosterShell a propósito: aquí la carátula
-// no lleva acciones ni progreso, el título va debajo en vez de encima, y el
-// item puede no tener ninguna imagen (el buscador incluye PROTO_DATA), caso
-// en el que se pinta la inicial. Compartir carcasa saldría más caro en
+// Resultado del buscador, con el mismo tratamiento que el póster de la home:
+// logo (o título de respaldo) superpuesto abajo a la izquierda, sin pie de
+// texto separado. No usa PosterShell a propósito: aquí no hay botones de
+// visto/favorito ni barra de progreso, y el item puede no tener ninguna
+// imagen (el buscador incluye PROTO_DATA), caso en el que se pinta la
+// inicial centrada en vez del logo. Compartir carcasa saldría más caro en
 // parámetros que en líneas ahorradas.
 
 type Props = { item: SearchResult; navigate: Navigate };
@@ -44,7 +46,7 @@ export const SearchResultCard = React.memo(function SearchResultCardBase({ item,
             }}>
                 <div style={{
                     position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 50%)'
+                    background: 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))'
                 }} />
                 <div style={{ position: 'absolute', top: 8, left: 10 }}>
                     {sel.selecting ? (
@@ -78,16 +80,35 @@ export const SearchResultCard = React.memo(function SearchResultCardBase({ item,
                         {item.title?.[0]}
                     </div>
                 )}
-            </div>
-            <div style={{ marginTop: 10 }}>
                 <div style={{
-                    fontFamily: T.ui, fontSize: 14, fontWeight: 500,
-                    lineHeight: 1.3, marginBottom: 4
+                    position: 'absolute', left: 12, right: 12, bottom: 12,
+                    filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.7))'
                 }}>
-                    {item.title}
-                </div>
-                <div style={{ fontSize: 11, color: T.dim }}>
-                    {item.year}{item.genres?.[0] ? ` · ${item.genres[0]}` : ''}
+                    {item.logo ? (
+                        <img
+                            src={item.logo}
+                            alt={item.title}
+                            loading='lazy'
+                            decoding='async'
+                            style={{
+                                maxWidth: '100%', maxHeight: 36, width: 'auto', height: 'auto',
+                                objectFit: 'contain', objectPosition: 'left center'
+                            }}
+                        />
+                    ) : (
+                        // La sombra va como `drop-shadow` del contenedor y no
+                        // como `text-shadow` aquí: el recorte a dos líneas
+                        // necesita `overflow: hidden`, que cortaría la sombra
+                        // en seco y dejaría un rectángulo alrededor del título.
+                        <div style={{
+                            fontFamily: T.display, fontSize: 15, fontWeight: 600, lineHeight: 1.2,
+                            color: '#fff',
+                            overflow: 'hidden',
+                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
+                        }}>
+                            {item.title}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

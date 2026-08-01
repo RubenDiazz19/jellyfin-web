@@ -360,7 +360,13 @@ const HeroSlide = React.memo(function HeroSlideBase({
                     </button>
                 )}
 
-                {isContinue ? (
+                {/* Solo las series enseñan esta línea, porque lleva a algún
+                    sitio: la temporada y el episodio por los que se iba. En
+                    una película no había T·E que enseñar y quedaba un
+                    «Seguir viendo» suelto que no decía nada — el propio botón
+                    de reproducir ya avisa de que hay progreso, con su anillo y
+                    los minutos restantes al pasar por encima. */}
+                {isContinue && slide.season != null ? (
                     <div style={{
                         fontFamily: T.ui, fontSize: 14, color: 'rgba(255,255,255,0.72)',
                         marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12,
@@ -371,18 +377,15 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                 width: 5, height: 5, borderRadius: 999, background: '#fff',
                                 display: 'inline-block', animation: 'jfp-pulse 1.8s ease-in-out infinite'
                             }} />
-                            {/* Películas: no hay T·E, solo la etiqueta de continuar. */}
-                            {slide.season != null ? (
-                                <button
-                                    onClick={goSeason}
-                                    onMouseDown={(e) => e.preventDefault()}
-                                    style={textBtnStyle}
-                                    onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.color = '')}
-                                >
-                                    {`T${slide.season}`}
-                                </button>
-                            ) : globalize.translate('ContinueWatching')}
+                            <button
+                                onClick={goSeason}
+                                onMouseDown={(e) => e.preventDefault()}
+                                style={textBtnStyle}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+                            >
+                                {`T${slide.season}`}
+                            </button>
                             {/* "E6 · Inicio de semestre" es UN solo botón: el
                                 número y el nombre son la misma cosa (el
                                 capítulo) y llevaban ya al mismo sitio, así que

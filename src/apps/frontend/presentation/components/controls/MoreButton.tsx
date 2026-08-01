@@ -173,8 +173,9 @@ export function MoreButton({
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
             { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
             { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
-            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
-            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
+            // Sin «añadir a lista/colección»: de eso se encarga el botón
+            // «Mi lista» de la ficha, que además enseña de un vistazo si el
+            // título ya está en alguna y permite marcar varias a la vez.
             { isDivider: true },
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
@@ -196,8 +197,9 @@ export function MoreButton({
             { isDivider: true },
             { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
             { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
-            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
-            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
+            // Sin «añadir a lista/colección»: de eso se encarga el botón
+            // «Mi lista» de la ficha, que además enseña de un vistazo si el
+            // título ya está en alguna y permite marcar varias a la vez.
             { isDivider: true },
             { label: t('Identify'), fn: () => setEditor('identify') },
             { label: t('RefreshMetadata'), fn: doRefresh },

@@ -57,10 +57,16 @@ export {
     getPlaylists,
     addToPlaylist,
     createPlaylist,
+    getPlaylistItems,
+    collapseSeries,
+    removeFromPlaylist,
     getCollections,
+    getCollectionItems,
     addToCollection,
+    removeFromCollection,
     createCollection,
-    type ListEntry
+    type ListEntry,
+    type PlaylistItem
 } from './lists';
 export {
     getCurrentUser,

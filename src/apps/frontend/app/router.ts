@@ -16,7 +16,9 @@ export type Route =
   | { page: 'home' }
   | { page: 'series' }
   | { page: 'movies' }
+  | { page: 'lists' }
   | { page: 'favorites' }
+  | { page: 'list'; kind: 'playlist' | 'collection'; listId: string }
   | { page: 'show'; showId: string }
   | { page: 'season'; showId: string; seasonN: number }
   | { page: 'episode'; showId: string; seasonN: number; epN: number }
@@ -36,7 +38,9 @@ export function routeToPath(r: Route): string {
         case 'home': return '/';
         case 'series': return '/series';
         case 'movies': return '/movies';
+        case 'lists': return '/lists';
         case 'favorites': return '/favorites';
+        case 'list': return `/list/${r.kind}/${encodeURIComponent(r.listId)}`;
         case 'show': return `/show/${encodeURIComponent(r.showId)}`;
         case 'season': return `/show/${encodeURIComponent(r.showId)}/season/${r.seasonN}`;
         case 'episode': return `/show/${encodeURIComponent(r.showId)}/season/${r.seasonN}/episode/${r.epN}`;
@@ -61,6 +65,7 @@ export function pathToRoute(pathname: string): Route {
     switch (head) {
         case 'series': return { page: 'series' };
         case 'movies': return { page: 'movies' };
+        case 'lists': return { page: 'lists' };
         case 'favorites': return { page: 'favorites' };
         case 'search': return { page: 'search' };
         case 'settings': return { page: 'settings' };
@@ -83,6 +88,16 @@ export function pathToRoute(pathname: string): Route {
                 }
             }
             return { page: 'show', showId: decodeURIComponent(showId) };
+        }
+
+        case 'list': {
+            const [kind, listId] = rest;
+            // Sin tipo o sin id no hay lista que enseñar; se cae al índice de
+            // listas, que es más útil que mandar a Inicio.
+            if (!listId || (kind !== 'playlist' && kind !== 'collection')) {
+                return { page: 'lists' };
+            }
+            return { page: 'list', kind, listId: decodeURIComponent(listId) };
         }
 
         case 'movie': {

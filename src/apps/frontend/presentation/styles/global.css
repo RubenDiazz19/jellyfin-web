@@ -223,6 +223,22 @@ html.layout-mobile:not(.layout-tablet) body.jf-frontend-active.jfp-has-nav {
     }
 }
 
+/* Entrada de la capa de búsqueda (la lupa de la barra superior): la caja cae
+   desde arriba mientras aparece. Termina en `transform: none` por lo mismo que
+   jfp-slide-in — mientras hay transform, el elemento es containing block de
+   los `position: fixed` que tenga dentro. */
+@keyframes jfp-search-in {
+    from {
+        opacity: 0;
+        transform: translateY(-18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
 @keyframes jfp-bob {
     0%,
     100% {

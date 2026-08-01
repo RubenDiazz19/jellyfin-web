@@ -24,7 +24,13 @@ export function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; g
     const [scanning, setScanning] = useState(false);
 
     useEffect(() => {
-        getUserViews().then(setViews).catch((e) => setError((e as Error).message));
+        getUserViews()
+            // Jellyfin devuelve «Playlists» entre las vistas del usuario, pero
+            // no es una biblioteca de medios: no tiene carpetas que escanear
+            // ni metadatos que refrescar, y las acciones de esta sección no le
+            // aplican. Las listas se gestionan desde su propia página.
+            .then((all) => setViews(all.filter((v) => v.collectionType !== 'playlists')))
+            .catch((e) => setError((e as Error).message));
     }, []);
 
     const onScan = async () => {

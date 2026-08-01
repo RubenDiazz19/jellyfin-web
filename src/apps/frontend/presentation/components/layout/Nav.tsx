@@ -15,6 +15,7 @@ import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { UserAvatar } from './UserAvatar';
 import { useResponsive } from '../../theme/responsive';
+import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import type { Movie } from '../../../domain/models';
 import type { Route } from '../../../app/router';
 
@@ -26,7 +27,7 @@ type ActionData =
 
 type NavProps = {
     navigate: (r: Route) => void;
-    active?: 'home' | 'series' | 'movies' | 'favorites';
+    active?: 'home' | 'series' | 'movies' | 'lists';
     breadcrumb?: Crumb[];
     actionId?: string;
     actionData?: ActionData;
@@ -36,7 +37,7 @@ const NAV_LINKS = [
     { id: 'home', key: 'Home' },
     { id: 'series', key: 'Shows' },
     { id: 'movies', key: 'Movies' },
-    { id: 'favorites', key: 'Favorites' }
+    { id: 'lists', key: 'Lists' }
 ] as const;
 
 // Reset para que un <button> real (accesible con teclado) se vea como los
@@ -210,7 +211,9 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                     </>
                 )}
                 <button
-                    onClick={() => navigate({ page: 'search' })}
+                    // Abre la capa encima de la página en vez de navegar: se
+                    // busca sin perder dónde estaba uno, y volver es cerrarla.
+                    onClick={searchVM.openOverlay}
                     aria-label={globalize.translate('Search')}
                     style={{
                         ...linkReset, display: 'flex', alignItems: 'center',

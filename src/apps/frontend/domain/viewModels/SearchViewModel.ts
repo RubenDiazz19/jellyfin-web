@@ -24,9 +24,6 @@ function isStateFilter(v: string): v is StateFilter {
     return STATE_FILTERS.includes(v);
 }
 
-/** Sin filtro de etiqueta. Vacío en vez de null para que case con los chips. */
-export const NO_TAG = '';
-
 export type SearchResult =
     | (Show & { _type: 'show' })
     | (Movie & { _type: 'movie' });
@@ -81,8 +78,21 @@ export class SearchViewModel {
     query = signal('');
     typeFilter = signal<TypeFilter>('todo');
     stateFilter = signal<StateFilter>('todo');
-    /** Etiqueta elegida en la fila de chips. NO_TAG = sin filtro. */
-    tagFilter = signal<string>(NO_TAG);
+    /**
+     * Etiquetas elegidas en la fila de chips. Se acumulan en Y: pulsar
+     * «Anime» y «Instituto» deja lo que tenga las dos, no la unión. Es lo que
+     * hace útil un vocabulario con géneros y matices a la vez — el género
+     * acota y el matiz afina.
+     */
+    tagFilters = signal<string[]>([]);
+
+    /**
+     * La búsqueda como superposición sobre la página actual, que es lo que
+     * abre la lupa de la barra. Vive aquí y no en la vista porque `/search`
+     * y la superposición comparten VM: al abrir una hay que saber si la otra
+     * ya tenía filtros puestos.
+     */
+    overlayOpen = signal(false);
 
     /** Biblioteca real de Jellyfin (vacía sin sesión). */
     shows = signal<Show[]>([]);
@@ -124,10 +134,12 @@ export class SearchViewModel {
         const type = this.typeFilter.value;
         const state = this.stateFilter.value;
         const { text: q, tags: queryTags } = parseQuery(this.query.value);
-        // La etiqueta del chip y las que se escriban con `#` se acumulan: hay
-        // que llevarlas todas para aparecer en los resultados.
-        const chipTag = this.tagFilter.value;
-        const requiredTags = chipTag ? [...queryTags, chipTag.toLowerCase()] : queryTags;
+        // Los chips y las etiquetas escritas con `#` se acumulan todos: hay
+        // que cumplirlos todos para aparecer en los resultados.
+        const requiredTags = [
+            ...queryTags,
+            ...this.tagFilters.value.map((t) => t.toLowerCase())
+        ];
 
         return all.filter((item) => {
             if (type === 'series' && item._type !== 'show') return false;
@@ -192,23 +204,59 @@ export class SearchViewModel {
     anyFilterActive = computed(() =>
         this.typeFilter.value !== 'todo'
         || this.stateFilter.value !== 'todo'
-        || this.tagFilter.value !== NO_TAG
+        || this.tagFilters.value.length > 0
         || !!this.query.value.trim()
     );
 
     setQuery = (q: string) => { this.query.value = q; };
     setTypeFilter = (f: TypeFilter) => { this.typeFilter.value = f; };
     setStateFilter = (f: StateFilter) => { this.stateFilter.value = f; };
-    setTagFilter = (t: string) => { this.tagFilter.value = t; };
     clearQuery = () => { this.query.value = ''; };
+
+    /** True si esa etiqueta está entre los filtros activos. */
+    hasTagFilter = (tag: string): boolean =>
+        this.tagFilters.value.some((t) => t.toLowerCase() === tag.toLowerCase());
+
+    /** Añade o quita una etiqueta del filtro. */
+    toggleTagFilter = (tag: string) => {
+        const key = tag.toLowerCase();
+        const current = this.tagFilters.value;
+        this.tagFilters.value = current.some((t) => t.toLowerCase() === key) ?
+            current.filter((t) => t.toLowerCase() !== key) :
+            [...current, tag];
+    };
+
+    clearTagFilters = () => { this.tagFilters.value = []; };
+
+    openOverlay = () => {
+        void this.load();
+        this.overlayOpen.value = true;
+    };
+
+    /**
+     * Cierra la superposición y deja los filtros como estaban al abrirla.
+     *
+     * Se limpia a propósito: la superposición se abre encima de otra página y
+     * al cerrarla el usuario vuelve a lo que estaba viendo. Conservar la
+     * búsqueda anterior haría que la siguiente vez se abriera con resultados
+     * viejos de algo que ya no recuerda haber pedido.
+     */
+    closeOverlay = () => {
+        this.overlayOpen.value = false;
+        this.query.value = '';
+        this.typeFilter.value = 'todo';
+        this.stateFilter.value = 'todo';
+        this.tagFilters.value = [];
+    };
 
     /** Los filtros actuales, listos para guardarlos como vista. */
     currentView(name: string): Omit<SavedView, 'id'> {
+        const tags = this.tagFilters.value;
         return {
             name,
             typeFilter: this.typeFilter.value,
             stateFilter: this.stateFilter.value,
-            tag: this.tagFilter.value || undefined,
+            tags: tags.length > 0 ? [...tags] : undefined,
             query: this.query.value.trim() || undefined
         };
     }
@@ -221,7 +269,9 @@ export class SearchViewModel {
     applyView(view: SavedView) {
         this.typeFilter.value = isTypeFilter(view.typeFilter) ? view.typeFilter : 'todo';
         this.stateFilter.value = isStateFilter(view.stateFilter) ? view.stateFilter : 'todo';
-        this.tagFilter.value = view.tag ?? NO_TAG;
+        // `tag` en singular es el formato viejo, de cuando solo se podía
+        // filtrar por una: las vistas guardadas entonces siguen funcionando.
+        this.tagFilters.value = view.tags ?? (view.tag ? [view.tag] : []);
         this.query.value = view.query ?? '';
     }
 

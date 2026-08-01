@@ -6,3 +6,9 @@
 export { FAVS } from '../data/stores/favsStore';
 export { WATCHED } from '../data/stores/watchedStore';
 export { VIEWS, type SavedView } from '../data/stores/viewsStore';
+// A diferencia de los de arriba, este no vive en localStorage: la fuente de
+// verdad son las listas del servidor (de reproducción y colecciones). Se
+// expone igual porque el contrato hacia la vista es el mismo (leer + evento
+// de cambio).
+export { LISTS, displayItems, type ListKind, type ListRef } from '../data/stores/listsStore';
+export type { ListEntry } from '../data/api/lists';

@@ -18,12 +18,15 @@ import { SeasonPage } from '../presentation/pages/SeasonPage';
 import { EpisodePage } from '../presentation/pages/EpisodePage';
 import { MoviePage } from '../presentation/pages/MoviePage';
 import { SearchPage } from '../presentation/pages/SearchPage';
+import { SearchOverlay } from '../presentation/components/search/SearchOverlay';
 import { LoginPage } from '../presentation/pages/LoginPage';
 
 // Páginas de acceso puntual: se cargan bajo demanda para no engordar el
 // bundle inicial. React.lazy + Suspense hace el split automáticamente.
 const GenrePage = lazy(() => import('../presentation/pages/GenrePage').then(m => ({ default: m.GenrePage })));
 const FavoritesPage = lazy(() => import('../presentation/pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
+const ListsPage = lazy(() => import('../presentation/pages/ListsPage').then(m => ({ default: m.ListsPage })));
+const ListPage = lazy(() => import('../presentation/pages/ListPage').then(m => ({ default: m.ListPage })));
 const PersonPage = lazy(() => import('../presentation/pages/PersonPage').then(m => ({ default: m.PersonPage })));
 const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const QueuePage = lazy(() => import('../presentation/pages/QueuePage').then(m => ({ default: m.QueuePage })));
@@ -192,7 +195,9 @@ function AuthedApp() {
                     {route.page === 'movie' && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
                     {route.page === 'search' && <SearchPage navigate={navigate} />}
                     <Suspense fallback={<PageFallback />}>
+                        {route.page === 'lists' && <ListsPage navigate={navigate} />}
                         {route.page === 'favorites' && <FavoritesPage navigate={navigate} />}
+                        {route.page === 'list' && <ListPage kind={route.kind} listId={route.listId} navigate={navigate} />}
                         {route.page === 'genre' && <GenrePage genre={route.genre} navigate={navigate} />}
                         {route.page === 'person' && <PersonPage name={route.name} navigate={navigate} />}
                         {route.page === 'settings' && <SettingsPage navigate={navigate} initial='reproduccion' />}
@@ -222,6 +227,10 @@ function AuthedApp() {
                     onChange={(v) => setTweak('heroScrim', v)}
                 />
             </TweaksPanel>
+            {/* Fuera del wrapper de la ruta: la capa se abre desde la lupa de
+                cualquier página y tiene que quedar por encima de todo,
+                incluidos los heroes a pantalla completa. */}
+            <SearchOverlay navigate={navigate} />
         </>
     );
 }
