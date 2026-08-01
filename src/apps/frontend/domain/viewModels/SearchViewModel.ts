@@ -7,9 +7,12 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { FAVS } from '../../data/stores/favsStore';
+import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { MANUAL_TAGS } from '../../data/stores/manualTagsStore';
 import { WATCHED } from '../../data/stores/watchedStore';
 import type { SavedView } from '../../data/stores/viewsStore';
+import { registerTagSource } from './knownTags';
+import { LoadGuard } from './loadGuard';
 
 export type TypeFilter = 'todo' | 'series' | 'peliculas';
 export type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
@@ -24,9 +27,14 @@ function isStateFilter(v: string): v is StateFilter {
     return STATE_FILTERS.includes(v);
 }
 
+/**
+ * Un título del catálogo con la marca de qué es. `kind` y no `_type`: así el
+ * resultado cumple `CatalogItem` tal cual y las tarjetas lo pintan sin
+ * conocer este ViewModel.
+ */
 export type SearchResult =
-    | (Show & { _type: 'show' })
-    | (Movie & { _type: 'movie' });
+    | (Show & { kind: 'show' })
+    | (Movie & { kind: 'movie' });
 
 /**
  * Separa los `#tag` del texto libre.
@@ -65,13 +73,13 @@ function tagsOf(item: SearchResult): string[] {
 
 function isSeriesWatched(show: Show): boolean {
     const ids = (show.seasons || []).flatMap((s) =>
-        (s.episodes || []).map((e) => `${show.id}-s${s.n}-e${e.n}`)
+        (s.episodes || []).map((e) => episodeKey(show.id, s.n, e.n))
     );
     return ids.length > 0 && ids.every((id) => WATCHED.has(id));
 }
 
 function isMovieWatched(movie: Movie): boolean {
-    return (movie.watched ?? 0) >= 1 || WATCHED.has(`movie-${movie.id}`);
+    return (movie.watched ?? 0) >= 1 || WATCHED.has(movieKey(movie.id));
 }
 
 export class SearchViewModel {
@@ -107,9 +115,11 @@ export class SearchViewModel {
     // hay que volver a traer la biblioteca para verlas.
     private mutationVersion = signal(0);
 
-    private seq = 0;
+    private loads = new LoadGuard();
 
-    constructor(private api: ApiService) {}
+    constructor(private api: ApiService) {
+        registerTagSource(() => [...this.shows.peek(), ...this.movies.peek()]);
+    }
 
     results = computed<SearchResult[]>(() => {
         // Lecturas intencionadas: registran los contadores como dependencias
@@ -119,16 +129,16 @@ export class SearchViewModel {
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         this.watchedVersion.value;
 
-        const jf = this.shows.value.map((s) => ({ ...s, _type: 'show' as const }));
+        const jf = this.shows.value.map((s) => ({ ...s, kind: 'show' as const }));
         const jfIds = new Set(jf.map((s) => s.id));
         const protoShows = Object.values(PROTO_DATA.shows)
             .filter((s) => !jfIds.has(s.id))
-            .map((s) => ({ ...s, _type: 'show' as const }));
-        const jfMovies = this.movies.value.map((m) => ({ ...m, _type: 'movie' as const }));
+            .map((s) => ({ ...s, kind: 'show' as const }));
+        const jfMovies = this.movies.value.map((m) => ({ ...m, kind: 'movie' as const }));
         const jfMovieIds = new Set(jfMovies.map((m) => m.id));
         const protoMovies = Object.values(PROTO_DATA.movies)
             .filter((m) => !jfMovieIds.has(m.id))
-            .map((m) => ({ ...m, _type: 'movie' as const }));
+            .map((m) => ({ ...m, kind: 'movie' as const }));
         const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies];
 
         const type = this.typeFilter.value;
@@ -142,8 +152,8 @@ export class SearchViewModel {
         ];
 
         return all.filter((item) => {
-            if (type === 'series' && item._type !== 'show') return false;
-            if (type === 'peliculas' && item._type !== 'movie') return false;
+            if (type === 'series' && item.kind !== 'show') return false;
+            if (type === 'peliculas' && item.kind !== 'movie') return false;
 
             if (requiredTags.length > 0) {
                 const own = tagsOf(item).map((t) => t.toLowerCase());
@@ -151,10 +161,10 @@ export class SearchViewModel {
             }
 
             if (state !== 'todo') {
-                const isFav = item._type === 'show' ?
+                const isFav = item.kind === 'show' ?
                     FAVS.has(item.id) :
-                    FAVS.has(`movie-${item.id}`);
-                const isWatched = item._type === 'show' ?
+                    FAVS.has(movieKey(item.id));
+                const isWatched = item.kind === 'show' ?
                     isSeriesWatched(item) :
                     isMovieWatched(item);
                 if (state === 'favs' && !isFav) return false;
@@ -278,22 +288,22 @@ export class SearchViewModel {
     /** Carga la biblioteca real para buscar sobre ella (si hay sesión). */
     async load() {
         if (!this.api.session.load()?.accessToken) return;
-        const seq = ++this.seq;
+        const isLatest = this.loads.begin();
         this.loading.value = true;
         try {
             const [shows, movies] = await Promise.all([
                 this.api.catalog.getShows(),
                 this.api.catalog.getMovies().catch(() => [] as Movie[])
             ]);
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.shows.value = shows;
             this.movies.value = movies;
         } catch {
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.shows.value = [];
             this.movies.value = [];
         } finally {
-            if (seq === this.seq) this.loading.value = false;
+            if (isLatest()) this.loading.value = false;
         }
     }
 

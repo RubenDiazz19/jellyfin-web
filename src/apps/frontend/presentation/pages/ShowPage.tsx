@@ -1,17 +1,19 @@
 import globalize from 'lib/globalize';
 
-import { useEffect, useState } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatRemaining } from '../theme/format';
-import { WATCHED } from '../../domain/stores';
+import { episodeKey, WATCHED } from '../../domain/stores';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
-import { PROTO_DATA, type Show } from '../../domain/models';
-import { showVM } from '../../domain/viewModels/ShowViewModel';
-import { useVmSignals } from '../../domain/bridge/useViewModel';
+import type { Show } from '../../domain/models';
 import {
     HeroFrame, HeroGenres, HeroTitle, useHeroLayout, type HeroTweaks
 } from '../components/layout/DetailHero';
+import { HeroActionsRow, HeroPlayButton } from '../components/layout/HeroActions';
+import {
+    DetailBody, DetailColumns, DetailHeading, DetailRow, DetailStatus, DetailTable,
+    GenreLinks, SectionLabel
+} from '../components/layout/DetailSections';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
@@ -20,42 +22,16 @@ import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
-import { MC, useResponsive } from '../theme/responsive';
+import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
+import { ticksFromProgress } from '../../domain/player/format';
+import { useShowEntity } from './useDetailEntity';
 
 type PageProps = { showId: string; navigate: Navigate; hero?: HeroTweaks };
 
 export function ShowPage({ showId, navigate, hero }: PageProps) {
-    const proto = PROTO_DATA.shows[showId];
-    // Si la ID no está en el catálogo prototipo asumimos que viene de Jellyfin.
-    // La página no lee `loading` (pinta «Cargando…» cuando show es null), así
-    // que no se suscribe a él.
-    useVmSignals(showVM, (vm) => [vm.show, vm.error]);
-    useEffect(() => {
-        if (!proto) void showVM.load(showId);
-    }, [proto, showId]);
-    const show = proto ?? showVM.showFor(showId);
-    if (!show) {
-        if (showVM.error.value) {
-            return (
-                <section style={{
-                    minHeight: '100vh', background: '#000', color: '#ff6b6b', fontFamily: T.ui,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-                }}>
-                    {showVM.error.value}
-                </section>
-            );
-        }
-        return (
-            <section style={{
-                minHeight: '100vh', background: '#000', color: T.dim, fontFamily: T.ui,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
-            }}>
-                Cargando…
-            </section>
-        );
-    }
+    const { item: show, error } = useShowEntity(showId);
+    if (!show) return <DetailStatus error={error} />;
     return (
         <>
             <ShowHero show={show} navigate={navigate} hero={hero} />
@@ -72,12 +48,11 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     const label = `T${target.seasonN}:E${String(target.epN).padStart(2, '0')}`;
     useWatchedVersion();
     const allEpIds = (show.seasons || []).flatMap((s) =>
-        (s.episodes || []).map((ep) => `${show.id}-s${s.n}-e${ep.n}`)
+        (s.episodes || []).map((ep) => episodeKey(show.id, s.n, ep.n))
     );
     const complete = allEpIds.length > 0 && allEpIds.every((id) => WATCHED.has(id));
     const progress = complete ? 0 : cont ? cont.progress : 0;
     const inProgress = !complete && !!cont && progress > 0;
-    const [btnHover, setBtnHover] = useState(false);
     const epLabel = `T${target.seasonN} E${String(target.epN).padStart(2, '0')}`;
     const remaining = cont ? formatRemaining(cont.remaining, { suffix: '' }) : '';
     const { minimal, inlineJustify } = useHeroLayout(hero);
@@ -91,9 +66,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             play({
                 itemId: targetEp.jfId,
                 title: `${show.title} · T${target.seasonN} E${String(target.epN).padStart(2, '0')} — ${targetEp.title ?? ''}`,
-                startTicks: cont && cont.progress > 0 && targetEp.runtime ?
-                    Math.round(targetEp.runtime * 60 * cont.progress * 10_000_000) :
-                    undefined
+                startTicks: ticksFromProgress(targetEp.runtime, cont?.progress ?? 0)
             });
         } else {
             // Fallback: al menos llevamos al usuario a la ficha del episodio.
@@ -162,79 +135,40 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                     </div>
                 )}
 
-                <div style={{
-                    marginTop: r.touch ? 20 : 28, display: 'flex', alignItems: 'center',
-                    gap: r.touch ? 12 : 16, flexWrap: 'wrap'
-                }}>
-                    <button
-                        onClick={startPlay}
-                        // Mismo motivo que PlayBtn: sin bloquear el focus nativo, Chrome
-                        // scrollea unos px al pulsar (el botón vive en el hero 100vh con
-                        // flex-end) y el mouseup cae fuera → el click no dispara a la
-                        // primera. preventDefault en mousedown mantiene el click intacto
-                        // y la accesibilidad con Tab.
-                        onMouseDown={(e) => e.preventDefault()}
-                        style={{
-                            position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center',
-                            gap: 10, padding: '14px 28px',
-                            background: complete ? '#fff' : 'transparent',
-                            color: complete ? '#000' : '#fff',
-                            border: complete ? 'none' : '1px solid rgba(255,255,255,0.4)',
-                            borderRadius: 999, whiteSpace: 'nowrap',
-                            fontFamily: T.ui, fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
-                            cursor: 'pointer', transition: 'background .2s ease, border-color .2s ease'
-                        }}
-                        onMouseEnter={() => setBtnHover(true)}
-                        onMouseLeave={() => setBtnHover(false)}
-                    >
-                        {inProgress && (
-                            <span style={{
-                                position: 'absolute', top: 0, bottom: 0, left: 0,
-                                width: `${progress * 100}%`,
-                                background: 'rgba(255,255,255,0.22)', pointerEvents: 'none'
-                            }} />
-                        )}
-                        <span style={{
-                            position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center',
-                            gap: 10, whiteSpace: 'nowrap'
-                        }}>
-                            {complete ?
-                                <Ic.Check size={14} stroke='#000' /> :
-                                <Ic.Play size={14} fill='#fff' />}
-                            {/* Al hover: solo tiempo restante (se expande horizontalmente).
-                                Sin hover: episodio (T1 E01) o estado (Visto/Reproducir). */}
-                            {inProgress && btnHover && remaining ? (
-                                remaining
-                            ) : (
-                                inProgress ? epLabel :
-                                    complete ? globalize.translate(btnHover ? 'WatchAgain' : 'Watched') :
-                                        `${globalize.translate('Play')} ${label}`
+                <HeroActionsRow
+                    myList={<MyListButton itemId={show.id} itemTitle={show.title} size='sm' />}
+                    more={
+                        <MoreButton
+                            id={show.id} size={18} type='show' itemTitle={show.title}
+                            nextEpisodeId={
+                                show.seasons
+                                    .find((s) => s.n === (show.cont?.seasonN ?? show.defaultSeason))
+                                    ?.episodes.find((e) => e.n === (show.cont?.epN ?? 1))?.jfId
+                            }
+                            queueSubtitle={globalize.translate(
+                                'ValueSeasonEpisode',
+                                show.cont?.seasonN ?? show.defaultSeason,
+                                show.cont?.epN ?? 1
                             )}
-                        </span>
-                    </button>
-                    {/* En touch se oculta (añadir a lista vive en el bottom
-                        sheet del botón de más opciones). */}
-                    {!r.touch && (
-                        <>
-                            <MyListButton itemId={show.id} itemTitle={show.title} size='sm' />
-                            <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.18)', margin: '0 4px' }} />
-                        </>
-                    )}
-                    <MoreButton
-                        id={show.id} size={18} type='show' itemTitle={show.title}
-                        nextEpisodeId={
-                            show.seasons
-                                .find((s) => s.n === (show.cont?.seasonN ?? show.defaultSeason))
-                                ?.episodes.find((e) => e.n === (show.cont?.epN ?? 1))?.jfId
-                        }
-                        queueSubtitle={globalize.translate(
-                            'ValueSeasonEpisode',
-                            show.cont?.seasonN ?? show.defaultSeason,
-                            show.cont?.epN ?? 1
+                            queuePoster={show.poster}
+                        />
+                    }
+                >
+                    <HeroPlayButton
+                        onClick={startPlay}
+                        complete={complete}
+                        progress={inProgress ? progress : 0}
+                        // Al hover: solo tiempo restante (se expande
+                        // horizontalmente). Sin hover: episodio (T1 E01) o
+                        // estado (Visto/Reproducir).
+                        label={(hover) => (
+                            inProgress && hover && remaining ? remaining :
+                                inProgress ? epLabel :
+                                    complete ? globalize.translate(hover ? 'WatchAgain' : 'Watched') :
+                                        `${globalize.translate('Play')} ${label}`
                         )}
-                        queuePoster={show.poster}
                     />
-                </div>
+                </HeroActionsRow>
             </>
         </HeroFrame>
     );
@@ -243,27 +177,10 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
 function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
     const r = useResponsive();
     return (
-        <section style={{
-            background: r.touch ? MC.bg : '#000',
-            color: r.touch ? MC.fg : '#fff',
-            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px',
-            fontFamily: T.ui
-        }}>
-            {/* minmax(0,…) evita el grid blowout: sin él el track 1fr no baja
-                del min-content del reparto y la rejilla desborda el viewport.
-                En touch la ficha es single column (spec 4.3). */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: r.touch ? 'minmax(0, 1fr)' : 'minmax(0, 1.6fr) minmax(0, 1fr)',
-                gap: r.touch ? 36 : 64
-            }}>
+        <DetailBody>
+            <DetailColumns>
                 <div>
-                    <div style={{
-                        fontFamily: T.ui, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                        color: T.dim, marginBottom: 18
-                    }}>
-                        {globalize.translate('Overview')}
-                    </div>
+                    <SectionLabel>{globalize.translate('Overview')}</SectionLabel>
                     <p style={{
                         fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
                         color: 'rgba(255,255,255,0.82)', maxWidth: 640, textWrap: 'pretty', fontWeight: 400
@@ -277,54 +194,33 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                 </div>
 
                 <div>
-                    <div style={{
-                        fontFamily: T.ui, fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                        color: T.dim, marginBottom: 18
-                    }}>
-                        {globalize.translate('HeaderDetails')}
-                    </div>
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: '120px 1fr',
-                        rowGap: 14, columnGap: 18, fontSize: 13
-                    }}>
-                        <span style={{ color: T.dim }}>{globalize.translate('Creator')}</span><span>{show.creator}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Director')}</span><span>{show.directors}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Studio')}</span><span>{show.studio}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Country')}</span><span>{show.country}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Genres')}</span>
-                        <span>
-                            {show.genres.map((g, i) => (
-                                <span key={g}>
-                                    <button
-                                        onClick={() => navigate({ page: 'genre', genre: g })}
-                                        style={{
-                                            background: 'none', border: 'none', padding: 0,
-                                            font: 'inherit', color: 'inherit', cursor: 'pointer',
-                                            textDecoration: 'underline dotted', textUnderlineOffset: 3
-                                        }}
-                                    >{g}</button>
-                                    {i < show.genres.length - 1 && ', '}
-                                </span>
-                            ))}
-                        </span>
-                        <span style={{ color: T.dim }}>{globalize.translate('LabelRuntimeMinutes')}</span><span>{show.runtime}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('OptionPremiereDate')}</span><span>{show.premiere}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('HeaderStatus')}</span><span style={{ color: '#fff' }}>{show.status}</span>
-                    </div>
+                    <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
+                    <DetailTable>
+                        <DetailRow label={globalize.translate('Creator')}>{show.creator}</DetailRow>
+                        <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
+                        <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
+                        <DetailRow label={globalize.translate('Country')}>{show.country}</DetailRow>
+                        <DetailRow label={globalize.translate('Genres')}>
+                            <GenreLinks genres={show.genres} navigate={navigate} />
+                        </DetailRow>
+                        <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>{show.runtime}</DetailRow>
+                        <DetailRow label={globalize.translate('OptionPremiereDate')}>{show.premiere}</DetailRow>
+                        <DetailRow label={globalize.translate('HeaderStatus')}>
+                            <span style={{ color: '#fff' }}>{show.status}</span>
+                        </DetailRow>
+                    </DetailTable>
                 </div>
-            </div>
+            </DetailColumns>
 
             <div style={{ marginTop: r.touch ? 44 : 88 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: r.touch ? 18 : 32 }}>
-                    <h3 style={{
-                        fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
-                    }}>
-                        {globalize.translate('HeaderSeasons')}
-                    </h3>
+                <DetailHeading
+                    title={globalize.translate('HeaderSeasons')}
+                    marginBottom={r.touch ? 18 : 32}
+                >
                     <div style={{ marginLeft: 14, fontFamily: T.ui, fontSize: 12, color: T.dim }}>
                         {show.seasons.length} temporadas · {show.seasons.reduce((a, s) => a + s.total, 0)} episodios
                     </div>
-                </div>
+                </DetailHeading>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: r.touch ? r.gap : 22 }}>
                     {show.seasons.map((s) => (
@@ -334,6 +230,6 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
             </div>
 
             <Similar currentId={show.id} currentGenres={show.genres} kind='show' navigate={navigate} />
-        </section>
+        </DetailBody>
     );
 }

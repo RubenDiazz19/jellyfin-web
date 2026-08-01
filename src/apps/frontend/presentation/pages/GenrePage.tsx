@@ -3,18 +3,13 @@ import globalize from 'lib/globalize';
 import { T } from '../theme/tokens';
 import { PROTO_DATA } from '../../domain/models';
 import { Nav } from '../components/layout/Nav';
-import { PosterCard } from '../components/cards/PosterCard';
-import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
-import { EmptyState } from '../components/skeleton/Skeleton';
-import { MC, useResponsive } from '../theme/responsive';
+import { CatalogPage } from './CatalogPage';
 import type { Navigate } from '../../app/router';
 
 type Props = { genre: string; navigate: Navigate };
 
 // Página de género: agrupa series y películas cuyo `genres` contiene el género.
-// Se muestra en dos secciones (series primero, películas después).
 export function GenrePage({ genre, navigate }: Props) {
-    const r = useResponsive();
     const g = genre.toLowerCase();
     const shows = Object.values(PROTO_DATA.shows).filter((s) =>
         s.genres.some((x) => x.toLowerCase() === g)
@@ -24,15 +19,17 @@ export function GenrePage({ genre, navigate }: Props) {
     );
 
     return (
-        <>
-            <Nav navigate={navigate} breadcrumb={[
-                { label: globalize.translate('Home'), to: { page: 'home' } },
-                { label: `${globalize.translate('Genre')} · ${genre}` }
-            ]} />
-            <section style={{
-                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
-                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
-            }}>
+        <CatalogPage
+            navigate={navigate}
+            shows={shows}
+            movies={movies}
+            nav={
+                <Nav navigate={navigate} breadcrumb={[
+                    { label: globalize.translate('Home'), to: { page: 'home' } },
+                    { label: `${globalize.translate('Genre')} · ${genre}` }
+                ]} />
+            }
+            header={
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 44 }}>
                     <h1 style={{
                         fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
@@ -44,50 +41,11 @@ export function GenrePage({ genre, navigate }: Props) {
                         {globalize.translate('TitleCount', shows.length + movies.length)}
                     </span>
                 </div>
-
-                {shows.length > 0 && (
-                    <>
-                        <SectionHead label={globalize.translate('Shows')} count={shows.length} />
-                        <div style={grid}>
-                            {shows.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
-                        </div>
-                    </>
-                )}
-
-                {movies.length > 0 && (
-                    <>
-                        <div style={{ height: 56 }} />
-                        <SectionHead label={globalize.translate('Movies')} count={movies.length} />
-                        <div style={grid}>
-                            {movies.map((m) => <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />)}
-                        </div>
-                    </>
-                )}
-
-                {shows.length === 0 && movies.length === 0 && (
-                    <EmptyState
-                        title={globalize.translate('MessageNoTitlesForGenre', genre)}
-                        hint={globalize.translate('MessageNoTitlesForGenreHelp')}
-                    />
-                )}
-            </section>
-        </>
+            }
+            empty={{
+                title: globalize.translate('MessageNoTitlesForGenre', genre),
+                hint: globalize.translate('MessageNoTitlesForGenreHelp')
+            }}
+        />
     );
 }
-
-function SectionHead({ label, count }: { label: string; count: number }) {
-    return (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-            <h2 style={{
-                fontFamily: T.display, fontStyle: 'italic', fontWeight: 300, fontSize: 28, margin: 0
-            }}>{label}</h2>
-            <span style={{ fontSize: 12, color: T.dim }}>{count}</span>
-        </div>
-    );
-}
-
-const grid: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-    gap: 28
-};

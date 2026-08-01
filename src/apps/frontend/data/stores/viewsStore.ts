@@ -1,14 +1,12 @@
 // Vistas guardadas: combinaciones de filtros de la búsqueda a las que volver
-// de un clic. Misma forma que favsStore/queueStore: caché en memoria + evento
-// global para que la UI re-lea.
+// de un clic.
 //
 // Son LOCALES a propósito. Una vista es configuración de navegación de este
 // dispositivo, no un dato de la biblioteca; las etiquetas a las que apunta sí
 // viven en el servidor, así que la misma vista funciona desde cualquier
 // cliente que tenga esa etiqueta.
 
-const KEY = 'jfp-views';
-const EVENT = 'jfp-views-change';
+import { createListStore } from './persistentStore';
 
 export type SavedView = {
     id: string;
@@ -27,8 +25,6 @@ export type SavedView = {
     query?: string;
 };
 
-let cache: SavedView[] | null = null;
-
 function isView(v: unknown): v is SavedView {
     const view = v as SavedView;
     return !!view
@@ -38,34 +34,16 @@ function isView(v: unknown): v is SavedView {
         && typeof view.stateFilter === 'string';
 }
 
-function ensure(): SavedView[] {
-    if (cache) return cache;
-    try {
-        const raw: unknown = JSON.parse(localStorage.getItem(KEY) || '[]');
-        cache = Array.isArray(raw) ? raw.filter(isView) : [];
-    } catch {
-        cache = [];
-    }
-    return cache;
-}
-
-function persist(next: SavedView[]) {
-    cache = next;
-    try {
-        localStorage.setItem(KEY, JSON.stringify(next));
-    } catch {
-        // Sin persistencia las vistas duran lo que la pestaña; se sigue
-        // notificando para que la UI quede coherente con la caché.
-    }
-    window.dispatchEvent(new Event(EVENT));
-}
+const store = createListStore<SavedView>({
+    key: 'jfp-views',
+    event: 'jfp-views-change',
+    isValid: isView
+});
 
 export const VIEWS = {
-    event: EVENT,
+    event: store.event,
 
-    all(): SavedView[] {
-        return [...ensure()];
-    },
+    all: () => store.all(),
 
     /**
      * Guarda una vista. Repetir nombre reemplaza en su sitio en vez de
@@ -73,16 +51,16 @@ export const VIEWS = {
      * inequívocamente actualizar.
      */
     save(view: Omit<SavedView, 'id'>): SavedView {
-        const list = ensure();
-        const existing = list.find((v) => v.name.toLowerCase() === view.name.toLowerCase());
+        const existing = store.all()
+            .find((v) => v.name.toLowerCase() === view.name.toLowerCase());
         const entry: SavedView = { ...view, id: existing?.id ?? `v${Date.now()}` };
-        persist(existing ?
+        store.update((list) => (existing ?
             list.map((v) => (v.id === existing.id ? entry : v)) :
-            [...list, entry]);
+            [...list, entry]));
         return entry;
     },
 
     remove(id: string) {
-        persist(ensure().filter((v) => v.id !== id));
+        store.update((list) => list.filter((v) => v.id !== id));
     }
 };

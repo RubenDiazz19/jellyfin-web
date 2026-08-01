@@ -35,34 +35,10 @@ function signalsOf(vm: object): Signal<unknown>[] {
 }
 
 /**
- * Suscribe el componente a todos los signals del ViewModel.
- * El componente re-renderiza cuando cualquier signal cambia de valor.
- */
-export function useViewModel<T extends object>(vm: T): T {
-    const version = useRef(0);
-
-    const subscribe = useCallback((onChange: () => void) => {
-        // signal.subscribe() invoca el callback inmediatamente al suscribir
-        // (semántica de effect); ese bump inicial solo causa un re-render
-        // extra en el montaje y después queda estable.
-        const unsubs = signalsOf(vm).map((s) =>
-            s.subscribe(() => {
-                version.current++;
-                onChange();
-            })
-        );
-        return () => unsubs.forEach((u) => { u(); });
-    }, [vm]);
-
-    useSyncExternalStore(subscribe, () => version.current, () => version.current);
-    return vm;
-}
-
-/**
- * Suscripción selectiva: como useViewModel pero solo a los signals que la
- * View realmente lee. Evita re-renders por signals ajenos (p.ej. el hero de
- * la Home no debe re-pintarse cuando termina de cargar la biblioteca).
- * `pick` debe devolver siempre la misma lista para un call-site dado.
+ * Suscripción selectiva: solo a los signals que la View realmente lee. Evita
+ * re-renders por signals ajenos (p.ej. el hero de la Home no debe re-pintarse
+ * cuando termina de cargar la biblioteca). `pick` debe devolver siempre la
+ * misma lista para un call-site dado.
  */
 export function useVmSignals<T extends object>(
     vm: T,
@@ -70,6 +46,9 @@ export function useVmSignals<T extends object>(
 ): T {
     const version = useRef(0);
     const subscribe = useCallback((onChange: () => void) => {
+        // signal.subscribe() invoca el callback inmediatamente al suscribir
+        // (semántica de effect); ese bump inicial solo causa un re-render
+        // extra en el montaje y después queda estable.
         const unsubs = pick(vm).map((s) =>
             s.subscribe(() => {
                 version.current++;
@@ -83,6 +62,14 @@ export function useVmSignals<T extends object>(
 
     useSyncExternalStore(subscribe, () => version.current, () => version.current);
     return vm;
+}
+
+/**
+ * Suscribe el componente a todos los signals del ViewModel.
+ * El componente re-renderiza cuando cualquier signal cambia de valor.
+ */
+export function useViewModel<T extends object>(vm: T): T {
+    return useVmSignals(vm, signalsOf);
 }
 
 /**

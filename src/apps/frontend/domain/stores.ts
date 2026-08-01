@@ -5,6 +5,9 @@
 
 export { FAVS } from '../data/stores/favsStore';
 export { WATCHED } from '../data/stores/watchedStore';
+// Las claves con las que esos dos stores identifican cada cosa: una película o
+// un episodio no se guardan por su id de Jellyfin (ver itemKeys).
+export { episodeKey, movieKey, seasonKey } from '../data/stores/itemKeys';
 export { VIEWS, type SavedView } from '../data/stores/viewsStore';
 // A diferencia de los de arriba, este no vive en localStorage: la fuente de
 // verdad son las listas del servidor (de reproducción y colecciones). Se

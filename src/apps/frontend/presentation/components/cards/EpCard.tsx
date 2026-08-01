@@ -6,13 +6,14 @@ import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
 import type { Show, Season, Episode } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
+import { episodeKey } from '../../../domain/stores';
 
 type Props = { show: Show; season: Season; ep: Episode; navigate: Navigate };
 
 // Tarjeta de episodio. La preview solo se ve nítida si el episodio está
 // visto o en progreso; en otro caso se desenfoca para preservar spoilers.
 export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigate }: Props) {
-    const [liveW] = useWatched(`${show.id}-s${season.n}-e${ep.n}`);
+    const [liveW] = useWatched(episodeKey(show.id, season.n, ep.n));
     const watched = ep.watched >= 1 || liveW;
     const inProgress = !watched && ep.watched > 0 && ep.watched < 1;
     const revealed = watched || inProgress;
@@ -46,7 +47,7 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
                 </div>
 
                 <div style={{ position: 'absolute', top: 8, right: 8 }}>
-                    <FavButton id={`${show.id}-s${season.n}-e${ep.n}`} size={15} />
+                    <FavButton id={episodeKey(show.id, season.n, ep.n)} size={15} />
                 </div>
 
                 {watched && (

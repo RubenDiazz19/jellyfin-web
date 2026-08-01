@@ -8,8 +8,9 @@ import type { PlaybackDecision } from '../../../data/api/playback';
 import type { PlaybackContext } from '../../../data/api/playbackContext';
 import type { MediaSegment } from '../../../data/api/segments';
 import {
-    chapterAt, chapterDisplayName, playerMarks, progressDividers, VideoPlayerViewModel
-} from '../VideoPlayerViewModel';
+    chapterAt, chapterDisplayName, playerMarks, progressDividers
+} from '../../player/format';
+import { VideoPlayerViewModel } from '../VideoPlayerViewModel';
 
 vi.mock('../../../data/api/ApiService', () => ({ apiService: {} }));
 

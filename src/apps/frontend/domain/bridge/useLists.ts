@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { LISTS } from '../../data/stores/listsStore';
+import { useEffect } from 'react';
+import { LISTS } from '../stores';
+import { useStoreValue } from './useStore';
 
 /**
  * Si el título está en alguna lista (de reproducción o colección), y en cuáles.
@@ -9,21 +10,12 @@ import { LISTS } from '../../data/stores/listsStore';
  * Mientras no haya datos responde `false`, que es el estado neutro correcto.
  */
 export function useInLists(itemId: string): { inAny: boolean; keys: string[] } {
-    const [state, setState] = useState(() => ({
+    useEffect(() => {
+        void LISTS.ensure();
+    }, [itemId]);
+
+    return useStoreValue(LISTS.event, itemId, () => ({
         inAny: LISTS.has(itemId),
         keys: LISTS.keysOf(itemId)
     }));
-
-    useEffect(() => {
-        const update = () => setState({
-            inAny: LISTS.has(itemId),
-            keys: LISTS.keysOf(itemId)
-        });
-        window.addEventListener(LISTS.event, update);
-        update();
-        void LISTS.ensure();
-        return () => window.removeEventListener(LISTS.event, update);
-    }, [itemId]);
-
-    return state;
 }

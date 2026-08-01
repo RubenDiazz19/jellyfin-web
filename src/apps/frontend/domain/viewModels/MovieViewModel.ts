@@ -1,15 +1,16 @@
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
-import { ITEM_MUTATED_EVENT, type ItemMutatedDetail } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie } from '../../data/models';
+import { ItemMutationSubscription } from './itemMutations';
+import { LoadGuard } from './loadGuard';
 
 export class MovieViewModel {
     movie = signal<Movie | null>(null);
     loading = signal(false);
     error = signal<string | null>(null);
 
-    private seq = 0;
-    private mutationHandler: ((e: Event) => void) | null = null;
+    private loads = new LoadGuard();
+    private mutations = new ItemMutationSubscription();
 
     constructor(private api: ApiService) {}
 
@@ -24,7 +25,7 @@ export class MovieViewModel {
         // Limpiamos el error si cambiamos de id
         if (cached?.id !== id) this.error.value = null;
 
-        const seq = ++this.seq;
+        const isLatest = this.loads.begin();
         // Primero mostramos proto data instantáneamente si existe
         const proto = PROTO_DATA.movies[id];
         if (proto) {
@@ -38,12 +39,12 @@ export class MovieViewModel {
 
         try {
             const movie = await this.api.catalog.getMovie(id);
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.movie.value = movie;
             this.loading.value = false;
             this.error.value = null;
         } catch (e) {
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             // Si ya teníamos proto data, no sobreescribimos con error
             if (proto) return;
             this.error.value = (e as Error).message;
@@ -59,19 +60,13 @@ export class MovieViewModel {
     // Refresca la película actual si alguien mutó ese mismo item (edición de
     // imagen, metadatos, played, favorito). Sin esto el usuario necesitaría
     // recargar la página para ver la nueva portada.
-    //
-    // Se engancha en el primer `load()`, no en el constructor: ver la nota en
-    // HomeViewModel.subscribeToMutations.
     private subscribeToMutations() {
-        if (this.mutationHandler || typeof window === 'undefined') return;
-        this.mutationHandler = (e: Event) => {
-            const detail = (e as CustomEvent<ItemMutatedDetail>).detail;
+        this.mutations.ensure((itemId) => {
             const current = this.movie.value;
             if (!current) return;
-            if (detail?.itemId && detail.itemId !== current.id) return;
+            if (itemId && itemId !== current.id) return;
             void this.load(current.id, true);
-        };
-        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
+        });
     }
 }
 

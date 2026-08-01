@@ -7,6 +7,7 @@
 
 import { computed, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
+import { movieKey } from '../../data/stores/itemKeys';
 import { QUEUE } from '../../data/stores/queueStore';
 import { WATCHED } from '../../data/stores/watchedStore';
 
@@ -27,7 +28,7 @@ export type SelectableItem = {
  * ve el usuario al instante del que se guarda.
  */
 export function watchedKey(item: SelectableItem): string {
-    return item.kind === 'movie' ? `movie-${item.id}` : item.id;
+    return item.kind === 'movie' ? movieKey(item.id) : item.id;
 }
 
 export class SelectionViewModel {

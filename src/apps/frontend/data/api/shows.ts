@@ -1,45 +1,26 @@
 // Series listing + detail. Detail hydrates seasons/episodes eagerly so the
 // ShowPage → SeasonPage → EpisodePage flow can navigate without re-fetching.
 
-import { autoTagsFor } from '../autotag';
 import type { Episode, Season, Show } from '../models';
 import { loadSession } from '../session/session';
+import { episodeKey } from '../stores/itemKeys';
 import { WATCHED } from '../stores/watchedStore';
 import { showCache } from './cache';
-import { apiFetch, noSessionError } from './http';
+import { apiFetch, fetchUserItems, noSessionError } from './http';
 import { imageUrl } from './images';
-import {
-    backdropUrls, logoUrl, mapCast, posterUrl, ratingOf, runtimeLabel, watchedFraction
-} from './itemMapping';
+import { firstImageUrl, mapCommonFields, watchedFraction } from './itemMapping';
 import { settlePlaybackReports } from './playback';
 import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem, type JFMediaStream } from './types';
 
 function mapShow(item: JFItem): Show {
-    const backdrops = backdropUrls(item.Id, item.BackdropImageTags);
     return {
-        id: item.Id,
-        title: item.Name,
-        year: item.ProductionYear ?? 0,
-        runtime: runtimeLabel(item),
-        rating: ratingOf(item),
-        genres: item.Genres ?? [],
-        tags: item.Tags ?? [],
-        autoTags: autoTagsFor(item.Id),
+        ...mapCommonFields(item),
         creator: '',
         directors: '',
-        studio: item.Studios?.[0]?.Name ?? '',
-        country: '',
-        premiere: item.PremiereDate ?? '',
         status: item.Status ?? '',
-        cast: mapCast(item),
-        synopsis: item.Overview ?? '',
         defaultSeason: 1,
         cont: { seasonN: 1, epN: 1, progress: 0, remaining: '' },
-        seasons: [],
-        backdrop: backdrops[0] ?? '',
-        backdrops,
-        poster: posterUrl(item.Id, item.ImageTags?.Primary),
-        logo: logoUrl(item.Id, item.ImageTags?.Logo)
+        seasons: []
     };
 }
 
@@ -115,18 +96,11 @@ function mapEpisode(item: JFItem): Episode {
     const streams = source?.MediaStreams ?? [];
     // Thumb (16:9, encuadre pensado para miniatura) > Primary del episodio >
     // backdrop de la serie como último recurso.
-    const epImage = (maxWidth: number) =>
-        (item.ImageTags?.Thumb ?
-            imageUrl(item.Id, 'Thumb', { tag: item.ImageTags.Thumb, maxWidth }) :
-            undefined)
-        ?? (item.ImageTags?.Primary ?
-            imageUrl(item.Id, 'Primary', { tag: item.ImageTags.Primary, maxWidth }) :
-            undefined)
-        ?? (item.ParentBackdropItemId && item.ParentBackdropImageTags?.[0] ?
-            imageUrl(item.ParentBackdropItemId, 'Backdrop', {
-                tag: item.ParentBackdropImageTags[0], maxWidth
-            }) :
-            undefined);
+    const epImage = (maxWidth: number) => firstImageUrl([
+        ['Thumb', item.Id, item.ImageTags?.Thumb],
+        ['Primary', item.Id, item.ImageTags?.Primary],
+        ['Backdrop', item.ParentBackdropItemId, item.ParentBackdropImageTags?.[0]]
+    ], { maxWidth });
     return {
         n: item.IndexNumber ?? 0,
         title: item.Name,
@@ -146,12 +120,10 @@ function mapEpisode(item: JFItem): Episode {
 
 export async function getShows(): Promise<Show[]> {
     await settlePlaybackReports();
-    const session = loadSession();
-    if (!session?.userId) throw noSessionError();
-    const data = await apiFetch<{ Items: JFItem[] }>(
-        `/Users/${session.userId}/Items?IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Fields=${FIELDS_LIST}`
+    const items = await fetchUserItems<JFItem>(
+        `IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Fields=${FIELDS_LIST}`
     );
-    return (data.Items ?? []).map(mapShow);
+    return items.map(mapShow);
 }
 
 export async function getShow(id: string): Promise<Show> {
@@ -252,7 +224,7 @@ function hydrateWatched(showId: string, seasons: Season[]) {
     const watched: string[] = [];
     for (const season of seasons) {
         for (const ep of season.episodes) {
-            const id = `${showId}-s${season.n}-e${ep.n}`;
+            const id = episodeKey(showId, season.n, ep.n);
             allIds.push(id);
             if (ep.watched >= 1) watched.push(id);
         }

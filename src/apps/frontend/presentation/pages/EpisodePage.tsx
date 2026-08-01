@@ -1,14 +1,12 @@
 import globalize from 'lib/globalize';
 
-import { useEffect } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatDateLong, formatRemainingCompact } from '../theme/format';
-import { PROTO_DATA, findSeason, type Show, type Season, type Episode } from '../../domain/models';
-import { showVM } from '../../domain/viewModels/ShowViewModel';
-import { useVmSignals } from '../../domain/bridge/useViewModel';
+import { findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { useWatched } from '../../domain/bridge/useWatched';
-import { Backdrop } from '../components/layout/Backdrop';
+import { HeroFrame } from '../components/layout/DetailHero';
+import { DetailBody, DetailRow, DetailStatus, SectionLabel } from '../components/layout/DetailSections';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
@@ -17,42 +15,19 @@ import { MoreButton } from '../components/controls/MoreButton';
 import { FavButton } from '../components/controls/FavButton';
 import { WatchedButton } from '../components/controls/WatchedButton';
 import { CastList } from '../components/cast/CastList';
-import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
+import { episodeKey } from '../../domain/stores';
+import { ticksFromProgress } from '../../domain/player/format';
+import { useShowEntity } from './useDetailEntity';
 
 type PageProps = { showId: string; seasonN: number; epN: number; navigate: Navigate };
 
 export function EpisodePage({ showId, seasonN, epN, navigate }: PageProps) {
-    const proto = PROTO_DATA.shows[showId];
-    useVmSignals(showVM, (vm) => [vm.show, vm.error]);
-    useEffect(() => {
-        if (!proto) void showVM.load(showId);
-    }, [proto, showId]);
-    const show = proto ?? showVM.showFor(showId);
+    const { item: show, error } = useShowEntity(showId);
     const season = show ? findSeason(show, seasonN) : null;
     const ep = season ? season.episodes.find((e) => e.n === epN) : null;
     if (!show || !season || !ep) {
-        if (showVM.error.value) {
-            return (
-                <section style={{
-                    minHeight: '100vh', background: '#000', color: '#ff6b6b', fontFamily: T.ui,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-                }}>
-                    {showVM.error.value}
-                </section>
-            );
-        }
-        if (!show) {
-            return (
-                <section style={{
-                    minHeight: '100vh', background: '#000', color: T.dim, fontFamily: T.ui,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
-                }}>
-                    Cargando…
-                </section>
-            );
-        }
+        if (error || !show) return <DetailStatus error={error} />;
         // Serie cargada pero temporada/episodio inexistentes en la URL.
         return null;
     }
@@ -70,11 +45,10 @@ function EpisodeHero({
 }: {
     show: Show; season: Season; ep: Episode; navigate: Navigate;
 }) {
-    const r = useResponsive();
     const { play } = usePlayer();
     // El tick del Nav escribe en el store local; leerlo aquí mantiene el play
     // en sincronía al instante (sin esperar a que se recargue la serie).
-    const [localWatched] = useWatched(`${show.id}-s${season.n}-e${ep.n}`);
+    const [localWatched] = useWatched(episodeKey(show.id, season.n, ep.n));
     const watched = localWatched || ep.watched >= 1;
     const inProgress = !watched && ep.watched > 0 && ep.watched < 1;
     // Texto que sale SOLO al pasar el ratón por el círculo: «Ver de nuevo» si
@@ -90,34 +64,33 @@ function EpisodeHero({
         play({
             itemId: ep.jfId,
             title: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')} — ${ep.title ?? ''}`,
-            startTicks: ep.watched > 0 && ep.watched < 1 && ep.runtime ?
-                Math.round(ep.runtime * 60 * ep.watched * 10_000_000) :
-                undefined
+            startTicks: ep.watched < 1 ? ticksFromProgress(ep.runtime, ep.watched) : undefined
         });
     };
     return (
-        <section style={{
-            position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', background: '#000'
-        }}>
-            <Nav
-                navigate={navigate}
-                breadcrumb={[
-                    { label: globalize.translate('Shows'), to: { page: 'home' } },
-                    { label: show.title, to: { page: 'show', showId: show.id } },
-                    { label: `Temporada ${season.n}`, to: { page: 'season', showId: show.id, seasonN: season.n } },
-                    { label: `Episodio ${ep.n}` }
-                ]}
-                actionId={`${show.id}-s${season.n}-e${ep.n}`}
-                actionData={ep.jfId ? { type: 'episode', id: ep.jfId } : undefined}
-            />
-            <Backdrop src={ep.thumbHD || ep.thumb || ''} fadeBottom={0.92} sharp />
-
-            <div style={{
-                position: 'absolute', inset: 0, padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : '0 56px 100px',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'flex-end',
-                textAlign: 'center'
-            }}>
+        <HeroFrame
+            // El fondo es el fotograma del propio episodio: nítido y sin
+            // degradado extra, que el texto ya va sobre la parte de abajo.
+            scrim={0}
+            pos='Inferior'
+            pad='0 56px 100px'
+            backdrop={ep.thumbHD || ep.thumb || ''}
+            nav={
+                <Nav
+                    navigate={navigate}
+                    breadcrumb={[
+                        { label: globalize.translate('Shows'), to: { page: 'home' } },
+                        { label: show.title, to: { page: 'show', showId: show.id } },
+                        { label: `Temporada ${season.n}`, to: { page: 'season', showId: show.id, seasonN: season.n } },
+                        { label: `Episodio ${ep.n}` }
+                    ]}
+                    actionId={episodeKey(show.id, season.n, ep.n)}
+                    actionData={ep.jfId ? { type: 'episode', id: ep.jfId } : undefined}
+                />
+            }
+            footer={<ScrollHint label={globalize.translate('HeaderDetails')} />}
+        >
+            <>
                 <PlayBtn
                     size={108} onClick={startPlay}
                     progress={inProgress ? ep.watched : null}
@@ -160,7 +133,7 @@ function EpisodeHero({
                             transform: 'translateY(0.15em)'
                         }}>
                             <MoreButton
-                                id={ep.jfId ?? `${show.id}-s${season.n}-e${ep.n}`}
+                                id={ep.jfId ?? episodeKey(show.id, season.n, ep.n)}
                                 size={28} type='episode' itemTitle={ep.title}
                                 queueSubtitle={`${show.title} · ${globalize.translate('ValueSeasonEpisode', season.n, ep.n)}`}
                                 queuePoster={ep.thumb ?? show.poster}
@@ -185,10 +158,8 @@ function EpisodeHero({
                         {ep.video && <span>{ep.video}</span>}
                     </div>
                 </div>
-            </div>
-
-            <ScrollHint label={globalize.translate('HeaderDetails')} />
-        </section>
+            </>
+        </HeroFrame>
     );
 }
 
@@ -197,24 +168,15 @@ function EpisodeDetail({
 }: {
     show: Show; season: Season; ep: Episode; nextEp?: Episode; navigate: Navigate;
 }) {
-    const r = useResponsive();
     return (
-        <section style={{
-            background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
-            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px', fontFamily: T.ui
-        }}>
+        <DetailBody>
             {/* minmax(0,…): sin él los tracks 1fr valen minmax(auto,1fr) y su
                 mínimo es el min-content del hijo (la fila de reparto, muy
                 ancha) → la rejilla se desborda y en pantalla completa el
                 sobrante se ve como una columna negra a la derecha. */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: 80 }}>
                 <div>
-                    <div style={{
-                        fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                        color: T.dim, marginBottom: 18
-                    }}>
-                        {globalize.translate('Overview')}
-                    </div>
+                    <SectionLabel>{globalize.translate('Overview')}</SectionLabel>
                     <p style={{
                         fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
                         color: 'rgba(255,255,255,0.82)', textWrap: 'pretty', fontWeight: 400
@@ -228,69 +190,42 @@ function EpisodeDetail({
                 </div>
 
                 <div>
-                    <div style={{
-                        fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                        color: T.dim, marginBottom: 18
-                    }}>
-                        {globalize.translate('HeaderTechnicalInfo')}
-                    </div>
+                    <SectionLabel>{globalize.translate('HeaderTechnicalInfo')}</SectionLabel>
                     <div style={{
                         display: 'grid', gridTemplateColumns: '130px 1fr', rowGap: 14, fontSize: 13
                     }}>
                         {show.directors && (
-                            <>
-                                <span style={{ color: T.dim }}>{globalize.translate('Director')}</span>
-                                <span>{show.directors}</span>
-                            </>
+                            <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
                         )}
                         {show.creator && (
-                            <>
-                                <span style={{ color: T.dim }}>{globalize.translate('Writer')}</span>
-                                <span>{show.creator}</span>
-                            </>
+                            <DetailRow label={globalize.translate('Writer')}>{show.creator}</DetailRow>
                         )}
                         {ep.date && (
-                            <>
-                                <span style={{ color: T.dim }}>{globalize.translate('AirDate')}</span>
-                                <span>
-                                    {formatDateLong(ep.date)}
-                                </span>
-                            </>
+                            <DetailRow label={globalize.translate('AirDate')}>
+                                {formatDateLong(ep.date)}
+                            </DetailRow>
                         )}
                         {ep.runtime != null && (
-                            <>
-                                <span style={{ color: T.dim }}>{globalize.translate('LabelRuntimeMinutes')}</span>
-                                <span>{ep.runtime} min</span>
-                            </>
+                            <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>
+                                {ep.runtime} min
+                            </DetailRow>
                         )}
-                        <span style={{ color: T.dim }}>{globalize.translate('Video')}</span>
-                        <span>{ep.video ?? '—'}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Audio')}</span>
-                        <span>{ep.audio ?? '—'}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Subtitles')}</span>
-                        <span>{ep.subtitles ?? '—'}</span>
+                        <DetailRow label={globalize.translate('Video')}>{ep.video ?? '—'}</DetailRow>
+                        <DetailRow label={globalize.translate('Audio')}>{ep.audio ?? '—'}</DetailRow>
+                        <DetailRow label={globalize.translate('Subtitles')}>{ep.subtitles ?? '—'}</DetailRow>
                         {ep.container && (
-                            <>
-                                <span style={{ color: T.dim }}>{globalize.translate('MediaInfoContainer')}</span>
-                                <span>{ep.container.toUpperCase()}</span>
-                            </>
+                            <DetailRow label={globalize.translate('MediaInfoContainer')}>
+                                {ep.container.toUpperCase()}
+                            </DetailRow>
                         )}
                         {show.studio && (
-                            <>
-                                <span style={{ color: T.dim }}>{globalize.translate('Studio')}</span>
-                                <span>{show.studio}</span>
-                            </>
+                            <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
                         )}
                     </div>
 
                     {nextEp && (
                         <div style={{ marginTop: 56 }}>
-                            <div style={{
-                                fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                                color: T.dim, marginBottom: 18
-                            }}>
-                                {globalize.translate('Next')}
-                            </div>
+                            <SectionLabel>{globalize.translate('Next')}</SectionLabel>
                             <div
                                 onClick={() => navigate({
                                     page: 'episode', showId: show.id, seasonN: season.n, epN: nextEp.n
@@ -317,7 +252,7 @@ function EpisodeDetail({
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                                     }}>
                                         <NextEpPlay
-                                            id={`${show.id}-s${season.n}-e${nextEp.n}`}
+                                            id={episodeKey(show.id, season.n, nextEp.n)}
                                             dataWatched={nextEp.watched}
                                         />
                                     </div>
@@ -328,9 +263,9 @@ function EpisodeDetail({
                                             display: 'flex', alignItems: 'center', gap: 6
                                         }}
                                     >
-                                        <FavButton id={`${show.id}-s${season.n}-e${nextEp.n}`} size={15} />
+                                        <FavButton id={episodeKey(show.id, season.n, nextEp.n)} size={15} />
                                         <WatchedButton
-                                            id={`${show.id}-s${season.n}-e${nextEp.n}`}
+                                            id={episodeKey(show.id, season.n, nextEp.n)}
                                             serverId={nextEp.jfId} size={15}
                                         />
                                     </div>
@@ -356,7 +291,7 @@ function EpisodeDetail({
                     )}
                 </div>
             </div>
-        </section>
+        </DetailBody>
     );
 }
 

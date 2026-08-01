@@ -1,13 +1,11 @@
-// Cola de reproducción persistida en localStorage. Misma forma que
-// favsStore: cache en memoria + evento global para que la UI re-lea.
+// Cola de reproducción persistida en localStorage.
 //
 // Solo guardamos lo justo para pintar la fila y arrancar la reproducción
 // (id real del servidor + textos + póster). Nada de objetos de dominio
 // completos: la cola sobrevive a recargas y no debe quedarse con copias
 // rancias del catálogo.
 
-const KEY = 'jfp-queue';
-const EVENT = 'jfp-queue-change';
+import { createListStore } from './persistentStore';
 
 export type QueueEntry = {
     /** Id real del item en Jellyfin: es lo que necesita el reproductor. */
@@ -18,76 +16,59 @@ export type QueueEntry = {
     poster?: string;
 };
 
-let cache: QueueEntry[] | null = null;
-
-function ensure(): QueueEntry[] {
-    if (cache) return cache;
-    try {
-        const raw: unknown = JSON.parse(localStorage.getItem(KEY) || '[]');
-        cache = Array.isArray(raw) ?
-            raw.filter((e): e is QueueEntry =>
-                !!e && typeof (e as QueueEntry).itemId === 'string'
-                && typeof (e as QueueEntry).title === 'string') :
-            [];
-    } catch {
-        cache = [];
-    }
-    return cache;
+function isQueueEntry(entry: unknown): entry is QueueEntry {
+    const e = entry as QueueEntry;
+    return !!e && typeof e.itemId === 'string' && typeof e.title === 'string';
 }
 
-function persist(next: QueueEntry[]) {
-    cache = next;
-    localStorage.setItem(KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event(EVENT));
-}
+const store = createListStore<QueueEntry>({
+    key: 'jfp-queue',
+    event: 'jfp-queue-change',
+    isValid: isQueueEntry
+});
+
+/** Sin el item dado, para que reencolarlo no lo duplique. */
+const without = (list: QueueEntry[], itemId: string) => list.filter((e) => e.itemId !== itemId);
 
 export const QUEUE = {
-    event: EVENT,
+    event: store.event,
 
-    all(): QueueEntry[] {
-        return [...ensure()];
-    },
+    all: () => store.all(),
 
-    has(itemId: string): boolean {
-        return ensure().some((e) => e.itemId === itemId);
-    },
+    has: (itemId: string): boolean => store.all().some((e) => e.itemId === itemId),
 
     /** Al final de la cola. Reencolar un item ya presente no lo duplica. */
     enqueue(entry: QueueEntry) {
-        const rest = ensure().filter((e) => e.itemId !== entry.itemId);
-        persist([...rest, entry]);
+        store.update((list) => [...without(list, entry.itemId), entry]);
     },
 
     /** A la cabeza: «reproducir a continuación». */
     playNext(entry: QueueEntry) {
-        const rest = ensure().filter((e) => e.itemId !== entry.itemId);
-        persist([entry, ...rest]);
+        store.update((list) => [entry, ...without(list, entry.itemId)]);
     },
 
     remove(itemId: string) {
-        persist(ensure().filter((e) => e.itemId !== itemId));
+        store.update((list) => without(list, itemId));
     },
 
     /** Mueve una entrada a otra posición (reordenado de la UI). */
     move(from: number, to: number) {
-        const list = ensure();
+        const list = store.all();
         if (from === to || from < 0 || from >= list.length || to < 0 || to >= list.length) return;
-        const next = [...list];
-        const [moved] = next.splice(from, 1);
-        next.splice(to, 0, moved);
-        persist(next);
+        const [moved] = list.splice(from, 1);
+        list.splice(to, 0, moved);
+        store.replace(list);
     },
 
     /** Saca la primera entrada y la devuelve (auto-avance del reproductor). */
     takeNext(): QueueEntry | null {
-        const list = ensure();
-        if (list.length === 0) return null;
-        const [next, ...rest] = list;
-        persist(rest);
+        const [next, ...rest] = store.all();
+        if (!next) return null;
+        store.replace(rest);
         return next;
     },
 
     clear() {
-        persist([]);
+        store.replace([]);
     }
 };

@@ -3,8 +3,9 @@
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
-import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import type { CarouselSlide, Movie, Show } from '../../data/models';
+import { ItemMutationSubscription } from './itemMutations';
+import { LoadGuard } from './loadGuard';
 
 export class HomeViewModel {
     slides = signal<CarouselSlide[]>([]);
@@ -19,16 +20,14 @@ export class HomeViewModel {
     heroReady = signal(false);
     showsReady = signal(false);
 
-    // Token de carga: si el usuario navega y vuelve antes de que termine un
-    // load() anterior, solo la última llamada escribe estado.
-    private seq = 0;
-    private mutationHandler: (() => void) | null = null;
+    private loads = new LoadGuard();
+    private mutations = new ItemMutationSubscription();
 
     constructor(private api: ApiService) {}
 
     async load() {
         this.subscribeToMutations();
-        const seq = ++this.seq;
+        const isLatest = this.loads.begin();
         this.heroLoading.value = true;
         this.showsLoading.value = true;
         this.showsError.value = null;
@@ -37,15 +36,15 @@ export class HomeViewModel {
         // opcional (si falla, la Home sigue mostrando la biblioteca).
         void this.api.catalog.getHomeCarousel()
             .then((slides) => {
-                if (seq !== this.seq) return;
+                if (!isLatest()) return;
                 this.slides.value = slides;
             })
             .catch(() => {
-                if (seq !== this.seq) return;
+                if (!isLatest()) return;
                 this.slides.value = [];
             })
             .finally(() => {
-                if (seq !== this.seq) return;
+                if (!isLatest()) return;
                 this.heroLoading.value = false;
                 this.heroReady.value = true;
             });
@@ -57,14 +56,14 @@ export class HomeViewModel {
                 this.api.catalog.getShows(),
                 this.api.catalog.getMovies().catch(() => [] as Movie[])
             ]);
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.shows.value = shows;
             this.movies.value = movies;
         } catch (e) {
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.showsError.value = (e as Error).message;
         } finally {
-            if (seq === this.seq) {
+            if (isLatest()) {
                 this.showsLoading.value = false;
                 this.showsReady.value = true;
             }
@@ -74,22 +73,11 @@ export class HomeViewModel {
     // Cualquier mutación de item recarga la Home si ya hay datos: la lista
     // de series/películas y el hero pueden contener el item afectado y no
     // queremos que el usuario tenga que recargar para verlo.
-    //
-    // Se engancha en el primer `load()`, no en el constructor: el VM es un
-    // singleton de módulo, así que hacerlo al construirlo dejaba un listener
-    // global colgado por el mero hecho de importar el fichero — y si `window`
-    // no existía en ese momento, no había segunda oportunidad. Hasta que hay
-    // datos el handler no haría nada de todos modos.
-    //
-    // No hay `dispose()`: el listener dura lo que el singleton, que dura lo
-    // que el documento. Desengancharlo no tendría a quién beneficiar.
     private subscribeToMutations() {
-        if (this.mutationHandler || typeof window === 'undefined') return;
-        this.mutationHandler = () => {
+        this.mutations.ensure(() => {
             if (!this.showsReady.value) return;
             void this.load();
-        };
-        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
+        });
     }
 }
 

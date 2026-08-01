@@ -1,0 +1,150 @@
+// Las piezas que se repiten en las cuatro fichas (serie, temporada, episodio
+// y película): el estado de carga, el cuerpo bajo el hero, la rejilla de dos
+// columnas, las cabeceras y la tabla de datos.
+//
+// Ninguna decide contenido: cada ficha sigue diciendo qué enseña y en qué
+// orden. Lo que dejan de repetir son los cuatro bloques de estilo idénticos
+// que había copiados en cada una.
+
+import type { CSSProperties, ReactNode } from 'react';
+import { T } from '../../theme/tokens';
+import { MC, useResponsive } from '../../theme/responsive';
+import type { Navigate } from '../../../app/router';
+
+const FULL_SCREEN: CSSProperties = {
+    minHeight: '100vh', background: '#000', fontFamily: T.ui,
+    display: 'flex', alignItems: 'center', justifyContent: 'center'
+};
+
+/**
+ * La ficha todavía no tiene datos que pintar: o falló la carga, o sigue en
+ * marcha. Ocupa la pantalla entera porque sustituye al hero.
+ */
+export function DetailStatus({ error }: { error?: string | null }) {
+    if (error) {
+        return (
+            <section style={{ ...FULL_SCREEN, color: '#ff6b6b', padding: 24 }}>
+                {error}
+            </section>
+        );
+    }
+    return (
+        <section style={{
+            ...FULL_SCREEN, color: T.dim,
+            fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
+        }}>
+            Cargando…
+        </section>
+    );
+}
+
+/** Todo lo que va bajo el hero de una ficha. */
+export function DetailBody({ children }: { children: ReactNode }) {
+    const r = useResponsive();
+    return (
+        <section style={{
+            background: r.touch ? MC.bg : '#000',
+            color: r.touch ? MC.fg : '#fff',
+            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px',
+            fontFamily: T.ui
+        }}>
+            {children}
+        </section>
+    );
+}
+
+/**
+ * Sinopsis a la izquierda, datos a la derecha.
+ *
+ * minmax(0,…) evita el grid blowout: sin él el track 1fr no baja del
+ * min-content del reparto y la rejilla desborda el viewport. En touch la
+ * ficha es de una sola columna (spec 4.3).
+ */
+export function DetailColumns({ children }: { children: ReactNode }) {
+    const r = useResponsive();
+    return (
+        <div style={{
+            display: 'grid',
+            gridTemplateColumns: r.touch ? 'minmax(0, 1fr)' : 'minmax(0, 1.6fr) minmax(0, 1fr)',
+            gap: r.touch ? 36 : 64
+        }}>
+            {children}
+        </div>
+    );
+}
+
+/** Rótulo pequeño en versales que encabeza cada bloque de la ficha. */
+export function SectionLabel({ children }: { children: ReactNode }) {
+    return (
+        <div style={{
+            fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
+            color: T.dim, marginBottom: 18
+        }}>
+            {children}
+        </div>
+    );
+}
+
+/** Cabecera de una sección grande de la ficha (temporadas, episodios). */
+export function DetailHeading({
+    title, marginBottom, children
+}: {
+    title: string;
+    marginBottom: number;
+    /** Lo que va a la derecha del título: un recuento, un selector… */
+    children?: ReactNode;
+}) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom }}>
+            <h3 style={{
+                fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
+            }}>
+                {title}
+            </h3>
+            {children}
+        </div>
+    );
+}
+
+/** Tabla etiqueta → valor de la columna de datos. */
+export function DetailTable({ children }: { children: ReactNode }) {
+    return (
+        <div style={{
+            display: 'grid', gridTemplateColumns: '120px 1fr',
+            rowGap: 14, columnGap: 18, fontSize: 13
+        }}>
+            {children}
+        </div>
+    );
+}
+
+/** Una fila de `DetailTable`: son dos celdas, no un elemento contenedor. */
+export function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <>
+            <span style={{ color: T.dim }}>{label}</span>
+            <span>{children}</span>
+        </>
+    );
+}
+
+/** Los géneros del item como enlaces a su listado, separados por comas. */
+export function GenreLinks({ genres, navigate }: { genres: string[]; navigate: Navigate }) {
+    return (
+        <>
+            {genres.map((g, i) => (
+                <span key={g}>
+                    <button
+                        onClick={() => navigate({ page: 'genre', genre: g })}
+                        style={{
+                            background: 'none', border: 'none', padding: 0,
+                            font: 'inherit', color: 'inherit', cursor: 'pointer',
+                            textDecoration: 'underline dotted', textUnderlineOffset: 3
+                        }}
+                    >{g}</button>
+                    {i < genres.length - 1 && ', '}
+                </span>
+            ))}
+        </>
+    );
+}

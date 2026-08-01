@@ -6,6 +6,7 @@ export {
     findSeason,
     type CarouselSlide,
     type CastMember,
+    type CatalogItem,
     type Episode,
     type Movie,
     type ProtoData,

@@ -23,6 +23,7 @@ import {
     entryIndex, getCollectionItems, getCollections, getPlaylistItems, getPlaylists,
     removeFromCollection, removeFromPlaylist, type ListEntry, type PlaylistItem
 } from '../api/lists';
+import { updateItemMetadata } from '../api/metadata';
 import { deleteImage, setImageByUrl, uploadImageFile } from '../api/remote-images';
 import { LIST_COVERS } from './listCoversStore';
 
@@ -299,6 +300,31 @@ export const LISTS = {
     /** True si esa lista tiene un fondo puesto a mano. */
     hasCustomCover(kind: ListKind, listId: string): boolean {
         return LIST_COVERS.has(keyOf(kind, listId));
+    },
+
+    /**
+     * Renombra la lista. Vale igual para los dos tipos: por dentro una lista
+     * de reproducción y una colección son items del servidor, y renombrarlos
+     * es reenviar el item con otro `Name`.
+     *
+     * El nombre nuevo se pinta antes de que conteste el servidor y se revierte
+     * si falla, igual que el resto de mutaciones de aquí.
+     */
+    async rename(kind: ListKind, listId: string, name: string): Promise<void> {
+        const clean = name.trim();
+        const entry = cache?.lists.find((l) => l.kind === kind && l.id === listId);
+        if (!entry || !clean || clean === entry.name) return;
+        const before = entry.name;
+        entry.name = clean;
+        emit();
+        try {
+            await updateItemMetadata(listId, { Name: clean });
+        } catch (e) {
+            entry.name = before;
+            emit();
+            throw e;
+        }
+        await reload();
     },
 
     /** Solo para tests. */

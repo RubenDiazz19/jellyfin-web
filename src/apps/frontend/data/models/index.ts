@@ -95,6 +95,24 @@ export type Movie = {
     logo?: string | null;
 };
 
+/**
+ * Lo que una tarjeta necesita saber de un título, sea serie o película.
+ *
+ * Existe para que la capa de presentación no tenga que depender del tipo
+ * concreto de cada ViewModel: `Show`, `Movie` y los resultados de la búsqueda
+ * lo cumplen sin más, así que una tarjeta puede pintar cualquiera de los tres
+ * sin conocer de dónde salen.
+ */
+export type CatalogItem = {
+    id: string;
+    title: string;
+    kind: 'show' | 'movie';
+    year: number;
+    poster?: string;
+    backdrop?: string;
+    logo?: string | null;
+};
+
 export type CarouselSlide = {
     type: 'continue' | 'new';
     id: string;

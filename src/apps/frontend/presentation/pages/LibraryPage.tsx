@@ -5,7 +5,7 @@ import globalize from 'lib/globalize';
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
-import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
+import { MovieCard } from '../components/cards/MovieCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { ScrollTopFab } from '../components/m3/ScrollTopFab';
 import { libraryVM, type SortKey } from '../../domain/viewModels/LibraryViewModel';
@@ -98,7 +98,7 @@ export function LibraryPage({ kind, navigate }: Props) {
                                 <PosterCard key={s.id} slide={s} navigate={navigate} fluid={r.touch} />
                             )) :
                             libraryVM.sortedMovies.value.map((m) => (
-                                <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />
+                                <MovieCard key={m.id} movie={m} navigate={navigate} fluid />
                             ))}
                     </div>
                 )}
@@ -161,8 +161,12 @@ function SortControl({ value, onChange }: { value: SortKey; onChange: (k: SortKe
                     cursor: 'pointer', outline: 'none'
                 }}
             >
+                {/* Sin estilo en línea: un color fijo aquí pisaría la regla
+                    global de global.css (select/option) que ya tiñe el popup
+                    nativo para el tema oscuro, y el texto quedaba casi
+                    invisible (negro sobre el fondo oscuro del desplegable). */}
                 {SORT_LABELS.map((s) => (
-                    <option key={s.id} value={s.id} style={{ color: '#000' }}>
+                    <option key={s.id} value={s.id}>
                         {globalize.translate(s.key)}
                     </option>
                 ))}

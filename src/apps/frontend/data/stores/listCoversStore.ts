@@ -11,51 +11,20 @@
 // borra ninguna imagen del servidor, solo hace que la lista vuelva a enseñar
 // la portada automática (la del último título añadido).
 
-const KEY = 'jfp-list-covers';
+import { createSetStore } from './persistentStore';
 
-let cache: Set<string> | null = null;
-
-function ensure(): Set<string> {
-    if (cache) return cache;
-    try {
-        const raw: unknown = JSON.parse(localStorage.getItem(KEY) || '[]');
-        cache = new Set(Array.isArray(raw) ? raw.filter((k): k is string => typeof k === 'string') : []);
-    } catch {
-        cache = new Set();
-    }
-    return cache;
-}
-
-function persist(set: Set<string>) {
-    try {
-        localStorage.setItem(KEY, JSON.stringify([...set]));
-    } catch {
-        // Sin persistencia el registro dura lo que la pestaña. La caché en
-        // memoria ya está actualizada, así que la UI queda coherente.
-    }
-}
+// Sin evento: quien lo consulta ya se repinta al recargar las listas, que es
+// lo único que puede haber cambiado esto.
+const store = createSetStore({ key: 'jfp-list-covers' });
 
 export const LIST_COVERS = {
     /** True si el fondo de esa lista lo puso el usuario. */
-    has(key: string): boolean {
-        return ensure().has(key);
-    },
+    has: (key: string) => store.has(key),
 
-    mark(key: string) {
-        const set = ensure();
-        if (set.has(key)) return;
-        set.add(key);
-        persist(set);
-    },
+    mark: (key: string) => { store.add([key]); },
 
-    unmark(key: string) {
-        const set = ensure();
-        if (!set.delete(key)) return;
-        persist(set);
-    },
+    unmark: (key: string) => { store.remove([key]); },
 
     /** Solo para tests. */
-    _reset() {
-        cache = null;
-    }
+    _reset: () => { store._reset(); }
 };

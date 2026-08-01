@@ -4,6 +4,7 @@
 
 import { loadSession } from '../session/session';
 import { apiFetch, apiSend, noSessionError, trimSlash, uploadImage } from './http';
+import { firstImageUrl } from './itemMapping';
 
 export type SubtitleMode = 'Default' | 'Always' | 'OnlyForced' | 'None' | 'Smart';
 
@@ -137,14 +138,11 @@ export async function getUserViews(): Promise<UserView[]> {
     const session = loadSession();
     if (!session?.userId) throw noSessionError();
     const data = await apiFetch<{ Items: JFUserView[] }>(`/Users/${session.userId}/Views`);
-    const server = trimSlash(session.serverUrl);
     return (data.Items ?? []).map((v) => ({
         id: v.Id,
         name: v.Name,
         collectionType: v.CollectionType,
-        image: v.ImageTags?.Primary ?
-            `${server}/Items/${v.Id}/Images/Primary?tag=${v.ImageTags.Primary}&maxWidth=600` :
-            undefined
+        image: firstImageUrl([['Primary', v.Id, v.ImageTags?.Primary]], { maxWidth: 600 })
     }));
 }
 

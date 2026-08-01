@@ -2,8 +2,17 @@
 // enlaces al web nativo del menú "más opciones".
 
 import { loadSession } from '../session/session';
-import { apiFetch, apiSend, noSessionError } from './http';
-import { imageUrl } from './images';
+import { apiFetch, apiSend, fetchUserItems, noSessionError } from './http';
+import { firstImageUrl } from './itemMapping';
+
+/**
+ * Tamaños con los que se piden las imágenes de una lista. Las tarjetas de
+ * lista se pintan más pequeñas que una ficha, así que no hace falta el tamaño
+ * de itemMapping.
+ */
+const POSTER_HEIGHT = 480;
+const BACKDROP_WIDTH = 800;
+const LOGO_HEIGHT = 120;
 
 export type ListEntry = {
     id: string;
@@ -25,19 +34,15 @@ function mapEntry(i: JFListItem): ListEntry {
         id: i.Id,
         name: i.Name,
         count: i.ChildCount,
-        image: i.ImageTags?.Primary ?
-            imageUrl(i.Id, 'Primary', { tag: i.ImageTags.Primary, maxHeight: 200 }) ?? undefined :
-            undefined
+        image: firstImageUrl([['Primary', i.Id, i.ImageTags?.Primary]], { maxHeight: 200 })
     };
 }
 
 export async function getPlaylists(): Promise<ListEntry[]> {
-    const session = loadSession();
-    if (!session?.userId) throw noSessionError();
-    const data = await apiFetch<{ Items: JFListItem[] }>(
-        `/Users/${session.userId}/Items?IncludeItemTypes=Playlist&Recursive=true&SortBy=SortName&Fields=ChildCount`
+    const items = await fetchUserItems<JFListItem>(
+        'IncludeItemTypes=Playlist&Recursive=true&SortBy=SortName&Fields=ChildCount'
     );
-    return (data.Items ?? []).map(mapEntry);
+    return items.map(mapEntry);
 }
 
 export async function addToPlaylist(playlistId: string, itemId: string): Promise<void> {
@@ -163,38 +168,26 @@ function mapPlaylistItem(i: JFPlaylistItem): PlaylistItem {
         year: i.ProductionYear,
         // Un episodio no suele traer carátula propia; se cae a la de su serie
         // para que la rejilla no quede con huecos grises.
-        poster: i.ImageTags?.Primary ?
-            imageUrl(i.Id, 'Primary', { tag: i.ImageTags.Primary, maxHeight: 480 }) ?? undefined :
-            i.SeriesId && i.SeriesPrimaryImageTag ?
-                imageUrl(i.SeriesId, 'Primary', {
-                    tag: i.SeriesPrimaryImageTag, maxHeight: 480
-                }) ?? undefined :
-                undefined,
+        poster: firstImageUrl([
+            ['Primary', i.Id, i.ImageTags?.Primary],
+            ['Primary', i.SeriesId, i.SeriesPrimaryImageTag]
+        ], { maxHeight: POSTER_HEIGHT }),
         // Los episodios traen el fondo de la serie en `ParentBackdrop*`.
-        backdrop: i.BackdropImageTags?.[0] ?
-            imageUrl(i.Id, 'Backdrop', { tag: i.BackdropImageTags[0], maxWidth: 800 }) ?? undefined :
-            i.ParentBackdropItemId && i.ParentBackdropImageTags?.[0] ?
-                imageUrl(i.ParentBackdropItemId, 'Backdrop', {
-                    tag: i.ParentBackdropImageTags[0], maxWidth: 800
-                }) ?? undefined :
-                undefined,
-        logo: i.ImageTags?.Logo ?
-            imageUrl(i.Id, 'Logo', { tag: i.ImageTags.Logo, maxHeight: 120 }) :
-            null,
+        backdrop: firstImageUrl([
+            ['Backdrop', i.Id, i.BackdropImageTags?.[0]],
+            ['Backdrop', i.ParentBackdropItemId, i.ParentBackdropImageTags?.[0]]
+        ], { maxWidth: BACKDROP_WIDTH }),
+        logo: firstImageUrl([['Logo', i.Id, i.ImageTags?.Logo]], { maxHeight: LOGO_HEIGHT }) ?? null,
         seriesId: i.SeriesId,
         seriesName: i.SeriesName,
-        seriesPoster: i.SeriesId && i.SeriesPrimaryImageTag ?
-            imageUrl(i.SeriesId, 'Primary', {
-                tag: i.SeriesPrimaryImageTag, maxHeight: 480
-            }) ?? undefined :
-            undefined,
+        seriesPoster: firstImageUrl(
+            [['Primary', i.SeriesId, i.SeriesPrimaryImageTag]], { maxHeight: POSTER_HEIGHT }
+        ),
         // El logo de la serie llega en el episodio como `ParentLogo*`; no hay
         // un `SeriesLogoImageTag` equivalente al de la carátula.
-        seriesLogo: i.ParentLogoItemId && i.ParentLogoImageTag ?
-            imageUrl(i.ParentLogoItemId, 'Logo', {
-                tag: i.ParentLogoImageTag, maxHeight: 120
-            }) :
-            null,
+        seriesLogo: firstImageUrl(
+            [['Logo', i.ParentLogoItemId, i.ParentLogoImageTag]], { maxHeight: LOGO_HEIGHT }
+        ) ?? null,
         entryId: i.PlaylistItemId
     };
 }
@@ -238,12 +231,10 @@ export async function createPlaylist(name: string, itemId: string): Promise<stri
 }
 
 export async function getCollections(): Promise<ListEntry[]> {
-    const session = loadSession();
-    if (!session?.userId) throw noSessionError();
-    const data = await apiFetch<{ Items: JFListItem[] }>(
-        `/Users/${session.userId}/Items?IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&Fields=ChildCount`
+    const items = await fetchUserItems<JFListItem>(
+        'IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&Fields=ChildCount'
     );
-    return (data.Items ?? []).map(mapEntry);
+    return items.map(mapEntry);
 }
 
 export async function addToCollection(collectionId: string, itemId: string): Promise<void> {
@@ -278,11 +269,9 @@ export async function createCollection(name: string, itemId: string): Promise<st
  * capítulos. Por eso aquí no hace falta plegar nada.
  */
 export async function getCollectionItems(collectionId: string): Promise<PlaylistItem[]> {
-    const session = loadSession();
-    if (!session?.userId) throw noSessionError();
-    const data = await apiFetch<{ Items: JFPlaylistItem[] }>(
-        `/Users/${session.userId}/Items?ParentId=${collectionId}&SortBy=SortName`
+    const items = await fetchUserItems<JFPlaylistItem>(
+        `ParentId=${collectionId}&SortBy=SortName`
             + '&Fields=ProductionYear,ImageTags&EnableImageTypes=Primary,Logo,Backdrop'
     );
-    return (data.Items ?? []).map(mapPlaylistItem);
+    return items.map(mapPlaylistItem);
 }

@@ -36,7 +36,8 @@ type FrameProps = {
     /** Imagen principal y rotación de fondos. */
     backdrop: string;
     backdrops?: string[];
-    itemId: string;
+    /** Con él, un fondo puesto a mano para ese item manda sobre el del server. */
+    itemId?: string;
     /** La barra de navegación va dentro del hero, sobre el backdrop. */
     nav: ReactNode;
     children: ReactNode;
@@ -45,11 +46,35 @@ type FrameProps = {
      * respecto al hero entero y no respecto al título (el aviso de scroll).
      */
     footer?: ReactNode;
+    /**
+     * Colocación fija. La usan las fichas que no exponen los ajustes del hero
+     * (temporada y episodio); en las demás manda lo que haya elegido el
+     * usuario en `hero`.
+     */
+    pos?: HeroPosKey;
+    /** Relleno de escritorio, cuando la ficha no quiere el de su colocación. */
+    pad?: string;
+    /**
+     * Opacidad del degradado inferior. A 0 se quita: la ficha de temporada ya
+     * oscurece el fondo entero y encima lleva un número gigante que no
+     * necesita más contraste.
+     */
+    scrim?: number;
+    /**
+     * Fondo prestado —la ficha de temporada enseña la imagen de la serie— que
+     * se desenfoca y oscurece para que se lea como textura y no como la
+     * imagen de lo que estás mirando.
+     */
+    blurred?: boolean;
 };
 
 /** Marco del hero: alto de pantalla, backdrop, degradado y colocación. */
-export function HeroFrame({ hero, backdrop, backdrops, itemId, nav, children, footer }: FrameProps) {
-    const { pos, scrim } = useHeroLayout(hero);
+export function HeroFrame({
+    hero, backdrop, backdrops, itemId, nav, children, footer, pos, pad, scrim, blurred
+}: FrameProps) {
+    const layout = useHeroLayout(hero);
+    const place = pos ? HERO_POS[pos] : layout.pos;
+    const scrimAlpha = scrim ?? layout.scrim;
     const r = useResponsive();
     return (
         <section style={{
@@ -59,17 +84,19 @@ export function HeroFrame({ hero, backdrop, backdrops, itemId, nav, children, fo
             width: '100%', overflow: 'hidden', background: '#000'
         }}>
             {nav}
-            <Backdrop src={backdrop} srcs={backdrops} fadeBottom={0.92} itemId={itemId} sharp />
-            <div style={{
-                position: 'absolute', inset: 0, pointerEvents: 'none',
-                background: `linear-gradient(to top, rgba(0,0,0,${scrim}) 0%, rgba(0,0,0,${(scrim * 0.45).toFixed(2)}) 24%, transparent 56%)`
-            }} />
+            <Backdrop src={backdrop} srcs={backdrops} itemId={itemId} sharp blurred={blurred} />
+            {scrimAlpha > 0 && (
+                <div style={{
+                    position: 'absolute', inset: 0, pointerEvents: 'none',
+                    background: `linear-gradient(to top, rgba(0,0,0,${scrimAlpha}) 0%, rgba(0,0,0,${(scrimAlpha * 0.45).toFixed(2)}) 24%, transparent 56%)`
+                }} />
+            )}
             <div style={{
                 position: 'absolute', inset: 0,
-                padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : pos.pad,
+                padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : pad ?? place.pad,
                 display: 'flex', flexDirection: 'column',
-                alignItems: pos.align, justifyContent: pos.justify,
-                textAlign: pos.text
+                alignItems: place.align, justifyContent: place.justify,
+                textAlign: place.text
             }}>
                 {children}
             </div>

@@ -1,12 +1,10 @@
-import { Ic } from '../../theme/icons';
-import { WATCHED } from '../../../domain/stores';
+import { episodeKey, WATCHED } from '../../../domain/stores';
 import { useWatched, useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { showVM } from '../../../domain/viewModels/ShowViewModel';
 import { PROTO_DATA } from '../../../domain/models';
-import { IconButton } from './IconButton';
-import { WatchedBadge } from './WatchedBadge';
 import { useWatchedToggle } from './useWatchedToggle';
+import { WatchedToggleIcon } from './WatchedToggleIcon';
 
 // "Visto" para series — calcula el estado agregado desde todos los episodios
 // de todas las temporadas y marca/desmarca todos a la vez. Con sesión real,
@@ -23,7 +21,7 @@ export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props
     const show = proto ?? showVM.showFor(showId);
     const allEpIds = show ?
         (show.seasons || []).flatMap((season) =>
-            (season.episodes || []).map((ep) => `${showId}-s${season.n}-e${ep.n}`)
+            (season.episodes || []).map((ep) => episodeKey(showId, season.n, ep.n))
         ) :
         [];
     // Con episodios cargados: agregado real. Sin ellos: fallback al showId
@@ -45,13 +43,12 @@ export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props
             `Serie marcada como ${next ? 'vista' : 'no vista'} · ${show?.title ?? ''}`
     });
     return (
-        <IconButton
+        <WatchedToggleIcon
+            active={allWatched}
             onClick={toggle}
+            size={size}
+            badge={badge}
             ariaLabel={allWatched ? 'Marcar serie como no vista' : 'Marcar serie como vista'}
-        >
-            {badge && allWatched ?
-                <WatchedBadge size={size} /> :
-                <Ic.Tick size={size} filled={allWatched} />}
-        </IconButton>
+        />
     );
 }

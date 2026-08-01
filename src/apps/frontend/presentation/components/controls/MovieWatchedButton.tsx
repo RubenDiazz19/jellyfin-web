@@ -1,10 +1,9 @@
-import { Ic } from '../../theme/icons';
 import { useWatched } from '../../../domain/bridge/useWatched';
 import { useSession } from '../../../domain/bridge/useSession';
-import { IconButton } from './IconButton';
-import { WatchedBadge } from './WatchedBadge';
 import { useWatchedToggle } from './useWatchedToggle';
+import { WatchedToggleIcon } from './WatchedToggleIcon';
 import type { Movie } from '../../../domain/models';
+import { movieKey } from '../../../domain/stores';
 
 type Props = { movie: Movie; size?: number; badge?: boolean };
 
@@ -12,7 +11,7 @@ type Props = { movie: Movie; size?: number; badge?: boolean };
 // store local se hidrata desde getMovie() y da feedback inmediato al
 // toggle (revierte si el server falla).
 export function MovieWatchedButton({ movie, size = 18, badge = false }: Props) {
-    const [w, toggle] = useWatched(`movie-${movie.id}`);
+    const [w, toggle] = useWatched(movieKey(movie.id));
     const { session } = useSession();
     // Sin sesión el estado del server (movie.watched) no cambia con los
     // clicks, así que sigue siendo un "or" con el toggle local. Con sesión,
@@ -26,8 +25,12 @@ export function MovieWatchedButton({ movie, size = 18, badge = false }: Props) {
             `${next ? 'Marcada como vista' : 'Marcada como no vista'} · ${movie.title}`
     });
     return (
-        <IconButton onClick={onClick} ariaLabel={complete ? 'Marcar como no vista' : 'Marcar como vista'}>
-            {badge && complete ? <WatchedBadge size={size} /> : <Ic.Tick size={size} filled={complete} />}
-        </IconButton>
+        <WatchedToggleIcon
+            active={complete}
+            onClick={onClick}
+            size={size}
+            badge={badge}
+            ariaLabel={complete ? 'Marcar como no vista' : 'Marcar como vista'}
+        />
     );
 }

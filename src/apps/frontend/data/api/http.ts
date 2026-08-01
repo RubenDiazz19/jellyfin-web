@@ -68,6 +68,18 @@ export async function apiFetch<T>(path: string): Promise<T> {
     return res.json();
 }
 
+/**
+ * GET a la biblioteca del usuario. Lo comparten todos los listados —series,
+ * películas, listas de reproducción, colecciones—: solo cambian la query y el
+ * mapeo posterior. `Items` puede no venir en la respuesta.
+ */
+export async function fetchUserItems<T>(query: string): Promise<T[]> {
+    const session = loadSession();
+    if (!session?.userId) throw noSessionError();
+    const data = await apiFetch<{ Items: T[] }>(`/Users/${session.userId}/Items?${query}`);
+    return data.Items ?? [];
+}
+
 export async function apiSend(
     path: string,
     method: 'POST' | 'DELETE' | 'PUT',

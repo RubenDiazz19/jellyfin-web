@@ -6,8 +6,9 @@ import globalize from 'lib/globalize';
 import { useMemo, useRef, useState } from 'react';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import {
-    chapterDisplayName, chapterIndexAt, progressDividers, videoPlayerVM
-} from '../../../domain/viewModels/VideoPlayerViewModel';
+    chapterDisplayName, chapterIndexAt, progressDividers
+} from '../../../domain/player/format';
+import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
 import { VolumeSlider } from './VolumeSlider';

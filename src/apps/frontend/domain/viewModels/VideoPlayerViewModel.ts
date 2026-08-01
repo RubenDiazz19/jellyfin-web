@@ -14,14 +14,16 @@ import type {
     ItemChapter, NextEpisode, PlaybackContext
 } from '../../data/api/playbackContext';
 import { segmentsFromChapters } from '../../data/api/chapterSegments';
-import type { MediaSegment, MediaSegmentKind } from '../../data/api/segments';
+import type { MediaSegment } from '../../data/api/segments';
 import {
     clearTitleLanguagePref, getTitleLanguagePref, setTitleLanguagePref,
     type TitleLanguagePref
 } from '../../data/preferences/languagePrefs';
+import { TICKS_PER_SECOND, type AspectRatio } from '../player/format';
+import { attachHlsSource, playsHlsNatively } from '../player/hlsSource';
+import { MediaSessionBinding } from '../player/mediaSession';
 import { currentMobileLayout } from '../../shared/layoutMode';
 
-const TICKS_PER_SECOND = 10_000_000;
 const PROGRESS_REPORT_MS = 10_000;
 const VOLUME_KEY = 'jfp-volume';
 /** Margen antes de reintentar una fuente que ha fallado al arrancar. */
@@ -35,29 +37,6 @@ const AUTO_NEXT_WINDOW_SECONDS = 25;
 /** Un outro que acaba a menos de esto del final cierra el episodio. */
 const OUTRO_TAIL_SECONDS = 15;
 
-// Modos de relación de aspecto que ofrece el OSD. 'auto' = tal cual (contain),
-// 'cover' = rellena la pantalla recortando, 'fill' = estira ignorando la
-// proporción; el resto fuerza esa proporción de display.
-export type AspectRatio = 'auto' | 'cover' | 'fill' | '16:9' | '4:3' | '21:9';
-
-export type { ItemChapter, MediaSegment, MediaStreamInfo, NextEpisode, TitleLanguagePref };
-
-/**
- * Clave de traducción del botón de salto para cada tipo de segmento. Vive
- * aquí y no junto al fetch porque la View no puede importar de data/ (regla
- * de capas) y porque es un mapeo puro, sin dependencias.
- */
-export function segmentSkipLabelKey(kind: MediaSegmentKind): string {
-    switch (kind) {
-        case 'Intro': return 'SkipIntro';
-        case 'Outro': return 'SkipCredits';
-        case 'Recap': return 'SkipRecap';
-        case 'Preview': return 'SkipPreview';
-        case 'Commercial': return 'SkipCommercial';
-        default: return 'Skip';
-    }
-}
-
 /**
  * Marca de propiedad del <video>: el elemento lo comparten todas las
  * instancias del VM que pasen por él (remontajes, HMR). Quien lo tenga
@@ -70,115 +49,6 @@ function videoOwner(video: HTMLVideoElement): number | undefined {
 }
 
 let nextInstanceId = 0;
-
-/**
- * Nombres de capítulo genéricos que ponen los encoders, siempre en inglés,
- * con la clave de traducción que les corresponde. El grupo capturado, si lo
- * hay, es el número que va dentro del nombre.
- */
-const GENERIC_CHAPTER_NAMES: [RegExp, string][] = [
-    [/^scene\s*(\d+)$/i, 'ChapterScene'],
-    [/^chapter\s*(\d+)$/i, 'LabelChapterNumber'],
-    [/^part\s*(\d+)$/i, 'ChapterPart'],
-    [/^(?:intro|introduction|opening|opening credits|op\s?\d*)$/i, 'ChapterIntro'],
-    [/^(?:credits|end credits|closing credits|ending|outro|ed\s?\d*)$/i, 'ChapterCredits'],
-    [/^(?:recap|previously)$/i, 'ChapterRecap'],
-    [/^(?:preview|next episode)$/i, 'ChapterPreview']
-];
-
-/**
- * Nombre presentable de un capítulo. Los ficheros suelen traer nombres
- * genéricos del encoder («Scene 3», «Credits»): esos se traducen. Un nombre
- * de verdad —el título real de la escena— se deja tal cual, que para eso lo
- * puso quien preparó el fichero.
- */
-export function chapterDisplayName(name: string | undefined, index: number): string {
-    const raw = name?.trim();
-    if (!raw) return globalize.translate('LabelChapterNumber', String(index + 1));
-    for (const [pattern, key] of GENERIC_CHAPTER_NAMES) {
-        const match = pattern.exec(raw);
-        if (match) return globalize.translate(key, match[1] ?? '');
-    }
-    return raw;
-}
-
-/** Nombre del tramo detectado, para las listas de saltos. */
-export function segmentDisplayName(kind: MediaSegmentKind): string {
-    switch (kind) {
-        case 'Intro': return globalize.translate('ChapterIntro');
-        case 'Outro': return globalize.translate('ChapterCredits');
-        case 'Recap': return globalize.translate('ChapterRecap');
-        case 'Preview': return globalize.translate('ChapterPreview');
-        default: return globalize.translate('Unknown');
-    }
-}
-
-/** Posición del capítulo que contiene un instante, o -1 si no hay ninguno. */
-export function chapterIndexAt(chapters: ItemChapter[], seconds: number): number {
-    let found = -1;
-    for (let i = 0; i < chapters.length; i++) {
-        if (chapters[i].start > seconds) break;
-        found = i;
-    }
-    return found;
-}
-
-/** Capítulo que contiene un instante, o null si el item no trae capítulos. */
-export function chapterAt(chapters: ItemChapter[], seconds: number): ItemChapter | null {
-    const index = chapterIndexAt(chapters, seconds);
-    return index >= 0 ? chapters[index] : null;
-}
-
-/** Dos cortes más próximos que esto son el mismo sitio: se pinta uno. */
-const DIVIDER_MERGE_SECONDS = 1;
-
-/**
- * Puntos donde se corta la barra de progreso: el inicio de cada capítulo y
- * los dos extremos de cada tramo detectado (así la intro o los créditos
- * quedan delimitados aunque no haya un capítulo que los marque). Se devuelven
- * en segundos, ordenados y sin duplicados; los extremos del vídeo no cuentan,
- * que ahí ya está el borde de la barra.
- */
-export function progressDividers(
-    chapters: ItemChapter[], segments: MediaSegment[], duration: number
-): number[] {
-    if (duration <= 0) return [];
-    const points = [
-        ...chapters.map((c) => c.start),
-        ...segments.flatMap((s) => [s.start, s.end])
-    ]
-        .filter((t) => t > DIVIDER_MERGE_SECONDS && t < duration - DIVIDER_MERGE_SECONDS)
-        .sort((a, b) => a - b);
-
-    return points.filter(
-        (t, i) => i === 0 || t - points[i - 1] > DIVIDER_MERGE_SECONDS
-    );
-}
-
-/**
- * Marca de la barra de progreso: un capítulo del fichero o un tramo detectado
- * (intro, créditos…). Sirve para el menú de saltos.
- */
-export type PlayerMark = { start: number; name?: string; kind?: MediaSegmentKind };
-
-/** Distancia por debajo de la cual un segmento y un capítulo son el mismo sitio. */
-const MARK_MERGE_SECONDS = 5;
-
-/**
- * Une capítulos y segmentos en una sola lista de saltos ordenada. Un segmento
- * que empieza donde ya hay un capítulo no se duplica: el nombre del capítulo
- * es más informativo que "Saltar intro".
- */
-export function playerMarks(chapters: ItemChapter[], segments: MediaSegment[]): PlayerMark[] {
-    const marks: PlayerMark[] = chapters.map((c) => ({ start: c.start, name: c.name }));
-    for (const segment of segments) {
-        const covered = chapters.some(
-            (c) => Math.abs(c.start - segment.start) <= MARK_MERGE_SECONDS
-        );
-        if (!covered) marks.push({ start: segment.start, kind: segment.kind });
-    }
-    return marks.sort((a, b) => a.start - b.start);
-}
 
 export class VideoPlayerViewModel {
     // Estado observable que la View pinta.
@@ -296,6 +166,35 @@ export class VideoPlayerViewModel {
     /** Identifica a esta instancia como dueña del <video> (ver OwnedVideo). */
     private readonly instanceId = ++nextInstanceId;
 
+    /**
+     * Los controles del sistema (pantalla de bloqueo, notificación). Se
+     * construye siempre pero solo se activa en mobile/tablet, al abrir un item.
+     */
+    private mediaSession = new MediaSessionBinding({
+        title: () => this.title.value,
+        artwork: () => ([192, 512] as const).flatMap((size) => {
+            const src = this.api.images.imageUrl(this.itemId, 'Primary', { maxWidth: size });
+            return src ? [{ src, sizes: `${size}x${size}`, type: 'image/webp' }] : [];
+        }),
+        paused: () => !!this.video?.paused,
+        position: () => {
+            const duration = this.duration.value;
+            if (!Number.isFinite(duration) || duration <= 0) return null;
+            return {
+                duration,
+                position: Math.min(this.currentTime.value, duration),
+                playbackRate: this.playbackRate.value || 1
+            };
+        },
+        play: () => {
+            const v = this.video;
+            if (v?.paused) void v.play().catch(() => { /* autoplay denegado */ });
+        },
+        pause: () => { this.video?.pause(); },
+        seekBy: (delta) => this.seekBy(delta),
+        seekTo: (seconds) => this.seek(seconds)
+    });
+
     constructor(private api: ApiService) {}
 
     /**
@@ -360,11 +259,11 @@ export class VideoPlayerViewModel {
         on('ratechange', () => { this.playbackRate.value = video.playbackRate; });
 
         // Media Session (mobile/tablet): controles del sistema sincronizados.
-        on('play', () => this.syncMediaSessionPlayback());
-        on('pause', () => this.syncMediaSessionPlayback());
-        on('timeupdate', () => this.updateMediaSessionPosition());
-        on('durationchange', () => this.updateMediaSessionPosition());
-        on('ratechange', () => this.updateMediaSessionPosition());
+        on('play', () => this.mediaSession.syncPlayback());
+        on('pause', () => this.mediaSession.syncPlayback());
+        on('timeupdate', () => this.mediaSession.syncPosition());
+        on('durationchange', () => this.mediaSession.syncPosition());
+        on('ratechange', () => this.mediaSession.syncPosition());
 
         this.pipAvailable.value =
             typeof video.requestPictureInPicture === 'function'
@@ -427,7 +326,7 @@ export class VideoPlayerViewModel {
         await this.loadSource(this.preferredTracks());
         void this.api.playback.reportPlaybackStart(itemId);
         this.startProgressTimer();
-        this.setupMediaSession();
+        this.mediaSession.start(!!currentMobileLayout());
         void this.loadSegments(itemId);
     }
 
@@ -794,7 +693,7 @@ export class VideoPlayerViewModel {
         this.hls = null;
         // Los listeners se quitan ANTES de tocar el <video>: pause() y load()
         // emiten eventos que ya no son de nadie.
-        this.teardownMediaSession();
+        this.mediaSession.stop();
         this.detachFns.forEach((fn) => { fn(); });
         this.detachFns = [];
         // Solo se limpia el <video> si sigue siendo nuestro. Tras un recambio
@@ -814,85 +713,6 @@ export class VideoPlayerViewModel {
         this.container = null;
         this.decision = null;
         this.reset();
-    }
-
-    // ── Media Session (controles del sistema: lock screen, notificación) ──
-    // Solo se activa en mobile/tablet; en desktop el OSD actual manda y no
-    // se toca nada del comportamiento presente.
-
-    private static readonly msActions: MediaSessionAction[] = [
-        'play', 'pause', 'seekbackward', 'seekforward', 'seekto'
-    ];
-
-    private mediaSessionActive = false;
-
-    private setupMediaSession() {
-        if (!('mediaSession' in navigator) || !currentMobileLayout()) return;
-        const ms = navigator.mediaSession;
-
-        const artwork = ([192, 512] as const).flatMap((size) => {
-            const src = this.api.images.imageUrl(this.itemId, 'Primary', { maxWidth: size });
-            return src ? [{ src, sizes: `${size}x${size}`, type: 'image/webp' }] : [];
-        });
-        try {
-            ms.metadata = new MediaMetadata({
-                title: this.title.value || 'Jellyfin',
-                artwork
-            });
-        } catch { /* MediaMetadata no disponible: seguimos sin carátula */ }
-
-        const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
-            try {
-                ms.setActionHandler(action, handler);
-            } catch { /* acción no soportada por este navegador */ }
-        };
-        set('play', () => {
-            const v = this.video;
-            if (v?.paused) void v.play().catch(() => { /* autoplay denegado */ });
-        });
-        set('pause', () => { this.video?.pause(); });
-        set('seekbackward', (d) => this.seekBy(-(d.seekOffset ?? 10)));
-        set('seekforward', (d) => this.seekBy(d.seekOffset ?? 10));
-        set('seekto', (d) => {
-            if (d.seekTime != null) this.seek(d.seekTime);
-        });
-
-        this.mediaSessionActive = true;
-        this.syncMediaSessionPlayback();
-        this.updateMediaSessionPosition();
-    }
-
-    private syncMediaSessionPlayback() {
-        if (!this.mediaSessionActive) return;
-        navigator.mediaSession.playbackState = this.video?.paused ? 'paused' : 'playing';
-    }
-
-    private updateMediaSessionPosition() {
-        if (!this.mediaSessionActive) return;
-        const ms = navigator.mediaSession;
-        if (typeof ms.setPositionState !== 'function') return;
-        const duration = this.duration.value;
-        if (!Number.isFinite(duration) || duration <= 0) return;
-        try {
-            ms.setPositionState({
-                duration,
-                position: Math.min(this.currentTime.value, duration),
-                playbackRate: this.playbackRate.value || 1
-            });
-        } catch { /* valores transitorios inválidos durante un cambio de fuente */ }
-    }
-
-    private teardownMediaSession() {
-        if (!this.mediaSessionActive) return;
-        this.mediaSessionActive = false;
-        const ms = navigator.mediaSession;
-        ms.metadata = null;
-        ms.playbackState = 'none';
-        for (const action of VideoPlayerViewModel.msActions) {
-            try {
-                ms.setActionHandler(action, null);
-            } catch { /* ignorar */ }
-        }
     }
 
     // ── Interno ─────────────────────────────────────────────────────────────
@@ -989,26 +809,22 @@ export class VideoPlayerViewModel {
             this.hls?.destroy();
             this.hls = null;
 
-            if (decision.kind === 'hls' && !video.canPlayType('application/vnd.apple.mpegurl')) {
-                const HlsMod = (await import('hls.js')).default;
-                if (this.closed) return;
-                if (!HlsMod.isSupported()) {
-                    this.error.value = globalize.translate('MessageHlsUnsupported');
-                    this.loading.value = false;
-                    return;
-                }
-                const hls = new HlsMod();
-                this.hls = hls;
-                hls.on(HlsMod.Events.ERROR, (_ev, data) => {
-                    console.warn('[player] hls.js', data.type, data.details, { fatal: data.fatal });
-                    if (!data.fatal || this.closed) return;
-                    if (data.type === 'networkError') { hls.startLoad(); } else if (data.type === 'mediaError') { hls.recoverMediaError(); } else if (!this.retrySource()) {
+            if (decision.kind === 'hls' && !playsHlsNatively(video)) {
+                const attached = await attachHlsSource(video, decision.url, {
+                    isClosed: () => this.closed,
+                    onUnrecoverable: () => {
+                        if (this.retrySource()) return;
                         this.error.value = globalize.translate('MessageHlsFatalError');
                         this.loading.value = false;
                     }
                 });
-                hls.loadSource(decision.url);
-                hls.attachMedia(video);
+                if (attached.status === 'aborted') return;
+                if (attached.status === 'unsupported') {
+                    this.error.value = globalize.translate('MessageHlsUnsupported');
+                    this.loading.value = false;
+                    return;
+                }
+                this.hls = attached.hls;
             } else {
                 video.src = decision.url;
             }

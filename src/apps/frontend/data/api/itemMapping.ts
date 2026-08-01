@@ -6,8 +6,9 @@
 // póster de la ficha pasó a pedirse con `tag`, el de la Home se quedó atrás
 // y seguía sirviendo la carátula vieja desde la caché del navegador.
 
-import type { CastMember, Rating } from '../models';
-import { imageUrl } from './images';
+import { autoTagsFor } from '../autotag';
+import type { CastMember, Movie, Rating, Show } from '../models';
+import { imageUrl, type ImageType } from './images';
 import { ticksToMinutes, type JFItem } from './types';
 
 /** Ancho al que se piden los fondos del hero. */
@@ -59,6 +60,29 @@ export function backdropUrls(itemId: string | undefined, tags: string[] | undefi
         .filter((u): u is string => !!u);
 }
 
+/** Un sitio de donde puede salir una imagen: tipo, item que la tiene y su tag. */
+export type ImageSource = [ImageType, string | undefined, string | undefined];
+
+/**
+ * La primera imagen que exista, probando los candidatos en orden.
+ *
+ * Un episodio casi nunca tiene fondo propio y lo hereda de su serie, y una
+ * carátula puede venir del item o de su padre: sin este encadenado las
+ * rejillas quedan con huecos grises. Un candidato sin id o sin tag se salta —
+ * una URL sin etag no se invalidaría nunca en la caché del navegador.
+ */
+export function firstImageUrl(
+    sources: readonly ImageSource[],
+    opts: { maxWidth?: number; maxHeight?: number }
+): string | undefined {
+    for (const [type, itemId, tag] of sources) {
+        if (!itemId || !tag) continue;
+        const url = imageUrl(itemId, type, { tag, ...opts });
+        if (url) return url;
+    }
+    return undefined;
+}
+
 export function ratingOf(item: JFItem): Rating {
     return {
         imdb: item.CommunityRating ?? 0,
@@ -82,4 +106,40 @@ export function watchedFraction(item: JFItem): number {
     if (item.UserData?.Played) return 1;
     const pct = item.UserData?.PlayedPercentage;
     return pct != null ? pct / 100 : 0;
+}
+
+/**
+ * Lo que Show y Movie sacan igual del mismo JFItem: ficha, imágenes y
+ * etiquetas. Lo propio de cada uno (temporadas, director, progreso) lo pone
+ * su mapper encima.
+ */
+export type CommonItemFields = Pick<
+    Show & Movie,
+    'id' | 'title' | 'year' | 'runtime' | 'rating' | 'genres' | 'tags' | 'autoTags'
+    | 'studio' | 'country' | 'premiere' | 'cast' | 'synopsis'
+    | 'backdrop' | 'backdrops' | 'poster' | 'logo'
+>;
+
+export function mapCommonFields(item: JFItem): CommonItemFields {
+    const backdrops = backdropUrls(item.Id, item.BackdropImageTags);
+    return {
+        id: item.Id,
+        title: item.Name,
+        year: item.ProductionYear ?? 0,
+        runtime: runtimeLabel(item),
+        rating: ratingOf(item),
+        genres: item.Genres ?? [],
+        tags: item.Tags ?? [],
+        autoTags: autoTagsFor(item.Id),
+        studio: item.Studios?.[0]?.Name ?? '',
+        // El servidor no lo expone en el listado; el modelo lo reserva.
+        country: '',
+        premiere: item.PremiereDate ?? '',
+        cast: mapCast(item),
+        synopsis: item.Overview ?? '',
+        backdrop: backdrops[0] ?? '',
+        backdrops,
+        poster: posterUrl(item.Id, item.ImageTags?.Primary),
+        logo: logoUrl(item.Id, item.ImageTags?.Logo)
+    };
 }

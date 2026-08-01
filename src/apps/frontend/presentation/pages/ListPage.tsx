@@ -6,6 +6,9 @@ import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { ListBackLink } from './ListsPage';
+import { EditableTitle } from '../components/controls/EditableTitle';
+import { useItemContextMenu } from '../components/controls/useItemContextMenu';
+import { PosterTile } from '../components/cards/PosterTile';
 import { getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
 import { displayItems, LISTS, type ListKind } from '../../domain/stores';
 import { MC, useResponsive } from '../theme/responsive';
@@ -51,12 +54,16 @@ export function ListPage({ kind, listId, navigate }: Props) {
                 fontFamily: T.ui
             }}>
                 <ListBackLink navigate={navigate} />
-                <h1 style={{
-                    fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
-                    fontSize: r.touch ? 34 : 52, margin: '0 0 8px', letterSpacing: -0.5
-                }}>
-                    {name || kindLabel}
-                </h1>
+                <div style={{ marginBottom: 8 }}>
+                    <EditableTitle
+                        value={name || kindLabel}
+                        fontSize={r.touch ? 34 : 52}
+                        onSave={async (next) => {
+                            await LISTS.rename(kind, listId, next);
+                            setName(next);
+                        }}
+                    />
+                </div>
                 {/* Qué tipo de lista es: importa, porque una de reproducción
                     desmenuza las series en capítulos y una colección no. */}
                 <div style={{
@@ -93,81 +100,39 @@ export function ListPage({ kind, listId, navigate }: Props) {
 }
 
 /**
- * Tarjeta de un título de la lista. Mismo tratamiento que el resultado de
- * búsqueda: carátula con el logo (o el título) superpuesto y la etiqueta de
- * tipo arriba, sin pie de texto.
+ * Un título de la lista.
+ *
+ * No entra en el modo selección, a diferencia de la búsqueda: en una lista lo
+ * que se hace con varios títulos a la vez es quitarlos de ella, y eso vive en
+ * el menú de cada uno.
  */
 function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
-    const go = () => {
-        // Un episodio suelto lleva a su serie: sin temporada ni número no se
-        // puede construir la ruta del episodio, y la ficha de la serie es el
-        // destino útil más cercano.
-        if (item.kind === 'movie') navigate({ page: 'movie', movieId: item.id });
-        else navigate({ page: 'show', showId: item.seriesId ?? item.id });
-    };
+    const ctx = useItemContextMenu({
+        id: item.id,
+        type: item.kind === 'movie' ? 'movie' : 'show',
+        itemTitle: item.title,
+        queueSubtitle: item.year ? String(item.year) : undefined,
+        queuePoster: item.poster
+    });
     const kindKey = item.kind === 'movie' ? 'Movie' : item.kind === 'episode' ? 'Episode' : 'Series';
-
     return (
-        <div onClick={go} style={{ cursor: 'pointer' }} className='jfp-hoverlift'>
-            <div style={{
-                aspectRatio: '2/3', borderRadius: 8, overflow: 'hidden', position: 'relative',
-                background: 'rgba(255,255,255,0.05)',
-                backgroundImage: item.poster ? `url(${item.poster})` : 'none',
-                backgroundSize: 'cover', backgroundPosition: 'center'
-            }}>
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))'
-                }} />
-                <div style={{ position: 'absolute', top: 8, left: 10 }}>
-                    <span style={{
-                        fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
-                        color: 'rgba(255,255,255,0.55)', background: 'rgba(0,0,0,0.5)',
-                        padding: '3px 7px', borderRadius: 4
-                    }}>
-                        {globalize.translate(kindKey)}
-                    </span>
-                </div>
-                {!item.poster && (
-                    <div style={{
-                        position: 'absolute', inset: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: T.display, fontSize: 32, color: 'rgba(255,255,255,0.15)'
-                    }}>
-                        {item.title?.[0]}
-                    </div>
-                )}
-                <div style={{
-                    position: 'absolute', left: 12, right: 12, bottom: 12,
-                    filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.7))'
-                }}>
-                    {item.logo ? (
-                        <img
-                            src={item.logo}
-                            alt={item.title}
-                            loading='lazy'
-                            decoding='async'
-                            style={{
-                                maxWidth: '100%', maxHeight: 36, width: 'auto', height: 'auto',
-                                objectFit: 'contain', objectPosition: 'left center'
-                            }}
-                        />
-                    ) : (
-                        // La sombra va como `drop-shadow` del contenedor y no
-                        // como `text-shadow` aquí: el recorte a dos líneas
-                        // necesita `overflow: hidden`, que cortaría la sombra
-                        // en seco y dejaría un rectángulo alrededor del título.
-                        <div style={{
-                            fontFamily: T.display, fontSize: 15, fontWeight: 600, lineHeight: 1.2,
-                            color: '#fff',
-                            overflow: 'hidden',
-                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
-                        }}>
-                            {item.title}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
+        <PosterTile
+            title={item.title}
+            kindLabel={globalize.translate(kindKey)}
+            cover={item.poster}
+            logo={item.logo}
+            interactions={{
+                // Un episodio suelto lleva a su serie: sin temporada ni número
+                // no se puede construir la ruta del episodio, y la ficha de la
+                // serie es el destino útil más cercano.
+                onClick: () => (item.kind === 'movie' ?
+                    navigate({ page: 'movie', movieId: item.id }) :
+                    navigate({ page: 'show', showId: item.seriesId ?? item.id })),
+                selecting: false,
+                selected: false,
+                onContextMenu: ctx.onContextMenu,
+                contextMenu: ctx.menu
+            }}
+        />
     );
 }

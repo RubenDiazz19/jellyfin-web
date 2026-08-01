@@ -5,9 +5,8 @@ import globalize from 'lib/globalize';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { queueVM, type QueueEntry } from '../../../domain/viewModels/QueueViewModel';
 import { QueuePanel } from '../queue/QueuePanel';
-import {
-    segmentSkipLabelKey, videoPlayerVM, type AspectRatio
-} from '../../../domain/viewModels/VideoPlayerViewModel';
+import { segmentSkipLabelKey, type AspectRatio } from '../../../domain/player/format';
+import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
 import { haptic } from '../../../shared/haptics';

@@ -1,19 +1,21 @@
 import globalize from 'lib/globalize';
 
-import { useEffect } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { PROTO_DATA, findSeason, type Show, type Season } from '../../domain/models';
-import { showVM } from '../../domain/viewModels/ShowViewModel';
-import { useVmSignals } from '../../domain/bridge/useViewModel';
+import { findSeason, type Show, type Season } from '../../domain/models';
+import { HeroFrame } from '../components/layout/DetailHero';
+import {
+    DetailBody, DetailHeading, DetailRow, DetailStatus, DetailTable, SectionLabel
+} from '../components/layout/DetailSections';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { MoreButton } from '../components/controls/MoreButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
-import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
+import { ticksFromProgress } from '../../domain/player/format';
+import { useShowEntity } from './useDetailEntity';
 
 type PageProps = { showId: string; seasonN: number; navigate: Navigate };
 
@@ -22,35 +24,10 @@ const PLAY_SIZE = 104;
 const MORE_GAP = 26;
 
 export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
-    const proto = PROTO_DATA.shows[showId];
-    useVmSignals(showVM, (vm) => [vm.show, vm.error]);
-    useEffect(() => {
-        if (!proto) void showVM.load(showId);
-    }, [proto, showId]);
-    const show = proto ?? showVM.showFor(showId);
+    const { item: show, error } = useShowEntity(showId);
     const season = show ? findSeason(show, seasonN) : null;
     if (!show || !season) {
-        if (showVM.error.value) {
-            return (
-                <section style={{
-                    minHeight: '100vh', background: '#000', color: '#ff6b6b', fontFamily: T.ui,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-                }}>
-                    {showVM.error.value}
-                </section>
-            );
-        }
-        if (!show) {
-            return (
-                <section style={{
-                    minHeight: '100vh', background: '#000', color: T.dim, fontFamily: T.ui,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
-                }}>
-                    Cargando…
-                </section>
-            );
-        }
+        if (error || !show) return <DetailStatus error={error} />;
         // Serie cargada pero temporada inexistente en la URL.
         return null;
     }
@@ -63,7 +40,6 @@ export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
 }
 
 function SeasonHero({ show, season, navigate }: { show: Show; season: Season; navigate: Navigate }) {
-    const r = useResponsive();
     const nextEp = season.episodes.find((e) => e.watched < 1) || season.episodes[0];
     const inProgress = nextEp && nextEp.watched > 0 && nextEp.watched < 1;
     const { play } = usePlayer();
@@ -73,43 +49,34 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
             play({
                 itemId: nextEp.jfId,
                 title: `${show.title} · T${season.n} E${String(nextEp.n).padStart(2, '0')} — ${nextEp.title ?? ''}`,
-                startTicks: inProgress && nextEp.runtime ?
-                    Math.round(nextEp.runtime * 60 * nextEp.watched * 10_000_000) :
-                    undefined
+                startTicks: inProgress ? ticksFromProgress(nextEp.runtime, nextEp.watched) : undefined
             });
         } else {
             navigate({ page: 'episode', showId: show.id, seasonN: season.n, epN: nextEp.n });
         }
     };
     return (
-        <section style={{
-            position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', background: '#000'
-        }}>
-            <Nav
-                navigate={navigate}
-                breadcrumb={[
-                    { label: globalize.translate('Shows'), to: { page: 'home' } },
-                    { label: show.title, to: { page: 'show', showId: show.id } },
-                    { label: `Temporada ${season.n}` }
-                ]}
-            />
-
-            <div style={{
-                position: 'absolute', inset: 0,
-                backgroundImage: `url(${show.backdrop})`,
-                backgroundSize: 'cover', backgroundPosition: 'center',
-                filter: 'blur(8px) brightness(0.5)',
-                zIndex: 0
-            }} />
-
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1 }} />
-
-            <div style={{
-                position: 'absolute', inset: 0, padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : '0 48px 110px',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center', zIndex: 2
-            }}>
+        <HeroFrame
+            // La imagen es la de la serie, no la de la temporada: desenfocada
+            // pasa a ser textura y el número gigante manda en la pantalla.
+            blurred
+            scrim={0}
+            pos='Centro'
+            pad='0 48px 110px'
+            backdrop={show.backdrop || ''}
+            nav={
+                <Nav
+                    navigate={navigate}
+                    breadcrumb={[
+                        { label: globalize.translate('Shows'), to: { page: 'home' } },
+                        { label: show.title, to: { page: 'show', showId: show.id } },
+                        { label: `Temporada ${season.n}` }
+                    ]}
+                />
+            }
+            footer={<ScrollHint label={globalize.translate('Episodes')} />}
+        >
+            <>
                 <div style={{
                     fontFamily: T.ui, fontSize: 11, letterSpacing: 4, textTransform: 'uppercase',
                     color: 'rgba(255,255,255,0.7)', marginBottom: 18
@@ -186,26 +153,15 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                             'Volver a ver desde E01' :
                             `Continuar con E${nextEp?.n} · ${nextEp?.title}`}
                 </div>
-            </div>
-
-            <ScrollHint label={globalize.translate('Episodes')} />
-        </section>
+            </>
+        </HeroFrame>
     );
 }
 
 function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; navigate: Navigate }) {
-    const r = useResponsive();
     return (
-        <section style={{
-            background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
-            padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px', fontFamily: T.ui
-        }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 28 }}>
-                <h3 style={{
-                    fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
-                }}>
-                    {globalize.translate('Episodes')}
-                </h3>
+        <DetailBody>
+            <DetailHeading title={globalize.translate('Episodes')} marginBottom={28}>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
                     {show.seasons.map((s) => (
                         <button
@@ -224,7 +180,7 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                         </button>
                     ))}
                 </div>
-            </div>
+            </DetailHeading>
 
             <div style={{
                 display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 22, marginBottom: 80
@@ -239,12 +195,7 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                 paddingTop: 48, borderTop: `1px solid ${T.hairline}`
             }}>
                 <div>
-                    <div style={{
-                        fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                        color: T.dim, marginBottom: 18
-                    }}>
-                        Sinopsis de la temporada
-                    </div>
+                    <SectionLabel>Sinopsis de la temporada</SectionLabel>
                     <p style={{
                         fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
                         color: 'rgba(255,255,255,0.82)', textWrap: 'pretty', fontWeight: 400
@@ -253,24 +204,18 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                     </p>
                 </div>
                 <div>
-                    <div style={{
-                        fontSize: 10, letterSpacing: 4, textTransform: 'uppercase',
-                        color: T.dim, marginBottom: 18
-                    }}>
-                        {globalize.translate('HeaderDetails')}
-                    </div>
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: '120px 1fr', rowGap: 14, fontSize: 13
-                    }}>
-                        <span style={{ color: T.dim }}>{globalize.translate('Episodes')}</span><span>{season.total}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('LabelYear')}</span><span>{season.year}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Watched')}</span>
-                        <span>{season.watched} · {Math.round((season.watched / season.total) * 100)}%</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Director')}</span><span>{show.directors}</span>
-                        <span style={{ color: T.dim }}>{globalize.translate('Studio')}</span><span>{show.studio}</span>
-                    </div>
+                    <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
+                    <DetailTable>
+                        <DetailRow label={globalize.translate('Episodes')}>{season.total}</DetailRow>
+                        <DetailRow label={globalize.translate('LabelYear')}>{season.year}</DetailRow>
+                        <DetailRow label={globalize.translate('Watched')}>
+                            {season.watched} · {Math.round((season.watched / season.total) * 100)}%
+                        </DetailRow>
+                        <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
+                        <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
+                    </DetailTable>
                 </div>
             </div>
-        </section>
+        </DetailBody>
     );
 }

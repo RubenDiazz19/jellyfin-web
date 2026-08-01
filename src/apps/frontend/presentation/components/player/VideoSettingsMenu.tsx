@@ -8,9 +8,10 @@ import {
     useEffect, useMemo, useRef, useState, type ReactNode
 } from 'react';
 import {
-    chapterDisplayName, playerMarks, segmentDisplayName, videoPlayerVM,
+    chapterDisplayName, playerMarks, segmentDisplayName,
     type AspectRatio, type PlayerMark
-} from '../../../domain/viewModels/VideoPlayerViewModel';
+} from '../../../domain/player/format';
+import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
 

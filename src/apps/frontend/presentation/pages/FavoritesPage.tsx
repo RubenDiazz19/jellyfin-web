@@ -7,7 +7,7 @@ import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { EpCard } from '../components/cards/EpCard';
-import { LibraryMovieCard } from '../components/cards/LibraryMovieCard';
+import { MovieCard } from '../components/cards/MovieCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { ListBackLink } from './ListsPage';
 import { favoritesVM } from '../../domain/viewModels/FavoritesViewModel';
@@ -15,6 +15,7 @@ import { useViewModel } from '../../domain/bridge/useViewModel';
 import { useFavListener } from '../../domain/bridge/useFav';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
+import { episodeKey, seasonKey } from '../../domain/stores';
 
 type Props = { navigate: Navigate };
 
@@ -68,14 +69,14 @@ export function FavoritesPage({ navigate }: Props) {
                         {movies.value.length > 0 && (
                             <FavSection title={globalize.translate('Movies')}>
                                 {movies.value.map((m) => (
-                                    <LibraryMovieCard key={m.id} movie={m} navigate={navigate} />
+                                    <MovieCard key={m.id} movie={m} navigate={navigate} fluid />
                                 ))}
                             </FavSection>
                         )}
                         {seasons.value.length > 0 && (
                             <FavSection title={globalize.translate('HeaderSeasons')}>
                                 {seasons.value.map(({ show, season }) => (
-                                    <SeasonCard key={`${show.id}-s${season.n}`} show={show} season={season} navigate={navigate} />
+                                    <SeasonCard key={seasonKey(show.id, season.n)} show={show} season={season} navigate={navigate} />
                                 ))}
                             </FavSection>
                         )}
@@ -83,7 +84,7 @@ export function FavoritesPage({ navigate }: Props) {
                             <FavSection title={globalize.translate('Episodes')} minWidth={260}>
                                 {episodes.value.map(({ show, season, episode }) => (
                                     <EpCard
-                                        key={`${show.id}-s${season.n}-e${episode.n}`}
+                                        key={episodeKey(show.id, season.n, episode.n)}
                                         show={show} season={season} ep={episode} navigate={navigate}
                                     />
                                 ))}

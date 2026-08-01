@@ -1,12 +1,12 @@
 import React from 'react';
-import { WATCHED } from '../../../domain/stores';
+import { episodeKey, WATCHED } from '../../../domain/stores';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { PROTO_DATA } from '../../../domain/models';
 import { useResponsive } from '../../theme/responsive';
 import { PosterShell } from './PosterShell';
-import { useSelectionMode } from '../controls/useSelectionMode';
+import { useCardInteractions } from './useCardInteractions';
 import type { Navigate } from '../../../app/router';
 
 // El "slide" mínimo que necesita esta card. Encaja tanto con un show
@@ -37,21 +37,19 @@ export const PosterCard = React.memo(function PosterCardBase({ slide, navigate, 
     const seasons = show?.seasons || [];
     const totalEps = seasons.reduce((a, s) => a + (s.total || 0), 0);
     const watchedEps = seasons.reduce((a, s) => {
-        const ids = (s.episodes || []).map((ep) => `${slide.id}-s${s.n}-e${ep.n}`);
+        const ids = (s.episodes || []).map((ep) => episodeKey(slide.id, s.n, ep.n));
         const live = ids.filter((id) => WATCHED.has(id)).length;
         return a + Math.max(live, s.watched || 0);
     }, 0);
     const progress = totalEps ? Math.min(watchedEps / totalEps, 1) : 0;
-    const sel = useSelectionMode(
+    const card = useCardInteractions(
         { id: slide.id, title: slide.title, kind: 'show', poster: slide.poster, year: slide.year },
-        () => navigate({ page: 'show', showId: slide.id })
+        navigate
     );
     return (
         <PosterShell
+            {...card}
             cover={slide.poster || slide.backdrop}
-            onClick={sel.onClick}
-            selecting={sel.selecting}
-            selected={sel.selected}
             width={fluid ? null : w}
             watchedButton={<ShowNavWatchedButton showId={slide.id} size={16} badge />}
             favButton={<FavButton id={slide.id} size={16} />}

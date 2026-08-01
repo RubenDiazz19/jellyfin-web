@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { T } from '../../theme/tokens';
 import { Progress } from '../controls/Progress';
 
@@ -28,6 +28,10 @@ type Props = {
     /** Modo selección: los botones de la carátula dejan paso a la marca. */
     selecting?: boolean;
     selected?: boolean;
+    /** Clic derecho: abre el menú del item. Lo arma `useItemContextMenu`. */
+    onContextMenu?: (e: MouseEvent) => void;
+    /** El menú en sí, invisible hasta que se abre. */
+    contextMenu?: ReactNode;
 };
 
 const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))';
@@ -35,12 +39,13 @@ const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.
 export function PosterShell({
     cover, onClick, width, gradient = DEFAULT_GRADIENT,
     watchedButton, favButton, logo, title, progress = 0, caption,
-    selecting = false, selected = false
+    selecting = false, selected = false, onContextMenu, contextMenu
 }: Props) {
     const inProgress = progress > 0 && progress < 1;
     return (
         <div
             onClick={onClick}
+            onContextMenu={onContextMenu}
             style={width == null ?
                 { width: '100%', cursor: 'pointer' } :
                 { width, flex: `0 0 ${width}px`, cursor: 'pointer' }}
@@ -114,6 +119,7 @@ export function PosterShell({
             }}>
                 {caption}
             </div>
+            {contextMenu}
         </div>
     );
 }

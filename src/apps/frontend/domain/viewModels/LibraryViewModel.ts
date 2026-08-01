@@ -4,9 +4,11 @@
 
 import { computed, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
-import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/librarySortStore';
+import { ItemMutationSubscription } from './itemMutations';
+import { registerTagSource } from './knownTags';
+import { LoadGuard } from './loadGuard';
 
 export type LibraryKind = 'series' | 'movies';
 export type { SortKey };
@@ -63,13 +65,14 @@ export class LibraryViewModel {
 
     // Cambia al volver a elegir «aleatorio»: es la forma de pedir otra baraja.
     private randomSeed = signal(0);
-    private seq = 0;
-    private mutationHandler: (() => void) | null = null;
+    private loads = new LoadGuard();
+    private mutations = new ItemMutationSubscription();
 
     constructor(private api: ApiService) {
         // El servidor ya manda por SortName; el resto de criterios se aplican
         // aquí sobre la lista que ya está en memoria.
         this.sortKey.value = LIBRARY_SORT.load();
+        registerTagSource(() => [...this.shows.peek(), ...this.movies.peek()]);
     }
 
     /** Series ya ordenadas según `sortKey`. Es lo que pinta la vista. */
@@ -92,7 +95,7 @@ export class LibraryViewModel {
 
     async load(kind: LibraryKind) {
         this.subscribeToMutations();
-        const seq = ++this.seq;
+        const isLatest = this.loads.begin();
         this.kind.value = kind;
         this.error.value = null;
 
@@ -108,37 +111,32 @@ export class LibraryViewModel {
         try {
             if (kind === 'movies') {
                 const movies = await this.api.catalog.getMovies();
-                if (seq !== this.seq) return;
+                if (!isLatest()) return;
                 this.movies.value = movies;
             } else {
                 const shows = await this.api.catalog.getShows();
-                if (seq !== this.seq) return;
+                if (!isLatest()) return;
                 this.shows.value = shows;
             }
         } catch (e) {
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.error.value = (e as Error).message;
         } finally {
-            if (seq === this.seq) this.loading.value = false;
+            if (isLatest()) this.loading.value = false;
         }
     }
 
     // Cualquier mutación de item recarga la biblioteca activa: no sabemos si
     // el item afectado está en la lista visible, y una lista de N pósters es
     // barata frente a la fricción de recargar la página a mano.
-    //
-    // Se engancha en el primer `load()`, no en el constructor: ver la nota en
-    // HomeViewModel.subscribeToMutations.
     private subscribeToMutations() {
-        if (this.mutationHandler || typeof window === 'undefined') return;
-        this.mutationHandler = () => {
+        this.mutations.ensure(() => {
             // Solo refetcheamos si la lista ya se pintó (no en montaje inicial
             // sin datos, para no forzar cargas concurrentes).
             const hasData = this.shows.value.length > 0 || this.movies.value.length > 0;
             if (!hasData) return;
             void this.load(this.kind.value);
-        };
-        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
+        });
     }
 }
 

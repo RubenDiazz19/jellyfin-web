@@ -4,22 +4,23 @@
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
-import { ITEM_MUTATED_EVENT, type ItemMutatedDetail } from '../../data/api/mutations';
 import type { Show } from '../../data/models';
+import { ItemMutationSubscription } from './itemMutations';
+import { LoadGuard } from './loadGuard';
 
 export class ShowViewModel {
     show = signal<Show | null>(null);
     loading = signal(false);
     error = signal<string | null>(null);
 
-    private seq = 0;
-    private mutationHandler: ((e: Event) => void) | null = null;
+    private loads = new LoadGuard();
+    private mutations = new ItemMutationSubscription();
 
     constructor(private api: ApiService) {}
 
     async load(id: string) {
         this.subscribeToMutations();
-        const seq = ++this.seq;
+        const isLatest = this.loads.begin();
         // Si ya tenemos datos para esta id, no mostramos loading (optimistic):
         // la UI ve los datos anteriores hasta que llegue el refresh.
         if (this.show.value?.id !== id) {
@@ -29,15 +30,15 @@ export class ShowViewModel {
         }
         try {
             const show = await this.api.catalog.getShow(id);
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.show.value = show;
             this.error.value = null;
         } catch (e) {
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             if (this.show.value?.id === id) return; // no sobreescribir datos previos con error
             this.error.value = (e as Error).message;
         } finally {
-            if (seq === this.seq) this.loading.value = false;
+            if (isLatest()) this.loading.value = false;
         }
     }
 
@@ -55,19 +56,13 @@ export class ShowViewModel {
     // p. ej. al cambiar la carátula de una temporada — y ese contenido vive
     // dentro del Show que tenemos cargado. Si solo se comparase con el id de
     // la serie, esos cambios no se verían hasta recargar la página.
-    //
-    // Se engancha en el primer `load()`, no en el constructor: ver la nota en
-    // HomeViewModel.subscribeToMutations.
     private subscribeToMutations() {
-        if (this.mutationHandler || typeof window === 'undefined') return;
-        this.mutationHandler = (e: Event) => {
-            const detail = (e as CustomEvent<ItemMutatedDetail>).detail;
+        this.mutations.ensure((itemId) => {
             const current = this.show.value;
             if (!current) return;
-            if (detail?.itemId && !belongsToShow(current, detail.itemId)) return;
+            if (itemId && !belongsToShow(current, itemId)) return;
             void this.load(current.id);
-        };
-        window.addEventListener(ITEM_MUTATED_EVENT, this.mutationHandler);
+        });
     }
 }
 

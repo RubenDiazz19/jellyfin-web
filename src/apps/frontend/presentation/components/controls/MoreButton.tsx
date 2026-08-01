@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+    useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject
+} from 'react';
 import ReactDOM from 'react-dom';
 
 import globalize from 'lib/globalize';
@@ -26,9 +28,19 @@ type MenuItem =
   | { isCustom: true; component: ReactNode }
   | { label: string; fn: () => void; danger?: boolean; disabled?: boolean };
 
+/** Permite abrir el menú desde fuera, en un punto: el clic derecho. */
+export type ItemMenuHandle = { openAt: (x: number, y: number) => void };
+
 type Props = {
     id: string;
     size?: number;
+    /**
+     * Sin él se pinta el botón de tres puntos. Con él, el menú existe pero
+     * invisible: solo lo abre quien tenga el `handle` — así una tarjeta puede
+     * ofrecer el menú por clic derecho sin llenarse de botones.
+     */
+    handle?: RefObject<ItemMenuHandle | null>;
+    hideTrigger?: boolean;
     items?: MenuItem[];
     type?: 'movie' | 'show' | 'season' | 'episode';
     itemTitle?: string;
@@ -43,16 +55,18 @@ type Props = {
 
 // Botón "más opciones" (tres puntos) con menú flotante y editor de metadata
 // integrado. Las acciones se ejecutan contra la API real de Jellyfin.
+const MENU_W = 260;
+
 export function MoreButton({
     id, size = 18, items, type = 'show', itemTitle, nextEpisodeId,
-    queueSubtitle, queuePoster
+    queueSubtitle, queuePoster, handle, hideTrigger
 }: Props) {
     const [open, setOpen] = useState(false);
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
     const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
     const [tagsOpen, setTagsOpen] = useState(false);
     const [menuPos, setMenuPos] = useState<{
-        top?: number; bottom?: number; right: number; maxHeight: number;
+        top?: number; bottom?: number; left?: number; right?: number; maxHeight: number;
     } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
     const toast = useToast();
@@ -121,6 +135,28 @@ export function MoreButton({
         }
         setOpen(true);
     };
+
+    /**
+     * Abre el menú donde se ha pulsado, para el clic derecho sobre una
+     * tarjeta. En touch no hay clic derecho: el bottom sheet se abre igual y
+     * la posición da lo mismo.
+     */
+    const openAt = (x: number, y: number) => {
+        if (!r.touch) {
+            const MENU_H = 540;
+            const dropUp = y + MENU_H > window.innerHeight;
+            setMenuPos({
+                top: dropUp ? undefined : y,
+                bottom: dropUp ? window.innerHeight - y : undefined,
+                // Se voltea al otro lado del cursor si no cabe a la derecha.
+                left: Math.min(x, window.innerWidth - MENU_W - 12),
+                maxHeight: dropUp ? y - 12 : window.innerHeight - y - 12
+            });
+        }
+        setOpen(true);
+    };
+
+    useImperativeHandle(handle, () => ({ openAt }));
 
     // -------- handlers reales --------
     const label = itemTitle ? ` · ${itemTitle}` : '';
@@ -251,9 +287,11 @@ export function MoreButton({
 
     return (
         <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
-            <IconButton onClick={openMenu} ariaLabel={globalize.translate('ButtonMore')} active={open}>
-                <Ic.Dots size={size} />
-            </IconButton>
+            {!hideTrigger && (
+                <IconButton onClick={openMenu} ariaLabel={globalize.translate('ButtonMore')} active={open}>
+                    <Ic.Dots size={size} />
+                </IconButton>
+            )}
             {/* Touch: bottom sheet M3 (spec 4.3). Desktop: popup anclado. */}
             {open && r.touch && (
                 <BottomSheet title={itemTitle} onClose={() => setOpen(false)}>
@@ -293,9 +331,10 @@ export function MoreButton({
                 <div
                     style={{
                         position: 'fixed',
-                        top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right,
+                        top: menuPos.top, bottom: menuPos.bottom,
+                        left: menuPos.left, right: menuPos.right,
                         maxHeight: menuPos.maxHeight, overflowY: 'auto', zIndex: 9999,
-                        minWidth: 260,
+                        minWidth: MENU_W,
                         background: 'rgba(18,18,20,0.96)', backdropFilter: 'blur(14px)',
                         border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: 6,
                         boxShadow: '0 18px 50px rgba(0,0,0,0.6)', fontFamily: T.ui

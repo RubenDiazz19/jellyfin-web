@@ -12,53 +12,23 @@
 // decide qué se pinta. Perderlo no borra ninguna etiqueta — las etiquetas
 // siguen en el servidor y se siguen encontrando con `#`.
 
-const KEY = 'jfp-manual-tags';
+import { createSetStore } from './persistentStore';
 
-let cache: Set<string> | null = null;
-
-function ensure(): Set<string> {
-    if (cache) return cache;
-    try {
-        const raw: unknown = JSON.parse(localStorage.getItem(KEY) || '[]');
-        cache = new Set(
-            Array.isArray(raw) ?
-                raw.filter((t): t is string => typeof t === 'string').map((t) => t.toLowerCase()) :
-                []
-        );
-    } catch {
-        cache = new Set();
-    }
-    return cache;
-}
+// Sin evento: nadie se suscribe. Lo consulta el computed de la búsqueda, que
+// ya se recalcula por otras razones cuando esto puede haber cambiado.
+const store = createSetStore({
+    key: 'jfp-manual-tags',
+    // Una etiqueta es la misma se escriba como se escriba.
+    normalize: (tag) => tag.trim().toLowerCase()
+});
 
 export const MANUAL_TAGS = {
     /** Registra etiquetas como escritas por el usuario. */
-    add(tags: readonly string[]) {
-        const set = ensure();
-        let changed = false;
-        for (const tag of tags) {
-            const key = tag.trim().toLowerCase();
-            if (key && !set.has(key)) {
-                set.add(key);
-                changed = true;
-            }
-        }
-        if (!changed) return;
-        try {
-            localStorage.setItem(KEY, JSON.stringify([...set]));
-        } catch {
-            // Sin persistencia el registro dura lo que la pestaña. La caché en
-            // memoria ya está actualizada, así que la UI queda coherente.
-        }
-    },
+    add: (tags: readonly string[]) => { store.add(tags); },
 
     /** True si el usuario ha escrito esta etiqueta alguna vez. */
-    has(tag: string): boolean {
-        return ensure().has(tag.trim().toLowerCase());
-    },
+    has: (tag: string) => store.has(tag),
 
     /** Solo para tests. */
-    _reset() {
-        cache = null;
-    }
+    _reset: () => { store._reset(); }
 };

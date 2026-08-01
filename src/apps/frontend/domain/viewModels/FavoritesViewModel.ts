@@ -1,23 +1,17 @@
 // ViewModel de la pantalla de Favoritos. Los favoritos se guardan solo en
-// localStorage (FAVS) como ids compuestos — "movie-<id>" para películas,
-// "<showId>-s<n>-e<m>" para episodios, "<showId>-s<n>" para temporadas y el
-// id crudo del show para series. Aquí los desambiguamos e hidratamos contra
-// el catálogo real.
+// localStorage (FAVS) como claves compuestas (ver itemKeys). Aquí las
+// desambiguamos e hidratamos contra el catálogo real.
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { FAVS } from '../../data/stores/favsStore';
+import { episodeKey, movieKey, parseItemKey, seasonKey } from '../../data/stores/itemKeys';
 import type { Episode, Movie, Season, Show } from '../../data/models';
+import { LoadGuard } from './loadGuard';
 
 export type FavSeason = { show: Show; season: Season };
 export type FavEpisode = { show: Show; season: Season; episode: Episode };
-
-const MOVIE_PREFIX = 'movie-';
-// El id de un show es un GUID hex — nunca puede contener una 's' literal —
-// así que este sufijo desambigua sin ambigüedad con el propio id.
-const EPISODE_RE = /^(.+)-s(\d+)-e(\d+)$/;
-const SEASON_RE = /^(.+)-s(\d+)$/;
 
 export class FavoritesViewModel {
     shows = signal<Show[]>([]);
@@ -30,12 +24,12 @@ export class FavoritesViewModel {
     loading = signal(true);
     error = signal<string | null>(null);
 
-    private seq = 0;
+    private loads = new LoadGuard();
 
     constructor(private api: ApiService) {}
 
     async load() {
-        const seq = ++this.seq;
+        const isLatest = this.loads.begin();
         this.loading.value = true;
         this.error.value = null;
 
@@ -46,20 +40,21 @@ export class FavoritesViewModel {
         const episodeRefs: { showId: string; seasonN: number; epN: number }[] = [];
 
         for (const id of ids) {
-            const epMatch = EPISODE_RE.exec(id);
-            const seasonMatch = !epMatch && SEASON_RE.exec(id);
-            if (id.startsWith(MOVIE_PREFIX)) {
-                movieIds.push(id.slice(MOVIE_PREFIX.length));
-            } else if (epMatch) {
-                const [, showId, seasonN, epN] = epMatch;
-                episodeRefs.push({ showId, seasonN: Number(seasonN), epN: Number(epN) });
-                showIds.add(showId);
-            } else if (seasonMatch) {
-                const [, showId, seasonN] = seasonMatch;
-                seasonRefs.push({ showId, seasonN: Number(seasonN) });
-                showIds.add(showId);
-            } else {
-                showIds.add(id);
+            const ref = parseItemKey(id);
+            switch (ref.kind) {
+                case 'movie':
+                    movieIds.push(ref.movieId);
+                    break;
+                case 'episode':
+                    episodeRefs.push(ref);
+                    showIds.add(ref.showId);
+                    break;
+                case 'season':
+                    seasonRefs.push(ref);
+                    showIds.add(ref.showId);
+                    break;
+                default:
+                    showIds.add(ref.showId);
             }
         }
 
@@ -68,7 +63,7 @@ export class FavoritesViewModel {
                 Promise.allSettled(movieIds.map((id) => this.api.catalog.getMovie(id))),
                 Promise.allSettled([...showIds].map((id) => this.api.catalog.getShow(id)))
             ]);
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
 
             const okShows = showResults
                 .filter((r): r is PromiseFulfilledResult<Show> => r.status === 'fulfilled')
@@ -100,22 +95,22 @@ export class FavoritesViewModel {
             }
             this.episodes.value = episodes;
         } catch (e) {
-            if (seq !== this.seq) return;
+            if (!isLatest()) return;
             this.error.value = (e as Error).message;
         } finally {
-            if (seq === this.seq) this.loading.value = false;
+            if (isLatest()) this.loading.value = false;
         }
     }
 
     /** Quita en caliente lo que se haya desfavoriteado sin recargar del server. */
     syncWithStore() {
-        this.movies.value = this.movies.value.filter((m) => FAVS.has(`${MOVIE_PREFIX}${m.id}`));
+        this.movies.value = this.movies.value.filter((m) => FAVS.has(movieKey(m.id)));
         this.shows.value = this.shows.value.filter((s) => FAVS.has(s.id));
         this.seasons.value = this.seasons.value.filter(
-            ({ show, season }) => FAVS.has(`${show.id}-s${season.n}`)
+            ({ show, season }) => FAVS.has(seasonKey(show.id, season.n))
         );
         this.episodes.value = this.episodes.value.filter(
-            ({ show, season, episode }) => FAVS.has(`${show.id}-s${season.n}-e${episode.n}`)
+            ({ show, season, episode }) => FAVS.has(episodeKey(show.id, season.n, episode.n))
         );
     }
 }

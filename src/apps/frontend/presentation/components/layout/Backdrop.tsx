@@ -7,10 +7,14 @@ type Props = {
     srcs?: string[]; // Si viene con >1, rota entre ellos con crossfade.
     intervalMs?: number; // Tiempo entre cambios (default 8s).
     fadeMs?: number; // Duración del crossfade (default 1500ms).
-    fadeBottom?: number;
     vignette?: number;
     itemId?: string;
     sharp?: boolean;
+    /**
+     * Fondo prestado (la ficha de temporada enseña el de la serie): se
+     * desenfoca fuerte y se oscurece para que se lea como textura.
+     */
+    blurred?: boolean;
 };
 
 // Fondo de hero: imagen a pantalla completa con veladura + vignette + fade
@@ -23,7 +27,7 @@ type Props = {
 // precarga con `new Image()` para que el crossfade no parpadee.
 export function Backdrop({
     src, srcs, intervalMs = 8000, fadeMs = 1500,
-    vignette = 0.38, itemId, sharp = false
+    vignette = 0.38, itemId, sharp = false, blurred = false
 }: Props) {
     const { getImage } = useImageStorage();
     const customBackdrop = itemId ? getImage(`${itemId}_backdrop`) : null;
@@ -70,13 +74,17 @@ export function Backdrop({
         }
     }, [idx, pool, customBackdrop]);
 
-    const filter = sharp ? 'saturate(1)' : 'saturate(0.9) blur(1px)';
-    const transform = sharp ? 'none' : 'scale(1.015)';
+    const filter = blurred ? 'blur(8px) brightness(0.5)' :
+        sharp ? 'saturate(1)' : 'saturate(0.9) blur(1px)';
+    const transform = sharp || blurred ? 'none' : 'scale(1.015)';
 
     return (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
             <Crossfade url={current} fadeMs={fadeMs} filter={filter} transform={transform} />
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.08)' }} />
+            <div style={{
+                position: 'absolute', inset: 0,
+                background: `rgba(0,0,0,${blurred ? 0.35 : 0.08})`
+            }} />
             <div style={{
                 position: 'absolute', inset: 0,
                 background: `radial-gradient(ellipse at center, transparent 28%, rgba(0,0,0,${vignette}) 100%)`

@@ -1,8 +1,6 @@
-import { Ic } from '../../theme/icons';
 import { useWatched } from '../../../domain/bridge/useWatched';
-import { IconButton } from './IconButton';
-import { WatchedBadge } from './WatchedBadge';
 import { useWatchedToggle } from './useWatchedToggle';
+import { WatchedToggleIcon } from './WatchedToggleIcon';
 
 type Props = {
     id: string;
@@ -25,8 +23,12 @@ export function WatchedButton({ id, size = 18, badge = false, label, serverId }:
         message: (next) => (next ? `Marcado como visto${suffix}` : `Marcado como no visto${suffix}`)
     });
     return (
-        <IconButton onClick={onClick} ariaLabel={w ? 'Marcar como no visto' : 'Marcar como visto'}>
-            {badge && w ? <WatchedBadge size={size} /> : <Ic.Tick size={size} filled={w} />}
-        </IconButton>
+        <WatchedToggleIcon
+            active={w}
+            onClick={onClick}
+            size={size}
+            badge={badge}
+            ariaLabel={w ? 'Marcar como no visto' : 'Marcar como visto'}
+        />
     );
 }

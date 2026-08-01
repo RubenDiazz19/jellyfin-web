@@ -20,6 +20,11 @@ const createCollection = vi.fn();
 const setImageByUrl = vi.fn();
 const uploadImageFile = vi.fn();
 const deleteImage = vi.fn();
+const updateItemMetadata = vi.fn();
+
+vi.mock('../../api/metadata', () => ({
+    updateItemMetadata: (...a: unknown[]) => updateItemMetadata(...a)
+}));
 
 vi.mock('../../api/remote-images', () => ({
     setImageByUrl: (...a: unknown[]) => setImageByUrl(...a),
@@ -76,6 +81,7 @@ beforeEach(() => {
         m.mockResolvedValue(undefined);
     }
     for (const m of [setImageByUrl, uploadImageFile, deleteImage]) m.mockResolvedValue(undefined);
+    updateItemMetadata.mockResolvedValue(undefined);
     createPlaylist.mockResolvedValue('p9');
     createCollection.mockResolvedValue('c9');
 });
@@ -280,6 +286,61 @@ describe('fondo personalizado', () => {
         setImageByUrl.mockRejectedValue(new Error('formato no válido'));
         await expect(LISTS.setCover('playlist', 'p1', 'x')).rejects.toThrow('formato no válido');
         expect(LISTS.hasCustomCover('playlist', 'p1')).toBe(false);
+    });
+});
+
+describe('renombrar', () => {
+    test('vale igual para listas y colecciones', async () => {
+        await LISTS.ensure();
+        await LISTS.rename('playlist', 'p1', 'Otro nombre');
+        expect(updateItemMetadata).toHaveBeenCalledWith('p1', { Name: 'Otro nombre' });
+
+        await LISTS.rename('collection', 'c1', 'Saga completa');
+        expect(updateItemMetadata).toHaveBeenCalledWith('c1', { Name: 'Saga completa' });
+    });
+
+    test('el nombre nuevo se ve antes de que conteste el servidor', async () => {
+        await LISTS.ensure();
+        let resolveSave: () => void = () => undefined;
+        updateItemMetadata.mockReturnValue(new Promise<void>((r) => { resolveSave = r; }));
+
+        const pending = LISTS.rename('playlist', 'p1', 'Ya se ve');
+        expect(LISTS.find('playlist', 'p1')?.name).toBe('Ya se ve');
+
+        resolveSave();
+        await pending;
+    });
+
+    test('si el servidor falla, vuelve el nombre anterior y se propaga', async () => {
+        await LISTS.ensure();
+        updateItemMetadata.mockRejectedValue(new Error('sin permiso'));
+        await expect(LISTS.rename('playlist', 'p1', 'Otro')).rejects.toThrow('sin permiso');
+        expect(LISTS.find('playlist', 'p1')?.name).toBe('Pendientes');
+    });
+
+    test('un nombre vacío o solo espacios no hace nada', async () => {
+        await LISTS.ensure();
+        await LISTS.rename('playlist', 'p1', '   ');
+        expect(updateItemMetadata).not.toHaveBeenCalled();
+        expect(LISTS.find('playlist', 'p1')?.name).toBe('Pendientes');
+    });
+
+    test('el mismo nombre no gasta una petición', async () => {
+        await LISTS.ensure();
+        await LISTS.rename('playlist', 'p1', 'Pendientes');
+        expect(updateItemMetadata).not.toHaveBeenCalled();
+    });
+
+    test('se recortan los espacios de los lados', async () => {
+        await LISTS.ensure();
+        await LISTS.rename('playlist', 'p1', '  Con espacios  ');
+        expect(updateItemMetadata).toHaveBeenCalledWith('p1', { Name: 'Con espacios' });
+    });
+
+    test('una lista desconocida no hace nada', async () => {
+        await LISTS.ensure();
+        await LISTS.rename('playlist', 'no-existe', 'X');
+        expect(updateItemMetadata).not.toHaveBeenCalled();
     });
 });
 

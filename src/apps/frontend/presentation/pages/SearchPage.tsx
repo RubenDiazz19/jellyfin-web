@@ -37,7 +37,7 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
     }, []);
 
     const selectable: SelectableItem[] = searchVM.results.value.map((i) => ({
-        id: i.id, title: i.title, kind: i._type, poster: i.poster, year: i.year
+        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
     }));
 
     return (

@@ -1,22 +1,33 @@
 // Vocabulario de etiquetas ya usadas en la biblioteca, para autosugerir al
-// etiquetar. Se junta de los ViewModels que tienen catálogo cargado: cuál de
-// ellos lo tiene depende de por dónde haya entrado el usuario (búsqueda,
-// listado de series, listado de películas), así que se miran todos.
+// etiquetar.
 //
-// Se lee con `peek()` a propósito: es un dato de apoyo para un diálogo que se
-// abre puntualmente, no algo a lo que la vista deba re-suscribirse.
+// Sale del catálogo que haya cargado en memoria, y cuál sea depende de por
+// dónde haya entrado el usuario: la búsqueda tiene el suyo, el listado de
+// series el suyo. Así que cada ViewModel con catálogo se apunta aquí como
+// fuente en cuanto se construye.
+//
+// La dependencia va en ese sentido —ViewModel → vocabulario— a propósito: al
+// revés, este módulo tendría que importar los singletons de los ViewModels y
+// cualquier diálogo que quisiera sugerencias arrastraría media aplicación.
+//
+// Se lee con `peek()` desde el ViewModel: es un dato de apoyo para un diálogo
+// que se abre puntualmente, no algo a lo que la vista deba re-suscribirse.
 
-import { libraryVM } from './LibraryViewModel';
-import { searchVM } from './SearchViewModel';
+/** Items etiquetables de un catálogo cargado. */
+export type TagSource = () => readonly { tags?: string[] }[];
 
+const sources = new Set<TagSource>();
+
+export function registerTagSource(source: TagSource): void {
+    sources.add(source);
+}
+
+/** Todas las etiquetas vistas, sin repetir y en orden alfabético. */
 export function knownTags(): string[] {
+    // Agrupadas ignorando mayúsculas; se enseña la primera grafía vista.
     const seen = new Map<string, string>();
-    const lists = [
-        searchVM.shows.peek(), searchVM.movies.peek(),
-        libraryVM.shows.peek(), libraryVM.movies.peek()
-    ];
-    for (const list of lists) {
-        for (const item of list) {
+    for (const source of sources) {
+        for (const item of source()) {
             for (const tag of item.tags ?? []) {
                 const key = tag.toLowerCase();
                 if (!seen.has(key)) seen.set(key, tag);

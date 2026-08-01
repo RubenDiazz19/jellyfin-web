@@ -5,6 +5,7 @@ import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
 import type { Show, Season } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
+import { seasonKey } from '../../../domain/stores';
 
 type Props = { show: Show; season: Season; navigate: Navigate };
 
@@ -37,7 +38,7 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <SeasonWatchedButton show={show} season={season} size={15} />
-                        <FavButton id={`${show.id}-s${season.n}`} size={15} />
+                        <FavButton id={seasonKey(show.id, season.n)} size={15} />
                     </div>
                 </div>
 

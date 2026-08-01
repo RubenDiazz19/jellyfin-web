@@ -49,7 +49,7 @@ export function SearchOverlay({ navigate }: { navigate: Navigate }) {
     if (!open) return null;
 
     const selectable: SelectableItem[] = searchVM.results.value.map((i) => ({
-        id: i.id, title: i.title, kind: i._type, poster: i.poster, year: i.year
+        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
     }));
 
     /** Navega y cierra: el destino es una página, no cabe bajo la capa. */

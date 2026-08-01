@@ -8,6 +8,7 @@ import { Progress } from '../controls/Progress';
 import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
 import type { CarouselSlide } from '../../../domain/models';
+import { episodeKey } from '../../../domain/stores';
 
 type Props = { slide: CarouselSlide; navigate: Navigate };
 
@@ -33,7 +34,7 @@ export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props)
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 55%)' }} />
                 <div style={{ position: 'absolute', top: 10, left: 12 }}>
                     <WatchedButton
-                        id={`${slide.id}-s${slide.season}-e${slide.episode}`}
+                        id={episodeKey(slide.id, slide.season as number, slide.episode as number)}
                         serverId={slide.jfEpisodeId}
                         size={16} badge
                     />
