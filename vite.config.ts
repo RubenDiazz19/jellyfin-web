@@ -15,6 +15,8 @@ import path from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
+import { JF_PROXY_PATTERN } from './scripts/apiRoots';
+
 const REPO_ROOT = path.resolve(__dirname);
 const SRC_DIR = path.join(REPO_ROOT, 'src');
 const NODE_MODULES_DIR = path.join(REPO_ROOT, 'node_modules');
@@ -35,39 +37,6 @@ function backendUrl(mode: string): string {
     const fromFile = loadEnv(mode, REPO_ROOT, '').JELLYFIN_SERVER;
     return process.env.JELLYFIN_SERVER || fromFile || 'http://localhost:8096';
 }
-
-// Raíces de la API de Jellyfin que hay que reenviar al backend. Van en un solo
-// patrón y no en una tabla de claves literales porque las claves de
-// `server.proxy` distinguen mayúsculas de minúsculas, y aquí eso importa: ver
-// las dos últimas.
-const JF_API_ROOTS = [
-    'api', 'Audio', 'Videos', 'Images', 'System', 'Users', 'Items', 'Branding',
-    'DisplayPreferences', 'Music', 'Shows', 'Movies', 'LiveTv', 'Sessions',
-    'Devices', 'Playback', 'Subtitle', 'web', 'socket',
-    // Listas de reproducción y colecciones. `/Playlists` y `/Collections` son
-    // raíces propias (no cuelgan de `/Items`), así que sin estas dos entradas
-    // el dev server no las reenviaba y crear una lista daba 404 — pero solo
-    // con `bun start`; contra el backend directo funcionaba, que es lo que
-    // despista al depurarlo.
-    'Playlists', 'Collections',
-    // Jellyfin construye SUS PROPIAS urls de streaming en minúscula: el
-    // `TranscodingUrl` que devuelve PlaybackInfo es `/videos/{id}/master.m3u8?…`
-    // (literales `/videos/` y `/audio/` de StreamInfo.ToUrl, en
-    // MediaBrowser.Model.dll), mientras que las que construye esta app van en
-    // PascalCase. Sin estas dos entradas, `/videos/…` no emparejaba con
-    // `/Videos` y el dev server contestaba su propio index.html con un 200: el
-    // reproductor recibía HTML en vez del playlist, moría en 0:00 y el
-    // transcode no llegaba ni a arrancar en el servidor.
-    'videos', 'audio'
-];
-
-// Solo las raíces enteras: `/video?item=…` (ruta de la SPA) no debe caer aquí.
-//
-// La `?` del final del grupo importa: Vite empareja contra `req.url`, que trae
-// la query. Sin ella, `POST /Collections?name=…` —una raíz llamada con
-// parámetros y sin subruta— no casaba y el dev server contestaba un 404,
-// mientras que contra el backend directo funcionaba.
-const JF_PROXY_PATTERN = `^/(?:${JF_API_ROOTS.join('|')})(?:[/?]|$)`;
 
 // Compile-time globals declared in src/global.d.ts. The webpack build fills
 // these in from git/package.json — for dev we ship reasonable defaults.
@@ -269,6 +238,53 @@ function emitStaticFiles(): Plugin {
     };
 }
 
+/**
+ * Deja en el build un único formato por fuente: woff2.
+ *
+ * El paquete de los iconos declara la misma fuente cuatro veces —eot para
+ * IE6-8, ttf, woff y woff2— y Vite emite los cuatro ficheros. El navegador se
+ * queda con el woff2, que va primero en la lista `src`, así que los otros tres
+ * no los descarga nadie: son 700 KB muertos dentro de la imagen. Se podan del
+ * `@font-face` y, con eso, dejan de estar referenciados y salen del output.
+ *
+ * El `@font-face` sin woff2 se deja como está: ahí los formatos viejos no
+ * sobran, son el único que hay.
+ */
+function woff2Only(): Plugin {
+    const LEGACY_FONT = /\.(?:eot|ttf|woff)$/;
+    const TEXT_ASSET = /\.(?:css|js|mjs|html|json)$/;
+
+    return {
+        name: 'jf-woff2-only',
+        apply: 'build',
+        generateBundle(_options, bundle) {
+            for (const chunk of Object.values(bundle)) {
+                if (chunk.type !== 'asset' || !chunk.fileName.endsWith('.css')) continue;
+                chunk.source = String(chunk.source).replace(/@font-face\{[^}]*\}/g, (block) => {
+                    if (!block.includes('.woff2')) return block;
+                    return block
+                        // El `src:url(…eot);` suelto que precede a la lista real.
+                        .replace(/src:\s*url\([^)]*\.eot\);/g, '')
+                        // Y las entradas con `format()`. `\.woff\)` no pilla el
+                        // woff2 porque exige el paréntesis justo detrás.
+                        .replace(/url\([^)]*\.(?:eot|ttf|woff)\)\s*format\([^)]*\),?\s*/g, '')
+                        // Podar la última entrada deja una coma colgando.
+                        .replace(/,(\s*\})/g, '$1');
+                });
+            }
+
+            const referenced = Object.values(bundle)
+                .filter((c) => c.type === 'chunk' || TEXT_ASSET.test(c.fileName))
+                .map((c) => (c.type === 'chunk' ? c.code : String(c.source)))
+                .join('\n');
+            for (const fileName of Object.keys(bundle)) {
+                if (!LEGACY_FONT.test(fileName)) continue;
+                if (!referenced.includes(path.basename(fileName))) delete bundle[fileName];
+            }
+        }
+    };
+}
+
 // Compiles themes/<id>/theme.scss to CSS on demand for the dev server.
 // Falls back silently if sass isn't installed (webpack build handles prod).
 function devThemes(): Plugin {
@@ -327,6 +343,7 @@ export default defineConfig(({ command, mode }) => ({
         workerImports(),
         emitServiceWorker(),
         emitStaticFiles(),
+        woff2Only(),
         injectApp(),
         devStaticAssets(),
         devThemes(),

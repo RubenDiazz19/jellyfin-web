@@ -6,7 +6,17 @@ docker-config
 docker-cache
 docker-media
 .git
+.jj
 .direnv
 .idea
 .vs
 *.sw?
+
+# Secretos. El build es multietapa y esto no llega a la imagen final, pero sí
+# quedaría en la capa intermedia — y de ahí sale si alguna vez se exporta la
+# caché de build a un registry o se construye con `--target build`.
+.env
+.env.*
+
+# Informe de `bun run build:analyze`: 1,2 MB de HTML que no pinta nada aquí.
+bundle-stats.html

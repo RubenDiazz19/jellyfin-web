@@ -1,15 +1,48 @@
+# Cómo se reparte el tráfico entre esta build y el servidor de Jellyfin.
+#
+# La SPA enruta con `#` (createHashRouter, en src/RootAppRouter.tsx), así que
+# sus rutas nunca llegan hasta aquí: lo único que ve este servidor son ficheros
+# de la build o llamadas a la API. De ahí la regla, que no enumera nada — si el
+# fichero existe se sirve, y si no, es del backend.
+#
+# Aquí había una lista blanca de raíces de API (/Items/*, /Users/*…) copiada a
+# mano del proxy del dev server. Las dos listas se separaron, y en el contenedor
+# la búsqueda, Quick Connect, las listas y las colecciones acababan recibiendo
+# index.html con un 200 — que no se parece en nada a un 404: `res.ok` es true y
+# lo que revienta después es el parseo del JSON, lejos de la causa. Una regla
+# que no enumera nada no se puede quedar desactualizada.
+
 :80 {
-    root * /usr/share/caddy
-    encode gzip
+	root * /usr/share/caddy
 
-    @backend path /api/* /Audio/* /Videos/* /Images/* /System/* /Users/* /Items/* /Branding/* /DisplayPreferences/* /Music/* /Shows/* /Movies/* /LiveTv/* /Sessions/* /Devices/* /Playback/* /Subtitle/* /web/* /socket/*
+	# Para lo que no venga ya comprimido del build: sobre todo las respuestas
+	# del backend. Caddy no lleva compresor brotli —de ahí el paso de abajo—,
+	# pero zstd y gzip sí los hace al vuelo.
+	encode zstd gzip
 
-    handle @backend {
-        reverse_proxy jellyfin-backend:8096
-    }
+	@static file {
+		try_files {path} {path}index.html
+	}
 
-    handle {
-        try_files {path} /index.html
-        file_server
-    }
+	handle @static {
+		# Los assets llevan hash de contenido en el nombre, así que lo que hay
+		# dentro no cambia nunca: se pueden cachear para siempre. index.html y
+		# config.json justo lo contrario, o el navegador se quedaría clavado en
+		# la build anterior sin forma de enterarse de que hay otra.
+		@immutable path /assets/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		@revalidate not path /assets/*
+		header @revalidate Cache-Control "no-cache"
+
+		# Los .br y .gz los deja hechos `bun run build:compress` al construir la
+		# imagen: se comprime una vez y no en cada petición, y de paso se sirve
+		# brotli, que `encode` no sabe generar pero sí entregar ya hecho.
+		file_server {
+			precompressed br gzip
+		}
+	}
+
+	handle {
+		reverse_proxy jellyfin-backend:8096
+	}
 }
