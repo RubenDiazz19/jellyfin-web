@@ -6,6 +6,7 @@ import { loadSession } from '../session/session';
 import { episodeKey } from '../stores/itemKeys';
 import { WATCHED } from '../stores/watchedStore';
 import { showCache } from './cache';
+import { isDeleted, itemGoneError } from './deleted';
 import { apiFetch, fetchUserItems, noSessionError } from './http';
 import { imageUrl } from './images';
 import { firstImageUrl, mapCommonFields, watchedFraction } from './itemMapping';
@@ -130,6 +131,9 @@ export async function getShows(): Promise<Show[]> {
 }
 
 export async function getShow(id: string): Promise<Show> {
+    // Se acaba de borrar: pedirla sería un 404 con el que nadie puede hacer
+    // nada útil. Ver deleted.ts.
+    if (isDeleted(id)) throw itemGoneError();
     // Antes de mirar el caché: un stop en vuelo está a punto de limpiarlo y
     // de mover las posiciones en el servidor.
     await settlePlaybackReports();

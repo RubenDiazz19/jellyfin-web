@@ -18,14 +18,19 @@ import { CastList } from '../components/cast/CastList';
 import type { Navigate } from '../../app/router';
 import { episodeKey } from '../../domain/stores';
 import { ticksFromProgress } from '../../domain/player/format';
-import { useShowEntity } from './useDetailEntity';
+import { useLeaveWhen, useShowEntity } from './useDetailEntity';
 
 type PageProps = { showId: string; seasonN: number; epN: number; navigate: Navigate };
 
 export function EpisodePage({ showId, seasonN, epN, navigate }: PageProps) {
-    const { item: show, error } = useShowEntity(showId);
+    const { item: show, error } = useShowEntity(showId, navigate);
     const season = show ? findSeason(show, seasonN) : null;
     const ep = season ? season.episodes.find((e) => e.n === epN) : null;
+    // El episodio ya no está en una serie que sí existe: lo han borrado. Si lo
+    // que falta es la temporada entera, se sube un nivel más.
+    useLeaveWhen(!!show && !ep, season ?
+        { page: 'season', showId, seasonN } :
+        { page: 'show', showId }, navigate);
     if (!show || !season || !ep) {
         if (error || !show) return <DetailStatus error={error} />;
         // Serie cargada pero temporada/episodio inexistentes en la URL.

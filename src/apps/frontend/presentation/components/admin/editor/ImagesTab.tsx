@@ -6,6 +6,7 @@ import {
     getItemRaw,
     getRemoteImages,
     imageUrl,
+    moveImage,
     setImageByUrl,
     uploadImageFile,
     type JFRemoteImage
@@ -13,6 +14,7 @@ import {
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
 import {
+    ConfirmDeleteButton,
     ImgType,
     PrimaryBtn,
     SecondaryBtn,
@@ -97,9 +99,9 @@ function SingleImageSection({
         } catch (e) { onError(e); }
     };
     const doDelete = async () => {
-        if (!window.confirm(globalize.translate('ConfirmDeleteImage'))) return;
         try {
             await deleteImage(itemId, type);
+            toast(globalize.translate('MessageImageDeleted'), 'success');
             onDone();
         } catch (e) { onError(e); }
     };
@@ -147,6 +149,17 @@ function SingleImageSection({
     );
 }
 
+/** Un fondo: la etiqueta con la que se pide y su posición en el servidor. */
+type Backdrop = { tag: string; index: number };
+
+/** `list` con el elemento que estaba en `from` colocado en `to`. */
+export function movedTo<T>(list: readonly T[], from: number, to: number): T[] {
+    const next = [...list];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    return next;
+}
+
 // Backdrop section: multiple images with an "add" tile.
 function BackdropSection({
     itemId, tags, refreshTick, onDone, onError
@@ -162,11 +175,48 @@ function BackdropSection({
     const [newUrl, setNewUrl] = useState('');
     const toast = useToast();
 
-    const thumbs = tags.map((tag, i) => ({
-        index: i,
-        url: imageUrl(itemId, 'Backdrop', { tag, maxWidth: 640, index: i })
-            + `&bust=${refreshTick}`
-    }));
+    /**
+     * El orden que se pinta. Es copia local de `tags` porque al reordenar se
+     * mueve la miniatura antes de que conteste el servidor: arrastrar algo que
+     * se queda quieto hasta que llega la respuesta se siente roto.
+     *
+     * Cada entrada conserva su `index` de origen, que es por el que se pide la
+     * imagen: durante ese rato la posición en pantalla y la del servidor no
+     * coinciden, y pedir por posición enseñaría la imagen equivocada.
+     */
+    const [order, setOrder] = useState<Backdrop[]>([]);
+    const [dragFrom, setDragFrom] = useState<number | null>(null);
+    const [dragTo, setDragTo] = useState<number | null>(null);
+    /** Tile con el ratón encima o con el foco dentro: el que enseña sus controles. */
+    const [active, setActive] = useState<number | null>(null);
+    const [moving, setMoving] = useState(false);
+
+    useEffect(() => {
+        setOrder(tags.map((tag, index) => ({ tag, index })));
+    }, [tags]);
+
+    /**
+     * Mueve el fondo de la posición `from` a la `to`.
+     *
+     * Se usan posiciones y no los `index` de servidor porque mientras no haya
+     * un movimiento en vuelo son lo mismo: `moving` bloquea el siguiente hasta
+     * que la recarga vuelve a alinearlos.
+     */
+    const move = async (from: number, to: number) => {
+        if (moving || from === to || to < 0 || to >= order.length) return;
+        const previous = order;
+        setOrder(movedTo(order, from, to));
+        setMoving(true);
+        try {
+            await moveImage(itemId, 'Backdrop', from, to);
+            onDone();
+        } catch (e) {
+            setOrder(previous);
+            onError(e);
+        } finally {
+            setMoving(false);
+        }
+    };
 
     const handleFiles = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -190,9 +240,9 @@ function BackdropSection({
     };
 
     const deleteAt = async (index: number) => {
-        if (!window.confirm(globalize.translate('ConfirmDeleteImage'))) return;
         try {
             await deleteImage(itemId, 'Backdrop', index);
+            toast(globalize.translate('MessageImageDeleted'), 'success');
             onDone();
         } catch (e) { onError(e); }
     };
@@ -221,34 +271,37 @@ function BackdropSection({
     return (
         <div>
             <SectionHeader
-                label={`Fondos (${tags.length})`}
+                label={`Fondos (${order.length})`}
                 onSearch={openAlternatives}
                 loading={alt === 'loading'}
             />
             <div style={{ fontSize: 12, color: T.dim, marginBottom: 12 }}>
-                Se muestran rotando en el hero de la ficha. Puedes tener todos los que quieras.
+                {globalize.translate('MessageBackdropsHelp')}
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {thumbs.map((b) => (
-                    <div key={b.index} style={{ position: 'relative' }}>
-                        <div style={{
-                            width: 220, aspectRatio: '16/9', borderRadius: 6,
-                            backgroundImage: `url(${b.url})`,
-                            backgroundSize: 'cover', backgroundPosition: 'center',
-                            border: '1px solid rgba(255,255,255,0.08)'
-                        }} />
-                        <button
-                            onClick={() => deleteAt(b.index)}
-                            aria-label={globalize.translate('Delete')}
-                            style={{
-                                position: 'absolute', top: 6, right: 6,
-                                width: 26, height: 26, borderRadius: '50%',
-                                background: 'rgba(0,0,0,0.7)', color: '#fff',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                cursor: 'pointer', fontSize: 14, lineHeight: 1
-                            }}
-                        >×</button>
-                    </div>
+                {order.map((b, i) => (
+                    <BackdropTile
+                        key={b.tag}
+                        src={imageUrl(itemId, 'Backdrop', { tag: b.tag, maxWidth: 640, index: b.index })
+                            + `&bust=${refreshTick}`}
+                        position={i}
+                        total={order.length}
+                        active={active === i}
+                        dragging={dragFrom === i}
+                        dropTarget={dragTo === i && dragFrom !== null && dragFrom !== i}
+                        busy={moving}
+                        onActivate={(on) => setActive((p) => (on ? i : p === i ? null : p))}
+                        onMove={(to) => move(i, to)}
+                        onDragStart={() => setDragFrom(i)}
+                        onDragEnter={() => setDragTo(i)}
+                        onDragEnd={() => { setDragFrom(null); setDragTo(null); }}
+                        onDrop={() => {
+                            if (dragFrom !== null) void move(dragFrom, i);
+                            setDragFrom(null);
+                            setDragTo(null);
+                        }}
+                        onDelete={() => deleteAt(b.index)}
+                    />
                 ))}
                 <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -292,6 +345,114 @@ function BackdropSection({
     );
 }
 
+/**
+ * Una miniatura de fondo, con lo que se puede hacer con ella.
+ *
+ * Se reordena de dos maneras a propósito. Arrastrar es lo que se espera de una
+ * fila de imágenes, pero no existe para quien va por teclado y es incómodo con
+ * muchas: por eso hay además dos flechas, que aparecen al pasar por encima o al
+ * llegar el foco. Entre ellas, la posición — que es lo que de verdad se está
+ * editando, porque el primero es el que se ve al abrir la ficha.
+ */
+function BackdropTile({
+    src, position, total, active, dragging, dropTarget, busy,
+    onActivate, onMove, onDragStart, onDragEnter, onDragEnd, onDrop, onDelete
+}: {
+    src: string;
+    position: number;
+    total: number;
+    active: boolean;
+    dragging: boolean;
+    dropTarget: boolean;
+    busy: boolean;
+    onActivate: (on: boolean) => void;
+    onMove: (to: number) => void;
+    onDragStart: () => void;
+    onDragEnter: () => void;
+    onDragEnd: () => void;
+    onDrop: () => void;
+    onDelete: () => Promise<void>;
+}) {
+    const arrow: React.CSSProperties = {
+        width: 24, height: 24, borderRadius: '50%', padding: 0,
+        background: 'rgba(255,255,255,0.12)', color: '#fff',
+        border: '1px solid rgba(255,255,255,0.2)',
+        fontSize: 13, lineHeight: 1, cursor: 'pointer'
+    };
+
+    return (
+        <div
+            draggable={!busy}
+            onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
+            onDragEnter={onDragEnter}
+            // Sin este preventDefault el navegador no considera el elemento un
+            // destino válido y nunca llega el drop.
+            onDragOver={(e) => e.preventDefault()}
+            onDragEnd={onDragEnd}
+            onDrop={(e) => { e.preventDefault(); onDrop(); }}
+            onMouseEnter={() => onActivate(true)}
+            onMouseLeave={() => onActivate(false)}
+            onFocusCapture={() => onActivate(true)}
+            onBlurCapture={(e) => {
+                // Solo se apaga si el foco sale del tile entero, no al saltar
+                // de una de sus flechas a la otra.
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onActivate(false);
+            }}
+            style={{
+                position: 'relative', borderRadius: 6,
+                cursor: busy ? 'wait' : 'grab',
+                opacity: dragging ? 0.35 : 1,
+                outline: dropTarget ? '2px solid #fff' : '2px solid transparent',
+                outlineOffset: 2,
+                transition: 'opacity .15s, outline-color .15s'
+            }}
+        >
+            <div style={{
+                width: 220, aspectRatio: '16/9', borderRadius: 6,
+                backgroundImage: `url(${src})`,
+                backgroundSize: 'cover', backgroundPosition: 'center',
+                border: '1px solid rgba(255,255,255,0.08)'
+            }} />
+
+            <div style={{
+                position: 'absolute', left: 0, right: 0, bottom: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                padding: '8px 0', borderRadius: '0 0 6px 6px',
+                background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
+                opacity: active ? 1 : 0,
+                // Invisible no debe seguir siendo clicable, ni por ratón ni
+                // por teclado: de ahí el visibility además del opacity.
+                visibility: active ? 'visible' : 'hidden',
+                transition: 'opacity .15s'
+            }}>
+                <button
+                    onClick={() => onMove(position - 1)}
+                    disabled={busy || position === 0}
+                    aria-label={globalize.translate('MoveLeft')}
+                    title={globalize.translate('MoveLeft')}
+                    style={{ ...arrow, opacity: position === 0 ? 0.3 : 1 }}
+                >‹</button>
+                <span style={{ fontFamily: T.ui, fontSize: 11, color: '#fff', letterSpacing: 1 }}>
+                    {position + 1}/{total}
+                </span>
+                <button
+                    onClick={() => onMove(position + 1)}
+                    disabled={busy || position === total - 1}
+                    aria-label={globalize.translate('MoveRight')}
+                    title={globalize.translate('MoveRight')}
+                    style={{ ...arrow, opacity: position === total - 1 ? 0.3 : 1 }}
+                >›</button>
+            </div>
+
+            <ConfirmDeleteButton
+                onConfirm={onDelete}
+                idleLabel={globalize.translate('Delete')}
+                confirmLabel={globalize.translate('ConfirmDeleteImage')}
+            />
+        </div>
+    );
+}
+
 // Reusable dropzone + URL + delete triplet.
 function ImageEditor({
     src, wide, fit = 'cover', onUploadFile, onApplyUrl, onDelete
@@ -299,7 +460,7 @@ function ImageEditor({
     src?: string; wide?: boolean; fit?: 'cover' | 'contain';
     onUploadFile: (file: File) => void;
     onApplyUrl: (url: string) => void;
-    onDelete?: () => void;
+    onDelete?: () => Promise<void>;
 }) {
     const [newUrl, setNewUrl] = useState('');
     const [dragOver, setDragOver] = useState(false);
@@ -357,7 +518,14 @@ function ImageEditor({
                 />
                 <div style={{ display: 'flex', gap: 8 }}>
                     <PrimaryBtn onClick={() => fileRef.current?.click()}>{globalize.translate('Upload')}</PrimaryBtn>
-                    {onDelete && <SecondaryBtn onClick={onDelete}>{globalize.translate('DeleteImage')}</SecondaryBtn>}
+                    {onDelete && (
+                        <ConfirmDeleteButton
+                            variant='button'
+                            onConfirm={onDelete}
+                            idleLabel={globalize.translate('DeleteImage')}
+                            confirmLabel={globalize.translate('ConfirmDeleteImage')}
+                        />
+                    )}
                 </div>
                 <div style={{ fontSize: 11, color: T.dim, marginTop: 4 }}>o desde una URL:</div>
                 <div style={{ display: 'flex', gap: 8 }}>

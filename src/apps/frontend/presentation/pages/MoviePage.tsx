@@ -28,7 +28,7 @@ import { ticksFromProgress } from '../../domain/player/format';
 type PageProps = { movieId: string; navigate: Navigate; hero?: HeroTweaks };
 
 export function MoviePage({ movieId, navigate, hero }: PageProps) {
-    const { item: movie, error } = useMovieEntity(movieId);
+    const { item: movie, error } = useMovieEntity(movieId, navigate);
     if (!movie) return <DetailStatus error={error} />;
     return (
         <>

@@ -94,12 +94,20 @@ body.jf-frontend-active .backgroundContainer {
 }
 
 /* Fullscreen API — cuando algún elemento entra en pantalla completa,
-   forzamos fondo negro para eliminar el "backdrop" blanco del navegador. */
-body.jf-frontend-active :fullscreen {
+   forzamos fondo negro para eliminar el "backdrop" blanco del navegador.
+
+   Va también con `jf-video-active`, que es la ruta /video: se monta sin
+   AppLayout, así que no lleva la clase del frontend. Sin estas dos reglas, al
+   pasar el reproductor a pantalla completa (doble clic) el vídeo se quedaba
+   detrás del fondo que pinta el navegador — seguía sonando, pero no se veía,
+   y solo reaparecía al salir con Esc. */
+body.jf-frontend-active :fullscreen,
+body.jf-video-active :fullscreen {
     background: #000 !important;
 }
 
-body.jf-frontend-active ::backdrop {
+body.jf-frontend-active ::backdrop,
+body.jf-video-active ::backdrop {
     background: #000 !important;
 }
 
@@ -283,6 +291,19 @@ html.layout-mobile:not(.layout-tablet) body.jf-frontend-active.jfp-has-nav {
 @keyframes jfp-sheet-in {
     from { transform: translateY(100%); }
     to { transform: none; }
+}
+
+/* Barra de una tarea cuyo porcentaje el servidor aún no ha dicho
+   (TaskProgress.tsx). Va y viene para que se vea que sigue viva; el bloque de
+   prefers-reduced-motion de abajo la detiene, y entonces la barra se queda
+   quieta al 35 %, que sigue leyéndose como «en marcha». */
+@keyframes jfp-task-indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(320%); }
+}
+
+.jfp-task-indeterminate {
+    animation: jfp-task-indeterminate 1.4s ease-in-out infinite;
 }
 
 .jfp-fade-in { animation: jfp-fade-in 0.6s ease-out both; }
@@ -601,6 +622,19 @@ html body.jf-video-active .dialogBackdropOpened {
     user-select: none;
 }
 
+/* El suelo, por si el reproductor acaba montado desde una ruta sin ninguna de
+   las dos clases de body: quien pasa a pantalla completa es este contenedor
+   (VideoPlayerViewModel.toggleFullscreen), y en negro debe quedarse. */
+.jfp-video:fullscreen {
+    width: 100%;
+    height: 100%;
+    background: #000 !important;
+}
+
+.jfp-video::backdrop {
+    background: #000 !important;
+}
+
 .jfp-video.is-idle {
     cursor: none;
 }
@@ -610,6 +644,14 @@ html body.jf-video-active .dialogBackdropOpened {
     height: 100%;
     object-fit: contain;
     background: #000;
+    /* En pantalla completa el navegador puede presentar el vídeo en un
+       overlay de hardware (Direct Composition), dibujado FUERA del árbol
+       normal y por encima de todas las capas web: lo que ponga el OSD por
+       `z-index` se queda por debajo y desaparece. `translateZ(0)` en el
+       vídeo le da capa de composición propia, el navegador deja de usar el
+       overlay y el OSD vuelve a componerse por encima. Ver Chromium
+       477806716. */
+    transform: translateZ(0);
 }
 
 .jfp-video-el::cue {
@@ -659,6 +701,32 @@ html body.jf-video-active .dialogBackdropOpened {
     background: linear-gradient(to top, rgba(0, 0, 0, 0.72), transparent);
     opacity: 1;
     transition: opacity 0.35s ease;
+}
+
+/* Todo lo que se pinta ENCIMA del vídeo va a su propia capa de composición.
+
+   En pantalla completa el navegador puede presentar el vídeo en un overlay de
+   hardware —lo hace con material pesado: 4K, HDR, HEVC— y ese overlay se
+   dibuja fuera del árbol normal. Cuando ocurre, lo que estaba por encima por
+   `z-index` se queda por debajo y el OSD desaparece, sin que cambie nada en el
+   DOM ni en los estilos calculados. De ahí que fallara con una película y no
+   con los episodios.
+
+   El arreglo de verdad está arriba, en `.jfp-video-el`: al dar capa de
+   composición al VÍDEO, el navegador abandona el overlay de hardware y el OSD
+   vuelve a componerse por encima (Chromium 477806716). Promover las barras a
+   la vez es redundante para ese bug, pero se queda: fuerza capas estables y
+   evita repintados que hacen parpadear los gradientes en algunos equipos. Es
+   seguro aquí: ningún descendiente de estas cajas es `position: fixed`, así
+   que convertirlas en containing block no mueve nada (el menú de ajustes ya es
+   `absolute` contra la barra de controles).
+
+   Solo estas dos: los botones flotantes de saltar y de siguiente episodio ya
+   usan `transform` para su hover y su entrada, y una promoción aquí se la
+   pisaría. Como ya llevan transform, ya tienen su capa. */
+.jfp-video-top,
+.jfp-video-controls {
+    transform: translateZ(0);
 }
 
 .jfp-video.is-idle .jfp-video-top,

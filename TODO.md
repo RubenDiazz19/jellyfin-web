@@ -161,3 +161,46 @@ mezclados —en esta biblioteca conviven «Animación» y «Sci-Fi & Fantasy»�
 que pasarlos por el vocabulario es también lo que los deja en castellano.
 Tope por item subido a 5: hay dos capas que cubrir y con cuatro la segunda se
 quedaba fuera.
+
+---
+
+# D7 — Reproductor: el seek hacia delante no debe «tardar en cargar»
+
+Avanzar (barra, flechas, doble toque, mandos del sistema) hace un seek local
+(`video.currentTime`, correcto: el DynamicHLS de Jellyfin reinicia ffmpeg en la
+posición pedida vía el segmento que se solicita), pero hls.js se crea con su
+config **por defecto** (`new Hls()` sin opciones en `hlsSource.ts`), y esos
+valores por defecto son justo los que penalizan el seek hacia delante.
+
+- [ ] **Config de hls.js afinada** — `domain/player/hlsSource.ts` gana una
+  fábrica `hlsConfig()` (pura y testeable) que se pasa a `new HlsMod(config)`:
+  - `maxBufferLength: 30` y `maxMaxBufferLength: 30` — capar el buffer hacia
+    delante. Con los valores por defecto (600 s / 60 MB) hls.js rellena un
+    buffer enorme y, al avanzar, lo desecha entero y lo reconstruye en ráfaga;
+    esas descargas compiten con el segmento objetivo cuando el transcode va
+    cargado (el «a veces tarda»).
+  - `lowLatencyMode: false` — heurísticas LL-HLS que con Jellyfin no aportan
+    nada (mismo criterio que el cliente oficial).
+  - `startFragPrefetch: true` — tras el seek, precarga el fragmento siguiente:
+    sin él hay un micro-corte al reanudar.
+  - `fragLoadingRetryDelay: 250` — cuando el segmento objetivo aún no está
+    transcodificado, hls.js reintenta cada 1 s por defecto; bajar el retardo
+    acorta la recuperación.
+  - `manifestLoadingTimeOut: 20000`.
+- [ ] **Test de `hlsConfig()`** — `__tests__/hlsSource.test.ts`: buffer capeado
+  (`maxMaxBufferLength === maxBufferLength`), low-latency off, prefetch on,
+  retry < 1000 ms.
+- [ ] Cierre con `build:check`, `lint` y `test`.
+
+Decisiones que conviene recordar:
+
+- **Capar a 30 s** (preguntado y confirmado): igual que el cliente oficial de
+  Jellyfin. Reduce memoria y carga y acelera el seek; el margen en redes muy
+  lentas baja, pero el oficial usa el mismo valor (6 s solo para bitrates muy
+  altos con HWA).
+- **Descartado: reiniciar el transcode con `startTimeTicks` en seeks lejanos.**
+  El seek local ya provoca el reinicio del lado servidor (ffmpeg arranca con
+  `-ss` en la posición pedida); recargar la fuente entera sería más caro, no
+  más rápido.
+- **Descartado: tocar el device profile.** `BreakOnNonKeyFrames: true` ya hace
+  que cada segmento arranque en keyframe, que es lo que hace rápido el seek.

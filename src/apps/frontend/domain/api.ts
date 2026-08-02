@@ -28,6 +28,9 @@ export {
 
 // ── Ajustes: servidor y reproducción ────────────────────────────────────────
 export { getSystemInfo, refreshLibrary, type SystemInfo } from '../data/api';
+// Lo que el servidor está procesando ahora mismo. El estado lo lleva
+// TasksViewModel; esto es solo la forma con la que la vista lo pinta.
+export type { BackgroundTask } from '../data/api';
 export { getMaxStreamingBitrate, setMaxStreamingBitrate } from '../data/api';
 // Idiomas recordados por película/serie: mandan sobre la preferencia del
 // usuario, y desde Ajustes se pueden borrar todos de golpe.
@@ -56,6 +59,7 @@ export {
 export {
     setImageByUrl,
     deleteImage,
+    moveImage,
     uploadImageFile,
     getRemoteImages,
     imageUrl,

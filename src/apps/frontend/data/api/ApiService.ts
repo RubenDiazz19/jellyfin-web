@@ -63,11 +63,13 @@ import {
 import {
     setImageByUrl,
     deleteImage,
+    moveImage,
     uploadImageFile,
     getRemoteImages
 } from './remote-images';
 import { searchSubtitles, downloadSubtitle } from './subtitles';
 import { getSystemInfo, refreshLibrary } from './admin';
+import { getRunningTasks, watchScheduledTasks, watchItemRefresh } from './tasks';
 import {
     getCurrentUser,
     updateUserConfig,
@@ -142,6 +144,7 @@ const metadataService = {
 const remoteImageService = {
     setImageByUrl,
     deleteImage,
+    moveImage,
     uploadImageFile,
     getRemoteImages
 };
@@ -149,6 +152,8 @@ const remoteImageService = {
 const subtitleService = { searchSubtitles, downloadSubtitle };
 
 const adminService = { getSystemInfo, refreshLibrary };
+
+const taskService = { getRunningTasks, watchScheduledTasks, watchItemRefresh };
 
 const userService = {
     getCurrentUser,
@@ -172,6 +177,7 @@ export type MetadataService = typeof metadataService;
 export type RemoteImageService = typeof remoteImageService;
 export type SubtitleService = typeof subtitleService;
 export type AdminService = typeof adminService;
+export type TaskService = typeof taskService;
 export type UserService = typeof userService;
 
 export class ApiService {
@@ -188,6 +194,7 @@ export class ApiService {
         readonly remoteImages: RemoteImageService = remoteImageService,
         readonly subtitles: SubtitleService = subtitleService,
         readonly admin: AdminService = adminService,
+        readonly tasks: TaskService = taskService,
         readonly users: UserService = userService
     ) {}
 }

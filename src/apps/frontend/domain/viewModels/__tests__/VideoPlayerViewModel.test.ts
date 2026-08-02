@@ -132,6 +132,44 @@ describe('VideoPlayerViewModel', () => {
         expect(calls[1][1]).toMatchObject({ audioStreamIndex: 2, mediaSourceId: 'ms1' });
     });
 
+    test('cambiar audio no reactiva el subtítulo por defecto del servidor', async () => {
+        await vm.open('item1');
+        // Sin subtítulo elegido, la recarga por cambio de audio debe pedir
+        // -1 explícito: con `undefined` el servidor reactiva su subtítulo
+        // por defecto y «aparecen por la cara» (bug 2).
+        vm.setAudioTrack(2);
+        await Promise.resolve();
+
+        const calls = (api.playback.getPlaybackDecision as ReturnType<typeof vi.fn>).mock.calls;
+        expect(calls).toHaveLength(2);
+        expect(calls[1][1]).toMatchObject({
+            audioStreamIndex: 2,
+            subtitleStreamIndex: -1,
+            mediaSourceId: 'ms1'
+        });
+        expect(vm.selectedSubtitle.value).toBeNull();
+        expect(vm.subtitleUrl.value).toBeNull();
+    });
+
+    test('cambiar audio conserva el subtítulo elegido', async () => {
+        await vm.open('item1');
+        video.dispatchEvent(new Event('playing'));
+        vm.setSubtitleTrack(3);
+        expect(vm.selectedSubtitle.value).toBe(3);
+
+        vm.setAudioTrack(2);
+        await Promise.resolve();
+
+        const calls = (api.playback.getPlaybackDecision as ReturnType<typeof vi.fn>).mock.calls;
+        // open + setSubtitleTrack (sin recarga) + setAudioTrack.
+        expect(calls).toHaveLength(2);
+        expect(calls[1][1]).toMatchObject({
+            audioStreamIndex: 2,
+            subtitleStreamIndex: 3,
+            mediaSourceId: 'ms1'
+        });
+    });
+
     test('togglePlay alterna reproducción y los eventos actualizan signals', async () => {
         await vm.open('item1');
 

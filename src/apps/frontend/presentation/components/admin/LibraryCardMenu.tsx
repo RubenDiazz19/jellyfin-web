@@ -5,6 +5,7 @@ import { Ic } from '../../theme/icons';
 import { IconButton } from '../controls/IconButton';
 import { useToast } from '../toast/ToastProvider';
 import { refreshItemMetadata } from '../../../domain/api';
+import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
 
 type Props = {
     libraryId: string;
@@ -22,6 +23,9 @@ export function LibraryCardMenu({ libraryId, libraryName }: Props) {
         setScanning(true);
         try {
             await refreshItemMetadata(libraryId);
+            // El progreso lo enseña TaskProgress; se anota aquí porque es
+            // quien sabe cómo se llama esta biblioteca.
+            tasksVM.expect(libraryId, libraryName);
             toast(globalize.translate('MessageLibraryScanStartedFor', libraryName), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');

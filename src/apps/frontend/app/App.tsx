@@ -19,6 +19,7 @@ import { EpisodePage } from '../presentation/pages/EpisodePage';
 import { MoviePage } from '../presentation/pages/MoviePage';
 import { SearchPage } from '../presentation/pages/SearchPage';
 import { SearchOverlay } from '../presentation/components/search/SearchOverlay';
+import { TaskProgress } from '../presentation/components/tasks/TaskProgress';
 import { LoginPage } from '../presentation/pages/LoginPage';
 
 // Páginas de acceso puntual: se cargan bajo demanda para no engordar el
@@ -231,6 +232,10 @@ function AuthedApp() {
                 cualquier página y tiene que quedar por encima de todo,
                 incluidos los heroes a pantalla completa. */}
             <SearchOverlay navigate={navigate} />
+            {/* Fuera del wrapper de la ruta: el escaneo sigue corriendo aunque
+                el usuario se vaya a otra pantalla, que es lo que hace mientras
+                espera. */}
+            <TaskProgress />
         </>
     );
 }

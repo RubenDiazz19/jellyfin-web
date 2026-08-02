@@ -25,7 +25,7 @@ export const JF_API_ROOTS = [
     // de intro/créditos y el refresco de biblioteca desde Ajustes. Las cuatro
     // se añadieron a la app sin pasar por aquí, que es exactamente el
     // despiste que el test de al lado existe para impedir.
-    'Search', 'QuickConnect', 'MediaSegments', 'Library',
+    'Search', 'QuickConnect', 'MediaSegments', 'Library', 'ScheduledTasks',
     // Jellyfin construye SUS PROPIAS urls de streaming en minúscula: el
     // `TranscodingUrl` que devuelve PlaybackInfo es `/videos/{id}/master.m3u8?…`
     // (literales `/videos/` y `/audio/` de StreamInfo.ToUrl, en

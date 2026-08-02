@@ -16,13 +16,14 @@ export class ItemMutationSubscription {
 
     /**
      * Engancha `onMutated` la primera vez que se llama; las siguientes no
-     * hacen nada. El itemId llega `undefined` cuando la mutación es de alcance
-     * desconocido (limpieza masiva de caché, refresh de biblioteca…).
+     * hacen nada. El `itemId` del detalle llega `undefined` cuando la mutación
+     * es de alcance desconocido (limpieza masiva de caché, refresh de
+     * biblioteca…), y `deleted` marca las que no se pueden recargar.
      */
-    ensure(onMutated: (itemId?: string) => void): void {
+    ensure(onMutated: (detail: ItemMutatedDetail) => void): void {
         if (this.handler || typeof window === 'undefined') return;
         this.handler = (e: Event) => {
-            onMutated((e as CustomEvent<ItemMutatedDetail>).detail?.itemId);
+            onMutated((e as CustomEvent<ItemMutatedDetail>).detail ?? {});
         };
         window.addEventListener(ITEM_MUTATED_EVENT, this.handler);
     }

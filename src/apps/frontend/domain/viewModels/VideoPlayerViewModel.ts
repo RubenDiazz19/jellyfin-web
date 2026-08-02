@@ -933,8 +933,10 @@ export class VideoPlayerViewModel {
         this.retriedSource = false;
         await this.loadSource({
             audioStreamIndex: opts.audioStreamIndex ?? this.selectedAudio.value ?? undefined,
-            subtitleStreamIndex: opts.subtitleStreamIndex,
-            // Imprescindible: sin él, el servidor ignora los índices pedidos.
+            // Cambiar solo el audio no debe tocar los subtítulos: sin pedirlos
+            // de forma explícita, el servidor reactiva su subtítulo por
+            // defecto y «aparecen por la cara» al recargar. -1 = apagados.
+            subtitleStreamIndex: opts.subtitleStreamIndex ?? this.selectedSubtitle.value ?? -1,
             mediaSourceId: this.decision?.mediaSourceId
         });
     }

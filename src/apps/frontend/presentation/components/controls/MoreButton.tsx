@@ -16,9 +16,11 @@ import {
 } from '../../../domain/api';
 import { MetadataEditor, type EditorKind } from '../admin/editor';
 import { AddToDialog } from './AddToDialog';
+import { ConfirmDialog } from './ConfirmDialog';
 import { TagsDialog } from './TagsDialog';
 import { knownTags } from '../../../domain/viewModels/knownTags';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
+import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
 import { usePlayer } from '../player/PlayerProvider';
 import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
@@ -65,6 +67,7 @@ export function MoreButton({
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
     const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
     const [tagsOpen, setTagsOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
     const [menuPos, setMenuPos] = useState<{
         top?: number; bottom?: number; left?: number; right?: number; maxHeight: number;
     } | null>(null);
@@ -164,20 +167,25 @@ export function MoreButton({
     const doRefresh = async () => {
         try {
             await refreshItemMetadata(id);
+            // Refrescar una serie entera tarda; sin esto el aviso era todo lo
+            // que el usuario llegaba a ver del proceso.
+            tasksVM.expect(id, itemTitle ?? '');
             toast(globalize.translate('MessageRefreshQueued'), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
         }
     };
 
+    // La confirmación la lleva el diálogo (ver ConfirmDialog): aquí solo se
+    // borra. Se relanza el error para que el diálogo sepa que no debe cerrarse
+    // sobre un item que sigue existiendo.
     const doDelete = async () => {
-        const confirmed = window.confirm(globalize.translate('ConfirmDeleteItem'));
-        if (!confirmed) return;
         try {
             await deleteItem(id);
             toast(globalize.translate('Deleted') + label, 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
+            throw e;
         }
     };
 
@@ -222,7 +230,7 @@ export function MoreButton({
             { label: t('EditImages'), fn: () => setEditor('images') },
             { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
             { isDivider: true },
-            { label: t('Delete'), fn: doDelete, danger: true }
+            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
         ],
         show: [
             ...(nextEpisodeId ? [
@@ -243,7 +251,7 @@ export function MoreButton({
             { label: t('EditTags'), fn: () => setTagsOpen(true) },
             { label: t('EditImages'), fn: () => setEditor('images') },
             { isDivider: true },
-            { label: t('Delete'), fn: doDelete, danger: true }
+            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
         ],
         season: [
             ...(nextEpisodeId ? [
@@ -263,7 +271,7 @@ export function MoreButton({
             { label: t('EditTags'), fn: () => setTagsOpen(true) },
             { label: t('EditImages'), fn: () => setEditor('images') },
             { isDivider: true },
-            { label: t('Delete'), fn: doDelete, danger: true }
+            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
         ],
         episode: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
@@ -279,7 +287,7 @@ export function MoreButton({
             { label: t('EditTags'), fn: () => setTagsOpen(true) },
             { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
             { isDivider: true },
-            { label: t('Delete'), fn: doDelete, danger: true }
+            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
         ]
     };
 
@@ -396,6 +404,17 @@ export function MoreButton({
                     itemTitle={itemTitle}
                     suggestions={knownTags()}
                     onClose={() => setTagsOpen(false)}
+                />
+            )}
+            {confirmDelete && (
+                <ConfirmDialog
+                    title={itemTitle ?
+                        globalize.translate('ConfirmDeleteTitle', itemTitle) :
+                        globalize.translate('HeaderDeleteItem')}
+                    message={globalize.translate('ConfirmDeleteItem')}
+                    confirmLabel={globalize.translate('Delete')}
+                    onConfirm={doDelete}
+                    onClose={() => setConfirmDelete(false)}
                 />
             )}
         </div>

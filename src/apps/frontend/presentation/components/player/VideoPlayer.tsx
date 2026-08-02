@@ -18,6 +18,25 @@ import { VideoGestures } from './VideoGestures';
 const HIDE_CONTROLS_MS = 3000;
 const HINTS_KEY = 'jfp-gesture-hints-seen';
 
+/** Las dos barras del OSD, que son lo que no debe irse bajo el puntero. */
+const OSD_BARS = '.jfp-video-controls, .jfp-video-top';
+
+export function pointInRect(
+    point: { x: number; y: number } | null,
+    rect: { left: number; right: number; top: number; bottom: number }
+): boolean {
+    if (!point) return false;
+    return point.x >= rect.left && point.x <= rect.right
+        && point.y >= rect.top && point.y <= rect.bottom;
+}
+
+/** ¿El puntero está sobre alguna de las barras del OSD? */
+function pointerIsOverBars(root: Element, point: { x: number; y: number } | null): boolean {
+    if (!point) return false;
+    return [...root.querySelectorAll(OSD_BARS)]
+        .some((bar) => pointInRect(point, bar.getBoundingClientRect()));
+}
+
 // Detección de reproductor táctil. El reproductor se monta fuera de
 // AppLayout (sin MobileThemeProvider), así que el modo se lee de las clases
 // de <html> directamente. `portrait` alterna el OSD compacto/esencial.
@@ -93,23 +112,68 @@ export function VideoPlayer({
         return cleanup;
     }, [itemId]);
 
+    /**
+     * Dónde está el puntero. Se guarda en cada movimiento porque `:hover` no
+     * sirve para esto — ver `canHide`.
+     */
+    const pointer = useRef<{ x: number; y: number } | null>(null);
+
+    /**
+     * Apunta dónde está el ratón.
+     *
+     * Solo el ratón deja rastro: un dedo no se queda «encima» de nada al
+     * levantarse, así que recordar dónde tocó dejaría el OSD clavado para
+     * siempre en cuanto alguien tocara la barra de controles.
+     */
+    const trackPointer = useCallback((e: Event) => {
+        if (e instanceof PointerEvent && e.pointerType !== 'mouse') {
+            pointer.current = null;
+            return;
+        }
+        // PointerEvent extiende MouseEvent, así que esto cubre las dos vías.
+        if (e instanceof MouseEvent) pointer.current = { x: e.clientX, y: e.clientY };
+    }, []);
+
+    /** Si el OSD puede desaparecer ahora mismo. */
+    const canHide = useCallback(() => {
+        // En pausa los controles no se ocultan.
+        if (!videoPlayerVM.playing.peek()) return false;
+        const root = containerRef.current;
+        if (!root) return false;
+        // Con un panel de ajustes abierto (subtítulos/audio/velocidad/
+        // aspecto) NO ocultamos: si no, el OSD se desvanecía mientras elegías
+        // una pista y el click caía en el vacío. El panel solo existe en el
+        // DOM cuando está abierto.
+        if (root.querySelector('.jfp-video-settings-menu')) return false;
+        // Y tampoco con el puntero encima de una de las barras.
+        //
+        // Esto se miraba con `.jfp-video-controls:hover`, y ahí estaba el bug
+        // de «paso el ratón por encima y no se ven»: mientras el OSD está
+        // oculto la barra lleva `pointer-events: none`, así que el movimiento
+        // que lo despierta impacta en el vídeo, no en ella. Al quitar la clase
+        // la barra vuelve a ser interactiva, pero Chrome NO reevalúa el hover
+        // con el ratón quieto, así que `:hover` seguía en false: tres segundos
+        // después el OSD se desvanecía con el cursor justo encima, y sin
+        // volver a mover el ratón no había forma de recuperarlo. La posición
+        // del puntero contra el rectángulo real no depende de eso.
+        return !pointerIsOverBars(root, pointer.current);
+    }, []);
+
     const showControls = useCallback(() => {
         setControlsVisible(true);
         if (hideTimer.current) clearTimeout(hideTimer.current);
-        hideTimer.current = setTimeout(() => {
-            // En pausa los controles no se ocultan.
-            if (!videoPlayerVM.playing.peek()) return;
-            const root = containerRef.current;
-            // Con un panel de ajustes abierto (subtítulos/audio/velocidad/
-            // aspecto) NO ocultamos: si no, el OSD se desvanecía mientras
-            // elegías una pista y el click caía en el vacío. El panel solo
-            // existe en el DOM cuando está abierto.
-            if (root?.querySelector('.jfp-video-settings-menu')) return;
-            // Tampoco con el ratón encima de la barra.
-            if (root?.querySelector('.jfp-video-controls:hover')) return;
-            setControlsVisible(false);
-        }, HIDE_CONTROLS_MS);
-    }, []);
+        const arm = () => {
+            hideTimer.current = setTimeout(() => {
+                hideTimer.current = null;
+                // Si ahora no se puede, se vuelve a intentar. Antes cada
+                // motivo hacía `return` a secas y el autoocultado quedaba
+                // muerto hasta el siguiente movimiento del ratón.
+                if (!canHide()) { arm(); return; }
+                setControlsVisible(false);
+            }, HIDE_CONTROLS_MS);
+        };
+        arm();
+    }, [canHide]);
 
     // Fin de la reproducción → la ruta encadena con la cola. El VM no navega
     // (regla MVVM), así que la señal se traduce aquí en una llamada.
@@ -137,10 +201,20 @@ export function VideoPlayer({
     // ocultos sin forma de recuperarlos. También lo mostramos al entrar o
     // salir de fullscreen para que siempre haya un punto de partida visible.
     useEffect(() => {
-        const wake = () => showControls();
+        const wake = (e: Event) => {
+            trackPointer(e);
+            showControls();
+        };
         const opts = { passive: true } as const;
+        // `pointermove` y `mousemove` son el mismo gesto entrando dos veces, y
+        // el `onPointerMove` del contenedor es una tercera. La redundancia se
+        // queda A PROPÓSITO: en pantalla completa no siempre llegan las tres, y
+        // quitar las de más dejó el OSD sin despertar justo ahí. Despertar de
+        // sobra no cuesta nada — el `setState` a un valor igual no repinta y
+        // reprogramar el temporizador son dos llamadas.
         document.addEventListener('pointermove', wake, opts);
         document.addEventListener('mousemove', wake, opts);
+        document.addEventListener('pointerdown', wake, opts);
         document.addEventListener('touchstart', wake, opts);
         document.addEventListener('wheel', wake, opts);
         document.addEventListener('keydown', wake, opts);
@@ -148,12 +222,13 @@ export function VideoPlayer({
         return () => {
             document.removeEventListener('pointermove', wake);
             document.removeEventListener('mousemove', wake);
+            document.removeEventListener('pointerdown', wake);
             document.removeEventListener('touchstart', wake);
             document.removeEventListener('wheel', wake);
             document.removeEventListener('keydown', wake);
             document.removeEventListener('fullscreenchange', wake);
         };
-    }, [showControls]);
+    }, [showControls, trackPointer]);
 
     useEffect(() => () => {
         if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -289,7 +364,7 @@ export function VideoPlayer({
         <div
             ref={containerRef}
             className={rootClass}
-            onPointerMove={showControls}
+            onPointerMove={(e) => { trackPointer(e.nativeEvent); showControls(); }}
             {...mouseHandlers}
         >
             {/* Los subtítulos se montan como <track> dinámico según la pista elegida. */}

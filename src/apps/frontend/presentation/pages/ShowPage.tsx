@@ -30,7 +30,7 @@ import { useShowEntity } from './useDetailEntity';
 type PageProps = { showId: string; navigate: Navigate; hero?: HeroTweaks };
 
 export function ShowPage({ showId, navigate, hero }: PageProps) {
-    const { item: show, error } = useShowEntity(showId);
+    const { item: show, error } = useShowEntity(showId, navigate);
     if (!show) return <DetailStatus error={error} />;
     return (
         <>

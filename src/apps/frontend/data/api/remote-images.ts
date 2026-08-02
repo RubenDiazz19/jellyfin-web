@@ -33,6 +33,21 @@ export async function deleteImage(itemId: string, type: ImageType, index = 0): P
     emitItemMutated(itemId);
 }
 
+/**
+ * Cambia una imagen de posición dentro de su tipo.
+ *
+ * Solo tiene sentido para los fondos, que son los únicos de los que puede haber
+ * varios. El orden importa porque es el que sigue el hero de la ficha al
+ * rotarlos: el primero es el que se ve al abrirla.
+ */
+export async function moveImage(
+    itemId: string, type: ImageType, from: number, to: number
+): Promise<void> {
+    await apiSend(`/Items/${itemId}/Images/${type}/${from}/Index?newIndex=${to}`, 'POST');
+    clearShowCache();
+    emitItemMutated(itemId);
+}
+
 // Jellyfin expects the body as base64 with the image Content-Type. Format is
 // auto-detected from the payload header.
 export async function uploadImageFile(itemId: string, type: ImageType, file: File): Promise<void> {

@@ -8,6 +8,11 @@ export class MovieViewModel {
     movie = signal<Movie | null>(null);
     loading = signal(false);
     error = signal<string | null>(null);
+    /**
+     * Id de la película que se acaba de borrar. La ficha lo mira para irse: no
+     * hay nada que enseñar, y quedarse pintando la anterior sería mentir.
+     */
+    gone = signal<string | null>(null);
 
     private loads = new LoadGuard();
     private mutations = new ItemMutationSubscription();
@@ -40,6 +45,8 @@ export class MovieViewModel {
         try {
             const movie = await this.api.catalog.getMovie(id);
             if (!isLatest()) return;
+            // Existe: cualquier borrado anterior ya no habla de esta ficha.
+            this.gone.value = null;
             this.movie.value = movie;
             this.loading.value = false;
             this.error.value = null;
@@ -61,10 +68,18 @@ export class MovieViewModel {
     // imagen, metadatos, played, favorito). Sin esto el usuario necesitaría
     // recargar la página para ver la nueva portada.
     private subscribeToMutations() {
-        this.mutations.ensure((itemId) => {
+        this.mutations.ensure(({ itemId, deleted }) => {
             const current = this.movie.value;
             if (!current) return;
             if (itemId && itemId !== current.id) return;
+            if (deleted) {
+                // Recargarla daría 404: ya no está. Se suelta y la ficha se
+                // va sola (ver `gone`).
+                this.movie.value = null;
+                this.error.value = null;
+                this.gone.value = current.id;
+                return;
+            }
             void this.load(current.id, true);
         });
     }

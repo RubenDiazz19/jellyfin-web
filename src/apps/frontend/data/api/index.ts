@@ -48,6 +48,7 @@ export {
 export {
     setImageByUrl,
     deleteImage,
+    moveImage,
     uploadImageFile,
     getRemoteImages,
     type JFRemoteImage
@@ -61,6 +62,12 @@ export {
     type TitleLanguagePref
 } from '../preferences/languagePrefs';
 export { getSystemInfo, refreshLibrary, type SystemInfo } from './admin';
+export {
+    getRunningTasks,
+    watchScheduledTasks,
+    watchItemRefresh,
+    type BackgroundTask
+} from './tasks';
 export { getMaxStreamingBitrate, setMaxStreamingBitrate } from './playback';
 export {
     getPlaylists,

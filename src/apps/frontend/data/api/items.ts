@@ -3,7 +3,8 @@
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
 import { apiSend, noSessionError, trimSlash } from './http';
-import { emitItemMutated } from './mutations';
+import { markDeleted } from './deleted';
+import { emitItemDeleted, emitItemMutated } from './mutations';
 
 export async function markPlayed(itemId: string, played: boolean): Promise<void> {
     const session = loadSession();
@@ -43,8 +44,13 @@ export async function refreshItemMetadata(itemId: string): Promise<void> {
 
 export async function deleteItem(itemId: string): Promise<void> {
     await apiSend(`/Items/${itemId}`, 'DELETE');
+    // Antes de avisar a nadie: a partir de aquí, pedir su ficha es un 404
+    // seguro y la capa de datos lo corta sola (ver deleted.ts).
+    markDeleted(itemId);
     clearShowCache();
-    emitItemMutated(itemId);
+    // `emitItemDeleted` y no `emitItemMutated`: quien esté enseñando este item
+    // tiene que irse, no recargarlo. Ver la nota en mutations.ts.
+    emitItemDeleted(itemId);
 }
 
 export function downloadUrl(itemId: string): string {

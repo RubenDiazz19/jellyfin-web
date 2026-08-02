@@ -12,6 +12,12 @@ export class ShowViewModel {
     show = signal<Show | null>(null);
     loading = signal(false);
     error = signal<string | null>(null);
+    /**
+     * Id de la SERIE que se acaba de borrar. Las tres fichas que cuelgan de
+     * ella lo miran para irse. Borrar una temporada o un episodio no lo pone:
+     * ahí la serie sigue existiendo y basta con recargarla.
+     */
+    gone = signal<string | null>(null);
 
     private loads = new LoadGuard();
     private mutations = new ItemMutationSubscription();
@@ -31,6 +37,8 @@ export class ShowViewModel {
         try {
             const show = await this.api.catalog.getShow(id);
             if (!isLatest()) return;
+            // Existe: cualquier borrado anterior ya no habla de esta ficha.
+            this.gone.value = null;
             this.show.value = show;
             this.error.value = null;
         } catch (e) {
@@ -57,10 +65,18 @@ export class ShowViewModel {
     // dentro del Show que tenemos cargado. Si solo se comparase con el id de
     // la serie, esos cambios no se verían hasta recargar la página.
     private subscribeToMutations() {
-        this.mutations.ensure((itemId) => {
+        this.mutations.ensure(({ itemId, deleted }) => {
             const current = this.show.value;
             if (!current) return;
             if (itemId && !belongsToShow(current, itemId)) return;
+            if (deleted && itemId === current.id) {
+                // Recargarla daría 404. Lo que se ha borrado es la serie
+                // entera, así que las fichas de dentro tampoco tienen sitio.
+                this.show.value = null;
+                this.error.value = null;
+                this.gone.value = current.id;
+                return;
+            }
             void this.load(current.id);
         });
     }

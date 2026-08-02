@@ -15,7 +15,7 @@ import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
-import { useShowEntity } from './useDetailEntity';
+import { useLeaveWhen, useShowEntity } from './useDetailEntity';
 
 type PageProps = { showId: string; seasonN: number; navigate: Navigate };
 
@@ -24,8 +24,10 @@ const PLAY_SIZE = 104;
 const MORE_GAP = 26;
 
 export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
-    const { item: show, error } = useShowEntity(showId);
+    const { item: show, error } = useShowEntity(showId, navigate);
     const season = show ? findSeason(show, seasonN) : null;
+    // La temporada ya no está en una serie que sí existe: la han borrado.
+    useLeaveWhen(!!show && !season, { page: 'show', showId }, navigate);
     if (!show || !season) {
         if (error || !show) return <DetailStatus error={error} />;
         // Serie cargada pero temporada inexistente en la URL.
