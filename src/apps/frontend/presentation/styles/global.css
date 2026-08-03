@@ -654,12 +654,28 @@ html body.jf-video-active .dialogBackdropOpened {
     transform: translateZ(0);
 }
 
+/* Los subtítulos de texto (SRT) van por <track> y los pinta el navegador;
+   los ASS los quema libass en el vídeo. Para que unos y otros se vean igual,
+   aquí se imita el estilo de libass: sin caja, texto blanco con contorno
+   negro. El contorno se hace con text-shadow —la única propiedad de trazo
+   que ::cue admite— repitiendo la sombra en las ocho direcciones; la novena,
+   difusa, despega el texto de los fondos claros. */
 .jfp-video-el::cue {
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 1.05em;
     line-height: 1.4;
     color: #fff;
-    background: rgba(0, 0, 0, 0.55);
+    background: transparent;
+    text-shadow:
+        -2px -2px 0 #000,
+        0 -2px 0 #000,
+        2px -2px 0 #000,
+        -2px 0 0 #000,
+        2px 0 0 #000,
+        -2px 2px 0 #000,
+        0 2px 0 #000,
+        2px 2px 0 #000,
+        0 2px 6px rgb(0 0 0 / 80%);
 }
 
 /* ── Zonas superior/inferior con fade ── */

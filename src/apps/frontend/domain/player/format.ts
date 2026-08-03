@@ -156,3 +156,26 @@ export function playerMarks(chapters: ItemChapter[], segments: MediaSegment[]): 
     }
     return marks.sort((a, b) => a.start - b.start);
 }
+
+/**
+ * Qué text track debe pintarse: solo el que corresponde a la URL de
+ * subtítulo activa, el resto se apaga. Sin esto, al cambiar de pista el
+ * <track> anterior queda vivo (el navegador no lo desmonta al instante) y
+ * sus cues se pintan encima de las nuevas.
+ */
+export function subtitleTrackMode(
+    subtitleUrl: string | null, activeTrack: TextTrack | null, track: TextTrack
+): TextTrackMode {
+    if (!subtitleUrl) return 'disabled';
+    return track === activeTrack ? 'showing' : 'disabled';
+}
+
+/**
+ * El conversor ASS→WebVTT del servidor a veces deja sin depurar los override
+ * tags de estilo ASS (`{\c&H...\pos(...)...}`), que entonces se ven como
+ * texto literal encima del vídeo. VTT no usa esa sintaxis para nada legítimo,
+ * así que se puede quitar sin más.
+ */
+export function sanitizeVttCueText(text: string): string {
+    return text.replace(/\{[^{}]*\}/g, '');
+}

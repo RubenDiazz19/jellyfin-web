@@ -69,14 +69,28 @@ function browserDeviceProfile() {
         ],
         CodecProfiles: [],
         ContainerProfiles: [],
+        // Solo VTT externo: lo que no encaje aquí (ASS/SSA, PGS, VobSub) lo
+        // quema el servidor en el vídeo. Va de la mano de isTextSubtitle().
         SubtitleProfiles: [{ Format: 'vtt', Method: 'External' }]
     };
 }
 
+/**
+ * ¿El servidor puede servir esta pista como VTT externo, para montarla en un
+ * <track> del <video>?
+ *
+ * ASS/SSA quedan FUERA a propósito. Son texto, sí, pero su gracia está en las
+ * etiquetas de estilo (`{\pos}`, `{\c&H…}`, tipografías incrustadas) y este
+ * reproductor no lleva motor libass que las interprete. El servidor lo sabe
+ * —el DeviceProfile solo declara `vtt` como External— y las quema en el vídeo
+ * con el filtro `subtitles=` de ffmpeg. Si además las pidiéramos como VTT,
+ * saldrían las dos capas a la vez: la quemada y la del <track>, esta última
+ * encima y con las etiquetas de override en crudo.
+ */
 function isTextSubtitle(codec?: string): boolean {
     if (!codec) return false;
     const c = codec.toLowerCase();
-    return c === 'subrip' || c === 'srt' || c === 'ass' || c === 'ssa' || c === 'vtt' || c === 'webvtt';
+    return c === 'subrip' || c === 'srt' || c === 'vtt' || c === 'webvtt';
 }
 
 export function mapMediaStream(s: JFMediaStream): MediaStreamInfo {

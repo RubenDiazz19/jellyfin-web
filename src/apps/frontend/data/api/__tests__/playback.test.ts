@@ -1,7 +1,8 @@
 // Barrera de reportPlaybackStop: los fetch de catálogo esperan al stop en
 // vuelo para no leer posiciones viejas al salir del reproductor.
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { reportPlaybackStop, settlePlaybackReports } from '../playback';
+import { mapMediaStream, reportPlaybackStop, settlePlaybackReports } from '../playback';
+import type { JFMediaStream } from '../types';
 import { apiSend } from '../http';
 import { clearShowCache } from '../cache';
 import { emitItemMutated } from '../mutations';
@@ -92,5 +93,31 @@ describe('settlePlaybackReports', () => {
         expect(done).toBe(false);
         await vi.advanceTimersByTimeAsync(200);
         expect(done).toBe(true);
+    });
+});
+
+describe('mapMediaStream', () => {
+    const subtitle = (codec: string): JFMediaStream => (
+        { Index: 3, Type: 'Subtitle', Codec: codec }
+    );
+
+    test('SRT y VTT se sirven como <track> externo', () => {
+        expect(mapMediaStream(subtitle('subrip')).isText).toBe(true);
+        expect(mapMediaStream(subtitle('webvtt')).isText).toBe(true);
+    });
+
+    // Sin motor libass, ASS/SSA las quema el servidor: pedirlas además como
+    // VTT pintaría dos capas de subtítulos superpuestas.
+    test('ASS y SSA no son texto externo: las quema el servidor', () => {
+        expect(mapMediaStream(subtitle('ass')).isText).toBe(false);
+        expect(mapMediaStream(subtitle('SSA')).isText).toBe(false);
+    });
+
+    test('los formatos de imagen tampoco son texto', () => {
+        expect(mapMediaStream(subtitle('pgssub')).isText).toBe(false);
+    });
+
+    test('una pista de audio nunca es texto', () => {
+        expect(mapMediaStream({ Index: 1, Type: 'Audio', Codec: 'aac' }).isText).toBe(false);
     });
 });

@@ -5,7 +5,9 @@ import globalize from 'lib/globalize';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { queueVM, type QueueEntry } from '../../../domain/viewModels/QueueViewModel';
 import { QueuePanel } from '../queue/QueuePanel';
-import { segmentSkipLabelKey, type AspectRatio } from '../../../domain/player/format';
+import {
+    sanitizeVttCueText, segmentSkipLabelKey, subtitleTrackMode, type AspectRatio
+} from '../../../domain/player/format';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
@@ -88,6 +90,21 @@ export function VideoPlayer({
     const queueItems = useSignalValue(queueVM.items);
     const containerRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const subtitleTrackRef = useRef<HTMLTrackElement | null>(null);
+    // Callback ref en vez de onLoad: 'load' no está en la lista de eventos
+    // que el linter admite en <track>, y de paso evita el listener JSX que
+    // React tendría que reatachar en cada render.
+    const setSubtitleTrackRef = useCallback((el: HTMLTrackElement | null) => {
+        subtitleTrackRef.current = el;
+        if (!el) return;
+        el.addEventListener('load', () => {
+            // El conversor del servidor a veces deja override tags ASS sin
+            // depurar en el VTT; se limpian aquí antes de que se pinten.
+            for (const cue of Array.from(el.track.cues ?? [])) {
+                if (cue instanceof VTTCue) cue.text = sanitizeVttCueText(cue.text);
+            }
+        });
+    }, []);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [controlsVisible, setControlsVisible] = useState(true);
     const { touch, portrait } = useTouchPlayback();
@@ -311,13 +328,18 @@ export function VideoPlayer({
         return () => window.removeEventListener('keydown', onKey);
     }, [onClose, showControls]);
 
-    // Aplica el modo de los text tracks cuando cambia el subtítulo activo.
+    // Aplica el modo de los text tracks cuando cambia el subtítulo activo:
+    // solo se muestra la pista de la selección actual. El <track> anterior
+    // no se desmonta al instante (el remount por key es asíncrono), así que
+    // sin esto sus cues quedan "showing" y se pintan superpuestas a las
+    // nuevas.
     const subtitleUrl = videoPlayerVM.subtitleUrl.value;
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
+        const active = subtitleUrl ? subtitleTrackRef.current?.track ?? null : null;
         for (const track of Array.from(video.textTracks)) {
-            track.mode = subtitleUrl ? 'showing' : 'disabled';
+            track.mode = subtitleTrackMode(subtitleUrl, active, track);
         }
     }, [subtitleUrl]);
 
@@ -378,6 +400,7 @@ export function VideoPlayer({
                     // no recarga el VTT y siguen apareciendo los subtítulos
                     // viejos.
                     <track
+                        ref={setSubtitleTrackRef}
                         key={subtitleUrl}
                         kind='subtitles'
                         src={subtitleUrl}
