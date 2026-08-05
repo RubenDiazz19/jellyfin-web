@@ -13,6 +13,9 @@ import { firstImageUrl } from './itemMapping';
 const POSTER_HEIGHT = 480;
 const BACKDROP_WIDTH = 800;
 const LOGO_HEIGHT = 120;
+/** El fondo del hero de una lista se ve a pantalla completa, no en tarjeta. */
+const HERO_WIDTH = 1920;
+const HERO_POSTER_HEIGHT = 1080;
 
 export type ListEntry = {
     id: string;
@@ -131,6 +134,13 @@ export type PlaylistItem = {
     poster?: string;
     /** Imagen apaisada, para las tarjetas 16/9 del índice de listas. */
     backdrop?: string;
+    /** La misma imagen a tamaño de pantalla, para el hero de la lista. */
+    heroBackdrop?: string;
+    /**
+     * Cuándo entró en la biblioteca (ISO). Es lo que decide qué fondo hereda
+     * la lista cuando no se le ha puesto uno a mano.
+     */
+    added?: string;
     logo?: string | null;
     /** Serie a la que pertenece, cuando el item es un episodio. */
     seriesId?: string;
@@ -158,6 +168,7 @@ type JFPlaylistItem = {
     ParentLogoItemId?: string;
     ParentLogoImageTag?: string;
     PlaylistItemId?: string;
+    DateCreated?: string;
 };
 
 function mapPlaylistItem(i: JFPlaylistItem): PlaylistItem {
@@ -177,6 +188,17 @@ function mapPlaylistItem(i: JFPlaylistItem): PlaylistItem {
             ['Backdrop', i.Id, i.BackdropImageTags?.[0]],
             ['Backdrop', i.ParentBackdropItemId, i.ParentBackdropImageTags?.[0]]
         ], { maxWidth: BACKDROP_WIDTH }),
+        // Misma imagen, tamaño de pantalla. Se cae a la carátula porque un
+        // hero con una vertical estirada se ve mejor que uno en negro, y hay
+        // títulos sin fondo.
+        heroBackdrop: firstImageUrl([
+            ['Backdrop', i.Id, i.BackdropImageTags?.[0]],
+            ['Backdrop', i.ParentBackdropItemId, i.ParentBackdropImageTags?.[0]]
+        ], { maxWidth: HERO_WIDTH }) ?? firstImageUrl([
+            ['Primary', i.Id, i.ImageTags?.Primary],
+            ['Primary', i.SeriesId, i.SeriesPrimaryImageTag]
+        ], { maxHeight: HERO_POSTER_HEIGHT }),
+        added: i.DateCreated,
         logo: firstImageUrl([['Logo', i.Id, i.ImageTags?.Logo]], { maxHeight: LOGO_HEIGHT }) ?? null,
         seriesId: i.SeriesId,
         seriesName: i.SeriesName,
@@ -205,7 +227,7 @@ export async function getPlaylistItems(playlistId: string): Promise<PlaylistItem
     if (!session?.userId) throw noSessionError();
     const data = await apiFetch<{ Items: JFPlaylistItem[] }>(
         `/Playlists/${playlistId}/Items?userId=${session.userId}`
-            + '&Fields=ProductionYear,ImageTags&EnableImageTypes=Primary,Logo,Backdrop'
+            + '&Fields=ProductionYear,ImageTags,DateCreated&EnableImageTypes=Primary,Logo,Backdrop'
     );
     return (data.Items ?? []).map(mapPlaylistItem);
 }
@@ -271,7 +293,7 @@ export async function createCollection(name: string, itemId: string): Promise<st
 export async function getCollectionItems(collectionId: string): Promise<PlaylistItem[]> {
     const items = await fetchUserItems<JFPlaylistItem>(
         `ParentId=${collectionId}&SortBy=SortName`
-            + '&Fields=ProductionYear,ImageTags&EnableImageTypes=Primary,Logo,Backdrop'
+            + '&Fields=ProductionYear,ImageTags,DateCreated&EnableImageTypes=Primary,Logo,Backdrop'
     );
     return items.map(mapPlaylistItem);
 }

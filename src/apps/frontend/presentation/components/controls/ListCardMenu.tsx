@@ -1,26 +1,41 @@
 import globalize from 'lib/globalize';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type RefObject } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useToast } from '../toast/ToastProvider';
 import { LISTS, type ListKind } from '../../../domain/stores';
 
-// Los tres puntos de la esquina de una tarjeta de lista. De momento solo
-// llevan el fondo: subir una imagen, ponerla por URL o volver a la portada
-// automática (la del último título añadido).
+// Los tres puntos de una lista: en la esquina de su tarjeta del índice y en el
+// hero de la propia lista. De momento solo llevan el fondo: subir una imagen,
+// ponerla por URL o volver a la portada automática (la del último título
+// añadido).
 //
 // El menú va en un portal con posición fija porque la tarjeta recorta lo que
 // se sale (`overflow: hidden`), que es lo que le da las esquinas redondeadas.
 
-type Props = { kind: ListKind; listId: string; onChanged: () => void };
+/** Para abrirlo desde fuera: el clic derecho sobre el hero de la lista. */
+export type ListMenuHandle = { openAt: (x: number, y: number) => void };
+
+type Props = {
+    kind: ListKind;
+    listId: string;
+    onChanged: () => void;
+    /** Diámetro del botón: en el hero se pinta más grande que en la tarjeta. */
+    size?: number;
+    /** Sin botón visible: solo lo abre quien tenga el `handle`. */
+    hideTrigger?: boolean;
+    handle?: RefObject<ListMenuHandle | null>;
+};
 
 const MENU_W = 230;
 const MENU_H = 190;
 const GAP = 8;
 
-export function ListCardMenu({ kind, listId, onChanged }: Props) {
+export function ListCardMenu({
+    kind, listId, onChanged, size = 26, hideTrigger, handle
+}: Props) {
     const toast = useToast();
     const btnRef = useRef<HTMLButtonElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
@@ -43,6 +58,21 @@ export function ListCardMenu({ kind, listId, onChanged }: Props) {
             window.removeEventListener('resize', close);
         };
     }, [open]);
+
+    /** Abre el menú donde se ha pulsado, para el clic derecho sobre el hero. */
+    const openAt = (x: number, y: number) => {
+        const dropUp = y + MENU_H + GAP > window.innerHeight;
+        setPos({
+            top: dropUp ? Math.max(GAP, y - MENU_H - GAP) : y + GAP,
+            // Se voltea al otro lado del cursor si no cabe a la derecha.
+            left: Math.min(x, window.innerWidth - MENU_W - 12)
+        });
+        setAskingUrl(false);
+        setUrl('');
+        setOpen(true);
+    };
+
+    useImperativeHandle(handle, () => ({ openAt }));
 
     const toggleMenu = () => {
         if (open) {
@@ -114,23 +144,28 @@ export function ListCardMenu({ kind, listId, onChanged }: Props) {
                     if (file) setFromFile(file);
                 }}
             />
-            <button
-                ref={btnRef}
-                // La tarjeta entera es un botón que navega: sin parar aquí, el
-                // clic en los puntos abriría la lista además del menú.
-                onClick={(e) => { e.stopPropagation(); toggleMenu(); }}
-                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                aria-label={globalize.translate('LabelCoverImage')}
-                aria-haspopup='menu'
-                style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: 26, height: 26, borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.45)', border: 'none',
-                    color: 'rgba(255,255,255,0.85)', cursor: 'pointer', padding: 0
-                }}
-            >
-                <Ic.Dots size={15} />
-            </button>
+            {/* Sin renderizarlo, y no con `hidden`: el `display: flex` de aquí
+                abajo va en línea y le ganaría a la hoja del navegador, así que
+                el botón se seguiría viendo. */}
+            {!hideTrigger && (
+                <button
+                    ref={btnRef}
+                    // La tarjeta entera es un botón que navega: sin parar aquí,
+                    // el clic en los puntos abriría la lista además del menú.
+                    onClick={(e) => { e.stopPropagation(); toggleMenu(); }}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    aria-label={globalize.translate('LabelCoverImage')}
+                    aria-haspopup='menu'
+                    style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: size, height: size, borderRadius: '50%',
+                        background: 'rgba(0,0,0,0.45)', border: 'none',
+                        color: 'rgba(255,255,255,0.85)', cursor: 'pointer', padding: 0
+                    }}
+                >
+                    <Ic.Dots size={Math.round(size * 0.58)} />
+                </button>
+            )}
 
             {open && pos && ReactDOM.createPortal(
                 <>

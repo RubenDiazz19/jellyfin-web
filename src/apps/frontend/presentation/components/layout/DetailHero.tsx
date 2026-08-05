@@ -4,7 +4,7 @@
 // backdrop, degradado, colocación del bloque de texto), la fila de géneros y
 // el bloque logo-o-título estaban copiados literalmente en las dos páginas.
 
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { T, HERO_POS, HERO_SCRIM, type HeroPosKey, type HeroScrimKey } from '../../theme/tokens';
 import { useResponsive, useShortViewport } from '../../theme/responsive';
 import { Backdrop } from './Backdrop';
@@ -80,11 +80,17 @@ type FrameProps = {
      * imagen de lo que estás mirando.
      */
     blurred?: boolean;
+    /**
+     * Clic derecho sobre el hero. Lo usa la ficha de una colección, cuyo hero
+     * va sin un solo botón encima: el menú de la imagen se abre desde aquí.
+     */
+    onContextMenu?: (e: MouseEvent) => void;
 };
 
 /** Marco del hero: alto de pantalla, backdrop, degradado y colocación. */
 export function HeroFrame({
-    hero, backdrop, backdrops, itemId, nav, children, footer, pos, pad, scrim, blurred
+    hero, backdrop, backdrops, itemId, nav, children, footer, pos, pad, scrim, blurred,
+    onContextMenu
 }: FrameProps) {
     const layout = useHeroLayout(hero);
     const place = pos ? HERO_POS[pos] : layout.pos;
@@ -92,7 +98,7 @@ export function HeroFrame({
     const r = useResponsive();
     const short = useShortViewport();
     return (
-        <section style={{
+        <section onContextMenu={onContextMenu} style={{
             position: 'relative',
             height: heroHeight(r.touch),
             // A sangre en táctil: el body reserva el hueco del rail (tablet) y

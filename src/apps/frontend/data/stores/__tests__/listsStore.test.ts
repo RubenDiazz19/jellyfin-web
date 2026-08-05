@@ -233,6 +233,50 @@ describe('fondo personalizado', () => {
         expect(LISTS.hasCustomCover('playlist', 'p1')).toBe(false);
     });
 
+    test('la portada automática es la del último AÑADIDO, no la del final', async () => {
+        // Una colección va ordenada por nombre, así que el último de la lista
+        // no tiene por qué ser el último que entró.
+        getCollectionItems.mockResolvedValue([
+            { id: 'a', kind: 'movie', title: 'Ayer', backdrop: 'vieja', added: '2026-01-01' },
+            { id: 'b', kind: 'movie', title: 'Hoy', backdrop: 'nueva', added: '2026-08-01' },
+            { id: 'c', kind: 'movie', title: 'Zeta', backdrop: 'media', added: '2026-04-01' }
+        ]);
+        await LISTS.ensure();
+        expect(LISTS.ofKind('collection')[0].image).toBe('nueva');
+    });
+
+    test('un título sin fecha no le gana a uno que sí la tiene', async () => {
+        getCollectionItems.mockResolvedValue([
+            { id: 'a', kind: 'movie', title: 'Con fecha', backdrop: 'fechada', added: '2026-01-01' },
+            { id: 'b', kind: 'movie', title: 'Sin fecha', backdrop: 'suelta' }
+        ]);
+        await LISTS.ensure();
+        expect(LISTS.ofKind('collection')[0].image).toBe('fechada');
+    });
+
+    test('el hero hereda la imagen grande del mismo título', async () => {
+        getCollectionItems.mockResolvedValue([
+            {
+                id: 'a', kind: 'movie', title: 'Peli',
+                backdrop: 'chica', heroBackdrop: 'grande', added: '2026-08-01'
+            }
+        ]);
+        await LISTS.ensure();
+        const list = LISTS.ofKind('collection')[0];
+        expect(list.image).toBe('chica');
+        expect(list.heroImage).toBe('grande');
+    });
+
+    test('el hero con fondo propio lo pide más grande que la tarjeta', async () => {
+        await LISTS.ensure();
+        await LISTS.setCover('collection', 'c1', 'https://ejemplo/x.jpg');
+        const list = LISTS.ofKind('collection')[0];
+        // El mock de `imageUrl` ignora el ancho, así que lo que se comprueba es
+        // que las dos salen de la imagen propia y no de la heredada.
+        expect(list.image).toContain('cover://c1');
+        expect(list.heroImage).toContain('cover://c1');
+    });
+
     test('poner uno desde URL lo sube y lo marca como propio', async () => {
         await LISTS.ensure();
         await LISTS.setCover('playlist', 'p1', 'https://ejemplo/x.jpg');

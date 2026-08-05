@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -6,8 +6,8 @@ import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { Nav } from '../components/layout/Nav';
 import { EmptyState } from '../components/skeleton/Skeleton';
-import { ListCardMenu } from '../components/controls/ListCardMenu';
-import { LISTS, type ListRef } from '../../domain/stores';
+import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
+import { LISTS, type ListKind, type ListRef } from '../../domain/stores';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate, Route } from '../../app/router';
 
@@ -91,8 +91,7 @@ export function ListsPage({ navigate }: Props) {
                                     key={l.id}
                                     title={l.name}
                                     image={l.image}
-                                    subtitle={countLabel(l)}
-                                    menu={<ListCardMenu kind={l.kind} listId={l.id} onChanged={refresh} />}
+                                    cover={{ kind: l.kind, listId: l.id, onChanged: refresh }}
                                     onClick={() => navigate(routeFor(l))}
                                 />
                             ))}
@@ -104,8 +103,7 @@ export function ListsPage({ navigate }: Props) {
                                     key={l.id}
                                     title={l.name}
                                     image={l.image}
-                                    subtitle={countLabel(l)}
-                                    menu={<ListCardMenu kind={l.kind} listId={l.id} onChanged={refresh} />}
+                                    cover={{ kind: l.kind, listId: l.id, onChanged: refresh }}
                                     onClick={() => navigate(routeFor(l))}
                                 />
                             ))}
@@ -124,9 +122,6 @@ export function ListsPage({ navigate }: Props) {
 }
 
 const routeFor = (l: ListRef): Route => ({ page: 'list', kind: l.kind, listId: l.id });
-
-const countLabel = (l: ListRef) =>
-    l.count != null ? globalize.translate('ItemCount', l.count) : undefined;
 
 /**
  * Un bloque del índice, pensado para vivir en una columna. Se pinta aunque
@@ -167,32 +162,42 @@ function Group({ title, empty, children }: {
 }
 
 /**
- * Tarjeta de lista: solo la imagen, con todo encima.
+ * Tarjeta de lista: la imagen y nada más.
  *
- * El nombre va en blanco y grande al centro, como en las tarjetas de
- * biblioteca — con la diferencia de que allí el rótulo viene QUEMADO en la
- * imagen que genera Jellyfin y aquí se pinta con CSS, que es lo que permite
- * cambiar la portada sin perder el título.
+ * Ni rótulo, ni recuento, ni tres puntos encima. La portada de una lista es
+ * una imagen elegida a mano —casi siempre con el nombre dentro, como el de la
+ * colección de Marvel— y taparla con los mismos datos que ya se ven al entrar
+ * no aportaba nada. El nombre sigue existiendo: es el nombre accesible de la
+ * tarjeta, se lee al pasar por encima y se edita dentro de la lista.
  *
- * No hay pie: repetir el nombre debajo no añadía nada y el rectángulo negro
- * partía la tarjeta en dos. El recuento y los tres puntos se superponen en las
- * esquinas de abajo.
+ * SIN imagen sí se escribe, porque si no la tarjeta sería un rectángulo vacío
+ * imposible de distinguir de la de al lado. Es el caso de Favoritos y el de
+ * una lista recién creada.
+ *
+ * El menú de la portada se abre con el clic derecho, como en el hero.
  */
-function ListCard({ title, subtitle, image, icon, menu, onClick }: {
+function ListCard({ title, image, icon, cover, onClick }: {
     title: string;
-    subtitle?: string;
     image?: string;
     icon?: string;
-    menu?: React.ReactNode;
+    /** Con él, el clic derecho abre el menú de la portada. */
+    cover?: { kind: ListKind; listId: string; onChanged: () => void };
     onClick: () => void;
 }) {
+    const menu = useRef<ListMenuHandle | null>(null);
     return (
         <div
             role='button'
             tabIndex={0}
+            aria-label={title}
+            title={title}
             onClick={onClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
             onMouseDown={(e) => e.preventDefault()}
+            onContextMenu={cover ? (e) => {
+                e.preventDefault();
+                menu.current?.openAt(e.clientX, e.clientY);
+            } : undefined}
             className='jfp-hoverlift'
             style={{
                 cursor: 'pointer', fontFamily: T.ui, color: 'inherit',
@@ -202,60 +207,41 @@ function ListCard({ title, subtitle, image, icon, menu, onClick }: {
                 background: image ?
                     `url(${image}) center/cover` :
                     'linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04))',
-                // La imagen se recorta al borde INTERIOR, que es justo hasta
-                // donde llega la capa oscura de abajo (`inset: 0` cuenta desde
-                // ahí). Sin esto, el fondo se pintaba también bajo el borde
-                // —que es blanco translúcido y lo deja ver— y quedaba una
-                // línea de un píxel sin oscurecer alrededor de la tarjeta,
-                // muy visible por abajo, donde el degradado es más denso.
+                // La imagen se recorta al borde INTERIOR. Sin esto, el fondo se
+                // pintaba también bajo el borde —que es blanco translúcido y lo
+                // deja ver— y quedaba una línea de un píxel alrededor.
                 backgroundClip: 'padding-box'
             }}
         >
-            {/* Oscurece lo justo para que el rótulo se lea sobre cualquier
-                fotograma, por claro que sea. Más marcado abajo, donde van el
-                recuento y los puntos. */}
-            <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0.72) 100%)'
-            }} />
-
-            {/* La sombra va AQUÍ y no en el texto: el recorte a dos líneas
-                necesita `overflow: hidden`, que corta también la sombra y
-                dejaba un rectángulo visible alrededor del título, justo donde
-                el desenfoque se cortaba en seco. `drop-shadow` sobre este
-                contenedor —que no recorta nada— sigue la silueta de las letras
-                y da el mismo resultado sin caja. */}
-            <div style={{
-                position: 'absolute', inset: 0, padding: '0 14px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center',
-                filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.8))'
-            }}>
-                <span style={{
-                    fontSize: 'clamp(20px, 2.2vw, 30px)', fontWeight: 700, lineHeight: 1.1,
-                    color: '#fff',
-                    overflow: 'hidden',
-                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
+            {!image && (
+                // La sombra va en el contenedor y no en el texto: el recorte a
+                // dos líneas necesita `overflow: hidden`, que corta también la
+                // sombra y dejaba un rectángulo visible alrededor del título.
+                <div style={{
+                    position: 'absolute', inset: 0, padding: '0 14px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    textAlign: 'center',
+                    filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.8))'
                 }}>
-                    {icon ? `${icon} ${title}` : title}
-                </span>
-            </div>
-
-            {subtitle && (
-                <span style={{
-                    position: 'absolute', left: 12, bottom: 10,
-                    fontSize: 11, fontStyle: 'italic',
-                    color: 'rgba(255,255,255,0.8)',
-                    textShadow: '0 1px 6px rgba(0,0,0,0.8)'
-                }}>
-                    {subtitle}
-                </span>
+                    <span style={{
+                        fontSize: 'clamp(20px, 2.2vw, 30px)', fontWeight: 700, lineHeight: 1.1,
+                        color: '#fff',
+                        overflow: 'hidden',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
+                    }}>
+                        {icon ? `${icon} ${title}` : title}
+                    </span>
+                </div>
             )}
 
-            {menu && (
-                <div style={{ position: 'absolute', right: 8, bottom: 8 }}>
-                    {menu}
-                </div>
+            {cover && (
+                <ListCardMenu
+                    hideTrigger
+                    handle={menu}
+                    kind={cover.kind}
+                    listId={cover.listId}
+                    onChanged={cover.onChanged}
+                />
             )}
         </div>
     );

@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
+import { HeroFrame } from '../components/layout/DetailHero';
+import { DetailBody } from '../components/layout/DetailSections';
+import { ScrollHint } from '../components/layout/ScrollHint';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { ListBackLink } from './ListsPage';
 import { EditableTitle } from '../components/controls/EditableTitle';
+import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { PosterTile } from '../components/cards/PosterTile';
 import { getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
-import { displayItems, LISTS, type ListKind } from '../../domain/stores';
-import { MC, useResponsive } from '../theme/responsive';
+import { displayItems, LISTS, type ListKind, type ListRef } from '../../domain/stores';
+import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type Props = { kind: ListKind; listId: string; navigate: Navigate };
@@ -19,12 +23,19 @@ type Props = { kind: ListKind; listId: string; navigate: Navigate };
 // Contenido de una lista: de reproducción o colección. De cara a esta página
 // la única diferencia entre las dos es de dónde se leen los títulos y si hay
 // que plegar series — de eso se encarga `displayItems`.
+//
+// La lista se abre con su hero a pantalla completa, como una ficha: el fondo
+// es la imagen de la lista (la que haya puesto el usuario o, si no, la
+// heredada del último título añadido) y los títulos aparecen al bajar.
+//
+// El hero va DESNUDO, sin una letra encima: la imagen se ve entera y ya está.
+// El nombre —que se sigue pudiendo editar— y el recuento pasan a una franja
+// discreta bajo el hero, y la imagen se cambia con el clic derecho encima.
 
 export function ListPage({ kind, listId, navigate }: Props) {
-    const r = useResponsive();
     const [items, setItems] = useState<PlaylistItem[] | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [name, setName] = useState<string>(() => LISTS.find(kind, listId)?.name ?? '');
+    const [list, setList] = useState<ListRef | undefined>(() => LISTS.find(kind, listId));
 
     useEffect(() => {
         setItems(null);
@@ -33,69 +44,189 @@ export function ListPage({ kind, listId, navigate }: Props) {
         fetchItems(listId)
             .then((all) => setItems(displayItems(kind, all)))
             .catch((e) => setError((e as Error).message));
-        // El nombre puede no estar cacheado si se ha entrado por URL directa.
-        if (!name) {
-            void LISTS.ensure().then(() => setName(LISTS.find(kind, listId)?.name ?? ''));
-        }
-        // `name` fuera de las dependencias a propósito: solo se resuelve una
-        // vez por lista, y meterlo relanzaría el efecto al llegar.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [kind, listId]);
+
+    // El nombre y la imagen salen del store, que se recarga al renombrar o al
+    // cambiar el fondo: se sigue su evento en vez de copiarlos a estado.
+    useEffect(() => {
+        const sync = () => setList(LISTS.find(kind, listId));
+        window.addEventListener(LISTS.event, sync);
+        void LISTS.ensure().then(sync);
+        return () => window.removeEventListener(LISTS.event, sync);
+    }, [kind, listId]);
+
+    // Cambiar el fondo se anota en localStorage y eso no dispara el evento del
+    // store: se re-lee a mano.
+    const refresh = () => setList(LISTS.find(kind, listId));
 
     const kindLabel = globalize.translate(kind === 'playlist' ? 'Playlists' : 'Collections');
 
     return (
         <>
-            <Nav navigate={navigate} active='lists' />
-            <section style={{
-                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
-                minHeight: '100vh',
-                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px',
-                fontFamily: T.ui
-            }}>
-                <ListBackLink navigate={navigate} />
-                <div style={{ marginBottom: 8 }}>
-                    <EditableTitle
-                        value={name || kindLabel}
-                        fontSize={r.touch ? 34 : 52}
-                        onSave={async (next) => {
-                            await LISTS.rename(kind, listId, next);
-                            setName(next);
-                        }}
-                    />
-                </div>
-                {/* Qué tipo de lista es: importa, porque una de reproducción
-                    desmenuza las series en capítulos y una colección no. */}
-                <div style={{
-                    fontSize: 11, letterSpacing: 3, textTransform: 'uppercase',
-                    color: T.dim, marginBottom: 44
-                }}>
-                    {kindLabel}
-                </div>
-
-                {error ? (
-                    <EmptyState title={globalize.translate('MessageNoPlaylistsYet')} hint={error} />
-                ) : !items ? (
-                    <SkeletonRow title='' />
-                ) : items.length === 0 ? (
-                    <EmptyState
-                        title={globalize.translate('MessageNoItemsFound')}
-                        hint={globalize.translate('ListsEmpty')}
-                        icon='☰'
-                    />
-                ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? (r.mobile ? 110 : 140) : 160}px, 1fr))`,
-                        gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'
-                    }}>
-                        {items.map((item) => (
-                            <ListItemCard key={item.id} item={item} navigate={navigate} />
-                        ))}
-                    </div>
-                )}
-            </section>
+            <ListHero
+                kind={kind}
+                listId={listId}
+                list={list}
+                kindLabel={kindLabel}
+                navigate={navigate}
+                onCoverChanged={refresh}
+            />
+            <DetailBody>
+                <ListInfoStrip
+                    kind={kind}
+                    listId={listId}
+                    list={list}
+                    kindLabel={kindLabel}
+                    count={items?.length}
+                    navigate={navigate}
+                    onCoverChanged={refresh}
+                />
+                <ListGrid items={items} error={error} navigate={navigate} />
+            </DetailBody>
         </>
+    );
+}
+
+/**
+ * El hero de la lista: su fondo a pantalla completa y nada más encima.
+ *
+ * Ni una letra: el nombre y el recuento van en la franja de debajo. Como
+ * tampoco hay botones, el menú de la imagen —el que permite ponerle una a
+ * mano— se abre con el clic derecho, que es lo único que no ocupa sitio.
+ */
+function ListHero({
+    kind, listId, list, kindLabel, navigate, onCoverChanged
+}: {
+    kind: ListKind;
+    listId: string;
+    list: ListRef | undefined;
+    kindLabel: string;
+    navigate: Navigate;
+    onCoverChanged: () => void;
+}) {
+    const menu = useRef<ListMenuHandle | null>(null);
+    return (
+        <HeroFrame
+            backdrop={list?.heroImage ?? list?.image ?? ''}
+            nav={
+                <Nav
+                    navigate={navigate}
+                    active='lists'
+                    breadcrumb={[
+                        { label: globalize.translate('Lists'), to: { page: 'lists' } },
+                        { label: list?.name ?? kindLabel }
+                    ]}
+                />
+            }
+            onContextMenu={(e) => {
+                e.preventDefault();
+                menu.current?.openAt(e.clientX, e.clientY);
+            }}
+            // Sin rótulo: solo la flecha, que no es texto encima de la imagen.
+            footer={<ScrollHint label='' />}
+        >
+            {/* El menú existe pero no se ve: lo abre el clic derecho. */}
+            <ListCardMenu
+                hideTrigger
+                handle={menu}
+                kind={kind}
+                listId={listId}
+                onChanged={onCoverChanged}
+            />
+        </HeroFrame>
+    );
+}
+
+/**
+ * La franja de datos bajo el hero desnudo: nombre, tipo y cuántos títulos.
+ *
+ * Aquí es donde la lista conserva su nombre. Hace falta que esté escrito en
+ * alguna parte: el del hero, cuando lo hay, va QUEMADO en la imagen, así que
+ * ni se puede renombrar desde ahí ni lo lee un lector de pantalla. Los tres
+ * puntos se quedan también aquí para el móvil, donde no hay clic derecho con
+ * el que abrir el menú de la portada.
+ */
+function ListInfoStrip({ kind, listId, list, kindLabel, count, navigate, onCoverChanged }: {
+    kind: ListKind;
+    listId: string;
+    list: ListRef | undefined;
+    kindLabel: string;
+    count: number | undefined;
+    navigate: Navigate;
+    onCoverChanged: () => void;
+}) {
+    const r = useResponsive();
+    return (
+        <>
+            {/* La vuelta al índice, que en táctil no la pinta nadie más: la
+                barra de arriba no lleva migas de pan y el hero va desnudo. */}
+            {r.touch && <ListBackLink navigate={navigate} />}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 16,
+                paddingBottom: r.touch ? 22 : 30, marginBottom: r.touch ? 24 : 34,
+                borderBottom: `1px solid ${T.hairline}`
+            }}>
+                <div style={{ minWidth: 0 }}>
+                    <div style={{ overflowWrap: 'anywhere' }}>
+                        <EditableTitle
+                            value={list?.name ?? kindLabel}
+                            fontSize={r.touch ? 26 : 34}
+                            onSave={async (next) => { await LISTS.rename(kind, listId, next); }}
+                        />
+                    </div>
+                    <div style={{
+                        marginTop: 6,
+                        fontFamily: T.ui, fontSize: 11, letterSpacing: 2.5,
+                        textTransform: 'uppercase', color: T.dim
+                    }}>
+                        {kindLabel}
+                        {count != null && ` · ${globalize.translate('ItemCount', count)}`}
+                    </div>
+                </div>
+                <div style={{ marginLeft: 'auto' }}>
+                    <ListCardMenu
+                        kind={kind}
+                        listId={listId}
+                        onChanged={onCoverChanged}
+                        size={32}
+                    />
+                </div>
+            </div>
+        </>
+    );
+}
+
+/** Los títulos de la lista, o el aviso de que no hay ninguno. */
+function ListGrid({ items, error, navigate }: {
+    items: PlaylistItem[] | null;
+    error: string | null;
+    navigate: Navigate;
+}) {
+    const r = useResponsive();
+
+    if (error) {
+        return <EmptyState title={globalize.translate('MessageNoPlaylistsYet')} hint={error} />;
+    }
+    if (!items) return <SkeletonRow title='' />;
+    if (items.length === 0) {
+        return (
+            <EmptyState
+                title={globalize.translate('MessageNoItemsFound')}
+                hint={globalize.translate('ListsEmpty')}
+                icon='☰'
+            />
+        );
+    }
+    return (
+        <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? (r.mobile ? 110 : 140) : 160}px, 1fr))`,
+            gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'
+        }}>
+            {items.map((item) => (
+                <ListItemCard key={item.id} item={item} navigate={navigate} />
+            ))}
+        </div>
     );
 }
 

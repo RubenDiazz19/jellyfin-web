@@ -25,7 +25,9 @@ export function ScrollHint({ label = 'Tu biblioteca' }: Props) {
             transition: 'opacity .4s',
             pointerEvents: vis ? 'auto' : 'none'
         }}>
-            <span style={{ opacity: 0.85, fontWeight: 500 }}>{label}</span>
+            {/* Sin rótulo queda solo la flecha: lo que quiere el hero de una
+                colección, donde no debe haber una letra encima de la imagen. */}
+            {label && <span style={{ opacity: 0.85, fontWeight: 500 }}>{label}</span>}
             <svg
                 width='22' height='22' viewBox='0 0 24 24' fill='none'
                 style={{ animation: 'jfp-arrow 1.8s ease-in-out infinite' }}

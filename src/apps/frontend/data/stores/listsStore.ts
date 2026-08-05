@@ -36,7 +36,13 @@ export type ListRef = ListEntry & {
     kind: ListKind;
     /** True si el fondo lo puso el usuario y no es la portada automática. */
     hasCustomCover?: boolean;
+    /** La misma imagen a tamaño de pantalla, para el hero de la lista. */
+    heroImage?: string;
 };
+
+/** Anchos con los que se pide la imagen propia: tarjeta 16/9 y hero. */
+const CARD_WIDTH = 800;
+const HERO_WIDTH = 1920;
 
 /**
  * La imagen propia de la lista, recién pedida al servidor.
@@ -45,10 +51,9 @@ export type ListRef = ListEntry & {
  * apuntaría a la vieja. Se cuela un contador para saltarse la caché del
  * navegador, que si no seguiría enseñando la anterior.
  */
-function coverImage(listId: string): string | undefined {
-    return imageUrl(listId, 'Primary', { maxWidth: 800 }) ?
-        `${imageUrl(listId, 'Primary', { maxWidth: 800 })}&v=${coverVersion}` :
-        undefined;
+function coverImage(listId: string, maxWidth: number): string | undefined {
+    const url = imageUrl(listId, 'Primary', { maxWidth });
+    return url ? `${url}&v=${coverVersion}` : undefined;
 }
 
 /** Sube cada vez que se cambia un fondo, para invalidar la caché de imágenes. */
@@ -66,9 +71,12 @@ type Loaded = {
      * reproducción como uno por episodio; en una colección siempre es uno.
      */
     entries: Map<string, Map<string, string[]>>;
-    /** clave de lista → imagen del último título añadido, para la portada. */
-    covers: Map<string, string | undefined>;
+    /** clave de lista → imágenes heredadas del último título añadido. */
+    covers: Map<string, InheritedCover>;
 };
+
+/** Portada automática: la misma imagen en tamaño tarjeta y en tamaño hero. */
+type InheritedCover = { card?: string; hero?: string };
 
 let cache: Loaded | null = null;
 let inflight: Promise<Loaded> | null = null;
@@ -80,18 +88,29 @@ function emit() {
 /**
  * Portada de una lista: la imagen del último título añadido.
  *
- * Se recorre hacia atrás y no se coge el último a secas porque añadir una
- * serie a una lista de reproducción la expande en TODOS sus episodios, y el
- * último capítulo puede no tener ninguna imagen — quedaría una tarjeta gris
- * justo después de añadir algo, que es cuando más se mira. Se prefiere la
- * apaisada: la tarjeta es 16/9 y una carátula vertical se recorta fatal.
+ * `added` es cuándo entró en la BIBLIOTECA, no en la lista: Jellyfin no
+ * guarda lo segundo en ninguna parte. Para el uso normal —una lista donde vas
+ * metiendo lo que acabas de conseguir— son la misma fecha.
+ *
+ * Sin fechas manda el orden de la lista, que es como estaba antes: una lista
+ * de reproducción se guarda en el orden en que se metieron las cosas. Se
+ * recorre hacia atrás y no se coge el último a secas porque añadir una serie a
+ * una lista de reproducción la expande en TODOS sus episodios, y el último
+ * capítulo puede no tener ninguna imagen — quedaría una tarjeta gris justo
+ * después de añadir algo, que es cuando más se mira. Se prefiere la apaisada:
+ * la tarjeta es 16/9 y una carátula vertical se recorta fatal.
  */
-function coverOf(items: readonly { backdrop?: string; poster?: string }[]): string | undefined {
+function coverOf(items: readonly PlaylistItem[]): InheritedCover {
+    let best: PlaylistItem | undefined;
     for (let i = items.length - 1; i >= 0; i--) {
-        const image = items[i].backdrop ?? items[i].poster;
-        if (image) return image;
+        const item = items[i];
+        if (!item.backdrop && !item.poster) continue;
+        // Un título con fecha siempre gana a uno sin ella; entre dos con
+        // fecha, el más reciente. Entre dos sin fecha manda el orden.
+        if (!item.added) best ??= item;
+        else if (!best?.added || item.added > best.added) best = item;
     }
-    return undefined;
+    return { card: best?.backdrop ?? best?.poster, hero: best?.heroBackdrop };
 }
 
 /** Los títulos de una lista tal como se enseñan y se cuentan. */
@@ -162,16 +181,21 @@ export const LISTS = {
         if (!cache) return [];
         return cache.lists.map((l) => {
             const key = keyOf(l.kind, l.id);
+            const own = LIST_COVERS.has(key);
+            const inherited = cache?.covers.get(key);
             return {
                 ...l,
                 // Manda el fondo que haya puesto el usuario. Si no hay, la
                 // portada automática: el último título añadido. La imagen que
                 // trae el servidor por su cuenta (`l.image`) se deja la
                 // última porque suele ser el collage, que es feo.
-                image: LIST_COVERS.has(key) ?
-                    coverImage(l.id) ?? l.image :
-                    cache?.covers.get(key) ?? l.image,
-                hasCustomCover: LIST_COVERS.has(key),
+                image: own ?
+                    coverImage(l.id, CARD_WIDTH) ?? l.image :
+                    inherited?.card ?? l.image,
+                heroImage: own ?
+                    coverImage(l.id, HERO_WIDTH) ?? l.image :
+                    inherited?.hero ?? inherited?.card ?? l.image,
+                hasCustomCover: own,
                 // El `ChildCount` del servidor cuenta episodios sueltos: una
                 // lista con una película y una serie de 14 capítulos diría 15.
                 // Se cuenta sobre los títulos plegados, que es lo que el
