@@ -35,11 +35,26 @@ export function PosterTile({ title, kindLabel, cover, logo, interactions }: Prop
             <div style={{
                 aspectRatio: '2/3', borderRadius: 8, overflow: 'hidden', position: 'relative',
                 background: 'rgba(255,255,255,0.05)',
-                backgroundImage: cover ? `url(${cover})` : 'none',
-                backgroundSize: 'cover', backgroundPosition: 'center',
+                // Igual que en PosterShell: el marco no se pinta hasta que se
+                // acerca al viewport. Ver la nota larga de allí.
+                contentVisibility: 'auto',
                 outline: selected ? '3px solid #fff' : undefined,
                 outlineOffset: selected ? -3 : undefined
             }}>
+                {/* Con `loading='lazy'`, que un fondo CSS no admite: una
+                    búsqueda puede devolver la biblioteca entera. */}
+                {cover && (
+                    <img
+                        src={cover}
+                        alt=''
+                        loading='lazy'
+                        decoding='async'
+                        style={{
+                            position: 'absolute', inset: 0, width: '100%', height: '100%',
+                            objectFit: 'cover', objectPosition: 'center'
+                        }}
+                    />
+                )}
                 <div style={{
                     position: 'absolute', inset: 0,
                     background: 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))'

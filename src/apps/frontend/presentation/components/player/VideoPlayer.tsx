@@ -100,8 +100,15 @@ export function VideoPlayer({
         el.addEventListener('load', () => {
             // El conversor del servidor a veces deja override tags ASS sin
             // depurar en el VTT; se limpian aquí antes de que se pinten.
+            //
+            // El `includes` no es paranoia: una película trae miles de cues y
+            // casi ninguna necesita limpieza, así que se descartan con una
+            // búsqueda de un carácter en vez de con una regex y una
+            // reescritura de `cue.text` (que además invalida el cue pintado).
             for (const cue of Array.from(el.track.cues ?? [])) {
-                if (cue instanceof VTTCue) cue.text = sanitizeVttCueText(cue.text);
+                if (cue instanceof VTTCue && cue.text.includes('{')) {
+                    cue.text = sanitizeVttCueText(cue.text);
+                }
             }
         });
     }, []);
@@ -390,9 +397,15 @@ export function VideoPlayer({
             {...mouseHandlers}
         >
             {/* Los subtítulos se montan como <track> dinámico según la pista elegida. */}
+            {/* `preload='auto'`: en Direct Play el <video> no tiene src hasta
+                que el VM lo asigna, y con el preload por defecto («metadata»)
+                el navegador se paraba ahí a esperar al play(). Con auto empieza
+                a bufferear en cuanto tiene la URL. En HLS por MSE no aplica —no
+                hay src que precargar—, así que no estorba. */}
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
             <video
                 ref={videoRef} className='jfp-video-el' playsInline crossOrigin='anonymous'
+                preload='auto'
                 style={videoStyle}
             >
                 {subtitleUrl && (

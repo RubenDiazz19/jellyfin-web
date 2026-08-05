@@ -5,6 +5,7 @@ import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
 import { apiSend, noSessionError, trimSlash } from './http';
 import { emitItemMutated } from './mutations';
+import { cachedPlayback } from './playbackCache';
 import type { JFMediaStream } from './types';
 
 export type MediaStreamInfo = {
@@ -105,14 +106,41 @@ export function mapMediaStream(s: JFMediaStream): MediaStreamInfo {
     };
 }
 
-export async function getPlaybackDecision(
+export type PlaybackOptions = {
+    startTicks?: number;
+    audioStreamIndex?: number;
+    subtitleStreamIndex?: number;
+    mediaSourceId?: string;
+};
+
+/** Identifica una negociación: mismo item y mismas pistas, misma respuesta. */
+function decisionVariant(opts: PlaybackOptions): string {
+    return [
+        opts.startTicks, opts.audioStreamIndex, opts.subtitleStreamIndex, opts.mediaSourceId
+    ].map((v) => v ?? '').join('|');
+}
+
+/**
+ * Qué y cómo hay que reproducir, según lo que el servidor contrasta con
+ * nuestro DeviceProfile.
+ *
+ * Va por caché (ver `playbackCache`): el pre-calentamiento de la ficha hace
+ * este POST antes de que el reproductor exista, y así al montarse ya lo tiene.
+ * `fresh` la salta —lo pide el reintento de arranque—.
+ */
+export function getPlaybackDecision(
     itemId: string,
-    opts: {
-        startTicks?: number;
-        audioStreamIndex?: number;
-        subtitleStreamIndex?: number;
-        mediaSourceId?: string;
-    } = {}
+    opts: PlaybackOptions = {},
+    cache: { fresh?: boolean } = {}
+): Promise<PlaybackDecision> {
+    return cachedPlayback(
+        itemId, decisionVariant(opts), () => negotiatePlayback(itemId, opts), cache
+    );
+}
+
+async function negotiatePlayback(
+    itemId: string,
+    opts: PlaybackOptions
 ): Promise<PlaybackDecision> {
     const session = loadSession();
     if (!session?.accessToken || !session?.userId) throw noSessionError();

@@ -5,7 +5,7 @@ import { formatRuntime } from '../../theme/format';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { useResponsive } from '../../theme/responsive';
-import { PosterShell } from './PosterShell';
+import { POSTER_W, PosterShell } from './PosterShell';
 import { useCardInteractions } from './useCardInteractions';
 import type { Movie } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
@@ -28,7 +28,7 @@ const GRID_GRADIENT = 'linear-gradient(180deg, transparent 45%, rgba(0,0,0,0.9))
 // de al lado — ahí lo que se compara es qué es cada cosa, no cuánto dura.
 export const MovieCard = React.memo(function MovieCardBase({ movie, navigate, fluid }: Props) {
     const r = useResponsive();
-    const w = r.touch ? r.cardW : 230;
+    const w = r.touch ? r.cardW : POSTER_W;
     const card = useCardInteractions(
         { id: movie.id, title: movie.title, kind: 'movie', poster: movie.poster, year: movie.year },
         navigate

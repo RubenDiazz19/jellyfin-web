@@ -19,7 +19,7 @@ import { MyListButton } from '../components/controls/MyListButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
-import { useResponsive } from '../theme/responsive';
+import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { useMovieEntity } from './useDetailEntity';
 import { movieKey } from '../../domain/stores';
@@ -55,7 +55,13 @@ function MovieHero({
         '';
     const { minimal } = useHeroLayout(hero);
     const r = useResponsive();
-    const { play } = usePlayer();
+    const short = useShortViewport();
+    const landscape = useLandscape();
+    const { play, prewarm } = usePlayer();
+    // Mismo criterio que la ficha de serie: en vertical el póster llena la
+    // pantalla sin recortar; tumbado o en tablet manda el backdrop.
+    const portraitPhone = r.mobile && !landscape;
+    const heroImage = portraitPhone ? (movie.poster || movie.backdrop || '') : (movie.backdrop || '');
     const startPlay = () => {
         play({
             itemId: movie.id,
@@ -66,8 +72,8 @@ function MovieHero({
     return (
         <HeroFrame
             hero={hero}
-            backdrop={movie.backdrop || ''}
-            backdrops={movie.backdrops}
+            backdrop={heroImage}
+            backdrops={portraitPhone ? undefined : movie.backdrops}
             itemId={movie.id}
             nav={
                 <Nav
@@ -93,8 +99,8 @@ function MovieHero({
                     <HeroGenres
                         genres={movie.genres}
                         navigate={navigate}
-                        fontSize={12}
-                        marginBottom={26}
+                        fontSize={r.touch ? 10 : 12}
+                        marginBottom={short ? 8 : r.touch ? 16 : 26}
                         justifyContent='center'
                     />
                 )}
@@ -103,18 +109,22 @@ function MovieHero({
                     logo={movie.logo}
                     title={movie.title}
                     logoMaxWidth={r.touch ? 'min(78vw, 360px)' : 580}
-                    logoMaxHeight={r.touch ? 120 : 200}
+                    logoMaxHeight={r.touch ? (short ? 'min(22vh, 64px)' : 'min(16vh, 112px)') : 200}
                     logoShadow='rgba(0,0,0,0.6)'
-                    fontSize={r.touch ? 'clamp(38px, 10vw, 72px)' : 'clamp(82px, 10vw, 150px)'}
+                    fontSize={
+                        short ? 'clamp(24px, 6vh, 40px)' :
+                            r.touch ? 'clamp(36px, 9vw, 64px)' : 'clamp(82px, 10vw, 150px)'
+                    }
                     letterSpacing={r.touch ? -1 : -2}
                     balance
                 />
 
                 {!minimal && (
                     <div style={{
-                        marginTop: 22, display: 'flex', alignItems: 'center', gap: 18,
+                        marginTop: short ? 8 : r.touch ? 14 : 22,
+                        display: 'flex', alignItems: 'center', gap: r.touch ? 10 : 18,
                         flexWrap: 'wrap', justifyContent: 'center',
-                        fontFamily: T.ui, fontSize: 13, color: 'rgba(255,255,255,0.78)'
+                        fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.78)'
                     }}>
                         <span>{movie.year}</span><Ic.Dot />
                         <span>{formatRuntime(movie.runtime)}</span><Ic.Dot />
@@ -150,6 +160,7 @@ function MovieHero({
                 >
                     <HeroPlayButton
                         onClick={startPlay}
+                        onHover={() => prewarm(movie.id)}
                         complete={watched}
                         progress={inProgress ? progress : 0}
                         // Con el ratón encima el botón dice qué va a pasar al

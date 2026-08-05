@@ -13,6 +13,12 @@ import { useResponsive } from '../../theme/responsive';
 
 type ButtonProps = {
     onClick: () => void;
+    /**
+     * El puntero (o el foco) ha llegado al botón. Sirve para adelantar
+     * trabajo que se va a necesitar en cuanto lo pulsen: quien lo usa es el
+     * pre-calentamiento del reproductor.
+     */
+    onHover?: () => void;
     /** Título terminado: el botón se invierte y el icono pasa a ser un tick. */
     complete: boolean;
     /** Progreso 0..1 que rellena el fondo; 0 = sin relleno. */
@@ -21,7 +27,7 @@ type ButtonProps = {
     label: (hover: boolean) => ReactNode;
 };
 
-export function HeroPlayButton({ onClick, complete, progress = 0, label }: ButtonProps) {
+export function HeroPlayButton({ onClick, onHover, complete, progress = 0, label }: ButtonProps) {
     const [hover, setHover] = useState(false);
     const inProgress = progress > 0 && progress < 1;
     return (
@@ -33,8 +39,11 @@ export function HeroPlayButton({ onClick, complete, progress = 0, label }: Butto
             // primera. preventDefault en mousedown mantiene el click intacto
             // y la accesibilidad con Tab.
             onMouseDown={(e) => e.preventDefault()}
-            onMouseEnter={() => setHover(true)}
+            onMouseEnter={() => { setHover(true); onHover?.(); }}
             onMouseLeave={() => setHover(false)}
+            // También al llegar con el teclado: quien navega con Tab merece el
+            // mismo adelanto que quien llega con el ratón.
+            onFocus={() => onHover?.()}
             style={{
                 position: 'relative', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', gap: 10, padding: '14px 28px',

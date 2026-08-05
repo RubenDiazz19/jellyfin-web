@@ -13,6 +13,7 @@ import {
     promptInstall
 } from '../../../shared/pwa';
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
+import { aboveNav, besideNav } from '../nav/navMetrics';
 import { haptic } from '../../../shared/haptics';
 
 const DISMISS_KEY = 'jfp-install-dismissed';
@@ -62,12 +63,10 @@ export function InstallBanner() {
             aria-label={globalize.translate('HeaderInstallApp')}
             style={{
                 position: 'fixed',
-                // Deja libre la bottom bar (móvil) o el rail (tablet).
-                left: layout === 'tablet' ? 104 : 16,
+                // Deja libre la píldora de navegación (móvil) o el rail (tablet).
+                left: besideNav(16),
                 right: 16,
-                bottom: layout === 'mobile' ?
-                    'calc(96px + env(safe-area-inset-bottom, 0px))' :
-                    'calc(16px + env(safe-area-inset-bottom, 0px))',
+                bottom: aboveNav(16),
                 zIndex: 150,
                 maxWidth: 480,
                 margin: '0 auto',

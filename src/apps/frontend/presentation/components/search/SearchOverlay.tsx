@@ -15,6 +15,7 @@ import { SearchFilters } from './SearchFilters';
 import { SearchInput } from './SearchInput';
 import { SearchResults } from './SearchResults';
 import { SelectionBar } from '../controls/SelectionBar';
+import { NAV_BOTTOM_VAR } from '../nav/navMetrics';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
@@ -104,9 +105,13 @@ export function SearchOverlay({ navigate }: { navigate: Navigate }) {
 
             {/* El scroll vive aquí dentro: la cabecera con la caja y los
                 filtros se queda fija mientras se recorren los resultados. */}
+            {/* La capa es fixed, así que el hueco de la navegación no se lo da
+                el body: el último resultado se quedaría debajo de la píldora. */}
             <div style={{
                 flex: 1, minHeight: 0, overflowY: 'auto',
-                padding: r.touch ? `24px ${r.pagePad}px 56px` : '36px 64px 80px',
+                padding: r.touch ?
+                    `24px ${r.pagePad}px calc(var(${NAV_BOTTOM_VAR}, 0px) + 32px)` :
+                    '36px 64px 80px',
                 animation: 'jfp-fade-in 0.4s ease-out both'
             }}>
                 <SearchResults navigate={navigateAndClose} />

@@ -4,7 +4,7 @@
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import type { CarouselSlide, Movie, Show } from '../../data/models';
-import { ItemMutationSubscription } from './itemMutations';
+import { ItemMutationSubscription, MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { LoadGuard } from './loadGuard';
 
 export class HomeViewModel {
@@ -28,8 +28,12 @@ export class HomeViewModel {
     async load() {
         this.subscribeToMutations();
         const isLatest = this.loads.begin();
-        this.heroLoading.value = true;
-        this.showsLoading.value = true;
+        // Los esqueletos solo la primera vez. Con los listados cacheados una
+        // vuelta a la Home resuelve en el mismo tick, y en la recarga por
+        // mutación tirar el hero y las filas para volver a pintar lo mismo se
+        // ve como un parpadeo.
+        this.heroLoading.value = !this.heroReady.peek();
+        this.showsLoading.value = !this.showsReady.peek();
         this.showsError.value = null;
 
         // Hero y biblioteca en paralelo con estados independientes: el hero es
@@ -72,12 +76,14 @@ export class HomeViewModel {
 
     // Cualquier mutación de item recarga la Home si ya hay datos: la lista
     // de series/películas y el hero pueden contener el item afectado y no
-    // queremos que el usuario tenga que recargar para verlo.
+    // queremos que el usuario tenga que recargar para verlo. Con debounce: un
+    // lote de mutaciones (marcar una temporada entera) es una recarga, no una
+    // por episodio. Ver MUTATION_DEBOUNCE_MS.
     private subscribeToMutations() {
         this.mutations.ensure(() => {
             if (!this.showsReady.value) return;
             void this.load();
-        });
+        }, MUTATION_DEBOUNCE_MS);
     }
 }
 

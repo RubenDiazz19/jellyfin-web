@@ -46,16 +46,16 @@ describe('useResponsive', () => {
         document.getElementById('jfp-m3-tokens')?.remove();
     });
 
-    it('mobile: 12px de margen, tarjetas de 130', () => {
+    it('mobile: 12px de margen, tarjetas de 156', () => {
         document.documentElement.classList.add('layout-mobile');
         render();
-        expect(seen).toMatchObject({ touch: true, mobile: true, tablet: false, pagePad: 12, cardW: 130 });
+        expect(seen).toMatchObject({ touch: true, mobile: true, tablet: false, pagePad: 12, cardW: 156 });
     });
 
-    it('tablet: 16px de margen, tarjetas de 160', () => {
+    it('tablet: 16px de margen, tarjetas de 200', () => {
         document.documentElement.classList.add('layout-mobile', 'layout-tablet');
         render();
-        expect(seen).toMatchObject({ touch: true, mobile: false, tablet: true, pagePad: 16, cardW: 160 });
+        expect(seen).toMatchObject({ touch: true, mobile: false, tablet: true, pagePad: 16, cardW: 200 });
     });
 
     it('desktop: touch false (los componentes usan sus literales actuales)', () => {

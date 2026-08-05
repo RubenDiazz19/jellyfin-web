@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 
@@ -23,6 +23,31 @@ export function Row({ title, children }: Props) {
                     {title}
                 </h3>
             </div>
+            {children}
+        </div>
+    );
+}
+
+/**
+ * La fila de tarjetas en sí: se arrastra de lado. En táctil encaja cada
+ * tarjeta al soltar (scroll-snap) y esconde la barra de scroll, que ahí no
+ * pinta nada. En escritorio se queda como estaba: flex con scroll a secas.
+ */
+export function RowScroller({ children }: { children: ReactNode }) {
+    const r = useResponsive();
+    const style: CSSProperties = {
+        display: 'flex',
+        gap: r.touch ? r.gap : 24,
+        overflowX: 'auto',
+        ...(r.touch ? {
+            scrollSnapType: 'x mandatory',
+            // Hueco para la sombra M3 de las tarjetas, que el scroll recorta.
+            paddingBottom: 6,
+            scrollbarWidth: 'none' as const
+        } : {})
+    };
+    return (
+        <div style={style} data-jfp-row=''>
             {children}
         </div>
     );

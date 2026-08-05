@@ -7,6 +7,8 @@ import { loadSession } from '../session/session';
 import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
 import { backdropUrls, logoUrl, posterUrl } from './itemMapping';
+import { cachedList } from './listCache';
+import { emitListsRefreshed } from './mutations';
 import { settlePlaybackReports } from './playback';
 import { getShows } from './shows';
 import { FIELDS_LIST, type JFItem } from './types';
@@ -28,7 +30,12 @@ function backdropsOf(
     return primary ? [primary] : [];
 }
 
-export async function getHomeCarousel(): Promise<CarouselSlide[]> {
+/** Los slides del hero. Cacheada igual que los listados; ver `listCache`. */
+export function getHomeCarousel(): Promise<CarouselSlide[]> {
+    return cachedList('home-carousel', fetchHomeCarousel, emitListsRefreshed);
+}
+
+async function fetchHomeCarousel(): Promise<CarouselSlide[]> {
     // El stop del reproductor puede seguir en vuelo al aterrizar aquí; sin
     // esperar, /Items/Resume devuelve la posición vieja.
     await settlePlaybackReports();

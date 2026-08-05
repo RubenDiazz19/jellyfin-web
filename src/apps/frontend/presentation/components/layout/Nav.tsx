@@ -14,6 +14,7 @@ import { WatchedButton } from '../controls/WatchedButton';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { UserAvatar } from './UserAvatar';
+import { besideNav } from '../nav/navMetrics';
 import { useResponsive } from '../../theme/responsive';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import type { Movie } from '../../../domain/models';
@@ -59,7 +60,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
         return (
             <div data-jfp-nav='' style={{
                 position: 'fixed', top: 0, right: 0, zIndex: 50,
-                left: r.tablet ? 'calc(88px + env(safe-area-inset-left, 0px))' : 0,
+                left: besideNav(),
                 padding: `calc(10px + env(safe-area-inset-top, 0px)) ${r.pagePad + 4}px 10px`,
                 display: 'flex', alignItems: 'center', gap: 14,
                 fontFamily: T.ui, fontSize: 13,
@@ -108,6 +109,19 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                             )}
                         </>
                     )}
+                    {/* La lupa va aquí arriba, como en escritorio: abre la capa
+                        de búsqueda encima de la página en vez de navegar. */}
+                    <button
+                        onClick={searchVM.openOverlay}
+                        aria-label={globalize.translate('Search')}
+                        style={{
+                            ...linkReset, display: 'flex', alignItems: 'center',
+                            padding: 4, borderRadius: 'var(--md-sys-shape-corner-full, 9999px)',
+                            color: 'inherit'
+                        }}
+                    >
+                        <Ic.Search size={19} />
+                    </button>
                     <UserAvatar navigate={navigate} />
                 </div>
             </div>

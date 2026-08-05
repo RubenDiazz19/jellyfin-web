@@ -22,7 +22,7 @@ import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
-import { useResponsive } from '../theme/responsive';
+import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
 import { useShowEntity } from './useDetailEntity';
@@ -57,7 +57,14 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     const remaining = cont ? formatRemaining(cont.remaining, { suffix: '' }) : '';
     const { minimal, inlineJustify } = useHeroLayout(hero);
     const r = useResponsive();
-    const { play } = usePlayer();
+    const short = useShortViewport();
+    const landscape = useLandscape();
+    const { play, prewarm } = usePlayer();
+    // En vertical manda el póster: el backdrop es 16:9 y a `cover` en una
+    // pantalla alargada solo se ve su franja central. Tumbado o en tablet, el
+    // backdrop encaja y es el que se usa (con su rotación de fondos).
+    const portraitPhone = r.mobile && !landscape;
+    const heroImage = portraitPhone ? (show.poster || show.backdrop || '') : (show.backdrop || '');
     const targetEp = show.seasons
         .find((s) => s.n === target.seasonN)
         ?.episodes.find((e) => e.n === target.epN);
@@ -76,8 +83,8 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     return (
         <HeroFrame
             hero={hero}
-            backdrop={show.backdrop || ''}
-            backdrops={show.backdrops}
+            backdrop={heroImage}
+            backdrops={portraitPhone ? undefined : show.backdrops}
             itemId={show.id}
             nav={
                 <Nav
@@ -99,7 +106,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                         genres={show.genres}
                         navigate={navigate}
                         fontSize={10}
-                        marginBottom={18}
+                        marginBottom={short ? 8 : 18}
                         justifyContent={inlineJustify}
                     />
                 )}
@@ -108,18 +115,24 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                     logo={show.logo}
                     title={show.title}
                     logoMaxWidth={r.touch ? 'min(78vw, 340px)' : 500}
-                    logoMaxHeight={r.touch ? 110 : 170}
+                    // En táctil el tope va en vh: lo que no debe pasar es que
+                    // el logo se coma el alto que necesitan el dato y el botón.
+                    logoMaxHeight={r.touch ? (short ? 'min(22vh, 64px)' : 'min(15vh, 104px)') : 170}
                     logoShadow='rgba(0,0,0,0.5)'
-                    fontSize={r.touch ? 'clamp(36px, 9vw, 68px)' : 'clamp(76px, 9vw, 134px)'}
+                    fontSize={
+                        short ? 'clamp(24px, 6vh, 38px)' :
+                            r.touch ? 'clamp(34px, 8vw, 60px)' : 'clamp(76px, 9vw, 134px)'
+                    }
                     letterSpacing={r.touch ? -1 : -3}
                 />
 
                 {!minimal && (
                     <div style={{
-                        marginTop: 18, display: 'flex', alignItems: 'center', gap: 14,
+                        marginTop: short ? 8 : r.touch ? 12 : 18,
+                        display: 'flex', alignItems: 'center', gap: r.touch ? 8 : 14,
                         flexWrap: 'wrap',
                         justifyContent: inlineJustify,
-                        fontFamily: T.ui, fontSize: 13, color: 'rgba(255,255,255,0.78)'
+                        fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.78)'
                     }}>
                         <span>{show.year}</span><Ic.Dot />
                         <span>{show.seasons.length} temporadas</span><Ic.Dot />
@@ -131,7 +144,14 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                         </span>
                         <Ic.Dot />
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Ic.Imdb /> {show.rating.imdb}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Ic.Tomato /> {show.rating.rt}%</span>
+                        {/* Sin nota de Rotten Tomatoes no se enseña el tomate:
+                            un «0%» no es una nota mala, es que no hay dato, y
+                            en móvil además se caía solo a una segunda línea. */}
+                        {show.rating.rt > 0 && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <Ic.Tomato /> {show.rating.rt}%
+                            </span>
+                        )}
                     </div>
                 )}
 
@@ -156,6 +176,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                 >
                     <HeroPlayButton
                         onClick={startPlay}
+                        onHover={() => targetEp?.jfId && prewarm(targetEp.jfId)}
                         complete={complete}
                         progress={inProgress ? progress : 0}
                         // Al hover: solo tiempo restante (se expande

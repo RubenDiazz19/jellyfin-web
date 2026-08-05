@@ -4,6 +4,7 @@ import {
 } from 'react';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
+import { aboveNav, besideNav } from '../nav/navMetrics';
 import { DRAG_THRESHOLD, dragVelocity, shouldDismiss } from '../../../shared/dragDismiss';
 
 type ToastKind = 'info' | 'success' | 'warn';
@@ -65,13 +66,13 @@ export function useToast(): ToastContextValue['toast'] {
 
 function Toaster({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
     const r = useResponsive();
-    // En táctil el snackbar se apila abajo, por encima de la bottom nav (o
-    // del rail, que no ocupa la franja inferior). En desktop, centrado como
-    // hasta ahora.
+    // En táctil el snackbar se apila abajo, por encima de la píldora de
+    // navegación (o del rail, que no ocupa la franja inferior). En desktop,
+    // centrado como hasta ahora.
     const wrapStyle = r.touch ? {
         position: 'fixed' as const,
-        left: r.pagePad, right: r.pagePad,
-        bottom: `calc(${r.mobile ? 92 : 16}px + env(safe-area-inset-bottom, 0px))`,
+        left: besideNav(r.pagePad), right: r.pagePad,
+        bottom: aboveNav(12),
         display: 'flex', flexDirection: 'column-reverse' as const, gap: 8,
         alignItems: 'stretch' as const,
         zIndex: 9998, pointerEvents: 'none' as const

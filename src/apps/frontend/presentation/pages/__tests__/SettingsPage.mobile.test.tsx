@@ -78,6 +78,7 @@ describe('SettingsPage móvil', () => {
     beforeEach(() => {
         localStorage.clear();
         themeVM.setMode('dark');
+        themeVM.setSeed(null);
         document.documentElement.className = '';
         document.documentElement.classList.add('layout-mobile');
     });
@@ -88,6 +89,7 @@ describe('SettingsPage móvil', () => {
         root = null;
         host = null;
         themeVM.setMode('dark');
+        themeVM.setSeed(null);
         document.documentElement.className = '';
         document.getElementById('jfp-m3-tokens')?.remove();
     });
@@ -111,6 +113,31 @@ describe('SettingsPage móvil', () => {
 
         clickByText('‹ Settings');
         expect(host?.textContent).toContain('Playback');
+    });
+
+    it('color de acento: elegir uno lo fija y «Automático» lo devuelve al backdrop', () => {
+        render();
+        clickByText('Appearance');
+
+        const swatch = (label: string) =>
+            host?.querySelector(`[role="radio"][aria-label="${label}"]`) as HTMLButtonElement;
+
+        // De salida manda el dynamic color.
+        expect(swatch('Automatic').getAttribute('aria-checked')).toBe('true');
+
+        act(() => { swatch('Purple').click(); });
+        expect(themeVM.seed.value).toBe('#8e24aa');
+        expect(themeVM.seedSource.value).toBe('manual');
+        expect(swatch('Purple').getAttribute('aria-checked')).toBe('true');
+        expect(swatch('Automatic').getAttribute('aria-checked')).toBe('false');
+
+        // Con seed manual, el backdrop deja de mandar.
+        act(() => { themeVM.applyDynamicSeed('#112233'); });
+        expect(themeVM.seed.value).toBe('#8e24aa');
+
+        act(() => { swatch('Automatic').click(); });
+        expect(themeVM.seed.value).toBeNull();
+        expect(themeVM.seedSource.value).toBe('auto');
     });
 
     it('desktop: dos columnas clásicas, sin sección Apariencia', () => {

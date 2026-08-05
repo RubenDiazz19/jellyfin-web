@@ -9,15 +9,18 @@ import globalize from 'lib/globalize';
 import { signal } from '@preact/signals-core';
 import type Hls from 'hls.js';
 import { apiService, type ApiService } from '../../data/api/ApiService';
-import type { MediaStreamInfo, PlaybackDecision } from '../../data/api/playback';
 import type {
-    ItemChapter, NextEpisode, PlaybackContext
+    MediaStreamInfo, PlaybackDecision, PlaybackOptions
+} from '../../data/api/playback';
+import {
+    preferredTrackIndices,
+    type ItemChapter, type NextEpisode, type PlaybackContext
 } from '../../data/api/playbackContext';
 import { segmentsFromChapters } from '../../data/api/chapterSegments';
 import type { MediaSegment } from '../../data/api/segments';
 import {
-    clearTitleLanguagePref, getTitleLanguagePref, setTitleLanguagePref,
-    type TitleLanguagePref
+    clearTitleLanguagePref, countTitleLanguagePrefs, getTitleLanguagePref,
+    setTitleLanguagePref, type TitleLanguagePref
 } from '../../data/preferences/languagePrefs';
 import { TICKS_PER_SECOND, type AspectRatio } from '../player/format';
 import { attachHlsSource, playsHlsNatively } from '../player/hlsSource';
@@ -148,11 +151,7 @@ export class VideoPlayerViewModel {
     /** El usuario ha cerrado el aviso de siguiente episodio. */
     private autoNextDismissed = false;
     /** Opciones de la última carga, para poder reintentarla igual. */
-    private lastSourceOpts: {
-        audioStreamIndex?: number;
-        subtitleStreamIndex?: number;
-        mediaSourceId?: string;
-    } = {};
+    private lastSourceOpts: PlaybackOptions = {};
     /** Posición que hay que recuperar si el arranque falla y se reintenta. */
     private resumeSeconds = 0;
     private retriedSource = false;
@@ -163,6 +162,13 @@ export class VideoPlayerViewModel {
     /** Id bajo el que se recuerdan las pistas: la serie, o la película. */
     private titleId = '';
     private context: PlaybackContext | null = null;
+    /**
+     * La carga del contexto en vuelo. Como ya no siempre se espera antes de
+     * arrancar la fuente, quien SÍ lo necesita (los segmentos, que caen a los
+     * capítulos cuando el servidor no marca ninguno) se engancha aquí en vez
+     * de leer `context` cuando puede no haber llegado.
+     */
+    private contextReady: Promise<void> = Promise.resolve();
     /** Identifica a esta instancia como dueña del <video> (ver OwnedVideo). */
     private readonly instanceId = ++nextInstanceId;
 
@@ -319,10 +325,14 @@ export class VideoPlayerViewModel {
         this.nextEpisode.value = null;
         this.autoNextProgress.value = null;
         this.resumeSeconds = this.startSeconds;
-        // El contexto se pide ANTES de la fuente: si este título tiene idiomas
-        // recordados, PlaybackInfo ya se pide con esas pistas y no hay que
-        // recargar nada nada más empezar.
-        await this.loadContext(itemId);
+        // El contexto y la fuente arrancan a la vez, y solo se espera al
+        // primero cuando puede cambiar lo que se le pide al segundo: si este
+        // usuario tiene idiomas recordados de algún título, PlaybackInfo debe
+        // salir ya con esas pistas para no tener que recargar nada más
+        // empezar. Sin ninguno recordado —la primera reproducción— esperarlo
+        // era una vuelta a la red de más delante del primer fotograma.
+        this.contextReady = this.loadContext(itemId);
+        if (countTitleLanguagePrefs(this.userId()) > 0) await this.contextReady;
         await this.loadSource(this.preferredTracks());
         void this.api.playback.reportPlaybackStart(itemId);
         this.startProgressTimer();
@@ -372,34 +382,13 @@ export class VideoPlayerViewModel {
     }
 
     /**
-     * Traduce los idiomas recordados del título a índices de pista concretos.
-     * Lo que no esté recordado se deja sin pedir a propósito: así el servidor
-     * aplica la preferencia del usuario (Ajustes), que es el siguiente
-     * escalón de la cadena.
+     * Los índices de pista con los que abrir, según los idiomas recordados del
+     * título. La traducción vive en la capa de datos porque el
+     * pre-calentamiento de la ficha tiene que llegar a los mismos: ver
+     * `preferredTrackIndices`.
      */
-    private preferredTracks(): {
-        audioStreamIndex?: number;
-        subtitleStreamIndex?: number;
-        mediaSourceId?: string;
-    } {
-        const pref = this.titlePref.value;
-        const context = this.context;
-        if (!pref || !context) return {};
-
-        const byLanguage = (streams: MediaStreamInfo[], language: string) =>
-            streams.find((s) => s.language === language)?.index;
-
-        const audioStreamIndex = pref.audio ?
-            byLanguage(context.audioStreams, pref.audio) :
-            undefined;
-        // -1 = "sin subtítulos" explícito; sin él el servidor reactivaría el
-        // default del usuario.
-        const subtitleStreamIndex = pref.subtitle === null ?
-            -1 :
-            pref.subtitle ? byLanguage(context.subtitleStreams, pref.subtitle) : undefined;
-
-        if (audioStreamIndex == null && subtitleStreamIndex == null) return {};
-        return { audioStreamIndex, subtitleStreamIndex, mediaSourceId: context.mediaSourceId };
+    private preferredTracks() {
+        return preferredTrackIndices(this.titlePref.value, this.context);
     }
 
     /** Recuerda un idioma para este título (o para su serie). */
@@ -439,7 +428,10 @@ export class VideoPlayerViewModel {
         if (this.closed || this.itemId !== itemId) return;
         // Sin proveedor de segmentos en el servidor (el caso más común) se
         // aprovechan los capítulos: uno llamado "Intro"/"Opening"/"Resumen"
-        // marca el mismo rango que haría falta saltar.
+        // marca el mismo rango que haría falta saltar. Los capítulos vienen
+        // del contexto, que puede seguir en vuelo (ver `contextReady`).
+        if (segments.length === 0) await this.contextReady;
+        if (this.closed || this.itemId !== itemId) return;
         if (segments.length === 0 && this.context) {
             segments = segmentsFromChapters(this.context.chapters, this.context.runtime);
         }
@@ -782,12 +774,14 @@ export class VideoPlayerViewModel {
         this.titleIsSeries.value = false;
     }
 
-    /** Pide PlaybackInfo y engancha la fuente (direct o HLS) al <video>. */
-    private async loadSource(opts: {
-        audioStreamIndex?: number;
-        subtitleStreamIndex?: number;
-        mediaSourceId?: string;
-    }) {
+    /**
+     * Pide PlaybackInfo y engancha la fuente (direct o HLS) al <video>.
+     *
+     * `fresh` fuerza a renegociar en vez de aceptar lo que haya cacheado (ver
+     * `playbackCache`): lo pide el reintento de arranque, que existe
+     * justamente porque la sesión anterior no llegó a levantar.
+     */
+    private async loadSource(opts: PlaybackOptions, cache: { fresh?: boolean } = {}) {
         const video = this.video;
         if (!video) return;
         this.lastSourceOpts = opts;
@@ -795,7 +789,9 @@ export class VideoPlayerViewModel {
             // No pedimos startTimeTicks al servidor: las playlists HLS de
             // Jellyfin son VOD completas, así que basta con seek local tras
             // cargar metadatos (vale para direct y para transcode).
-            const decision = await this.api.playback.getPlaybackDecision(this.itemId, opts);
+            const decision = await this.api.playback.getPlaybackDecision(
+                this.itemId, opts, cache
+            );
             if (this.closed) return;
             this.decision = decision;
             this.audioTracks.value = decision.audioStreams;
@@ -918,7 +914,9 @@ export class VideoPlayerViewModel {
         this.retryTimer = setTimeout(() => {
             this.retryTimer = null;
             if (this.closed) return;
-            void this.loadSource(this.lastSourceOpts);
+            // `fresh`: renegociar de cero. Repetir la sesión cacheada sería
+            // repetir exactamente la que acaba de fallar.
+            void this.loadSource(this.lastSourceOpts, { fresh: true });
         }, RETRY_SOURCE_MS);
         return true;
     }

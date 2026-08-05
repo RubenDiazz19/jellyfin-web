@@ -7,6 +7,7 @@ import { useToast } from '../toast/ToastProvider';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { knownTags } from '../../../domain/viewModels/knownTags';
+import { aboveNav } from '../nav/navMetrics';
 import { BulkTagsDialog } from './BulkTagsDialog';
 
 type Props = {
@@ -51,7 +52,9 @@ export function SelectionBar({ items }: Props) {
             <div
                 style={{
                     position: 'fixed', left: '50%', transform: 'translateX(-50%)',
-                    bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', zIndex: 9000,
+                    // En desktop no hay navegación flotante y la var no
+                    // existe: quedan los 24px + safe-area de siempre.
+                    bottom: aboveNav(24), zIndex: 9000,
                     display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
                     maxWidth: 'calc(100vw - 32px)',
                     padding: '10px 12px', borderRadius: 999,

@@ -6,15 +6,18 @@
 // su tema actual byte a byte.
 //
 // Las paletas light/dark se derivan de un color semilla con
-// @material/material-color-utilities (SchemeTonalSpot, el esquema de
-// Material You que mantiene reconocible el color fuente — importante
-// porque el seed puede venir extraído del backdrop del hero).
+// @material/material-color-utilities. El esquema es SchemeContent: el de
+// Material You pensado justo para cuando el seed sale de una imagen, porque
+// respeta el color fuente tal cual (primary-container ES el color extraído) y
+// tiñe las superficies con su croma. Con SchemeTonalSpot —el anterior— un
+// póster rojo daba un gris casi neutro: se perdía la idea de que el color de
+// la interfaz es el del contenido que se está viendo.
 
 import {
     argbFromHex,
     Hct,
     hexFromArgb,
-    SchemeTonalSpot,
+    SchemeContent,
     type DynamicScheme
 } from '@material/material-color-utilities';
 
@@ -24,6 +27,22 @@ export type M3SchemeName = 'light' | 'dark';
 
 /** Seed por defecto: azul Jellyfin. */
 export const M3_DEFAULT_SEED = '#00a4dc';
+
+/** El `SpecVersion` de la librería no se reexporta desde la raíz del paquete. */
+export type M3SpecVersion = '2021' | '2025';
+
+/**
+ * Versión del spec de color que se le pide a material-color-utilities.
+ *
+ * OJO — hoy este valor no llega a aplicarse: `DynamicScheme` filtra el spec
+ * por variante (`maybeFallbackSpecVersion`) y solo lo respeta en
+ * EXPRESSIVE / VIBRANT / TONAL_SPOT / NEUTRAL; CONTENT —la nuestra, la que
+ * hace que el color salga del póster— cae en el `default` y vuelve a '2021'.
+ * Se pide igualmente porque es la intención real y se activará solo cuando la
+ * librería valide CONTENT para 2025; `m3.test.ts` fija ese comportamiento para
+ * que el día que cambie salte un test en vez de cambiar la paleta en silencio.
+ */
+export const M3_SPEC: M3SpecVersion = '2025';
 
 /** Selector bajo el que viven TODOS los tokens M3. Nunca `:root`. */
 export const M3_SCOPE = 'html.layout-mobile, html.layout-tablet';
@@ -75,6 +94,28 @@ const COLOR_TOKENS: ReadonlyArray<readonly [string, ColorGetter]> = [
     ['on-error', (s) => s.onError],
     ['error-container', (s) => s.errorContainer],
     ['on-error-container', (s) => s.onErrorContainer],
+
+    // Roles del update de 2025. `*-dim` es la versión apagada del acento (para
+    // superficies grandes de color sin gritar); la familia `*-fixed` mantiene
+    // el mismo color en claro y en oscuro, que es lo que pide el spec para
+    // piezas que no deben cambiar al alternar el tema.
+    ['primary-dim', (s) => s.primaryDim],
+    ['primary-fixed', (s) => s.primaryFixed],
+    ['primary-fixed-dim', (s) => s.primaryFixedDim],
+    ['on-primary-fixed', (s) => s.onPrimaryFixed],
+    ['on-primary-fixed-variant', (s) => s.onPrimaryFixedVariant],
+    ['secondary-dim', (s) => s.secondaryDim],
+    ['secondary-fixed', (s) => s.secondaryFixed],
+    ['secondary-fixed-dim', (s) => s.secondaryFixedDim],
+    ['on-secondary-fixed', (s) => s.onSecondaryFixed],
+    ['on-secondary-fixed-variant', (s) => s.onSecondaryFixedVariant],
+    ['tertiary-dim', (s) => s.tertiaryDim],
+    ['tertiary-fixed', (s) => s.tertiaryFixed],
+    ['tertiary-fixed-dim', (s) => s.tertiaryFixedDim],
+    ['on-tertiary-fixed', (s) => s.onTertiaryFixed],
+    ['on-tertiary-fixed-variant', (s) => s.onTertiaryFixedVariant],
+    ['error-dim', (s) => s.errorDim],
+
     ['background', (s) => s.background],
     ['on-background', (s) => s.onBackground],
     ['surface', (s) => s.surface],
@@ -97,8 +138,11 @@ const COLOR_TOKENS: ReadonlyArray<readonly [string, ColorGetter]> = [
     ['scrim', (s) => s.scrim]
 ];
 
+/** Número de roles md-sys-color que emite `makeColorTokens`. */
+export const M3_COLOR_ROLE_COUNT = COLOR_TOKENS.length;
+
 /**
- * Deriva la paleta md-sys-color completa (37 tokens) desde un seed #rrggbb.
+ * Deriva la paleta md-sys-color completa desde un seed #rrggbb.
  * `contrast` es el nivel M3 (ver M3_CONTRAST); por defecto, el estándar.
  * Devuelve `{ '--md-sys-color-primary': '#rrggbb', … }`.
  */
@@ -107,10 +151,11 @@ export function makeColorTokens(
     scheme: M3SchemeName,
     contrast: number = M3_CONTRAST.standard
 ): Record<string, string> {
-    const dyn = new SchemeTonalSpot(
+    const dyn = new SchemeContent(
         Hct.fromInt(argbFromHex(seedHex)),
         scheme === 'dark',
-        clampContrast(contrast)
+        clampContrast(contrast),
+        M3_SPEC
     );
     const out: Record<string, string> = {};
     for (const [token, get] of COLOR_TOKENS) {
@@ -159,10 +204,15 @@ export const M3_SHAPE: Readonly<Record<string, string>> = {
     'medium': '12px',
     'large': '16px',
     'extra-large': '28px',
+    // Atajo del spec para la parte de arriba de los bottom sheets: redondeadas
+    // solo las esquinas superiores, porque las de abajo se salen de pantalla.
+    // Es un shorthand de cuatro valores, así que se usa tal cual en
+    // `border-radius` (BottomSheet.tsx).
+    'extra-large-top': '28px 28px 0 0',
     'full': '9999px'
 };
 
-// ── md-sys-typescale (15 roles del spec) ────────────────────────────────
+// ── md-sys-typescale (15 roles baseline + sus 15 emphasized) ────────────
 
 type TypeRole = {
     size: string;
@@ -189,6 +239,39 @@ export const M3_TYPESCALE: Readonly<Record<string, TypeRole>> = {
     'label-small': { size: '11px', lineHeight: '16px', weight: '500', tracking: '0.5px' }
 };
 
+/**
+ * Estilos *emphasized* del update de mayo de 2025: mismo tamaño y mismo
+ * interlineado que su baseline —para que sustituir uno por otro no mueva el
+ * layout— y un escalón más de peso. Se emiten como
+ * `--md-sys-typescale-<rol>-emphasized-*`, en paralelo a los baseline, que se
+ * quedan exactamente como estaban.
+ */
+const EMPHASIZED_WEIGHT: Readonly<Record<string, string>> = {
+    'display-large': '500',
+    'display-medium': '500',
+    'display-small': '500',
+    'headline-large': '500',
+    'headline-medium': '500',
+    'headline-small': '500',
+    'title-large': '500',
+    'title-medium': '600',
+    'title-small': '600',
+    'body-large': '500',
+    'body-medium': '500',
+    'body-small': '500',
+    'label-large': '700',
+    'label-medium': '700',
+    'label-small': '700'
+};
+
+export const M3_TYPESCALE_EMPHASIZED: Readonly<Record<string, TypeRole>> =
+    Object.fromEntries(
+        Object.entries(M3_TYPESCALE).map(([role, t]) => [
+            `${role}-emphasized`,
+            { ...t, weight: EMPHASIZED_WEIGHT[role] ?? t.weight }
+        ])
+    );
+
 const M3_TYPE_FONT = T.ui;
 
 // ── Builder del stylesheet ──────────────────────────────────────────────
@@ -203,12 +286,25 @@ export function buildM3Css(
     scheme: M3SchemeName,
     contrast: number = M3_CONTRAST.standard
 ): string {
+    return buildM3CssFromTokens(makeColorTokens(seedHex, scheme, contrast), scheme, contrast);
+}
+
+/**
+ * Igual que `buildM3Css` pero con la paleta ya calculada. Existe porque el
+ * provider necesita además un token suelto (el `surface`, para el
+ * `theme-color` de la barra de estado): así los 53 roles se derivan una sola
+ * vez por cambio de seed/scheme/contraste en vez de dos.
+ */
+export function buildM3CssFromTokens(
+    colors: Record<string, string>,
+    scheme: M3SchemeName,
+    contrast: number = M3_CONTRAST.standard
+): string {
     const lines: string[] = [
         `--md-sys-color-scheme: ${scheme};`,
         `--md-sys-contrast: ${clampContrast(contrast)};`
     ];
 
-    const colors = makeColorTokens(seedHex, scheme, contrast);
     for (const [k, v] of Object.entries(colors)) lines.push(`${k}: ${v};`);
 
     M3_ELEVATION.forEach((shadow, level) => {
@@ -226,7 +322,7 @@ export function buildM3Css(
         lines.push(`--md-sys-motion-duration-${k}: ${v};`);
     }
 
-    for (const [role, t] of Object.entries(M3_TYPESCALE)) {
+    for (const [role, t] of Object.entries({ ...M3_TYPESCALE, ...M3_TYPESCALE_EMPHASIZED })) {
         lines.push(`--md-sys-typescale-${role}-font: ${M3_TYPE_FONT};`);
         lines.push(`--md-sys-typescale-${role}-size: ${t.size};`);
         lines.push(`--md-sys-typescale-${role}-line-height: ${t.lineHeight};`);

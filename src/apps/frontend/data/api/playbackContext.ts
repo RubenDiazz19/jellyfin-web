@@ -4,10 +4,12 @@
 // poder pedir ya las pistas del idioma preferido; hacerlo después obligaría
 // a recargar la fuente nada más empezar.
 
+import type { TitleLanguagePref } from '../preferences/languagePrefs';
 import { loadSession } from '../session/session';
 import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
-import { mapMediaStream, type MediaStreamInfo } from './playback';
+import { mapMediaStream, type MediaStreamInfo, type PlaybackOptions } from './playback';
+import { cachedPlayback } from './playbackCache';
 import type { JFMediaStream } from './types';
 
 const TICKS_PER_SECOND = 10_000_000;
@@ -47,7 +49,17 @@ type JFPlaybackItem = {
     MediaSources?: { Id?: string; MediaStreams?: JFMediaStream[] }[];
 };
 
-export async function getPlaybackContext(itemId: string): Promise<PlaybackContext> {
+/**
+ * Contexto del item. Cacheado (ver `playbackCache`) porque lo piden dos: el
+ * pre-calentamiento de la ficha y, un instante después, el reproductor al
+ * montarse. El segundo no debería volver a la red por algo que acaba de
+ * llegar.
+ */
+export function getPlaybackContext(itemId: string): Promise<PlaybackContext> {
+    return cachedPlayback(itemId, 'context', () => fetchPlaybackContext(itemId));
+}
+
+async function fetchPlaybackContext(itemId: string): Promise<PlaybackContext> {
     const session = loadSession();
     if (!session?.userId) throw noSessionError();
     const item = await apiFetch<JFPlaybackItem>(
@@ -70,6 +82,38 @@ export async function getPlaybackContext(itemId: string): Promise<PlaybackContex
         mediaSourceId: source?.Id,
         runtime: item.RunTimeTicks ? item.RunTimeTicks / TICKS_PER_SECOND : undefined
     };
+}
+
+/**
+ * Traduce los idiomas recordados de un título a índices de pista concretos.
+ *
+ * Lo que no esté recordado se deja sin pedir a propósito: así el servidor
+ * aplica la preferencia del usuario (Ajustes), que es el siguiente escalón de
+ * la cadena. Vive aquí, y no en el ViewModel del reproductor, porque el
+ * pre-calentamiento tiene que llegar EXACTAMENTE a los mismos índices: si no,
+ * negociaría una sesión con otras pistas y el reproductor la pediría de nuevo
+ * al montarse —dos transcodes, y el calentamiento en balde—.
+ */
+export function preferredTrackIndices(
+    pref: TitleLanguagePref | null,
+    context: PlaybackContext | null
+): PlaybackOptions {
+    if (!pref || !context) return {};
+
+    const byLanguage = (streams: MediaStreamInfo[], language: string) =>
+        streams.find((s) => s.language === language)?.index;
+
+    const audioStreamIndex = pref.audio ?
+        byLanguage(context.audioStreams, pref.audio) :
+        undefined;
+    // -1 = "sin subtítulos" explícito; sin él el servidor reactivaría el
+    // default del usuario.
+    const subtitleStreamIndex = pref.subtitle === null ?
+        -1 :
+        pref.subtitle ? byLanguage(context.subtitleStreams, pref.subtitle) : undefined;
+
+    if (audioStreamIndex == null && subtitleStreamIndex == null) return {};
+    return { audioStreamIndex, subtitleStreamIndex, mediaSourceId: context.mediaSourceId };
 }
 
 // ── Siguiente episodio ──────────────────────────────────────────────────────

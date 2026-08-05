@@ -5,8 +5,10 @@ import { WATCHED } from '../stores/watchedStore';
 import { isDeleted, itemGoneError } from './deleted';
 import { apiFetch, fetchUserItems, noSessionError } from './http';
 import { mapCommonFields, watchedFraction } from './itemMapping';
+import { cachedList } from './listCache';
+import { emitListsRefreshed } from './mutations';
 import { settlePlaybackReports } from './playback';
-import { FIELDS_DETAIL, FIELDS_LIST, type JFItem } from './types';
+import { FIELDS_DETAIL, FIELDS_GRID, GRID_IMAGE_TYPES, type JFItem } from './types';
 
 // Exportado para las consultas de `discover`: ver la nota en shows.ts.
 export function mapMovie(item: JFItem): Movie {
@@ -18,10 +20,16 @@ export function mapMovie(item: JFItem): Movie {
     };
 }
 
-export async function getMovies(): Promise<Movie[]> {
+/** Todas las películas de la biblioteca. Cacheada; ver `getShows`. */
+export function getMovies(): Promise<Movie[]> {
+    return cachedList('movies', fetchMovies, emitListsRefreshed);
+}
+
+async function fetchMovies(): Promise<Movie[]> {
     await settlePlaybackReports();
     const items = await fetchUserItems<JFItem>(
-        `IncludeItemTypes=Movie&Recursive=true&SortBy=SortName&Fields=${FIELDS_LIST}`
+        'IncludeItemTypes=Movie&Recursive=true&SortBy=SortName'
+        + `&Fields=${FIELDS_GRID}&EnableImageTypes=${GRID_IMAGE_TYPES}`
     );
     const movies = items.map(mapMovie);
     // Hidrata el store local de "visto" con la verdad del server.

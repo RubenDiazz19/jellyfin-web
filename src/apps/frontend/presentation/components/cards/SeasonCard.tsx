@@ -62,13 +62,13 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
                         <span>{season.total} episodios</span>
                         <span>{season.year}</span>
                     </div>
-
-                    {pct > 0 && (
-                        <div style={{ marginTop: 10 }}>
-                            <Progress value={pct} height={2} />
-                        </div>
-                    )}
                 </div>
+
+                {pct > 0 && (
+                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+                        <Progress value={pct} height={3} />
+                    </div>
+                )}
             </div>
         </div>
     );

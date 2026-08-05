@@ -106,12 +106,21 @@ export function DetailHeading({
     );
 }
 
-/** Tabla etiqueta → valor de la columna de datos. */
+/**
+ * Tabla etiqueta → valor de la columna de datos.
+ *
+ * En táctil la etiqueta ocupa menos (120px de 360 son un tercio de la
+ * pantalla) y el valor va en `minmax(0,…)`: con `1fr` a secas el mínimo es el
+ * min-content del valor, y una fecha larga o un `1080p · HEVC · SDR` sacaban
+ * la tabla fuera de la pantalla en vez de partirse en varias líneas.
+ */
 export function DetailTable({ children }: { children: ReactNode }) {
+    const r = useResponsive();
     return (
         <div style={{
-            display: 'grid', gridTemplateColumns: '120px 1fr',
-            rowGap: 14, columnGap: 18, fontSize: 13
+            display: 'grid',
+            gridTemplateColumns: r.touch ? 'minmax(88px, auto) minmax(0, 1fr)' : '120px minmax(0, 1fr)',
+            rowGap: 14, columnGap: r.touch ? 14 : 18, fontSize: 13
         }}>
             {children}
         </div>

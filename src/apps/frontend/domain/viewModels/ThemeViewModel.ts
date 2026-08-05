@@ -14,13 +14,14 @@ import {
     isSeedColor,
     isThemeMode,
     THEME_STORE,
+    type SeedSource,
     type ThemeMode,
     type ThemePrefs
 } from '../../data/stores/themeStore';
 
-// Las Views consumen este tipo a través del ViewModel (presentation no
+// Las Views consumen estos tipos a través del ViewModel (presentation no
 // puede importar de data/).
-export type { ThemeMode };
+export type { SeedSource, ThemeMode };
 
 type Store = Pick<typeof THEME_STORE, 'load' | 'save'>;
 type SyncApi = {
@@ -40,6 +41,9 @@ export class ThemeViewModel {
     /** Seed #rrggbb activa (manual o dinámica); null = seed por defecto. */
     seed = signal<string | null>(null);
 
+    /** 'manual' congela la seed elegida en Ajustes: el dynamic color no pisa. */
+    seedSource = signal<SeedSource>('auto');
+
     /** Esquema efectivo que el provider materializa en CSS. */
     scheme = computed<'dark' | 'light'>(() => (
         this.mode.value === 'system' ?
@@ -54,6 +58,7 @@ export class ThemeViewModel {
         const prefs = store.load();
         this.mode.value = prefs.mode;
         this.seed.value = prefs.seed;
+        this.seedSource.value = prefs.seedSource;
     }
 
     /** Override manual del usuario. Persiste y se sube al server. */
@@ -63,21 +68,29 @@ export class ThemeViewModel {
         this.persist(true);
     }
 
-    /** Seed elegida a mano (o null para volver a la default). Se sube al server. */
+    /**
+     * Seed elegida a mano en Ajustes; `null` devuelve el mando al dynamic
+     * color. Se sube al server, y mientras sea manual el backdrop deja de
+     * cambiar el color.
+     */
     setSeed(seed: string | null) {
         if (seed !== null && !isSeedColor(seed)) return;
         const normalized = seed ? seed.toLowerCase() : null;
-        if (normalized === this.seed.value) return;
+        const source: SeedSource = normalized ? 'manual' : 'auto';
+        if (normalized === this.seed.value && source === this.seedSource.value) return;
         this.seed.value = normalized;
+        this.seedSource.value = source;
         this.persist(true);
     }
 
     /**
      * Dynamic color: seed extraída del backdrop visible. Persiste solo en
      * local — el carrusel del hero rota cada pocos segundos y no queremos
-     * un POST al server por rotación.
+     * un POST al server por rotación. Con una seed manual elegida no hace
+     * nada: quien la eligió no quiere que la imagen se la cambie.
      */
     applyDynamicSeed(seed: string) {
+        if (this.seedSource.value === 'manual') return;
         if (!isSeedColor(seed)) return;
         const normalized = seed.toLowerCase();
         if (normalized === this.seed.value) return;
@@ -91,7 +104,13 @@ export class ThemeViewModel {
             const remote = await this.sync.get();
             if (!remote) return;
             if (isThemeMode(remote.mode)) this.mode.value = remote.mode;
-            if (isSeedColor(remote.seed)) this.seed.value = remote.seed.toLowerCase();
+            // Al server solo suben las seeds elegidas a mano (las dinámicas se
+            // guardan en local), así que una seed remota es, por definición,
+            // una elección del usuario en otro dispositivo.
+            if (isSeedColor(remote.seed)) {
+                this.seed.value = remote.seed.toLowerCase();
+                this.seedSource.value = 'manual';
+            }
             this.persist(false);
         } catch {
             // Sin red o server sin la preferencia: manda la copia local.
@@ -99,7 +118,11 @@ export class ThemeViewModel {
     }
 
     private persist(push: boolean) {
-        const prefs: ThemePrefs = { mode: this.mode.value, seed: this.seed.value };
+        const prefs: ThemePrefs = {
+            mode: this.mode.value,
+            seed: this.seed.value,
+            seedSource: this.seedSource.value
+        };
         this.store.save(prefs);
         if (push) {
             this.sync.save({ mode: prefs.mode, seed: prefs.seed }).catch(() => {

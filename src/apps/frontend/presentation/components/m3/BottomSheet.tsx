@@ -177,7 +177,7 @@ export function BottomSheet({ title, onClose, children }: Props) {
                     padding: '8px 8px calc(16px + env(safe-area-inset-bottom, 0px))',
                     background: 'var(--md-sys-color-surface-container, #1b1b1f)',
                     color: 'var(--md-sys-color-on-surface, #fff)',
-                    borderRadius: 'var(--md-sys-shape-corner-extra-large, 28px) var(--md-sys-shape-corner-extra-large, 28px) 0 0',
+                    borderRadius: 'var(--md-sys-shape-corner-extra-large-top, 28px 28px 0 0)',
                     boxShadow: 'var(--md-sys-elevation-level3, 0 -8px 24px rgba(0,0,0,0.5))',
                     ...(dragging ?
                         { transform: `translateY(${offset}px)` } :

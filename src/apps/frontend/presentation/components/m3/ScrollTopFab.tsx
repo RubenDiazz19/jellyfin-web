@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { scrollBehavior } from 'utils/motion';
 
 import { useResponsive } from '../../theme/responsive';
+import { aboveNav } from '../nav/navMetrics';
 import { Fab } from './Fab';
 
 const SHOW_AFTER = 700;
@@ -40,9 +41,9 @@ export function ScrollTopFab() {
         <div style={{
             position: 'fixed',
             right: r.pagePad + 4,
-            // Por encima de la bottom nav (móvil) o del rail (tablet, sin
-            // franja inferior).
-            bottom: `calc(${r.mobile ? 92 : 20}px + env(safe-area-inset-bottom, 0px))`,
+            // Por encima de la píldora de navegación (móvil) o del rail
+            // (tablet, que no ocupa la franja inferior).
+            bottom: aboveNav(12),
             zIndex: 130,
             animation: 'jfp-fade-in 0.2s ease-out both'
         }}>

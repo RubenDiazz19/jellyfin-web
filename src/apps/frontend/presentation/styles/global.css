@@ -190,13 +190,70 @@ html.layout-tablet body.jf-frontend-active [data-ripple] {
 
 /* Hueco para la navegación M3 (la clase jfp-has-nav la pone MobileNav al
    montarse, solo con sesión y layout táctil). Desktop: sin clases, cero
-   efecto. Móvil: bottom bar de 80px; tablet: rail de 88px a la izquierda. */
+   efecto. Las medidas las publica MobileNav como custom properties
+   (navMetrics.ts) porque la píldora flota y su hueco depende del modo: en
+   móvil ocupa la franja de abajo, en tablet la de la izquierda. */
+html.layout-mobile body.jf-frontend-active.jfp-has-nav,
 html.layout-tablet body.jf-frontend-active.jfp-has-nav {
-    padding-left: calc(88px + env(safe-area-inset-left, 0px)) !important;
+    padding-bottom: var(--jfp-nav-bottom, 0) !important;
+    padding-left: var(--jfp-nav-left, 0) !important;
 }
 
-html.layout-mobile:not(.layout-tablet) body.jf-frontend-active.jfp-has-nav {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+/* Medidas propias del shell táctil:
+   · --jfp-nav-surface / --jfp-nav-outline: superficie de la píldora de
+     navegación (la translucidez se añade abajo si hay color-mix).
+   · --jfp-viewport-h: alto de viewport para los heroes a pantalla completa.
+     svh (no vh ni dvh): vh no descuenta la barra de direcciones del navegador
+     móvil y recorta el hero por abajo; dvh sí, pero cambia de valor mientras
+     se hace scroll y el hero se redimensiona a la vez que se desplaza. svh es
+     el alto con la barra visible: nunca recorta y no baila. */
+html.layout-mobile body.jf-frontend-active,
+html.layout-tablet body.jf-frontend-active {
+    --jfp-nav-surface: var(--md-sys-color-surface-container-high, #202020);
+    --jfp-nav-outline: transparent;
+    --jfp-viewport-h: 100vh;
+}
+
+@supports (background: color-mix(in srgb, red 50%, transparent)) {
+    html.layout-mobile body.jf-frontend-active,
+    html.layout-tablet body.jf-frontend-active {
+        --jfp-nav-surface: color-mix(in srgb, var(--md-sys-color-surface-container-high, #202020) 84%, transparent);
+        --jfp-nav-outline: color-mix(in srgb, var(--md-sys-color-outline-variant, #fff) 40%, transparent);
+    }
+}
+
+@supports (height: 100svh) {
+    html.layout-mobile body.jf-frontend-active,
+    html.layout-tablet body.jf-frontend-active {
+        --jfp-viewport-h: 100svh;
+    }
+}
+
+/* Entrada de la navegación flotante: sube desde el borde al montarse. El
+   rail lleva su propio keyframe porque va centrado con translateY(-50%) y el
+   fotograma final de una animación `both` machaca el transform en línea. */
+@keyframes jfp-nav-in {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes jfp-rail-in {
+    from {
+        opacity: 0;
+        transform: translate(-16px, -50%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(0, -50%);
+    }
 }
 
 /* Animaciones globales del prototipo — se dejan sin scope: son sólo @keyframes
@@ -387,6 +444,23 @@ html.layout-tablet body.jf-frontend-active .jfp-skeleton {
         );
     background-size: 200% 100%;
     border-radius: var(--md-sys-shape-corner-small, 4px);
+}
+
+/* Bloque de texto de los heroes de ficha en táctil: los hijos no encogen.
+   Ver el comentario de DetailHero.tsx — encoger la caja de un texto no encoge
+   el texto, y el sobrante se pintaba encima del elemento de al lado. */
+html.layout-mobile body.jf-frontend-active .jfp-hero-content > *,
+html.layout-tablet body.jf-frontend-active .jfp-hero-content > * {
+    flex-shrink: 0;
+    max-width: 100%;
+}
+
+/* Filas de tarjetas en táctil: cada tarjeta es un punto de anclaje, para que
+   el carrusel pare encajado y no a media carátula. El `scroll-snap-type` lo
+   pone RowScroller; sin este `align` en los hijos no habría dónde encajar. */
+html.layout-mobile body.jf-frontend-active [data-jfp-row] > *,
+html.layout-tablet body.jf-frontend-active [data-jfp-row] > * {
+    scroll-snap-align: start;
 }
 
 /* Tarjetas con shape + elevation M3 (Fase 6, solo mobile/tablet). Los

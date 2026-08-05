@@ -16,7 +16,7 @@ type RemotePrefs = { mode?: string; seed?: string } | null;
 function makeVm(initial?: Partial<ThemePrefs>, remote: RemotePrefs = null) {
     const saved: ThemePrefs[] = [];
     const store = {
-        load: (): ThemePrefs => ({ mode: 'dark', seed: null, ...initial }),
+        load: (): ThemePrefs => ({ mode: 'dark', seed: null, seedSource: 'auto', ...initial }),
         save: (p: ThemePrefs) => { saved.push(p); }
     };
     const sync = {
@@ -52,7 +52,9 @@ describe('ThemeViewModel', () => {
         const { vm, saved, sync } = makeVm();
         vm.setMode('light');
         expect(vm.scheme.value).toBe('light');
-        expect(saved.at(-1)).toEqual({ mode: 'light', seed: null });
+        expect(saved.at(-1)).toEqual({ mode: 'light', seed: null, seedSource: 'auto' });
+        // Al server solo van mode y seed: seedSource es una decisión de este
+        // dispositivo (una seed remota siempre es manual, ver pullFromServer).
         expect(sync.save).toHaveBeenCalledWith({ mode: 'light', seed: null });
     });
 
@@ -72,8 +74,24 @@ describe('ThemeViewModel', () => {
         const { vm, saved, sync } = makeVm();
         vm.applyDynamicSeed('#336699');
         expect(vm.seed.value).toBe('#336699');
-        expect(saved.at(-1)).toEqual({ mode: 'dark', seed: '#336699' });
+        expect(saved.at(-1)).toEqual({ mode: 'dark', seed: '#336699', seedSource: 'auto' });
         expect(sync.save).not.toHaveBeenCalled();
+    });
+
+    it('con una seed manual elegida, el backdrop ya no la cambia', () => {
+        const { vm } = makeVm();
+        vm.setSeed('#aabb00');
+        expect(vm.seedSource.value).toBe('manual');
+
+        vm.applyDynamicSeed('#336699');
+        expect(vm.seed.value).toBe('#aabb00');
+
+        // Volver a automático devuelve el mando al dynamic color.
+        vm.setSeed(null);
+        expect(vm.seedSource.value).toBe('auto');
+        expect(vm.seed.value).toBeNull();
+        vm.applyDynamicSeed('#336699');
+        expect(vm.seed.value).toBe('#336699');
     });
 
     it('pullFromServer aplica valores remotos válidos e ignora basura', async () => {
@@ -81,6 +99,14 @@ describe('ThemeViewModel', () => {
         await vm.pullFromServer();
         expect(vm.mode.value).toBe('light');
         expect(vm.seed.value).toBeNull();
+        expect(vm.seedSource.value).toBe('auto');
+    });
+
+    it('una seed remota es una elección del usuario: llega como manual', async () => {
+        const { vm } = makeVm({}, { mode: 'dark', seed: '#8E24AA' });
+        await vm.pullFromServer();
+        expect(vm.seed.value).toBe('#8e24aa');
+        expect(vm.seedSource.value).toBe('manual');
     });
 
     it('pullFromServer sobrevive a errores de red (manda la copia local)', async () => {

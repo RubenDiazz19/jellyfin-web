@@ -1,12 +1,20 @@
 import { T } from '../../theme/tokens';
+import { useResponsive } from '../../theme/responsive';
 import { useScrollY } from '../../../domain/bridge/useScrollY';
 
 type Props = { label?: string };
 
 // Indicador flotante de "hay más contenido debajo" que se desvanece al bajar.
+//
+// Solo escritorio. En táctil no se pinta: el hero mide menos de una pantalla
+// (ya se ve que hay más debajo), deslizar es el gesto natural y, sobre todo,
+// esto va en absoluto pegado al fondo del hero y se comía el botón de
+// reproducir de las fichas en cuanto la pantalla era corta.
 export function ScrollHint({ label = 'Tu biblioteca' }: Props) {
+    const r = useResponsive();
     const y = useScrollY();
     const vis = y < 80;
+    if (r.touch) return null;
     return (
         <div style={{
             position: 'absolute', left: '50%', bottom: 32, transform: 'translateX(-50%)',

@@ -1,16 +1,28 @@
-// Hero de la Home para mobile/tablet (el desktop conserva su carrusel
-// 100vh en HomePage). Mobile: 40vh, sin backdrop — póster + info con un
-// gradiente corto. Tablet: 55vh con backdrop ligero. El estado del carrusel
-// (slides, idx, autoplay) vive en HomePage y se comparte con esta vista.
+// Hero de la Home para mobile/tablet: a pantalla completa, como el carrusel
+// de escritorio. El estado del carrusel (slides, idx, autoplay) vive en
+// HomePage y se comparte con esta vista.
+//
+// Dos decisiones que vienen de que el móvil es vertical y el escritorio no:
+//
+//  · La imagen de fondo es el PÓSTER en móvil y el BACKDROP en tablet. Un
+//    backdrop 16:9 estirado a `cover` en una pantalla 9:19.5 se queda en un
+//    recorte central sin composición; el póster (2:3) llena el alto sin
+//    destrozar la imagen.
+//  · El bloque de contenido va en flujo (columna con gap), no en absoluto:
+//    logo → dato → play → puntos, en ese orden y sin que nada se solape,
+//    encoja lo que encoja la pantalla. El alto usa --jfp-viewport-h (dvh),
+//    que descuenta la barra del navegador, y el padding inferior descuenta
+//    la píldora de navegación.
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 
 import type { CarouselSlide } from '../../../domain/models';
 import { T } from '../../theme/tokens';
+import { useShortViewport } from '../../theme/responsive';
 import { formatRemainingCompact } from '../../theme/format';
 import { Backdrop } from '../layout/Backdrop';
 import { PlayBtn } from '../controls/PlayBtn';
-import { useMobileTheme } from '../../theme/MobileThemeProvider';
+import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 
 type Props = {
     slides: CarouselSlide[];
@@ -22,14 +34,7 @@ type Props = {
 
 export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
     const slide = slides[Math.min(idx, slides.length - 1)];
-    const { applyImageSeed } = useMobileTheme();
-
-    // Dynamic color: en mobile no hay Backdrop (que es quien alimenta la
-    // seed en el resto de vistas), así que la nutre el póster visible.
-    useEffect(() => {
-        const src = tablet ? slide?.backdrop : slide?.poster;
-        if (src) applyImageSeed(src);
-    }, [slide, tablet, applyImageSeed]);
+    const short = useShortViewport();
 
     // Swipe horizontal para cambiar de slide.
     const touchStart = useRef<{ x: number; y: number } | null>(null);
@@ -54,14 +59,32 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
         (slide.season != null ? `T${slide.season} · E${slide.episode}` : 'Continuar viendo') :
         String(slide.year);
 
+    // El Backdrop alimenta la seed del dynamic color con lo que se ve, así
+    // que el tema (y con él la píldora de navegación) toma el color de esta
+    // misma imagen.
+    const image = tablet ?
+        (slide.backdrop || slide.poster) :
+        (slide.poster || slide.backdrop);
+
+    const side = tablet ? 32 : 20;
+    const topPad = short ? 44 : 64;
+    const gap = short ? 8 : (tablet ? 18 : 14);
+    const playSize = short ? 64 : (tablet ? 104 : 84);
+    const logoMax = short ? 'min(30vh, 84px)' : (tablet ? 'min(22vh, 160px)' : 'min(18vh, 110px)');
+
     return (
         <section
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
             style={{
                 position: 'relative',
-                height: tablet ? '55vh' : '40vh',
-                minHeight: tablet ? 360 : 300,
+                height: 'var(--jfp-viewport-h, 100vh)',
+                // A sangre: el body lleva reservado el hueco del rail (tablet)
+                // y el safe-area, y aquí se devuelve para que la imagen llegue
+                // al borde y el rail flote encima. El lado derecho no se toca,
+                // así que no hay desbordamiento horizontal.
+                marginLeft: 'calc(-1 * var(--jfp-nav-left, 0px))',
+                width: 'calc(100% + var(--jfp-nav-left, 0px))',
                 overflow: 'hidden',
                 background: 'var(--md-sys-color-surface, #000)',
                 color: 'var(--md-sys-color-on-surface, #fff)',
@@ -69,19 +92,18 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
                 userSelect: 'none'
             }}
         >
-            {/* Tablet: backdrop ligero. Mobile: sin backdrop (spec 4.1). */}
-            {tablet && (
-                <Backdrop src={slide.backdrop} itemId={slide.id} vignette={0.25} sharp />
-            )}
+            <Backdrop src={image} itemId={slide.id} vignette={0.3} sharp />
 
-            {/* Gradiente corto para legibilidad del bloque inferior. */}
+            {/* Velo inferior: el texto se lee sin apagar la mitad de arriba. */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
                 pointerEvents: 'none',
-                background: tablet ?
-                    'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.25) 34%, transparent 60%)' :
-                    'linear-gradient(to top, var(--md-sys-color-surface, #000) 0%, transparent 45%)'
+                background: 'linear-gradient(to top,'
+                    + ' var(--md-sys-color-surface, #000) 0%,'
+                    + ' rgba(0, 0, 0, 0.74) 22%,'
+                    + ' rgba(0, 0, 0, 0.28) 46%,'
+                    + ' transparent 68%)'
             }}
             />
 
@@ -89,9 +111,18 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
                 position: 'absolute',
                 inset: 0,
                 display: 'flex',
-                alignItems: 'flex-end',
-                gap: 16,
-                padding: tablet ? '0 24px 40px' : '0 16px 24px'
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                textAlign: 'center',
+                gap,
+                // El contenido se queda dentro de lo que la navegación deja
+                // libre: arriba la barra superior (logo + avatar), abajo la
+                // píldora y a la izquierda el rail en tablet.
+                padding: `calc(${topPad}px + env(safe-area-inset-top, 0px))`
+                    + ` calc(${side}px + env(safe-area-inset-right, 0px))`
+                    + ` calc(var(${NAV_BOTTOM_VAR}, 24px) + ${short ? 8 : (tablet ? 24 : 16)}px)`
+                    + ` calc(${side}px + var(${NAV_LEFT_VAR}, 0px))`
             }}
             >
                 {/* key = id: crossfade sencillo al cambiar de slide. */}
@@ -99,121 +130,114 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
                     key={slide.id}
                     style={{
                         display: 'flex',
-                        alignItems: 'flex-end',
-                        gap: 16,
-                        width: '100%',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        minHeight: 0,
+                        maxWidth: '100%',
+                        gap: short ? 8 : (tablet ? 16 : 12),
                         animation: 'jfp-fade-in 0.45s ease-out both'
                     }}
                 >
-                    {!tablet && (
+                    {slide.logo ? (
                         <img
-                            src={slide.poster || slide.backdrop}
-                            alt=''
+                            src={slide.logo}
+                            alt={slide.title}
                             decoding='async'
                             style={{
-                                width: 108,
-                                aspectRatio: '2/3',
-                                objectFit: 'cover',
-                                borderRadius: 'var(--md-sys-shape-corner-medium, 12px)',
-                                boxShadow: 'var(--md-sys-elevation-level2, 0 4px 12px rgba(0,0,0,0.5))',
-                                flexShrink: 0
+                                maxWidth: tablet ? 'min(70vw, 440px)' : 'min(78vw, 320px)',
+                                maxHeight: logoMax,
+                                width: 'auto',
+                                height: 'auto',
+                                objectFit: 'contain',
+                                filter: 'drop-shadow(0 3px 24px rgba(0, 0, 0, 0.6))'
                             }}
                         />
-                    )}
-
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        {slide.logo ? (
-                            <img
-                                src={slide.logo}
-                                alt={slide.title}
-                                decoding='async'
-                                style={{
-                                    maxWidth: tablet ? 320 : 200,
-                                    maxHeight: tablet ? 110 : 64,
-                                    width: 'auto',
-                                    height: 'auto',
-                                    objectFit: 'contain',
-                                    objectPosition: 'left bottom',
-                                    filter: 'drop-shadow(0 2px 18px rgba(0,0,0,0.6))',
-                                    marginBottom: 8
-                                }}
-                            />
-                        ) : (
-                            <h1 style={{
-                                fontFamily: T.display,
-                                fontSize: tablet ? 44 : 26,
-                                lineHeight: 1.02,
-                                margin: '0 0 6px',
-                                fontWeight: 300,
-                                letterSpacing: -0.5,
-                                textShadow: '0 2px 24px rgba(0,0,0,0.5)',
-                                textWrap: 'balance',
-                                overflow: 'hidden',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical'
-                            }}
-                            >
-                                {slide.title}
-                            </h1>
-                        )}
-
-                        <div style={{
-                            fontSize: 'var(--md-sys-typescale-label-medium-size, 12px)',
-                            color: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.7))',
-                            marginBottom: 10,
+                    ) : (
+                        <h1 style={{
+                            fontFamily: T.display,
+                            fontSize: short ? 'clamp(24px, 5vh, 34px)' :
+                                (tablet ? 'clamp(40px, 6vw, 72px)' : 'clamp(30px, 9vw, 46px)'),
+                            lineHeight: 1.02,
+                            margin: 0,
+                            fontWeight: 300,
+                            letterSpacing: -0.5,
+                            textShadow: '0 2px 24px rgba(0, 0, 0, 0.5)',
+                            textWrap: 'balance',
                             overflow: 'hidden',
-                            whiteSpace: 'nowrap',
-                            textOverflow: 'ellipsis'
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical'
                         }}
                         >
-                            {meta}
-                            {isContinue && slide.episodeTitle ? ` · ${slide.episodeTitle}` : ''}
-                            {isContinue && formatRemainingCompact(slide.remaining) ?
-                                ` · ${formatRemainingCompact(slide.remaining)}` : ''}
-                        </div>
+                            {slide.title}
+                        </h1>
+                    )}
 
-                        <PlayBtn
-                            size={tablet ? 64 : 52}
-                            onClick={onPlay}
-                            progress={isContinue ? slide.progress : null}
-                        />
+                    <div style={{
+                        fontSize: 'var(--md-sys-typescale-label-large-size, 14px)',
+                        color: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.7))',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis'
+                    }}
+                    >
+                        {meta}
+                        {isContinue && slide.episodeTitle ? ` · ${slide.episodeTitle}` : ''}
+                        {isContinue && formatRemainingCompact(slide.remaining) ?
+                            ` · ${formatRemainingCompact(slide.remaining)}` : ''}
                     </div>
-                </div>
-            </div>
 
-            {/* Dots del carrusel. */}
-            {slides.length > 1 && (
-                <div style={{
-                    position: 'absolute',
-                    right: tablet ? 24 : 16,
-                    bottom: tablet ? 40 : 24,
-                    display: 'flex',
-                    gap: 6,
-                    alignItems: 'center'
-                }}
-                >
-                    {slides.map((s, i) => (
-                        <button
-                            key={s.id}
-                            onClick={() => goSlide(i)}
-                            aria-label={`Slide ${i + 1}`}
-                            style={{
-                                width: i === idx ? 18 : 6,
-                                height: 3,
-                                borderRadius: 2,
-                                background: i === idx ?
-                                    'var(--md-sys-color-primary, #fff)' :
-                                    'var(--md-sys-color-outline-variant, rgba(255,255,255,0.32))',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0,
-                                transition: 'width .4s cubic-bezier(.65,0,.35,1), background .3s'
-                            }}
-                        />
-                    ))}
+                    <PlayBtn
+                        size={playSize}
+                        onClick={onPlay}
+                        progress={isContinue ? slide.progress : null}
+                    />
                 </div>
-            )}
+
+                {/* Puntos del carrusel: último en la columna, nunca encima del
+                    play (antes iban en absoluto y se pisaban en pantallas
+                    cortas). */}
+                {slides.length > 1 && (
+                    <div style={{
+                        display: 'flex',
+                        gap: 6,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                    >
+                        {slides.map((s, i) => (
+                            // El punto se ve fino, pero el botón que lo lleva
+                            // mide 24px de alto: en táctil hay que poder darle.
+                            <button
+                                key={s.id}
+                                onClick={() => goSlide(i)}
+                                aria-label={`Slide ${i + 1}`}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '10px 2px',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span style={{
+                                    display: 'block',
+                                    width: i === idx ? 22 : 6,
+                                    height: 4,
+                                    borderRadius: 2,
+                                    background: i === idx ?
+                                        'var(--md-sys-color-primary, #fff)' :
+                                        'var(--md-sys-color-outline-variant, rgba(255,255,255,0.32))',
+                                    transition: 'width .4s cubic-bezier(.65,0,.35,1), background .3s'
+                                }}
+                                />
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
         </section>
     );
 }

@@ -13,10 +13,6 @@ import {
 } from './router';
 import { HomePage } from '../presentation/pages/HomePage';
 import { LibraryPage } from '../presentation/pages/LibraryPage';
-import { ShowPage } from '../presentation/pages/ShowPage';
-import { SeasonPage } from '../presentation/pages/SeasonPage';
-import { EpisodePage } from '../presentation/pages/EpisodePage';
-import { MoviePage } from '../presentation/pages/MoviePage';
 import { SearchPage } from '../presentation/pages/SearchPage';
 import { SearchOverlay } from '../presentation/components/search/SearchOverlay';
 import { TaskProgress } from '../presentation/components/tasks/TaskProgress';
@@ -24,6 +20,16 @@ import { LoginPage } from '../presentation/pages/LoginPage';
 
 // Páginas de acceso puntual: se cargan bajo demanda para no engordar el
 // bundle inicial. React.lazy + Suspense hace el split automáticamente.
+//
+// Las fichas (serie, temporada, episodio, película) también van aquí aunque no
+// sean de acceso puntual: son las páginas más pesadas —hidratan temporadas y
+// episodios enteros— y nunca son la primera pantalla, porque se llega a ellas
+// desde la Home o la Biblioteca. Para cuando el usuario pincha una tarjeta, su
+// chunk ya se está descargando.
+const ShowPage = lazy(() => import('../presentation/pages/ShowPage').then(m => ({ default: m.ShowPage })));
+const SeasonPage = lazy(() => import('../presentation/pages/SeasonPage').then(m => ({ default: m.SeasonPage })));
+const EpisodePage = lazy(() => import('../presentation/pages/EpisodePage').then(m => ({ default: m.EpisodePage })));
+const MoviePage = lazy(() => import('../presentation/pages/MoviePage').then(m => ({ default: m.MoviePage })));
 const GenrePage = lazy(() => import('../presentation/pages/GenrePage').then(m => ({ default: m.GenrePage })));
 const FavoritesPage = lazy(() => import('../presentation/pages/FavoritesPage').then(m => ({ default: m.FavoritesPage })));
 const ListsPage = lazy(() => import('../presentation/pages/ListsPage').then(m => ({ default: m.ListsPage })));
@@ -190,12 +196,12 @@ function AuthedApp() {
                     {route.page === 'home' && <HomePage navigate={navigate} />}
                     {route.page === 'series' && <LibraryPage kind='series' navigate={navigate} />}
                     {route.page === 'movies' && <LibraryPage kind='movies' navigate={navigate} />}
-                    {route.page === 'show' && <ShowPage showId={route.showId} navigate={navigate} hero={t} />}
-                    {route.page === 'season' && <SeasonPage showId={route.showId} seasonN={route.seasonN} navigate={navigate} />}
-                    {route.page === 'episode' && <EpisodePage showId={route.showId} seasonN={route.seasonN} epN={route.epN} navigate={navigate} />}
-                    {route.page === 'movie' && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
                     {route.page === 'search' && <SearchPage navigate={navigate} />}
                     <Suspense fallback={<PageFallback />}>
+                        {route.page === 'show' && <ShowPage showId={route.showId} navigate={navigate} hero={t} />}
+                        {route.page === 'season' && <SeasonPage showId={route.showId} seasonN={route.seasonN} navigate={navigate} />}
+                        {route.page === 'episode' && <EpisodePage showId={route.showId} seasonN={route.seasonN} epN={route.epN} navigate={navigate} />}
+                        {route.page === 'movie' && <MoviePage movieId={route.movieId} navigate={navigate} hero={t} />}
                         {route.page === 'lists' && <ListsPage navigate={navigate} />}
                         {route.page === 'favorites' && <FavoritesPage navigate={navigate} />}
                         {route.page === 'list' && <ListPage kind={route.kind} listId={route.listId} navigate={navigate} />}

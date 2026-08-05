@@ -10,8 +10,13 @@ import { isDeleted, itemGoneError } from './deleted';
 import { apiFetch, fetchUserItems, noSessionError } from './http';
 import { imageUrl } from './images';
 import { firstImageUrl, mapCommonFields, watchedFraction } from './itemMapping';
+import { cachedList } from './listCache';
+import { emitListsRefreshed } from './mutations';
 import { settlePlaybackReports } from './playback';
-import { FIELDS_DETAIL, FIELDS_LIST, ticksToMinutes, type JFItem, type JFMediaStream } from './types';
+import {
+    FIELDS_DETAIL, FIELDS_GRID, GRID_IMAGE_TYPES, ticksToMinutes,
+    type JFItem, type JFMediaStream
+} from './types';
 
 // Exportado para las consultas de `discover` (género, persona, similares),
 // que traen series y películas mezcladas en la misma respuesta y necesitan
@@ -122,10 +127,20 @@ function mapEpisode(item: JFItem): Episode {
     };
 }
 
-export async function getShows(): Promise<Show[]> {
+/**
+ * Todas las series de la biblioteca. Cacheada: la piden la Home, la
+ * Biblioteca y el buscador, y las tres se turnan durante una misma sesión de
+ * navegación. Ver `listCache` para cuándo sale de la caché y cuándo de la red.
+ */
+export function getShows(): Promise<Show[]> {
+    return cachedList('shows', fetchShows, emitListsRefreshed);
+}
+
+async function fetchShows(): Promise<Show[]> {
     await settlePlaybackReports();
     const items = await fetchUserItems<JFItem>(
-        `IncludeItemTypes=Series&Recursive=true&SortBy=SortName&Fields=${FIELDS_LIST}`
+        'IncludeItemTypes=Series&Recursive=true&SortBy=SortName'
+        + `&Fields=${FIELDS_GRID}&EnableImageTypes=${GRID_IMAGE_TYPES}`
     );
     return items.map(mapShow);
 }

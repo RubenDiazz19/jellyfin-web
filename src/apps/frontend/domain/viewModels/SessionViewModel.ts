@@ -70,6 +70,9 @@ export class SessionViewModel {
 
     logout = () => {
         this.api.catalog.clearShowCache();
+        // Los listados también: van cacheados por usuario, pero al volver a
+        // entrar la misma cuenta encontraría su biblioteca de antes de salir.
+        this.api.catalog.invalidateLists();
         this.api.session.clear();
     };
 }

@@ -226,7 +226,10 @@ describe('VideoPlayerViewModel — segmentos', () => {
                 getMediaSegments: vi.fn(() => new Promise<MediaSegment[]>((res) => {
                     deferred.resolve = res;
                 }))
-            }
+            },
+            // El arranque mira si hay idiomas recordados, y esos se guardan
+            // por cuenta.
+            session: { load: vi.fn(() => ({ userId: 'u1' })) }
         } as unknown as ApiService;
 
         vm = new VideoPlayerViewModel(api);

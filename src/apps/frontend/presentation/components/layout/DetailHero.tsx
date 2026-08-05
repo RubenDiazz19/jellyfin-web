@@ -6,9 +6,23 @@
 
 import type { ReactNode } from 'react';
 import { T, HERO_POS, HERO_SCRIM, type HeroPosKey, type HeroScrimKey } from '../../theme/tokens';
-import { useResponsive } from '../../theme/responsive';
+import { useResponsive, useShortViewport } from '../../theme/responsive';
 import { Backdrop } from './Backdrop';
+import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
+
+/**
+ * Alto del hero de ficha: la pantalla entera, igual que el de la portada. Lo
+ * de debajo (sinopsis, reparto, datos) aparece al desplazar.
+ *
+ * En táctil se mide sobre `--jfp-viewport-h` (global.css) y no en `svh`
+ * directo: donde no exista la unidad, la variable ya trae `100vh` de respaldo.
+ * Un `svh` suelto sería una declaración inválida, el alto se quedaría en
+ * `auto` y —con el contenido en absoluto— el hero colapsaría a cero.
+ */
+export function heroHeight(touch: boolean): string {
+    return touch ? 'var(--jfp-viewport-h, 100vh)' : '100vh';
+}
 
 export type HeroTweaks = {
     heroPos?: HeroPosKey;
@@ -76,12 +90,17 @@ export function HeroFrame({
     const place = pos ? HERO_POS[pos] : layout.pos;
     const scrimAlpha = scrim ?? layout.scrim;
     const r = useResponsive();
+    const short = useShortViewport();
     return (
         <section style={{
             position: 'relative',
-            height: r.touch ? (r.mobile ? '68vh' : '78vh') : '100vh',
-            minHeight: r.touch ? 420 : undefined,
-            width: '100%', overflow: 'hidden', background: '#000'
+            height: heroHeight(r.touch),
+            // A sangre en táctil: el body reserva el hueco del rail (tablet) y
+            // del safe-area, y aquí se devuelve para que la imagen llegue al
+            // borde. El lado derecho no se toca: nada desborda.
+            marginLeft: r.touch ? `calc(-1 * var(${NAV_LEFT_VAR}, 0px))` : undefined,
+            width: r.touch ? `calc(100% + var(${NAV_LEFT_VAR}, 0px))` : '100%',
+            overflow: 'hidden', background: '#000'
         }}>
             {nav}
             <Backdrop src={backdrop} srcs={backdrops} itemId={itemId} sharp blurred={blurred} />
@@ -91,13 +110,30 @@ export function HeroFrame({
                     background: `linear-gradient(to top, rgba(0,0,0,${scrimAlpha}) 0%, rgba(0,0,0,${(scrimAlpha * 0.45).toFixed(2)}) 24%, transparent 56%)`
                 }} />
             )}
-            <div style={{
-                position: 'absolute', inset: 0,
-                padding: r.touch ? `0 ${r.pagePad + 4}px 36px` : pad ?? place.pad,
-                display: 'flex', flexDirection: 'column',
-                alignItems: place.align, justifyContent: place.justify,
-                textAlign: place.text
-            }}>
+            {/* jfp-hero-content: en táctil impide que los hijos encojan. Un
+                flex en columna reparte el recorte entre todos cuando no cabe
+                el bloque, y encoger la CAJA de un texto no encoge el texto:
+                se salía y se pintaba encima del vecino (título sobre título en
+                la ficha de episodio). Prefiere desbordar por arriba, que el
+                degradado disimula. */}
+            <div
+                className='jfp-hero-content'
+                style={{
+                    position: 'absolute', inset: 0,
+                    // Ahora el hero ocupa la pantalla entera, así que la
+                    // píldora de navegación flota sobre su parte de abajo: el
+                    // bloque de texto le deja su hueco.
+                    padding: r.touch ?
+                        'calc(56px + env(safe-area-inset-top, 0px))'
+                            + ` calc(${r.pagePad + 4}px + env(safe-area-inset-right, 0px))`
+                            + ` calc(var(${NAV_BOTTOM_VAR}, 24px) + ${short ? 8 : 20}px)`
+                            + ` calc(${r.pagePad + 4}px + var(${NAV_LEFT_VAR}, 0px))` :
+                        pad ?? place.pad,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: place.align, justifyContent: place.justify,
+                    textAlign: place.text
+                }}
+            >
                 {children}
             </div>
             {footer}
@@ -148,7 +184,7 @@ type TitleProps = {
     title: string;
     /** Series y películas usan escalas distintas: la ficha manda la suya. */
     logoMaxWidth: string | number;
-    logoMaxHeight: number;
+    logoMaxHeight: string | number;
     logoShadow: string;
     fontSize: string;
     letterSpacing: number;

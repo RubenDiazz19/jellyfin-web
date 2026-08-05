@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom';
 
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
+import { aboveNav, besideNav } from '../nav/navMetrics';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
 import type { BackgroundTask } from '../../../domain/api';
@@ -34,10 +35,10 @@ export function TaskProgress() {
             aria-live='polite'
             style={{
                 position: 'fixed', zIndex: 9998,
-                left: r.touch ? 12 : 24,
+                left: r.touch ? besideNav(12) : 24,
                 right: r.touch ? 12 : 'auto',
-                // En móvil la navegación inferior ocupa la franja de abajo.
-                bottom: r.touch ? 'calc(84px + env(safe-area-inset-bottom, 0px))' : 24,
+                // En móvil la píldora de navegación ocupa la franja de abajo.
+                bottom: r.touch ? aboveNav(12) : 24,
                 width: r.touch ? 'auto' : 320,
                 display: 'flex', flexDirection: 'column', gap: 10,
                 padding: '14px 16px', borderRadius: 12,

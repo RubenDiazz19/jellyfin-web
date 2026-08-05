@@ -81,5 +81,27 @@ export const FIELDS_LIST =
     'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate,Tags';
 export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status`;
 
+/**
+ * Campos del catálogo completo (series y películas de la biblioteca), que es
+ * la respuesta más grande que pide el frontend: son TODOS los items, y de
+ * cada uno la rejilla solo pinta carátula, título, año y duración.
+ *
+ * Frente a `FIELDS_LIST` se caen dos:
+ * - `Studios`, que solo enseña la ficha, y la ficha se pide aparte con
+ *   `FIELDS_DETAIL`.
+ * - `BackdropImageTags`, con `EnableImageTypes` a juego: un fondo por item
+ *   (varios tags de 32 caracteres cada uno) que la tarjeta nunca pinta —usa
+ *   la carátula— y que en un catálogo de mil títulos son cientos de KB.
+ *
+ * `Overview` **se queda**: el buscador filtra por sinopsis sobre esta misma
+ * lista (`SearchViewModel.matchesQuery`), así que quitarlo no sería un ahorro
+ * sino perder una función.
+ */
+export const FIELDS_GRID =
+    'Overview,Genres,ProductionYear,CommunityRating,OfficialRating,ImageTags,RunTimeTicks,PremiereDate,Tags';
+
+/** Las dos únicas imágenes que pinta una tarjeta de la rejilla. */
+export const GRID_IMAGE_TYPES = 'Primary,Logo';
+
 export const ticksToMinutes = (ticks?: number): number | undefined =>
     ticks ? Math.round(ticks / 10_000_000 / 60) : undefined;

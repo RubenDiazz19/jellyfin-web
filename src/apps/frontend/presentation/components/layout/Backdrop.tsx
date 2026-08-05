@@ -89,9 +89,12 @@ export function Backdrop({
                 position: 'absolute', inset: 0,
                 background: `radial-gradient(ellipse at center, transparent 28%, rgba(0,0,0,${vignette}) 100%)`
             }} />
+            {/* El remate inferior funde con el fondo de la página. En desktop
+                la var no existe y queda el #000 de siempre; en móvil el fondo
+                va teñido por el dynamic color y un negro puro dejaría costura. */}
             <div style={{
                 position: 'absolute', inset: 0,
-                background: 'linear-gradient(to bottom, transparent 72%, rgba(0,0,0,0.25) 86%, rgba(0,0,0,0.65) 95%, #000 100%)'
+                background: 'linear-gradient(to bottom, transparent 72%, rgba(0,0,0,0.25) 86%, rgba(0,0,0,0.65) 95%, var(--md-sys-color-surface, #000) 100%)'
             }} />
             <div style={{
                 position: 'absolute', top: 0, left: 0, right: 0, height: 160,

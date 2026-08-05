@@ -18,6 +18,7 @@ import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { MANUAL_TAGS } from '../../data/stores/manualTagsStore';
 import { WATCHED } from '../../data/stores/watchedStore';
 import type { SavedView } from '../../data/stores/viewsStore';
+import { MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
 import { LoadGuard } from './loadGuard';
 
@@ -158,6 +159,7 @@ export class SearchViewModel {
     private loads = new LoadGuard();
     private remoteLoads = new LoadGuard();
     private remoteTimer: ReturnType<typeof setTimeout> | null = null;
+    private mutationTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(private api: ApiService) {
         registerTagSource(() => [...this.shows.peek(), ...this.movies.peek()]);
@@ -400,8 +402,14 @@ export class SearchViewModel {
         const onMutated = () => {
             this.mutationVersion.value++;
             // Refetch, no solo re-filtrado: una etiqueta nueva no está en los
-            // datos que ya tenemos en memoria.
-            void this.load();
+            // datos que ya tenemos en memoria. Agrupado como el de la
+            // biblioteca: etiquetar diez items de una selección son diez
+            // mutaciones y una sola recarga. Ver MUTATION_DEBOUNCE_MS.
+            if (this.mutationTimer) clearTimeout(this.mutationTimer);
+            this.mutationTimer = setTimeout(() => {
+                this.mutationTimer = null;
+                void this.load();
+            }, MUTATION_DEBOUNCE_MS);
         };
         window.addEventListener(FAVS.event, bumpFavs);
         window.addEventListener(WATCHED.event, bumpWatched);
@@ -418,6 +426,7 @@ export class SearchViewModel {
             window.removeEventListener(ITEM_MUTATED_EVENT, onMutated);
             stopWatchingQuery();
             if (this.remoteTimer) clearTimeout(this.remoteTimer);
+            if (this.mutationTimer) clearTimeout(this.mutationTimer);
         };
     }
 }

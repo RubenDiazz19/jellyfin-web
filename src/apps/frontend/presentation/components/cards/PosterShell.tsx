@@ -36,6 +36,13 @@ type Props = {
 
 const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))';
 
+/**
+ * Ancho del póster en desktop. Lo comparten las tarjetas y el hueco que deja
+ * `LazyCard` cuando las desmonta: si no midieran igual, las filas cambiarían
+ * de alto al montarse y el scroll daría tirones.
+ */
+export const POSTER_W = 230;
+
 export function PosterShell({
     cover, onClick, width, gradient = DEFAULT_GRADIENT,
     watchedButton, favButton, logo, title, progress = 0, caption,
@@ -55,12 +62,40 @@ export function PosterShell({
                 className='jfp-card-m3'
                 style={{
                     aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden', position: 'relative',
-                    backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center',
+                    // Reserva del hueco mientras la carátula llega —y fondo
+                    // definitivo si el item no tiene ninguna—, para que la
+                    // rejilla no parpadee en blanco al ir apareciendo.
+                    background: 'rgba(255,255,255,0.05)',
+                    // Fuera del viewport el navegador se salta el estilo, el
+                    // layout y el pintado de todo lo de dentro: carátula,
+                    // degradado, botones y título, o sea casi toda la tarjeta.
+                    // No hace falta `contain-intrinsic-size` porque el alto sale
+                    // del `aspect-ratio` y no del contenido. Va en el marco y no
+                    // en la raíz justamente por eso: el alto de la raíz sí
+                    // depende de lo que tenga dentro (el pie), y ahí habría que
+                    // adivinarlo.
+                    contentVisibility: 'auto',
                     // El marcado se ve de un vistazo aunque la carátula sea clara.
                     outline: selected ? '3px solid #fff' : undefined,
                     outlineOffset: selected ? -3 : undefined
                 }}
             >
+                {/* `<img>` y no `background-image`: un fondo CSS no admite
+                    `loading='lazy'`, así que el navegador se descargaba de
+                    golpe las carátulas de toda la rejilla —cientos— aunque no
+                    se llegara a ver ninguna más allá de la primera fila. */}
+                {cover && (
+                    <img
+                        src={cover}
+                        alt=''
+                        loading='lazy'
+                        decoding='async'
+                        style={{
+                            position: 'absolute', inset: 0, width: '100%', height: '100%',
+                            objectFit: 'cover', objectPosition: 'center'
+                        }}
+                    />
+                )}
                 <div style={{ position: 'absolute', inset: 0, background: gradient }} />
                 {selecting ? (
                     // En modo selección los botones estorban: pulsar «visto» o

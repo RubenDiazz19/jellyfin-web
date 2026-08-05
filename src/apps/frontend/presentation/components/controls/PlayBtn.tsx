@@ -5,6 +5,12 @@ import { Ic } from '../../theme/icons';
 type Props = {
     size?: number;
     onClick?: (e: React.MouseEvent) => void;
+    /**
+     * El puntero (o el foco) ha llegado al botón. Sirve para adelantar trabajo
+     * que se va a necesitar en cuanto lo pulsen: quien lo usa es el
+     * pre-calentamiento del reproductor.
+     */
+    onHover?: () => void;
     label?: string;
     progress?: number | null;
     hoverText?: string | null;
@@ -16,7 +22,7 @@ type Props = {
 // Play traslúcido con aro de progreso. Cuando no hay progreso, el aro se ve
 // tenue; cuando lo hay, se ilumina el arco correspondiente.
 export function PlayBtn({
-    size = 96, onClick, label, progress = null, hoverText = null, watched = false
+    size = 96, onClick, onHover, label, progress = null, hoverText = null, watched = false
 }: Props) {
     const sw = 2;
     const r = size / 2 - sw / 2 - 2;
@@ -30,7 +36,7 @@ export function PlayBtn({
                 transform: hover ? 'scale(1.07)' : 'scale(1)',
                 transition: 'transform .3s cubic-bezier(.2,.7,.3,1)'
             }}
-            onMouseEnter={() => setHover(true)}
+            onMouseEnter={() => { setHover(true); onHover?.(); }}
             onMouseLeave={() => setHover(false)}
         >
             <svg
@@ -69,6 +75,9 @@ export function PlayBtn({
                 // preventScroll:true pero SÓLO en llamadas explícitas .focus() — el
                 // focus nativo del navegador durante mousedown no pasa por él.
                 onMouseDown={(e) => e.preventDefault()}
+                // También al llegar con el teclado: quien navega con Tab
+                // merece el mismo adelanto que quien llega con el ratón.
+                onFocus={() => onHover?.()}
                 aria-label={label || (watched ? 'Visto — reproducir de nuevo' : 'Reproducir')}
                 style={{
                     position: 'absolute', inset: 0,

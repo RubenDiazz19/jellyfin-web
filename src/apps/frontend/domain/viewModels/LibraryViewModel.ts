@@ -6,7 +6,7 @@ import { computed, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/librarySortStore';
-import { ItemMutationSubscription } from './itemMutations';
+import { ItemMutationSubscription, MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
 import { LoadGuard } from './loadGuard';
 
@@ -93,6 +93,10 @@ export class LibraryViewModel {
         LIBRARY_SORT.save(key);
     };
 
+    private hasDataFor(kind: LibraryKind): boolean {
+        return (kind === 'movies' ? this.movies : this.shows).peek().length > 0;
+    }
+
     async load(kind: LibraryKind) {
         this.subscribeToMutations();
         const isLatest = this.loads.begin();
@@ -107,7 +111,12 @@ export class LibraryViewModel {
             return;
         }
 
-        this.loading.value = true;
+        // El esqueleto solo si no hay nada que enseñar. Con los listados
+        // cacheados, volver a una biblioteca ya visitada resuelve en el mismo
+        // tick: pintar el esqueleto sería un parpadeo de un frame, y en la
+        // recarga por mutación sería tirar la rejilla para volver a pintarla
+        // igual.
+        this.loading.value = !this.hasDataFor(kind);
         try {
             if (kind === 'movies') {
                 const movies = await this.api.catalog.getMovies();
@@ -129,6 +138,10 @@ export class LibraryViewModel {
     // Cualquier mutación de item recarga la biblioteca activa: no sabemos si
     // el item afectado está en la lista visible, y una lista de N pósters es
     // barata frente a la fricción de recargar la página a mano.
+    //
+    // Con debounce porque una acción del usuario emite muchas mutaciones
+    // seguidas (ver MUTATION_DEBOUNCE_MS): la biblioteca entera se recarga una
+    // vez por lote, no una vez por episodio.
     private subscribeToMutations() {
         this.mutations.ensure(() => {
             // Solo refetcheamos si la lista ya se pintó (no en montaje inicial
@@ -136,7 +149,7 @@ export class LibraryViewModel {
             const hasData = this.shows.value.length > 0 || this.movies.value.length > 0;
             if (!hasData) return;
             void this.load(this.kind.value);
-        });
+        }, MUTATION_DEBOUNCE_MS);
     }
 }
 

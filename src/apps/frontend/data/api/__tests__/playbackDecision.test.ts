@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { apiSend } from '../http';
 import { getPlaybackDecision } from '../playback';
+import { invalidatePlayback } from '../playbackCache';
 
 vi.mock('../http', () => ({
     apiSend: vi.fn(),
@@ -34,6 +35,9 @@ const BASE: Source = { Id: 'ms1', MediaStreams: [] };
 describe('getPlaybackDecision', () => {
     beforeEach(() => {
         apiSendMock.mockReset();
+        // La decisión va cacheada por item+pistas: sin vaciar, cada caso
+        // heredaría la respuesta que preparó el anterior.
+        invalidatePlayback();
     });
 
     test('DirectPlay sirve el fichero tal cual', async () => {
@@ -115,5 +119,50 @@ describe('getPlaybackDecision', () => {
         } as unknown as Response);
 
         await expect(getPlaybackDecision('item1')).rejects.toThrow('Sin fuentes');
+    });
+
+    // Lo que hace útil el pre-calentamiento: la ficha negocia y, cuando el
+    // reproductor monta y pide lo mismo, ya no hay POST que hacer.
+    test('la misma negociación no repite el POST', async () => {
+        respondWith({ ...BASE, Container: 'mp4', SupportsDirectPlay: true });
+
+        const first = await getPlaybackDecision('item1', { audioStreamIndex: 2 });
+        const second = await getPlaybackDecision('item1', { audioStreamIndex: 2 });
+
+        expect(second).toBe(first);
+        expect(apiSendMock).toHaveBeenCalledTimes(1);
+    });
+
+    test('otras pistas son otra negociación', async () => {
+        respondWith({ ...BASE, Container: 'mp4', SupportsDirectPlay: true });
+        respondWith({ ...BASE, Container: 'mp4', SupportsDirectPlay: true });
+
+        await getPlaybackDecision('item1', { audioStreamIndex: 2 });
+        await getPlaybackDecision('item1', { audioStreamIndex: 3 });
+
+        expect(apiSendMock).toHaveBeenCalledTimes(2);
+    });
+
+    // El reintento de arranque existe porque la sesión anterior no levantó:
+    // servirle la misma cacheada lo dejaría sin efecto.
+    test('`fresh` renegocia aunque haya algo cacheado', async () => {
+        respondWith({ ...BASE, Container: 'mp4', SupportsDirectPlay: true });
+        respondWith({ ...BASE, Container: 'mkv', SupportsDirectPlay: true });
+
+        await getPlaybackDecision('item1');
+        const retry = await getPlaybackDecision('item1', {}, { fresh: true });
+
+        expect(apiSendMock).toHaveBeenCalledTimes(2);
+        expect(retry.container).toBe('mkv');
+    });
+
+    test('un fallo no se queda cacheado', async () => {
+        apiSendMock.mockRejectedValueOnce(new Error('servidor caído'));
+        respondWith({ ...BASE, Container: 'mp4', SupportsDirectPlay: true });
+
+        await expect(getPlaybackDecision('item1')).rejects.toThrow('servidor caído');
+
+        expect((await getPlaybackDecision('item1')).kind).toBe('direct');
+        expect(apiSendMock).toHaveBeenCalledTimes(2);
     });
 });

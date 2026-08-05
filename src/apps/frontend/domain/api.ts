@@ -36,6 +36,12 @@ export { getMaxStreamingBitrate, setMaxStreamingBitrate } from '../data/api';
 // usuario, y desde Ajustes se pueden borrar todos de golpe.
 export { countTitleLanguagePrefs, clearAllTitleLanguagePrefs } from '../data/api';
 
+// ── Reproductor: adelantar el arranque desde la ficha ───────────────────────
+// No abre nada ni devuelve nada: negocia con el servidor lo que el reproductor
+// necesitará dentro de un momento, para que al montarse ya lo tenga. Ver
+// `playbackPrewarm`.
+export { prewarmPlayback } from '../data/api';
+
 // ── Acciones sobre un item (menú de «más opciones» y corazón) ───────────────
 export {
     markPlayed,

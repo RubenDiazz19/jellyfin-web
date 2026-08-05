@@ -21,14 +21,14 @@ import {
 } from 'react';
 
 import { useSignalValue } from '../../domain/bridge/useViewModel';
-import { themeVM, type ThemeMode } from '../../domain/viewModels/ThemeViewModel';
+import { themeVM, type SeedSource, type ThemeMode } from '../../domain/viewModels/ThemeViewModel';
 import {
     currentMobileLayout,
     observeLayoutMode,
     type MobileLayout
 } from '../../shared/layoutMode';
 import {
-    buildM3Css,
+    buildM3CssFromTokens,
     M3_ANIM_CLASS,
     M3_CONTRAST,
     M3_DEFAULT_SEED,
@@ -46,7 +46,13 @@ type MobileThemeValue = {
     mode: ThemeMode;
     /** Nivel de contraste M3 activo (derivado de `prefers-contrast`). */
     contrast: number;
+    /** Seed #rrggbb activa, o null si se usa la de por defecto. */
+    seed: string | null;
+    /** 'manual' = la eligió el usuario y el backdrop no la cambia. */
+    seedSource: SeedSource;
     setMode: (mode: ThemeMode) => void;
+    /** Fija la seed a mano; `null` devuelve el mando al dynamic color. */
+    setSeed: (seed: string | null) => void;
     /** Dynamic color: alimenta la seed desde la URL del backdrop visible. */
     applyImageSeed: (url: string) => void;
 };
@@ -58,7 +64,10 @@ const INERT: MobileThemeValue = {
     scheme: 'dark',
     mode: 'dark',
     contrast: M3_CONTRAST.standard,
+    seed: null,
+    seedSource: 'auto',
     setMode: noop,
+    setSeed: noop,
     applyImageSeed: noop
 };
 
@@ -72,6 +81,7 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
     const mode = useSignalValue(themeVM.mode);
     const scheme = useSignalValue(themeVM.scheme);
     const seed = useSignalValue(themeVM.seed);
+    const seedSource = useSignalValue(themeVM.seedSource);
 
     // prefers-color-scheme → systemDark (solo se escucha en mobile/tablet).
     useEffect(() => {
@@ -113,31 +123,39 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         if (active) void themeVM.pullFromServer();
     }, [active]);
 
+    // La paleta se deriva UNA vez por cambio de seed/scheme/contraste: la
+    // consumen tanto el <style> de tokens como el theme-color de abajo, y
+    // derivar 53 roles dos veces por rotación del carrusel no es gratis.
+    const colors = useMemo(
+        () => (active ? makeColorTokens(seed ?? M3_DEFAULT_SEED, scheme, contrast) : null),
+        [active, seed, scheme, contrast]
+    );
+
     // Materializa los tokens. El <style> solo existe mientras el layout es
     // mobile/tablet: al pasar a desktop se retira y no queda rastro.
     useEffect(() => {
-        if (!active) return;
+        if (!colors) return;
         let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
         if (!el) {
             el = document.createElement('style');
             el.id = STYLE_ID;
             document.head.appendChild(el);
         }
-        el.textContent = buildM3Css(seed ?? M3_DEFAULT_SEED, scheme, contrast);
+        el.textContent = buildM3CssFromTokens(colors, scheme, contrast);
         return () => { document.getElementById(STYLE_ID)?.remove(); };
-    }, [active, seed, scheme, contrast]);
+    }, [colors, scheme, contrast]);
 
     // theme-color dinámico: la barra de estado del sistema sigue al surface
     // del tema. Solo mobile/tablet; al salir se restaura el valor original.
     useEffect(() => {
-        if (!active) return;
+        if (!colors) return;
         const meta = document.querySelector('meta[name="theme-color"]');
         if (!(meta instanceof HTMLMetaElement)) return;
         const prev = meta.content;
-        const surface = makeColorTokens(seed ?? M3_DEFAULT_SEED, scheme, contrast)['--md-sys-color-surface'];
+        const surface = colors['--md-sys-color-surface'];
         if (surface) meta.content = surface;
         return () => { meta.content = prev; };
-    }, [active, seed, scheme, contrast]);
+    }, [colors]);
 
     // Transición suave al cambiar de tema (no en el primer render).
     const firstScheme = useRef(true);
@@ -158,6 +176,8 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
 
     const setMode = useCallback((m: ThemeMode) => { themeVM.setMode(m); }, []);
 
+    const setSeed = useCallback((hex: string | null) => { themeVM.setSeed(hex); }, []);
+
     const applyImageSeed = useCallback((url: string) => {
         // Guard en vivo (no sobre `layout` capturado): así un desktop nunca
         // paga la decodificación de imagen aunque el estado esté desfasado.
@@ -169,9 +189,15 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
 
     const value = useMemo<MobileThemeValue>(() => (
         active ?
-            { layout, scheme, mode, contrast, setMode, applyImageSeed } :
+            {
+                layout, scheme, mode, contrast, seed, seedSource,
+                setMode, setSeed, applyImageSeed
+            } :
             INERT
-    ), [active, layout, scheme, mode, contrast, setMode, applyImageSeed]);
+    ), [
+        active, layout, scheme, mode, contrast, seed, seedSource,
+        setMode, setSeed, applyImageSeed
+    ]);
 
     return (
         <MobileThemeContext.Provider value={value}>

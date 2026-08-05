@@ -6,6 +6,8 @@ import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { MovieCard } from '../components/cards/MovieCard';
+import { EAGER_CARDS, LazyCard } from '../components/cards/LazyCard';
+import { POSTER_W } from '../components/cards/PosterShell';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { ScrollTopFab } from '../components/m3/ScrollTopFab';
 import { libraryVM, type SortKey } from '../../domain/viewModels/LibraryViewModel';
@@ -31,6 +33,10 @@ export function LibraryPage({ kind, navigate }: Props) {
     const title = globalize.translate(isSeries ? 'Shows' : 'Movies');
     const loading = libraryVM.loading.value || libraryVM.kind.value !== kind;
     const error = libraryVM.error.value;
+    // Ancho de la tarjeta para el hueco que deja `LazyCard` mientras está
+    // desmontada: null = llena la columna (todas las películas y las series en
+    // móvil/tablet), y en desktop las series fijan ancho.
+    const cardWidth = !isSeries || r.touch ? null : POSTER_W;
     // Lo que «seleccionar todo» abarca: exactamente lo que hay en la rejilla.
     const selectable: SelectableItem[] = items.map((i) => ({
         id: i.id,
@@ -94,11 +100,15 @@ export function LibraryPage({ kind, navigate }: Props) {
                         gap: r.touch ? r.gap : 28
                     }}>
                         {isSeries ?
-                            libraryVM.sortedShows.value.map((s) => (
-                                <PosterCard key={s.id} slide={s} navigate={navigate} fluid={r.touch} />
+                            libraryVM.sortedShows.value.map((s, i) => (
+                                <LazyCard key={s.id} width={cardWidth} eager={i < EAGER_CARDS}>
+                                    <PosterCard slide={s} navigate={navigate} fluid={r.touch} />
+                                </LazyCard>
                             )) :
-                            libraryVM.sortedMovies.value.map((m) => (
-                                <MovieCard key={m.id} movie={m} navigate={navigate} fluid />
+                            libraryVM.sortedMovies.value.map((m, i) => (
+                                <LazyCard key={m.id} width={cardWidth} eager={i < EAGER_CARDS}>
+                                    <MovieCard movie={m} navigate={navigate} fluid />
+                                </LazyCard>
                             ))}
                     </div>
                 )}

@@ -28,6 +28,11 @@ class FakeVideo extends EventTarget {
     canPlayType = vi.fn(() => '');
 }
 
+// Tercer argumento de getPlaybackDecision: opciones de caché (`fresh`), que
+// no tienen nada que ver con las pistas que se prueban aquí. Lo que importa de
+// cada llamada es el segundo.
+const CACHE_OPTS = expect.anything();
+
 const AUDIO = [
     { index: 1, language: 'eng', displayTitle: 'English', isDefault: true, isText: false },
     { index: 2, language: 'spa', displayTitle: 'Español', isDefault: false, isText: false }
@@ -90,7 +95,7 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
 
     test('sin preferencia guardada no se piden índices: decide el servidor', async () => {
         const { getPlaybackDecision } = await open();
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {});
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {}, CACHE_OPTS);
         expect(vm.titlePref.value).toBeNull();
     });
 
@@ -116,7 +121,7 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
             audioStreamIndex: 2,
             subtitleStreamIndex: undefined,
             mediaSourceId: 'ms1'
-        });
+        }, CACHE_OPTS);
     });
 
     test('apagar los subtítulos también se recuerda, y se pide como -1', async () => {
@@ -132,7 +137,7 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
             audioStreamIndex: undefined,
             subtitleStreamIndex: -1,
             mediaSourceId: 'ms1'
-        });
+        }, CACHE_OPTS);
     });
 
     test('un idioma recordado que este item no tiene se ignora', async () => {
@@ -144,7 +149,7 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
 
         // Sin pista en ese idioma no se fuerza nada: manda la preferencia del
         // usuario que aplica el servidor.
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {});
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {}, CACHE_OPTS);
     });
 
     test('olvidar la preferencia devuelve el mando al servidor', async () => {
@@ -156,7 +161,7 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
 
         expect(vm.titlePref.value).toBeNull();
         const { getPlaybackDecision } = await open();
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {});
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {}, CACHE_OPTS);
     });
 
     test('en una película la preferencia se guarda contra el propio item', async () => {

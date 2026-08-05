@@ -27,6 +27,7 @@ import {
 } from './quickConnect';
 import { normalizeServerUrl } from './http';
 import { clearShowCache } from './cache';
+import { invalidateLists } from './listCache';
 import { getShows, getShow } from './shows';
 import { getMovie, getMovies } from './movies';
 import { getByGenre, getByPerson, getSimilar, searchCatalog } from './discover';
@@ -51,6 +52,7 @@ import {
     getMaxStreamingBitrate
 } from './playback';
 import { getNextEpisode, getPlaybackContext } from './playbackContext';
+import { prewarmPlayback } from './playbackPrewarm';
 import { getMediaSegments } from './segments';
 import {
     getItemRaw,
@@ -102,7 +104,9 @@ const authService = {
     authenticateWithQuickConnect
 };
 
-const catalogService = { getShows, getShow, getMovie, getMovies, getHomeCarousel, clearShowCache };
+const catalogService = {
+    getShows, getShow, getMovie, getMovies, getHomeCarousel, clearShowCache, invalidateLists
+};
 
 const discoverService = { getByGenre, getByPerson, getSimilar, searchCatalog };
 
@@ -121,6 +125,7 @@ const itemService = {
 
 const playbackService = {
     getPlaybackDecision,
+    prewarmPlayback,
     subtitleVttUrl,
     reportPlaybackStart,
     reportPlaybackProgress,

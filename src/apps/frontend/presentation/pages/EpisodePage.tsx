@@ -6,7 +6,9 @@ import { formatDateLong, formatRemainingCompact } from '../theme/format';
 import { findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { useWatched } from '../../domain/bridge/useWatched';
 import { HeroFrame } from '../components/layout/DetailHero';
-import { DetailBody, DetailRow, DetailStatus, SectionLabel } from '../components/layout/DetailSections';
+import {
+    DetailBody, DetailColumns, DetailRow, DetailStatus, DetailTable, SectionLabel
+} from '../components/layout/DetailSections';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
@@ -15,6 +17,7 @@ import { MoreButton } from '../components/controls/MoreButton';
 import { FavButton } from '../components/controls/FavButton';
 import { WatchedButton } from '../components/controls/WatchedButton';
 import { CastList } from '../components/cast/CastList';
+import { useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { episodeKey } from '../../domain/stores';
 import { ticksFromProgress } from '../../domain/player/format';
@@ -50,7 +53,9 @@ function EpisodeHero({
 }: {
     show: Show; season: Season; ep: Episode; navigate: Navigate;
 }) {
-    const { play } = usePlayer();
+    const { play, prewarm } = usePlayer();
+    const r = useResponsive();
+    const short = useShortViewport();
     // El tick del Nav escribe en el store local; leerlo aquí mantiene el play
     // en sincronía al instante (sin esperar a que se recargue la serie).
     const [localWatched] = useWatched(episodeKey(show.id, season.n, ep.n));
@@ -97,38 +102,58 @@ function EpisodeHero({
         >
             <>
                 <PlayBtn
-                    size={108} onClick={startPlay}
+                    size={short ? 64 : r.touch ? 84 : 108}
+                    onClick={startPlay}
+                    onHover={() => ep.jfId && prewarm(ep.jfId)}
                     progress={inProgress ? ep.watched : null}
                     watched={watched}
                     hoverText={hoverText}
                 />
 
                 <div style={{
-                    marginTop: 28, display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', gap: 8
+                    marginTop: short ? 12 : r.touch ? 18 : 28,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: short ? 4 : 8,
+                    maxWidth: '100%'
                 }}>
                     <div style={{
-                        fontFamily: T.ui, fontSize: 11, letterSpacing: 4, textTransform: 'uppercase',
-                        color: 'rgba(255,255,255,0.55)'
+                        fontFamily: T.ui, fontSize: r.touch ? 10 : 11,
+                        letterSpacing: r.touch ? 2.5 : 4, textTransform: 'uppercase',
+                        color: 'rgba(255,255,255,0.55)',
+                        maxWidth: '100%', overflow: 'hidden',
+                        whiteSpace: 'nowrap', textOverflow: 'ellipsis'
                     }}>
                         {show.title} · T{season.n} · E{String(ep.n).padStart(2, '0')}
                     </div>
 
                     <div style={{
-                        display: 'grid', gridTemplateColumns: '1fr auto 1fr',
-                        alignItems: 'center', columnGap: 16, width: '100%'
+                        display: 'grid',
+                        // El hueco simétrico del menú solo se reserva donde hay
+                        // sitio: en móvil se lo comía todo el título.
+                        gridTemplateColumns: r.touch ? 'minmax(0, 1fr) auto' : '1fr auto 1fr',
+                        alignItems: 'center', columnGap: r.touch ? 8 : 16, width: '100%'
                     }}>
-                        <span aria-hidden='true' style={{
-                            visibility: 'hidden', justifySelf: 'end',
-                            display: 'inline-flex', fontSize: 'clamp(32px, 4vw, 58px)',
-                            transform: 'translateY(0.15em)'
-                        }}>
-                            <MoreButton id={ep.jfId ?? 'spacer'} size={28} type='episode' />
-                        </span>
+                        {!r.touch && (
+                            <span aria-hidden='true' style={{
+                                visibility: 'hidden', justifySelf: 'end',
+                                display: 'inline-flex', fontSize: 'clamp(32px, 4vw, 58px)',
+                                transform: 'translateY(0.15em)'
+                            }}>
+                                <MoreButton id={ep.jfId ?? 'spacer'} size={28} type='episode' />
+                            </span>
+                        )}
                         <h1 style={{
-                            fontFamily: T.display, fontSize: 'clamp(32px, 4vw, 58px)', lineHeight: 1.05,
+                            fontFamily: T.display,
+                            fontSize: short ? 'clamp(20px, 5vh, 30px)' :
+                                r.touch ? 'clamp(24px, 6vw, 38px)' : 'clamp(32px, 4vw, 58px)',
+                            lineHeight: 1.05,
                             margin: 0, fontWeight: 300, letterSpacing: -0.5,
-                            textShadow: '0 2px 24px rgba(0,0,0,0.7)', textWrap: 'balance'
+                            textShadow: '0 2px 24px rgba(0,0,0,0.7)', textWrap: 'balance',
+                            minWidth: 0,
+                            // Un título largo no puede empujar al resto fuera
+                            // del hero: como mucho, dos líneas.
+                            overflow: 'hidden', display: '-webkit-box',
+                            WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
                         }}>
                             {ep.title}
                         </h1>
@@ -147,9 +172,9 @@ function EpisodeHero({
                     </div>
 
                     <div style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
+                        display: 'flex', alignItems: 'center', gap: r.touch ? 8 : 12,
                         flexWrap: 'wrap', justifyContent: 'center',
-                        fontFamily: T.ui, fontSize: 13, color: 'rgba(255,255,255,0.6)'
+                        fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.6)'
                     }}>
                         {ep.runtime != null && <><span>{ep.runtime} min</span><Ic.Dot /></>}
                         {ep.date && (
@@ -175,11 +200,14 @@ function EpisodeDetail({
 }) {
     return (
         <DetailBody>
-            {/* minmax(0,…): sin él los tracks 1fr valen minmax(auto,1fr) y su
+            {/* Una sola columna en táctil: dos columnas en un móvil dejaban
+                los datos técnicos en una franja de ~100px con los valores
+                partidos en cuatro líneas o cortados.
+                minmax(0,…): sin él los tracks 1fr valen minmax(auto,1fr) y su
                 mínimo es el min-content del hijo (la fila de reparto, muy
                 ancha) → la rejilla se desborda y en pantalla completa el
                 sobrante se ve como una columna negra a la derecha. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: 80 }}>
+            <DetailColumns>
                 <div>
                     <SectionLabel>{globalize.translate('Overview')}</SectionLabel>
                     <p style={{
@@ -196,9 +224,7 @@ function EpisodeDetail({
 
                 <div>
                     <SectionLabel>{globalize.translate('HeaderTechnicalInfo')}</SectionLabel>
-                    <div style={{
-                        display: 'grid', gridTemplateColumns: '130px 1fr', rowGap: 14, fontSize: 13
-                    }}>
+                    <DetailTable>
                         {show.directors && (
                             <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
                         )}
@@ -226,7 +252,7 @@ function EpisodeDetail({
                         {show.studio && (
                             <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
                         )}
-                    </div>
+                    </DetailTable>
 
                     {nextEp && (
                         <div style={{ marginTop: 56 }}>
@@ -295,7 +321,7 @@ function EpisodeDetail({
                         </div>
                     )}
                 </div>
-            </div>
+            </DetailColumns>
         </DetailBody>
     );
 }

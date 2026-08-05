@@ -5,7 +5,7 @@ import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { PROTO_DATA } from '../../../domain/models';
 import { useResponsive } from '../../theme/responsive';
-import { PosterShell } from './PosterShell';
+import { POSTER_W, PosterShell } from './PosterShell';
 import { useCardInteractions } from './useCardInteractions';
 import type { Navigate } from '../../../app/router';
 
@@ -31,7 +31,7 @@ type Props = {
 export const PosterCard = React.memo(function PosterCardBase({ slide, navigate, fluid }: Props) {
     const r = useResponsive();
     // 130/160 en mobile/tablet (spec 4.1); desktop conserva 230.
-    const w = r.touch ? r.cardW : 230;
+    const w = r.touch ? r.cardW : POSTER_W;
     useWatchedVersion();
     const show = PROTO_DATA.shows[slide.id];
     const seasons = show?.seasons || [];

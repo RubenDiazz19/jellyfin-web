@@ -5,7 +5,7 @@ import { Ic } from '../theme/icons';
 import { findSeason, type Show, type Season } from '../../domain/models';
 import { HeroFrame } from '../components/layout/DetailHero';
 import {
-    DetailBody, DetailHeading, DetailRow, DetailStatus, DetailTable, SectionLabel
+    DetailBody, DetailColumns, DetailHeading, DetailRow, DetailStatus, DetailTable, SectionLabel
 } from '../components/layout/DetailSections';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
@@ -13,6 +13,7 @@ import { PlayBtn } from '../components/controls/PlayBtn';
 import { MoreButton } from '../components/controls/MoreButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
+import { useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
 import { useLeaveWhen, useShowEntity } from './useDetailEntity';
@@ -44,7 +45,10 @@ export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
 function SeasonHero({ show, season, navigate }: { show: Show; season: Season; navigate: Navigate }) {
     const nextEp = season.episodes.find((e) => e.watched < 1) || season.episodes[0];
     const inProgress = nextEp && nextEp.watched > 0 && nextEp.watched < 1;
-    const { play } = usePlayer();
+    const r = useResponsive();
+    const short = useShortViewport();
+    const playSize = short ? 64 : r.touch ? 84 : PLAY_SIZE;
+    const { play, prewarm } = usePlayer();
     const startPlay = () => {
         if (!nextEp) return;
         if (nextEp.jfId) {
@@ -80,30 +84,41 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
         >
             <>
                 <div style={{
-                    fontFamily: T.ui, fontSize: 11, letterSpacing: 4, textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.7)', marginBottom: 18
+                    fontFamily: T.ui, fontSize: 11, letterSpacing: r.touch ? 2.5 : 4,
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.7)', marginBottom: short ? 6 : 18,
+                    maxWidth: '100%', overflow: 'hidden',
+                    whiteSpace: 'nowrap', textOverflow: 'ellipsis'
                 }}>
                     {show.title} · {season.year}
                 </div>
 
                 <div style={{
-                    fontFamily: T.display, fontStyle: 'italic', fontSize: 36, fontWeight: 300,
+                    fontFamily: T.display, fontStyle: 'italic',
+                    fontSize: short ? 20 : r.touch ? 26 : 36, fontWeight: 300,
                     color: 'rgba(255,255,255,0.72)', marginBottom: 6
                 }}>
                     {globalize.translate('Season')}
                 </div>
                 <h1 style={{
-                    fontFamily: T.display, fontSize: 'clamp(160px, 18vw, 260px)', lineHeight: 0.85,
-                    margin: 0, fontWeight: 200, letterSpacing: -6,
+                    fontFamily: T.display,
+                    // El número gigante es el protagonista, pero en táctil se
+                    // mide contra el alto disponible: con `clamp(160px…)` no
+                    // dejaba sitio ni al dato ni al botón.
+                    fontSize: short ? 'clamp(64px, 20vh, 110px)' :
+                        r.touch ? 'clamp(96px, 26vh, 190px)' : 'clamp(160px, 18vw, 260px)',
+                    lineHeight: 0.85,
+                    margin: 0, fontWeight: 200, letterSpacing: r.touch ? -3 : -6,
                     textShadow: '0 6px 60px rgba(0,0,0,0.6)'
                 }}>
                     {String(season.n).padStart(2, '0')}
                 </h1>
 
                 <div style={{
-                    marginTop: 18, display: 'flex', alignItems: 'center', gap: 16,
+                    marginTop: short ? 8 : r.touch ? 12 : 18,
+                    display: 'flex', alignItems: 'center', gap: r.touch ? 10 : 16,
                     flexWrap: 'wrap', justifyContent: 'center',
-                    fontFamily: T.ui, fontSize: 13, color: 'rgba(255,255,255,0.78)'
+                    fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.78)'
                 }}>
                     <span>{season.total} episodios</span><Ic.Dot />
                     <span>{season.watched}/{season.total} vistos</span><Ic.Dot />
@@ -111,12 +126,13 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                 </div>
 
                 <div style={{
-                    marginTop: 36, position: 'relative',
+                    marginTop: short ? 14 : r.touch ? 22 : 36, position: 'relative',
                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
                     <PlayBtn
-                        size={PLAY_SIZE}
+                        size={playSize}
                         onClick={startPlay}
+                        onHover={() => nextEp?.jfId && prewarm(nextEp.jfId)}
                         progress={inProgress ? nextEp.watched : null}
                         watched={season.watched >= season.total && season.total > 0}
                     />
@@ -130,7 +146,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     {season.jfId && (
                         <div style={{
                             position: 'absolute', top: '50%',
-                            left: `calc(50% + ${PLAY_SIZE / 2 + MORE_GAP}px)`,
+                            left: `calc(50% + ${playSize / 2 + (r.touch ? 18 : MORE_GAP)}px)`,
                             transform: 'translateY(-50%)',
                             display: 'flex', alignItems: 'center'
                         }}>
@@ -147,7 +163,10 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     )}
                 </div>
                 <div style={{
-                    marginTop: 22, fontFamily: T.ui, fontSize: 12, color: 'rgba(255,255,255,0.62)'
+                    marginTop: short ? 10 : r.touch ? 16 : 22,
+                    fontFamily: T.ui, fontSize: 12, color: 'rgba(255,255,255,0.62)',
+                    maxWidth: '100%', overflow: 'hidden',
+                    whiteSpace: 'nowrap', textOverflow: 'ellipsis'
                 }}>
                     {inProgress ?
                         `Reanudar E${nextEp.n} · ${nextEp.title}` :
@@ -161,15 +180,22 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
 }
 
 function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; navigate: Navigate }) {
+    const r = useResponsive();
     return (
         <DetailBody>
             <DetailHeading title={globalize.translate('Episodes')} marginBottom={28}>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                <div style={{
+                    marginLeft: 'auto', display: 'flex', gap: 4,
+                    // Con muchas temporadas la fila se arrastra en vez de
+                    // aplastar las píldoras.
+                    maxWidth: '100%', overflowX: 'auto', scrollbarWidth: 'none'
+                }}>
                     {show.seasons.map((s) => (
                         <button
                             key={s.n}
                             onClick={() => navigate({ page: 'season', showId: show.id, seasonN: s.n })}
                             style={{
+                                flex: '0 0 auto',
                                 padding: '8px 20px', border: 'none',
                                 background: s.n === season.n ? 'rgba(255,255,255,0.12)' : 'transparent',
                                 color: s.n === season.n ? '#fff' : T.dim,
@@ -184,39 +210,68 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                 </div>
             </DetailHeading>
 
-            <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 22, marginBottom: 80
-            }}>
-                {season.episodes.map((ep) => (
-                    <EpCard key={ep.n} show={show} season={season} ep={ep} navigate={navigate} />
-                ))}
-            </div>
+            {/* En táctil los episodios van en carrusel, no en rejilla: cuatro
+                columnas en un móvil dejan las carátulas del tamaño de un
+                sello. Se arrastra de lado y cada tarjeta se ve. */}
+            {r.touch ? (
+                <div
+                    style={{
+                        display: 'flex', gap: r.gap, marginBottom: 40,
+                        overflowX: 'auto', overflowY: 'hidden',
+                        scrollSnapType: 'x mandatory',
+                        // El respiro de abajo deja sitio a la sombra M3 de las
+                        // tarjetas, que si no la recorta el scroll.
+                        paddingBottom: 8,
+                        scrollbarWidth: 'none'
+                    }}
+                >
+                    {season.episodes.map((ep) => (
+                        <div
+                            key={ep.n}
+                            style={{
+                                flex: '0 0 auto',
+                                width: r.mobile ? 232 : 296,
+                                scrollSnapAlign: 'start'
+                            }}
+                        >
+                            <EpCard show={show} season={season} ep={ep} navigate={navigate} />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 22, marginBottom: 80
+                }}>
+                    {season.episodes.map((ep) => (
+                        <EpCard key={ep.n} show={show} season={season} ep={ep} navigate={navigate} />
+                    ))}
+                </div>
+            )}
 
-            <div style={{
-                display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 64,
-                paddingTop: 48, borderTop: `1px solid ${T.hairline}`
-            }}>
-                <div>
-                    <SectionLabel>Sinopsis de la temporada</SectionLabel>
-                    <p style={{
-                        fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
-                        color: 'rgba(255,255,255,0.82)', textWrap: 'pretty', fontWeight: 400
-                    }}>
-                        {season.synopsis}
-                    </p>
-                </div>
-                <div>
-                    <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
-                    <DetailTable>
-                        <DetailRow label={globalize.translate('Episodes')}>{season.total}</DetailRow>
-                        <DetailRow label={globalize.translate('LabelYear')}>{season.year}</DetailRow>
-                        <DetailRow label={globalize.translate('Watched')}>
-                            {season.watched} · {Math.round((season.watched / season.total) * 100)}%
-                        </DetailRow>
-                        <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
-                        <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
-                    </DetailTable>
-                </div>
+            <div style={{ paddingTop: r.touch ? 28 : 48, borderTop: `1px solid ${T.hairline}` }}>
+                <DetailColumns>
+                    <div>
+                        <SectionLabel>Sinopsis de la temporada</SectionLabel>
+                        <p style={{
+                            fontFamily: T.ui, fontSize: r.touch ? 15 : 17, lineHeight: 1.55, margin: 0,
+                            color: 'rgba(255,255,255,0.82)', textWrap: 'pretty', fontWeight: 400
+                        }}>
+                            {season.synopsis}
+                        </p>
+                    </div>
+                    <div>
+                        <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
+                        <DetailTable>
+                            <DetailRow label={globalize.translate('Episodes')}>{season.total}</DetailRow>
+                            <DetailRow label={globalize.translate('LabelYear')}>{season.year}</DetailRow>
+                            <DetailRow label={globalize.translate('Watched')}>
+                                {season.watched} · {Math.round((season.watched / season.total) * 100)}%
+                            </DetailRow>
+                            <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
+                            <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
+                        </DetailTable>
+                    </div>
+                </DetailColumns>
             </div>
         </DetailBody>
     );

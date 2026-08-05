@@ -12,6 +12,7 @@ export {
 } from './quickConnect';
 export { imageUrl, type ImageType } from './images';
 export { clearShowCache } from './cache';
+export { invalidateLists } from './listCache';
 export { getShows, getShow } from './shows';
 export { getMovie, getMovies } from './movies';
 export { getByGenre, getByPerson, getSimilar, searchCatalog, type CatalogSlice } from './discover';
@@ -69,6 +70,7 @@ export {
     type BackgroundTask
 } from './tasks';
 export { getMaxStreamingBitrate, setMaxStreamingBitrate } from './playback';
+export { prewarmPlayback } from './playbackPrewarm';
 export {
     getPlaylists,
     addToPlaylist,

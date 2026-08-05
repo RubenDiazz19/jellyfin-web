@@ -12,7 +12,7 @@ import { usePlayer } from '../components/player/PlayerProvider';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
-import { Row } from '../components/layout/Row';
+import { Row, RowScroller } from '../components/layout/Row';
 import { CwCard } from '../components/cards/CwCard';
 import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
@@ -171,8 +171,12 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
             <>
                 <section style={{
                     position: 'relative',
-                    height: r.touch ? (r.tablet ? '55vh' : '40vh') : '100vh',
-                    width: '100%',
+                    // El hero táctil también es a pantalla completa y a
+                    // sangre, así que el hueco reservado mientras carga mide
+                    // lo mismo (si no, la biblioteca da un salto al llegar).
+                    height: r.touch ? 'var(--jfp-viewport-h, 100vh)' : '100vh',
+                    marginLeft: r.touch ? 'calc(-1 * var(--jfp-nav-left, 0px))' : undefined,
+                    width: r.touch ? 'calc(100% + var(--jfp-nav-left, 0px))' : '100%',
                     overflow: 'hidden', background: r.touch ? MC.surface : '#000'
                 }}>
                     <Nav navigate={navigate} active='home' />
@@ -297,6 +301,9 @@ const HeroSlide = React.memo(function HeroSlideBase({
     onPlay: () => void;
 }) {
     const isContinue = slide.type === 'continue';
+    // Propio y no heredado del padre: el hero rota, y quien sabe qué item toca
+    // adelantar es el slide que se está pintando.
+    const { prewarm } = usePlayer();
     const showData = PROTO_DATA.shows[slide.id] || PROTO_DATA.movies[slide.id];
     const logo = slide.logo ?? showData?.logo;
     const goDetail = () => {
@@ -433,6 +440,10 @@ const HeroSlide = React.memo(function HeroSlideBase({
                     <PlayBtn
                         size={108}
                         onClick={onPlay}
+                        // Solo los slides de «continuar viendo» abren el
+                        // reproductor; los de «novedad» llevan a la ficha, y
+                        // ahí no hay nada que calentar todavía.
+                        onHover={() => slide.jfEpisodeId && prewarm(slide.jfEpisodeId)}
                         progress={isContinue ? slide.progress : null}
                         hoverText={isContinue ? formatRemainingCompact(slide.remaining) || null : null}
                     />
@@ -453,7 +464,6 @@ const HomeLibrary = React.memo(function HomeLibraryBase({ navigate }: { navigate
 
 function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     const r = useResponsive();
-    const rowGap = r.touch ? r.gap : 24;
     const sectionStyle = {
         background: r.touch ? MC.bg : '#000',
         color: r.touch ? MC.fg : '#fff',
@@ -493,16 +503,16 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
                         {globalize.translate('MessageNoShowsInLibrary')}
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
+                    <RowScroller>
                         {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
-                    </div>
+                    </RowScroller>
                 )}
             </Row>
             {movies.length > 0 && (
                 <Row title={globalize.translate('Movies')}>
-                    <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
+                    <RowScroller>
                         {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
-                    </div>
+                    </RowScroller>
                 </Row>
             )}
         </section>
@@ -515,7 +525,6 @@ function HomeLibraryProto({
     data: typeof PROTO_DATA; navigate: Navigate;
 }) {
     const r = useResponsive();
-    const rowGap = r.touch ? r.gap : 24;
     const cw = data.carousel.filter((s) => s.type === 'continue');
     const movies = Object.values(data.movies);
     const series = Object.values(data.shows);
@@ -542,28 +551,28 @@ function HomeLibraryProto({
             paddingBottom: r.touch ? 48 : 96, fontFamily: T.ui
         }}>
             <Row title={globalize.translate('ContinueWatching')}>
-                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
+                <RowScroller>
                     {cw.map((s) => <CwCard key={s.id} slide={s} navigate={navigate} />)}
-                </div>
+                </RowScroller>
             </Row>
             <Row title={globalize.translate('TabLatest')}>
-                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
+                <RowScroller>
                     {recent.map((item) =>
                         'seasons' in item ?
                             <PosterCard key={`s-${item.id}`} slide={item} navigate={navigate} /> :
                             <MovieCard key={`m-${item.id}`} movie={item} navigate={navigate} />
                     )}
-                </div>
+                </RowScroller>
             </Row>
             <Row title={globalize.translate('Movies')}>
-                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
+                <RowScroller>
                     {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
-                </div>
+                </RowScroller>
             </Row>
             <Row title={globalize.translate('Shows')}>
-                <div style={{ display: 'flex', gap: rowGap, overflowX: 'auto' }}>
+                <RowScroller>
                     {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
-                </div>
+                </RowScroller>
             </Row>
         </section>
     );

@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { themeVM } from '../domain/viewModels/ThemeViewModel';
 import { MobileNav } from '../presentation/components/nav/MobileNav';
+import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../presentation/components/nav/navMetrics';
 import { InstallBanner } from '../presentation/components/pwa/InstallBanner';
 import { OfflineIndicator } from '../presentation/components/pwa/OfflineIndicator';
 import { MobileThemeProvider } from '../presentation/theme/MobileThemeProvider';
@@ -143,9 +144,12 @@ describe('integridad desktop (regla cardinal)', () => {
         expect(document.documentElement.classList.contains('layout-tablet')).toBe(false);
         expect(document.documentElement.classList.contains('jfp-standalone')).toBe(false);
 
-        // 2. Sin navegación ni hueco de contenido.
+        // 2. Sin navegación ni hueco de contenido (ni la clase ni las medidas
+        //    que la píldora flotante publica en <html>).
         expect(host?.querySelector('nav')).toBeNull();
         expect(document.body.classList.contains('jfp-has-nav')).toBe(false);
+        expect(document.documentElement.style.getPropertyValue(NAV_BOTTOM_VAR)).toBe('');
+        expect(document.documentElement.style.getPropertyValue(NAV_LEFT_VAR)).toBe('');
 
         // 3. Sin service worker.
         expect(swRegistered).toBe(false);
@@ -197,6 +201,7 @@ describe('integridad desktop (regla cardinal)', () => {
         expect(document.getElementById(STYLE_ID)).toBeNull();
         expect(host?.querySelector('nav')).toBeNull();
         expect(document.body.classList.contains('jfp-has-nav')).toBe(false);
+        expect(document.documentElement.style.getPropertyValue(NAV_BOTTOM_VAR)).toBe('');
         expect(meta.content).toBe('#202020');
 
         // Y de vuelta a móvil, la maquinaria reaparece.
