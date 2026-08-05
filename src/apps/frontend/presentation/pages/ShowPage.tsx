@@ -46,7 +46,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
         { seasonN: cont.seasonN, epN: cont.epN } :
         { seasonN: show.seasons[0].n, epN: 1 };
     const label = `T${target.seasonN}:E${String(target.epN).padStart(2, '0')}`;
-    useWatchedVersion();
+    useWatchedVersion(show.id);
     const allEpIds = (show.seasons || []).flatMap((s) =>
         (s.episodes || []).map((ep) => episodeKey(show.id, s.n, ep.n))
     );

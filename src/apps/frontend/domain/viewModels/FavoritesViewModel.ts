@@ -9,28 +9,25 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey, parseItemKey, seasonKey } from '../../data/stores/itemKeys';
 import type { Episode, Movie, Season, Show } from '../../data/models';
-import { LoadGuard } from './loadGuard';
+import { CatalogViewModel } from './CatalogViewModel';
 
 export type FavSeason = { show: Show; season: Season };
 export type FavEpisode = { show: Show; season: Season; episode: Episode };
 
-export class FavoritesViewModel {
-    shows = signal<Show[]>([]);
-    movies = signal<Movie[]>([]);
+export class FavoritesViewModel extends CatalogViewModel {
     seasons = signal<FavSeason[]>([]);
     episodes = signal<FavEpisode[]>([]);
-    // Arranca en true (a diferencia de otros ViewModels sin fallback proto):
-    // esta pantalla siempre carga al montar, así que empezar en false
-    // pintaría el estado vacío un frame antes de que el useEffect dispare load().
-    loading = signal(true);
-    error = signal<string | null>(null);
 
-    private loads = new LoadGuard();
-
-    constructor(private api: ApiService) {}
+    constructor(private api: ApiService) {
+        // Esta pantalla siempre carga al montar.
+        super({ loadsOnMount: true });
+    }
 
     async load() {
-        const isLatest = this.loads.begin();
+        await this.guarded(async (isLatest) => this.fetchAll(isLatest));
+    }
+
+    private async fetchAll(isLatest: () => boolean) {
         this.loading.value = true;
         this.error.value = null;
 
@@ -66,7 +63,7 @@ export class FavoritesViewModel {
             }
         }
 
-        try {
+        {
             const [movieResults, showResults] = await Promise.all([
                 Promise.allSettled(movieIds.map((id) => this.api.catalog.getMovie(id))),
                 Promise.allSettled([...showIds].map((id) => this.api.catalog.getShow(id)))
@@ -102,11 +99,6 @@ export class FavoritesViewModel {
                 if (show && season && episode) episodes.push({ show, season, episode });
             }
             this.episodes.value = episodes;
-        } catch (e) {
-            if (!isLatest()) return;
-            this.error.value = (e as Error).message;
-        } finally {
-            if (isLatest()) this.loading.value = false;
         }
     }
 

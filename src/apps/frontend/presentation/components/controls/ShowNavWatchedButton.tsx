@@ -1,21 +1,28 @@
 import { episodeKey, WATCHED } from '../../../domain/stores';
-import { useWatched, useWatchedVersion } from '../../../domain/bridge/useWatched';
+import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { showVM } from '../../../domain/viewModels/ShowViewModel';
 import { PROTO_DATA } from '../../../domain/models';
 import { useWatchedToggle } from './useWatchedToggle';
 import { WatchedToggleIcon } from './WatchedToggleIcon';
 
-// "Visto" para series — calcula el estado agregado desde todos los episodios
-// de todas las temporadas y marca/desmarca todos a la vez. Con sesión real,
-// llama a markPlayed(showId) — el server propaga a episodios; en catálogos
-// donde aún no se ha cargado el detalle (posters/carousel) el estado
-// agregado no está disponible: usamos como fallback el propio showId en
-// el store local para dar feedback inmediato.
+// "Visto" para series. El servidor propaga `markPlayed(showId)` a los
+// episodios; en local hay que mantener a mano las DOS caras del mismo hecho:
+//
+//   - la clave de la serie (`showId`), que es lo único que pueden leer las
+//     tarjetas de la Home y de la biblioteca, donde no hay episodios;
+//   - las claves de sus episodios, que es lo que agregan la ficha y los
+//     botones de temporada.
+//
+// Escribir solo una de las dos era el origen de que el mismo título saliera
+// visto en una pantalla y no visto en otra: marcabas desde la ficha (episodios)
+// y la tarjeta de la Home seguía sin marca, o al revés. Los listados las
+// reconcilian con el servidor (ver `hydrateShowWatched`); aquí se escriben las
+// dos para que el cambio se vea al instante en todas partes.
 type Props = { showId: string; size?: number; badge?: boolean };
 
 export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props) {
-    useWatchedVersion();
+    useWatchedVersion(showId);
     useViewModel(showVM);
     const proto = PROTO_DATA.shows[showId];
     const show = proto ?? showVM.showFor(showId);
@@ -24,19 +31,17 @@ export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props
             (season.episodes || []).map((ep) => episodeKey(showId, season.n, ep.n))
         ) :
         [];
-    // Con episodios cargados: agregado real. Sin ellos: fallback al showId
-    // como "id de item" en el store — no se propaga a episodios pero permite
-    // ver el toggle inmediato en un poster.
-    const [fallback, toggleFallback] = useWatched(showId);
+    // Con los episodios cargados manda el agregado real —es lo que refleja
+    // haberlos ido marcando uno a uno—; sin ellos, la clave de la serie.
     const allWatched = allEpIds.length > 0 ?
         allEpIds.every((id) => WATCHED.has(id)) :
-        fallback;
+        WATCHED.has(showId);
 
     const toggle = useWatchedToggle({
         active: allWatched,
         applyLocal: (next) => {
             if (allEpIds.length > 0) WATCHED.setMany(allEpIds, next);
-            else toggleFallback();
+            WATCHED.setMany([showId], next);
         },
         serverId: showId,
         message: (next) =>

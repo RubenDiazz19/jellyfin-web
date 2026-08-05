@@ -41,10 +41,21 @@ export class SelectionViewModel {
     count = computed(() => this.selected.value.length);
     empty = computed(() => this.selected.value.length === 0);
 
+    /**
+     * Índice por id de lo marcado.
+     *
+     * Es un `computed` y no un `Set` mantenido a mano para que siga siendo
+     * derivado de `selected` (única fuente de verdad) y reactivo. Cada tarjeta
+     * de la rejilla pregunta por el suyo en cada cambio de selección: con el
+     * `.some()` de antes eso era O(n²) por click, y así es O(n) una vez —
+     * el `computed` se recalcula una sola vez y se cachea.
+     */
+    selectedIds = computed(() => new Set(this.selected.value.map((i) => i.id)));
+
     constructor(private api: ApiService) {}
 
     has(id: string): boolean {
-        return this.selected.value.some((i) => i.id === id);
+        return this.selectedIds.value.has(id);
     }
 
     toggle(item: SelectableItem) {
@@ -85,6 +96,11 @@ export class SelectionViewModel {
         const items = this.selected.value;
         if (items.length === 0) return;
         const keys = items.map(watchedKey);
+        // Cómo estaba CADA clave antes del lote. Revertir con
+        // `setMany(keys, !watched)` era incorrecto: dejaba en `!watched`
+        // también las que ya venían así, de modo que un fallo del servidor al
+        // marcar como vistas cinco series desmarcaba las que ya lo estaban.
+        const before = keys.filter((key) => WATCHED.has(key));
         this.busy.value = true;
         WATCHED.setMany(keys, watched);
         try {
@@ -94,7 +110,8 @@ export class SelectionViewModel {
                 await this.api.items.markPlayed(item.id, watched);
             }
         } catch (e) {
-            WATCHED.setMany(keys, !watched);
+            WATCHED.setMany(keys, false);
+            WATCHED.setMany(before, true);
             throw e;
         } finally {
             this.busy.value = false;

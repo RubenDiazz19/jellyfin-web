@@ -8,7 +8,7 @@ import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/librarySortStore';
 import { ItemMutationSubscription, MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
-import { LoadGuard } from './loadGuard';
+import { CatalogViewModel } from './CatalogViewModel';
 
 export type LibraryKind = 'series' | 'movies';
 export type { SortKey };
@@ -54,21 +54,19 @@ function compareBy(key: SortKey, seed: number) {
     };
 }
 
-export class LibraryViewModel {
+export class LibraryViewModel extends CatalogViewModel {
     kind = signal<LibraryKind>('series');
-    shows = signal<Show[]>([]);
-    movies = signal<Movie[]>([]);
-    loading = signal(false);
-    error = signal<string | null>(null);
     /** Criterio de orden, recordado entre visitas. */
     sortKey = signal<SortKey>(DEFAULT_SORT);
 
     // Cambia al volver a elegir «aleatorio»: es la forma de pedir otra baraja.
     private randomSeed = signal(0);
-    private loads = new LoadGuard();
     private mutations = new ItemMutationSubscription();
 
+    // Sin `loadsOnMount`: con los listados cacheados, volver a una biblioteca
+    // ya visitada resuelve en el mismo tick y el spinner sería un parpadeo.
     constructor(private api: ApiService) {
+        super();
         // El servidor ya manda por SortName; el resto de criterios se aplican
         // aquí sobre la lista que ya está en memoria.
         this.sortKey.value = LIBRARY_SORT.load();
@@ -99,25 +97,23 @@ export class LibraryViewModel {
 
     async load(kind: LibraryKind) {
         this.subscribeToMutations();
-        const isLatest = this.loads.begin();
-        this.kind.value = kind;
-        this.error.value = null;
+        await this.guarded(async (isLatest) => {
+            this.kind.value = kind;
+            this.error.value = null;
 
-        const authed = !!this.api.session.load()?.accessToken;
-        if (!authed) {
-            if (kind === 'movies') this.movies.value = Object.values(PROTO_DATA.movies);
-            else this.shows.value = Object.values(PROTO_DATA.shows);
-            this.loading.value = false;
-            return;
-        }
+            const authed = !!this.api.session.load()?.accessToken;
+            if (!authed) {
+                if (kind === 'movies') this.movies.value = Object.values(PROTO_DATA.movies);
+                else this.shows.value = Object.values(PROTO_DATA.shows);
+                return;
+            }
 
-        // El esqueleto solo si no hay nada que enseñar. Con los listados
-        // cacheados, volver a una biblioteca ya visitada resuelve en el mismo
-        // tick: pintar el esqueleto sería un parpadeo de un frame, y en la
-        // recarga por mutación sería tirar la rejilla para volver a pintarla
-        // igual.
-        this.loading.value = !this.hasDataFor(kind);
-        try {
+            // El esqueleto solo si no hay nada que enseñar. Con los listados
+            // cacheados, volver a una biblioteca ya visitada resuelve en el
+            // mismo tick: pintar el esqueleto sería un parpadeo de un frame, y
+            // en la recarga por mutación sería tirar la rejilla para volver a
+            // pintarla igual.
+            this.loading.value = !this.hasDataFor(kind);
             if (kind === 'movies') {
                 const movies = await this.api.catalog.getMovies();
                 if (!isLatest()) return;
@@ -127,12 +123,7 @@ export class LibraryViewModel {
                 if (!isLatest()) return;
                 this.shows.value = shows;
             }
-        } catch (e) {
-            if (!isLatest()) return;
-            this.error.value = (e as Error).message;
-        } finally {
-            if (isLatest()) this.loading.value = false;
-        }
+        });
     }
 
     // Cualquier mutación de item recarga la biblioteca activa: no sabemos si

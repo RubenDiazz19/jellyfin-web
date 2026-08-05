@@ -17,6 +17,16 @@ const COLLECTION_TYPE_KEYS: Record<string, string> = {
     music: 'TabMusic'
 };
 
+/**
+ * Vistas que Jellyfin devuelve junto a las bibliotecas pero que NO son
+ * bibliotecas de medios: no tienen carpetas que escanear ni metadatos que
+ * refrescar, así que ninguna de las acciones de esta sección les aplica.
+ *
+ * Las dos se gestionan desde su propia página (Listas), que es donde el
+ * usuario las crea, las renombra y les pone portada.
+ */
+const NOT_A_MEDIA_LIBRARY = ['playlists', 'boxsets'];
+
 export function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; goDashboard: GoDashboard }) {
     const toast = useToast();
     const [views, setViews] = useState<UserView[] | null>(null);
@@ -25,11 +35,9 @@ export function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; g
 
     useEffect(() => {
         getUserViews()
-            // Jellyfin devuelve «Playlists» entre las vistas del usuario, pero
-            // no es una biblioteca de medios: no tiene carpetas que escanear
-            // ni metadatos que refrescar, y las acciones de esta sección no le
-            // aplican. Las listas se gestionan desde su propia página.
-            .then((all) => setViews(all.filter((v) => v.collectionType !== 'playlists')))
+            .then((all) => setViews(
+                all.filter((v) => !NOT_A_MEDIA_LIBRARY.includes(v.collectionType ?? ''))
+            ))
             .catch((e) => setError((e as Error).message));
     }, []);
 

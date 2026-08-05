@@ -6,7 +6,7 @@ import { ApiProvider } from 'hooks/useApi';
 import { UserSettingsProvider } from 'hooks/useUserSettings';
 import { WebConfigProvider } from 'hooks/useWebConfig';
 import browser from 'scripts/browser';
-import { persister, queryClient } from 'utils/query/queryClient';
+import { persister, queryClient, PERSIST_MAX_AGE, shouldDehydrateQuery } from 'utils/query/queryClient';
 
 import RootAppRouter from 'RootAppRouter';
 
@@ -18,7 +18,9 @@ const RootApp = () => (
         client={queryClient}
         persistOptions={{
             buster: __JF_BUILD_VERSION__,
-            persister
+            persister,
+            maxAge: PERSIST_MAX_AGE,
+            dehydrateOptions: { shouldDehydrateQuery }
         }}
     >
         <ApiProvider>

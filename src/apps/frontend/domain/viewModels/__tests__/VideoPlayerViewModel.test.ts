@@ -316,4 +316,87 @@ describe('VideoPlayerViewModel', () => {
         vm.close();
         expect(vm.brightness.value).toBe(1);
     });
+
+    describe('reporte periódico de progreso', () => {
+        test('solo corre mientras se reproduce', async () => {
+            vi.useFakeTimers();
+            try {
+                await vm.open('item1');
+                const report = api.playback.reportPlaybackProgress as ReturnType<typeof vi.fn>;
+
+                // Sin haber arrancado (autoplay denegado) no hay nada que
+                // reportar por mucho que pase el tiempo.
+                vi.advanceTimersByTime(30_000);
+                expect(report).not.toHaveBeenCalled();
+
+                await video.play();
+                vi.advanceTimersByTime(10_000);
+                expect(report).toHaveBeenCalledTimes(1);
+
+                // La pausa manda su reporte y para el timer: sin esto el
+                // servidor recibía la MISMA posición cada 10 s.
+                report.mockClear();
+                video.pause();
+                expect(report).toHaveBeenCalledTimes(1);
+                report.mockClear();
+                vi.advanceTimersByTime(60_000);
+                expect(report).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        test('el final del vídeo para el timer', async () => {
+            vi.useFakeTimers();
+            try {
+                await vm.open('item1');
+                await video.play();
+                const report = api.playback.reportPlaybackProgress as ReturnType<typeof vi.fn>;
+
+                video.dispatchEvent(new Event('ended'));
+                expect(vm.ended.value).toBe(true);
+                report.mockClear();
+                vi.advanceTimersByTime(60_000);
+                expect(report).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+    });
+
+    test('currentTime se publica cuantizado al segundo', async () => {
+        await vm.open('item1');
+        video.duration = 1400;
+        video.dispatchEvent(new Event('durationchange'));
+
+        const seen: number[] = [];
+        const unsub = vm.currentTime.subscribe((t) => seen.push(t));
+        for (const t of [10.1, 10.4, 10.7, 10.9, 11.2]) {
+            video.currentTime = t;
+            video.dispatchEvent(new Event('timeupdate'));
+        }
+        unsub();
+
+        // subscribe() emite el valor actual al suscribir: 0, luego 10 y 11.
+        expect(seen).toEqual([0, 10, 11]);
+    });
+
+    test('cambiar de pista no acumula listeners de loadedmetadata', async () => {
+        await vm.open('item1');
+        video.duration = 1400;
+        video.dispatchEvent(new Event('durationchange'));
+        video.currentTime = 300;
+
+        // Cada recarga instalaba un `loadedmetadata` nuevo sin quitar el
+        // anterior: con N cambios de pista, N saltos por cada metadato.
+        for (let i = 2; i <= 5; i++) {
+            vm.setAudioTrack(i);
+            await Promise.resolve();
+            await Promise.resolve();
+        }
+
+        video.play.mockClear();
+        video.dispatchEvent(new Event('loadedmetadata'));
+        expect(video.play).toHaveBeenCalledTimes(1);
+    });
 });

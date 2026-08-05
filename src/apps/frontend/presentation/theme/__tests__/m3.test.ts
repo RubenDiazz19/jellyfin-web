@@ -2,7 +2,6 @@ import { argbFromHex, Hct, SchemeContent } from '@material/material-color-utilit
 import { describe, expect, it } from 'vitest';
 
 import {
-    buildM3Css,
     buildM3CssFromTokens,
     M3_COLOR_ROLE_COUNT,
     M3_CONTRAST,
@@ -11,9 +10,11 @@ import {
     M3_SHAPE,
     M3_SPEC,
     M3_TYPESCALE,
-    M3_TYPESCALE_EMPHASIZED,
-    makeColorTokens
+    M3_TYPESCALE_EMPHASIZED
 } from '../m3';
+// La derivación vive aparte: es el punto de corte de la librería de color,
+// que solo se carga en mobile/tablet (ver colorScheme.ts).
+import { buildM3Css, makeColorTokens } from '../colorScheme';
 
 const HEX = /^#[0-9a-f]{6}$/;
 

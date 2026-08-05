@@ -8,13 +8,16 @@
 
 import globalize from 'lib/globalize';
 
+import { TICKS_PER_SECOND } from '../../data/api/types';
 import type { ItemChapter } from '../../data/api/playbackContext';
 import type { MediaSegment, MediaSegmentKind } from '../../data/api/segments';
 
 export type { ItemChapter, MediaSegment, MediaSegmentKind };
 
-/** Jellyfin cuenta el tiempo en «ticks» de 100 ns. */
-export const TICKS_PER_SECOND = 10_000_000;
+// La unidad de tiempo del servidor se define en la capa de datos y se
+// reexporta aquí: la View no puede importar de `data/` (regla de capas) y este
+// módulo ya hace de puerta para el resto del vocabulario del reproductor.
+export { TICKS_PER_SECOND } from '../../data/api/types';
 
 /**
  * Dónde reanudar, en ticks, sabiendo cuánto dura el item (en minutos) y por

@@ -2,11 +2,16 @@
 // contenido corrupto en localStorage.
 
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { flushPersistentStores } from '../persistentStore';
 import { VIEWS } from '../viewsStore';
 
 const base = { name: 'Anime', typeFilter: 'series', stateFilter: 'todo' };
 
 beforeEach(() => {
+    // Primero volcar: las escrituras del store van por lotes y una que
+    // quedara en cola caería DESPUÉS del `clear()` —y encima del contenido
+    // que los tests de abajo siembran a mano en localStorage—.
+    flushPersistentStores();
     localStorage.clear();
     // El store cachea en memoria; recargar el módulo lo deja limpio.
     vi.resetModules();

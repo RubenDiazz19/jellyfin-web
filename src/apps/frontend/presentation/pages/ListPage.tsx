@@ -13,6 +13,7 @@ import { EditableTitle } from '../components/controls/EditableTitle';
 import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { PosterTile } from '../components/cards/PosterTile';
+import { CardGrid } from '../components/layout/CardGrid';
 import { getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
 import { displayItems, LISTS, type ListKind, type ListRef } from '../../domain/stores';
 import { useResponsive } from '../theme/responsive';
@@ -218,15 +219,14 @@ function ListGrid({ items, error, navigate }: {
         );
     }
     return (
-        <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? (r.mobile ? 110 : 140) : 160}px, 1fr))`,
-            gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'
-        }}>
+        <CardGrid
+            minWidth={r.touch ? (r.mobile ? 110 : 140) : 160}
+            gap={r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'}
+        >
             {items.map((item) => (
                 <ListItemCard key={item.id} item={item} navigate={navigate} />
             ))}
-        </div>
+        </CardGrid>
     );
 }
 

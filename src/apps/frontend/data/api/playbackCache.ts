@@ -14,19 +14,11 @@
 // que nadie ha pedido. El TTL cubre lo que tiene que cubrir —de la ficha al
 // reproductor— y poco más.
 
-import { loadSession } from '../session/session';
-
-const TTL_MS = 60_000;
-
-type Entry = { promise: Promise<unknown>; at: number };
-
-const entries = new Map<string, Entry>();
+import { createTtlCache } from './ttlCache';
 
 // La clave lleva el usuario (una decisión trae la URL firmada con SU token) y
 // el itemId por delante, para poder invalidar un item suelto.
-function keyFor(itemId: string, variant: string): string {
-    return `${loadSession()?.userId ?? ''}|${itemId}|${variant}`;
-}
+const cache = createTtlCache<Promise<unknown>>({ ttlMs: 60_000, userScoped: true });
 
 /**
  * Lee de la caché o negocia con el servidor.
@@ -41,18 +33,17 @@ export function cachedPlayback<T>(
     load: () => Promise<T>,
     opts: { fresh?: boolean } = {}
 ): Promise<T> {
-    const key = keyFor(itemId, variant);
-    const entry = entries.get(key);
-    if (!opts.fresh && entry && Date.now() - entry.at <= TTL_MS) {
-        return entry.promise as Promise<T>;
+    const key = cache.key(itemId, variant);
+    if (!opts.fresh) {
+        const hit = cache.get(key);
+        if (hit) return hit as Promise<T>;
     }
     const promise = load();
-    const fresh: Entry = { promise, at: Date.now() };
-    entries.set(key, fresh);
+    const entry = cache.set(key, promise);
     // Un fallo no se queda cacheado: el siguiente intento tiene que salir a la
     // red (y el reproductor reintenta el arranque una vez).
     promise.catch(() => {
-        if (entries.get(key) === fresh) entries.delete(key);
+        if (cache.holds(key, entry)) cache.delete(key);
     });
     return promise;
 }
@@ -64,11 +55,10 @@ export function cachedPlayback<T>(
  */
 export function invalidatePlayback(itemId?: string): void {
     if (!itemId) {
-        entries.clear();
+        cache.clear();
         return;
     }
-    const prefix = `${loadSession()?.userId ?? ''}|${itemId}|`;
-    for (const key of entries.keys()) {
-        if (key.startsWith(prefix)) entries.delete(key);
-    }
+    // `key(itemId, '')` deja justo el prefijo «usuario + item»: todas las
+    // variantes de pistas negociadas para ese item cuelgan de ahí.
+    cache.deleteByPrefix(cache.key(itemId, ''));
 }

@@ -32,7 +32,9 @@ export const PosterCard = React.memo(function PosterCardBase({ slide, navigate, 
     const r = useResponsive();
     // 130/160 en mobile/tablet (spec 4.1); desktop conserva 230.
     const w = r.touch ? r.cardW : POSTER_W;
-    useWatchedVersion();
+    // Acotado a esta serie: sin el ámbito, marcar un episodio cualquiera
+    // repintaba las decenas de tarjetas de la Home.
+    useWatchedVersion(slide.id);
     const show = PROTO_DATA.shows[slide.id];
     const seasons = show?.seasons || [];
     const totalEps = seasons.reduce((a, s) => a + (s.total || 0), 0);

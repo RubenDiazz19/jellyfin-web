@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { castVM } from '../../../domain/viewModels/CastViewModel';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
+import { TICKS_PER_SECOND } from '../../../domain/player/format';
 import { PlayerIc } from './playerIcons';
 
 type Props = {
@@ -34,7 +35,9 @@ export function CastButton({ itemId }: Props) {
         await castVM.prompt();
         if (castVM.state.value !== 'connected') return;
         videoPlayerVM.pauseForCast();
-        await castVM.playItem(itemId, Math.floor(videoPlayerVM.currentTime.value * 10_000_000));
+        await castVM.playItem(
+            itemId, Math.floor(videoPlayerVM.currentTime.value * TICKS_PER_SECOND)
+        );
     };
 
     // Chromecast por el SDK de Google (receptor de Jellyfin) si hay

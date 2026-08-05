@@ -15,8 +15,11 @@ import {
     selectionVM, type SelectableItem
 } from '../../domain/viewModels/SelectionViewModel';
 import { SelectionBar } from '../components/controls/SelectionBar';
-import { useViewModel, useVmSignals } from '../../domain/bridge/useViewModel';
-import { MC, useResponsive } from '../theme/responsive';
+import { SelectToggle } from '../components/controls/SelectToggle';
+import { PageSection } from '../components/layout/PageSection';
+import { CardGrid } from '../components/layout/CardGrid';
+import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 type Props = { kind: 'series' | 'movies'; navigate: Navigate };
@@ -52,13 +55,7 @@ export function LibraryPage({ kind, navigate }: Props) {
     return (
         <>
             <Nav navigate={navigate} active={isSeries ? 'series' : 'movies'} />
-            <section style={{
-                background: r.touch ? MC.bg : '#000',
-                color: r.touch ? MC.fg : '#fff',
-                minHeight: '100vh',
-                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px',
-                fontFamily: T.ui
-            }}>
+            <PageSection>
                 <div style={{
                     display: 'flex', alignItems: 'baseline', gap: 16,
                     marginBottom: r.touch ? 22 : 44
@@ -94,11 +91,7 @@ export function LibraryPage({ kind, navigate }: Props) {
                         hint={globalize.translate('MessageAddContentAndRescan')}
                     />
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? r.cardW : 200}px, 1fr))`,
-                        gap: r.touch ? r.gap : 28
-                    }}>
+                    <CardGrid minWidth={r.touch ? r.cardW : 200} gap={r.touch ? r.gap : 28}>
                         {isSeries ?
                             libraryVM.sortedShows.value.map((s, i) => (
                                 <LazyCard key={s.id} width={cardWidth} eager={i < EAGER_CARDS}>
@@ -110,9 +103,9 @@ export function LibraryPage({ kind, navigate }: Props) {
                                     <MovieCard movie={m} navigate={navigate} fluid />
                                 </LazyCard>
                             ))}
-                    </div>
+                    </CardGrid>
                 )}
-            </section>
+            </PageSection>
             <SelectionBar items={selectable} />
             <ScrollTopFab />
         </>
@@ -128,26 +121,6 @@ const SORT_LABELS: { id: SortKey; key: string }[] = [
     { id: 'runtime', key: 'Runtime' },
     { id: 'random', key: 'OptionRandom' }
 ];
-
-/** Entra y sale del modo selección. */
-function SelectToggle() {
-    useVmSignals(selectionVM, (vm) => [vm.selecting]);
-    const on = selectionVM.selecting.value;
-    return (
-        <button
-            onClick={() => (on ? selectionVM.stop() : selectionVM.start())}
-            style={{
-                padding: '6px 14px', borderRadius: 999, cursor: 'pointer',
-                background: on ? '#fff' : 'rgba(255,255,255,0.08)',
-                color: on ? '#000' : T.dim,
-                border: on ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                fontFamily: T.ui, fontSize: 12
-            }}
-        >
-            {globalize.translate(on ? 'ButtonCancel' : 'SelectItems')}
-        </button>
-    );
-}
 
 /**
  * Selector de orden. Es un `<select>` nativo a propósito: son cinco opciones

@@ -11,7 +11,7 @@ import { cachedList } from './listCache';
 import { emitListsRefreshed } from './mutations';
 import { settlePlaybackReports } from './playback';
 import { getShows } from './shows';
-import { FIELDS_LIST, type JFItem } from './types';
+import { FIELDS_LIST, ticksToExactMinutes, type JFItem } from './types';
 
 /**
  * Los fondos del item y, si no tiene ninguno, el póster como sustituto: el
@@ -61,7 +61,7 @@ async function fetchHomeCarousel(): Promise<CarouselSlide[]> {
 
     for (const it of resume.Items ?? []) {
         const pct = (it.UserData?.PlayedPercentage ?? 0) / 100;
-        const runtimeMin = it.RunTimeTicks ? it.RunTimeTicks / 10_000_000 / 60 : 0;
+        const runtimeMin = ticksToExactMinutes(it.RunTimeTicks);
         const remaining = runtimeMin ? String(Math.max(1, Math.round((1 - pct) * runtimeMin))) : '';
         if (it.SeriesId) {
             // Episodio a medias: el slide enlaza a la serie, así que las

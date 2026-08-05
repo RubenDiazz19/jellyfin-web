@@ -1,11 +1,9 @@
 /// <reference types="vitest" />
 /// <reference types="vite/client" />
 /**
- * Vite configuration — development server (HMR) and unit tests (Vitest).
- *
- * The production build still runs through webpack (webpack.prod.js), which
- * targets legacy browsers and is verified with es-check. Vite is used only
- * for the dev loop and Vitest.
+ * Vite configuration — the single builder for this repo: development server
+ * (HMR), production bundle (`bun run build` → dist/) and unit tests (Vitest).
+ * There is no webpack config any more.
  *
  * The plugins that used to live in build/vite/plugins/ are inlined here so
  * this config stays self-contained.
@@ -63,6 +61,94 @@ function listPackageModules(spec: string): string[] {
     } catch {
         return [];
     }
+}
+
+/**
+ * Los submódulos de MUI que el código IMPORTA de verdad.
+ *
+ * Antes aquí había `'@mui/icons-material/*'` y `'@mui/material/*'`. Ese primer
+ * glob manda a pre-empaquetar los ~10.600 módulos del paquete de iconos, de
+ * los que el repo entero usa menos de cien: era una carga de arranque del dev
+ * server que no compraba nada. Escanear las fuentes cuesta ~30 ms sobre ~830
+ * ficheros y no se queda obsoleto solo, que es lo que pasaría con una lista a
+ * mano.
+ */
+function usedMuiModules(): string[] {
+    const spec = /['"](@mui\/(?:material|icons-material)\/\w+)['"]/g;
+    const found = new Set<string>();
+    // Síncrono a propósito: el config se evalúa antes de que exista servidor.
+    const walk = (dir: string) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walk(full);
+            } else if (/\.(?:[jt]sx?)$/.test(entry.name)) {
+                for (const [, mod] of fs.readFileSync(full, 'utf-8').matchAll(spec)) {
+                    found.add(mod);
+                }
+            }
+        }
+    };
+    try {
+        walk(SRC_DIR);
+    } catch {
+        // Si el escaneo falla, Vite descubre las dependencias sobre la marcha:
+        // más lento en el primer arranque, pero nada se rompe.
+        return [];
+    }
+    // Descarta lo que solo existe como tipos: el regex no distingue un
+    // `import type` de uno normal, y `@mui/material/themeCssVarsAugmentation`
+    // —que solo trae un .d.ts— hacía que Vite avisara de una dependencia
+    // imposible de resolver en cada arranque.
+    return [...found].filter(hasRuntimeModule).sort();
+}
+
+function hasRuntimeModule(spec: string): boolean {
+    const base = path.join(NODE_MODULES_DIR, spec);
+    return ['.js', '.mjs', '/index.js', '/index.mjs']
+        .some((suffix) => fs.existsSync(base + suffix));
+}
+
+/**
+ * Agrupación de los chunks de vendor.
+ *
+ * Sin esto todo node_modules cae en el chunk de entrada y tocar cualquier
+ * dependencia invalida la caché del navegador para todas. Pero agrupar de más
+ * SALE CARO: un grupo compartido entre el grafo estático y uno diferido sube
+ * entero a la carga inicial. Medido sobre este repo (bytes del entry más lo
+ * que precarga index.html):
+ *
+ *   sin agrupar                              937 586
+ *   + vendor-react + vendor-color            934 828  ← lo que hay aquí
+ *   + vendor-sdk                             953 511
+ *   + vendor-mui                           1 156 984
+ *
+ * `@mui` es el caso de libro: casi todo vive hoy en los chunks diferidos del
+ * dashboard, y nombrarlo lo hoisteaba a un chunk que la entrada sí importa de
+ * forma estática — +219 KB en la primera pantalla a cambio de nada. Antes de
+ * añadir un grupo nuevo, medidlo igual.
+ */
+const VENDOR_CHUNKS: [string, string[]][] = [
+    // react-dom depende de internals de react y scheduler: van juntos o el
+    // orden de evaluación entre chunks puede romperse. Son versiones fijadas
+    // que cambian poquísimo: aisladas, sobreviven a cada despliegue en caché.
+    ['vendor-react', ['react', 'react-dom', 'scheduler', 'react-router', 'react-router-dom']],
+    // Solo lo usa el tema dinámico de mobile/tablet, que lo carga con
+    // `import()` (ver colorScheme.ts): en su propio chunk, desktop no lo
+    // descarga nunca.
+    ['vendor-color', ['@material/material-color-utilities']]
+];
+
+function vendorChunk(id: string): string | undefined {
+    const marker = `${path.sep}node_modules${path.sep}`;
+    const at = id.lastIndexOf(marker);
+    if (at === -1) return undefined;
+    // Ruta del paquete dentro de node_modules, con '/' aunque el SO use '\'.
+    const rest = id.slice(at + marker.length).split(path.sep).join('/');
+    for (const [chunk, packages] of VENDOR_CHUNKS) {
+        if (packages.some((p) => rest === p || rest.startsWith(`${p}/`))) return chunk;
+    }
+    return undefined;
 }
 
 // `import template from './x.html'` → default-exports the raw markup string.
@@ -362,7 +448,22 @@ export default defineConfig(({ command, mode }) => ({
         // Fuera de src/ (la raíz de Vite); si no, el bundle acaba en
         // src/dist y contamina el árbol de fuentes.
         outDir: path.join(REPO_ROOT, 'dist'),
-        emptyOutDir: true
+        emptyOutDir: true,
+        // Explícito y no el 'modules' por defecto de Vite, que se mueve con
+        // cada versión: estos cuatro son los navegadores con los que se
+        // comprueba la app, y fijarlos hace el output reproducible.
+        target: ['chrome107', 'edge107', 'firefox104', 'safari16'],
+        // TRINQUETE, no meta. El chunk más gordo hoy es el de entrada, con
+        // 725 KB minificados (medido el 2026-08-05); el aviso salta un poco
+        // por encima para que una regresión de verdad se vea y el build
+        // normal no haga ruido. hls.js (523 KB) va aparte y solo lo descarga
+        // quien abre el reproductor. **Al bajar el bundle, bajad esto.**
+        chunkSizeWarningLimit: 750,
+        rollupOptions: {
+            output: {
+                manualChunks: (id) => vendorChunk(id)
+            }
+        }
     },
 
     resolve: {
@@ -407,8 +508,12 @@ export default defineConfig(({ command, mode }) => ({
             'lodash-es/isEqual',
             'lodash-es/merge',
             'lodash-es/union',
-            '@mui/icons-material/*',
-            '@mui/material/*',
+            // ESM con imports sin extensión: sin pre-empaquetar, el navegador
+            // pide cada módulo suelto y el resolver de Vite tropieza (es el
+            // mismo motivo por el que los tests lo llevan en `server.deps
+            // .inline`).
+            '@material/material-color-utilities',
+            ...usedMuiModules(),
             'date-fns/locale/*',
             ...listPackageModules('@jellyfin/sdk/lib/generated-client/api'),
             ...listPackageModules('@jellyfin/sdk/lib/generated-client/models'),

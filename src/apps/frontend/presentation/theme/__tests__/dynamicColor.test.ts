@@ -1,11 +1,16 @@
 // Memoización de la extracción de seed: sin tope, una sesión larga por la
 // biblioteca acumulaba una entrada por imagen vista y no soltaba ninguna.
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
     analysisCacheSize, analyzeImage, focusFromPixels, resetAnalysisCache
 } from '../dynamicColor';
+
+// `analyzeImage` carga la librería de color con `import()` (son ~100 KB que
+// solo usan mobile y tablet). Precargarla saca la transformación de Vite
+// —cientos de ms la primera vez— del reloj de cada test.
+beforeAll(async () => { await import('@material/material-color-utilities'); });
 
 // jsdom no carga imágenes ni pinta canvas: basta con que el `onload` llegue
 // para recorrer el camino completo (el getContext devuelve null y la seed sale

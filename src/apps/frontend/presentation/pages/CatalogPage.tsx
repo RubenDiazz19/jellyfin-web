@@ -9,8 +9,8 @@ import { T } from '../theme/tokens';
 import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
+import { PageSection } from '../components/layout/PageSection';
 import type { Movie, Show } from '../../domain/models';
-import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 import globalize from 'lib/globalize';
@@ -43,16 +43,10 @@ type Props = {
 export function CatalogPage({
     nav, header, shows, movies, empty, loading, error, navigate
 }: Props) {
-    const r = useResponsive();
     return (
         <>
             {nav}
-            <section style={{
-                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
-                minHeight: '100vh',
-                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px',
-                fontFamily: T.ui
-            }}>
+            <PageSection>
                 {header}
 
                 {shows.length > 0 && (
@@ -84,7 +78,7 @@ export function CatalogPage({
                         />
                     )
                 )}
-            </section>
+            </PageSection>
         </>
     );
 }

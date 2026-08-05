@@ -29,7 +29,11 @@ export function mapShow(item: JFItem): Show {
         status: item.Status ?? '',
         defaultSeason: 1,
         cont: { seasonN: 1, epN: 1, progress: 0, remaining: '' },
-        seasons: []
+        seasons: [],
+        // El servidor ya agrega el «visto» de la serie entera en su UserData;
+        // sin leerlo aquí, una serie vista solo se sabía abriendo su ficha y
+        // mirando episodio por episodio.
+        watched: watchedFraction(item)
     };
 }
 
@@ -142,7 +146,13 @@ async function fetchShows(): Promise<Show[]> {
         'IncludeItemTypes=Series&Recursive=true&SortBy=SortName'
         + `&Fields=${FIELDS_GRID}&EnableImageTypes=${GRID_IMAGE_TYPES}`
     );
-    return items.map(mapShow);
+    const shows = items.map(mapShow);
+    // Hidrata el store local de «visto» con la verdad del server, igual que
+    // hace `fetchMovies`. Es lo que hace que una serie marcada como vista se
+    // vea marcada en la Home y en la biblioteca, donde no hay episodios que
+    // agregar.
+    hydrateShowWatched(shows);
+    return shows;
 }
 
 export async function getShow(id: string): Promise<Show> {
@@ -241,6 +251,12 @@ async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
 // pero la verdad es el server. Sincroniza en ambos sentidos dentro del
 // scope de esta serie: lo marcado en el server entra al set; lo que ya no
 // esté marcado (desmarcado en otro cliente) sale.
+//
+// Se sincroniza TAMBIÉN la clave de la serie (ver `hydrateShowWatched`). Sin
+// eso, «serie vista» tenía dos representaciones locales que nadie reconciliaba
+// —el conjunto de sus episodios y la clave suelta— y el resultado dependía de
+// cuál estuviera poblada: el mismo título salía visto en una pantalla y no
+// visto en otra.
 function hydrateWatched(showId: string, seasons: Season[]) {
     const allIds: string[] = [];
     const watched: string[] = [];
@@ -252,4 +268,24 @@ function hydrateWatched(showId: string, seasons: Season[]) {
         }
     }
     WATCHED.sync(allIds, watched);
+    // Con los episodios delante, «serie vista» ES «todos sus episodios
+    // vistos»: se deriva de ahí en vez de fiarse de un agregado aparte. Una
+    // serie sin episodios no dice nada al respecto, así que no se toca su
+    // clave (borrarla sería inventarse que no está vista).
+    if (allIds.length === 0) return;
+    hydrateShowWatched([{ id: showId, watched: watched.length === allIds.length ? 1 : 0 }]);
+}
+
+/**
+ * Alinea la clave de serie del store local con lo que dice el servidor.
+ *
+ * Es la MISMA idea que `movieKey` en movies.ts: una clave canónica por título
+ * que se hidrata en cada listado. La necesitan las tarjetas de la Home y de la
+ * biblioteca, que no tienen los episodios cargados y no pueden agregar nada.
+ */
+function hydrateShowWatched(shows: readonly { id: string; watched?: number }[]) {
+    WATCHED.sync(
+        shows.map((s) => s.id),
+        shows.filter((s) => (s.watched ?? 0) >= 1).map((s) => s.id)
+    );
 }

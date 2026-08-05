@@ -60,6 +60,12 @@ export type Show = {
     defaultSeason: number;
     cont: { seasonN: number; epN: number; progress: number; remaining: string };
     seasons: Season[];
+    /**
+     * Progreso agregado de la serie en 0..1, según el servidor. 1 = vista
+     * entera. Es lo que hidrata la clave de serie del store local (ver
+     * `hydrateShowWatched`), igual que `Movie.watched` hace con la suya.
+     */
+    watched?: number;
     backdrop?: string;
     backdrops?: string[];
     poster?: string;

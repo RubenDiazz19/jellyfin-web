@@ -32,12 +32,37 @@ import {
     M3_ANIM_CLASS,
     M3_CONTRAST,
     M3_DEFAULT_SEED,
-    makeColorTokens,
     type M3SchemeName
 } from './m3';
 import { analyzeImage } from './dynamicColor';
 
 const STYLE_ID = 'jfp-m3-tokens';
+
+/**
+ * Paleta derivada junto con los parámetros que la produjeron. Van en el mismo
+ * estado a propósito: es lo que garantiza que el CSS emitido sea coherente
+ * consigo mismo aunque el scheme haya cambiado mientras se derivaba.
+ */
+type DerivedPalette = {
+    colors: Record<string, string>;
+    scheme: M3SchemeName;
+    contrast: number;
+};
+
+/**
+ * La derivación de la paleta se carga con `import()`: arrastra
+ * @material/material-color-utilities (~100 KB) y solo la usan mobile y tablet.
+ * Desktop —que ni siquiera activa el tema— no descarga nada de esto.
+ *
+ * La promesa se memoiza en el módulo: el provider se monta una vez, pero los
+ * cambios de seed/scheme/contraste vuelven a pedirla y no deben re-descargar.
+ */
+let colorScheme: Promise<typeof import('./colorScheme')> | null = null;
+
+function loadColorScheme() {
+    colorScheme ??= import('./colorScheme');
+    return colorScheme;
+}
 
 type MobileThemeValue = {
     /** null = desktop/tv (tema inerte). */
@@ -135,36 +160,58 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
     // La paleta se deriva UNA vez por cambio de seed/scheme/contraste: la
     // consumen tanto el <style> de tokens como el theme-color de abajo, y
     // derivar 53 roles dos veces por rotación del carrusel no es gratis.
-    const colors = useMemo(
-        () => (active ? makeColorTokens(seed ?? M3_DEFAULT_SEED, scheme, contrast) : null),
-        [active, seed, scheme, contrast]
-    );
+    //
+    // Es un efecto y no un `useMemo` porque el derivador llega por `import()`
+    // (ver loadColorScheme). Hasta que aterriza no hay tokens que inyectar,
+    // que es el mismo estado por el que ya se pasaba antes del primer efecto.
+    //
+    // El scheme y el contraste con los que se derivó viajan CON la paleta:
+    // `scheme` cambia al instante y la paleta tarda un tick, así que emitir el
+    // CSS con el scheme nuevo y los colores viejos declararía
+    // `--md-sys-color-scheme: light` sobre una paleta oscura.
+    const [palette, setPalette] = useState<DerivedPalette | null>(null);
+    useEffect(() => {
+        if (!active) {
+            setPalette(null);
+            return;
+        }
+        let alive = true;
+        void loadColorScheme().then(({ makeColorTokens }) => {
+            if (!alive) return;
+            setPalette({
+                colors: makeColorTokens(seed ?? M3_DEFAULT_SEED, scheme, contrast),
+                scheme,
+                contrast
+            });
+        });
+        return () => { alive = false; };
+    }, [active, seed, scheme, contrast]);
 
     // Materializa los tokens. El <style> solo existe mientras el layout es
     // mobile/tablet: al pasar a desktop se retira y no queda rastro.
     useEffect(() => {
-        if (!colors) return;
+        if (!palette) return;
         let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
         if (!el) {
             el = document.createElement('style');
             el.id = STYLE_ID;
             document.head.appendChild(el);
         }
-        el.textContent = buildM3CssFromTokens(colors, scheme, contrast);
+        el.textContent = buildM3CssFromTokens(palette.colors, palette.scheme, palette.contrast);
         return () => { document.getElementById(STYLE_ID)?.remove(); };
-    }, [colors, scheme, contrast]);
+    }, [palette]);
 
     // theme-color dinámico: la barra de estado del sistema sigue al surface
     // del tema. Solo mobile/tablet; al salir se restaura el valor original.
     useEffect(() => {
-        if (!colors) return;
+        if (!palette) return;
         const meta = document.querySelector('meta[name="theme-color"]');
         if (!(meta instanceof HTMLMetaElement)) return;
         const prev = meta.content;
-        const surface = colors['--md-sys-color-surface'];
+        const surface = palette.colors['--md-sys-color-surface'];
         if (surface) meta.content = surface;
         return () => { meta.content = prev; };
-    }, [colors]);
+    }, [palette]);
 
     // Transición suave al cambiar de tema (no en el primer render).
     const firstScheme = useRef(true);

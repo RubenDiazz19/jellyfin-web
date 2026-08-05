@@ -10,9 +10,7 @@ import { apiFetch, noSessionError } from './http';
 import { imageUrl } from './images';
 import { mapMediaStream, type MediaStreamInfo, type PlaybackOptions } from './playback';
 import { cachedPlayback } from './playbackCache';
-import type { JFMediaStream } from './types';
-
-const TICKS_PER_SECOND = 10_000_000;
+import { TICKS_PER_SECOND, type JFMediaStream } from './types';
 
 export type ItemChapter = {
     /** Inicio del capítulo en segundos. */

@@ -8,7 +8,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { themeVM } from '../domain/viewModels/ThemeViewModel';
 import { MobileNav } from '../presentation/components/nav/MobileNav';
@@ -21,6 +21,10 @@ import { initPwa, registerServiceWorker, resetPwaForTests, watchStandalone } fro
 import { initRipple } from '../shared/ripple';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+
+// Igual que en MobileThemeProvider.test: la paleta llega por `import()`, y
+// precargarla evita que la primera transformación cuente como latencia.
+beforeAll(async () => { await import('../presentation/theme/colorScheme'); });
 
 vi.mock('../data/api/theme', () => ({
     getServerThemePrefs: () => Promise.resolve(null),
@@ -63,6 +67,20 @@ async function flushMutations() {
     await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
     });
+}
+
+/**
+ * Espera a que los tokens M3 cumplan `done`.
+ *
+ * La paleta la deriva un módulo que el provider carga con `import()` (son
+ * ~100 KB que desktop no debe descargar), así que el <style> aparece —y se
+ * actualiza— de forma asíncrona. Sale en cuanto se cumple; el tope solo evita
+ * colgar la suite si algo se rompe.
+ */
+async function settleTokens(done: () => boolean) {
+    for (let i = 0; i < 200 && !done(); i++) {
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    }
 }
 
 let root: Root | null = null;
@@ -184,6 +202,7 @@ describe('integridad desktop (regla cardinal)', () => {
     it('transición en caliente: mobile → desktop limpia todo; volver lo restaura', async () => {
         document.documentElement.classList.add('layout-mobile');
         renderShell();
+        await settleTokens(() => document.getElementById(STYLE_ID) !== null);
 
         // Estado móvil: tokens + nav + hueco + theme-color dinámico.
         expect(document.getElementById(STYLE_ID)).not.toBeNull();
@@ -209,7 +228,7 @@ describe('integridad desktop (regla cardinal)', () => {
             document.documentElement.classList.remove('layout-desktop');
             document.documentElement.classList.add('layout-mobile');
         });
-        await flushMutations();
+        await settleTokens(() => document.getElementById(STYLE_ID) !== null);
 
         expect(document.getElementById(STYLE_ID)).not.toBeNull();
         expect(host?.querySelector('nav')).not.toBeNull();
@@ -220,16 +239,17 @@ describe('integridad desktop (regla cardinal)', () => {
         renderShell();
 
         const styleTag = () => document.getElementById(STYLE_ID)?.textContent ?? '';
+        await settleTokens(() => styleTag().includes('--md-sys-color-scheme: dark;'));
         expect(styleTag()).toContain('--md-sys-color-scheme: dark;');
         const darkMeta = meta.content;
 
         act(() => { themeVM.setMode('light'); });
-        await flushMutations();
+        await settleTokens(() => styleTag().includes('--md-sys-color-scheme: light;'));
         expect(styleTag()).toContain('--md-sys-color-scheme: light;');
         expect(meta.content).not.toBe(darkMeta);
 
         act(() => { themeVM.setMode('dark'); });
-        await flushMutations();
+        await settleTokens(() => styleTag().includes('--md-sys-color-scheme: dark;'));
         expect(styleTag()).toContain('--md-sys-color-scheme: dark;');
         expect(meta.content).toBe(darkMeta);
     });

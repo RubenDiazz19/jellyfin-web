@@ -6,10 +6,9 @@ import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { SearchResultCard } from '../cards/SearchResultCard';
+import { SelectToggle } from '../controls/SelectToggle';
 import { EmptyState } from '../skeleton/Skeleton';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
-import { selectionVM } from '../../../domain/viewModels/SelectionViewModel';
-import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 
 export function SearchResults({ navigate }: { navigate: Navigate }) {
@@ -61,7 +60,7 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
                         globalize.translate('SearchResultsCount', filtered.length) :
                         globalize.translate('HeaderMyLibrary')}
                 </div>
-                <SelectToggle />
+                <SelectToggle pushRight />
             </div>
             <div style={{
                 display: 'grid',
@@ -76,22 +75,3 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
     );
 }
 
-/** Entra y sale del modo selección. */
-function SelectToggle() {
-    useVmSignals(selectionVM, (vm) => [vm.selecting]);
-    const on = selectionVM.selecting.value;
-    return (
-        <button
-            onClick={() => (on ? selectionVM.stop() : selectionVM.start())}
-            style={{
-                marginLeft: 'auto', padding: '6px 14px', borderRadius: 999, cursor: 'pointer',
-                background: on ? '#fff' : 'rgba(255,255,255,0.08)',
-                color: on ? '#000' : T.dim,
-                border: on ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                fontFamily: T.ui, fontSize: 12
-            }}
-        >
-            {globalize.translate(on ? 'ButtonCancel' : 'SelectItems')}
-        </button>
-    );
-}

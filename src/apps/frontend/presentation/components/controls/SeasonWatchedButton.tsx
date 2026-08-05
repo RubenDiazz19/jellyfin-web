@@ -1,4 +1,4 @@
-import { episodeKey, WATCHED } from '../../../domain/stores';
+import { episodeKey, seasonKey, WATCHED } from '../../../domain/stores';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { useWatchedToggle } from './useWatchedToggle';
 import { WatchedToggleIcon } from './WatchedToggleIcon';
@@ -11,7 +11,7 @@ type Props = { show: Show; season: Season; size?: number };
 // episodios) y actualiza el store local para feedback instantáneo.
 export function SeasonWatchedButton({ show, season, size = 15 }: Props) {
     const epIds = season.episodes.map((e) => episodeKey(show.id, season.n, e.n));
-    useWatchedVersion();
+    useWatchedVersion(seasonKey(show.id, season.n));
     const all = epIds.length > 0 && epIds.every((id) => WATCHED.has(id));
     const toggleAll = useWatchedToggle({
         active: all,

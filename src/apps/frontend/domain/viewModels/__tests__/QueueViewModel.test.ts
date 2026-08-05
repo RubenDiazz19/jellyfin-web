@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { QUEUE, type QueueEntry } from '../../../data/stores/queueStore';
+import { flushPersistentStores } from '../../../data/stores/persistentStore';
 import { QueueViewModel } from '../QueueViewModel';
 
 const A: QueueEntry = { itemId: 'a', title: 'Alfa' };
@@ -125,6 +126,9 @@ describe('QueueViewModel', () => {
     // El store cachea en memoria, así que la lectura del storage solo ocurre
     // en frío: hay que recargar el módulo para ejercitar el parseo.
     test('ignora entradas corruptas del storage', async () => {
+        // Las escrituras del store van por lotes: si quedara alguna en cola,
+        // caería ENCIMA del valor que se siembra a mano justo debajo.
+        flushPersistentStores();
         localStorage.setItem(
             'jfp-queue',
             JSON.stringify([{ itemId: 'ok', title: 'T' }, { nope: 1 }, null, 'suelta'])

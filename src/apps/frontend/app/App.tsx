@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
 
-import { lazy, Suspense, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { T, type HeroPosKey, type HeroScrimKey } from '../presentation/theme/tokens';
@@ -12,8 +12,6 @@ import {
     type Route
 } from './router';
 import { HomePage } from '../presentation/pages/HomePage';
-import { LibraryPage } from '../presentation/pages/LibraryPage';
-import { SearchPage } from '../presentation/pages/SearchPage';
 import { SearchOverlay } from '../presentation/components/search/SearchOverlay';
 import { TaskProgress } from '../presentation/components/tasks/TaskProgress';
 import { LoginPage } from '../presentation/pages/LoginPage';
@@ -37,6 +35,35 @@ const ListPage = lazy(() => import('../presentation/pages/ListPage').then(m => (
 const PersonPage = lazy(() => import('../presentation/pages/PersonPage').then(m => ({ default: m.PersonPage })));
 const SettingsPage = lazy(() => import('../presentation/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const QueuePage = lazy(() => import('../presentation/pages/QueuePage').then(m => ({ default: m.QueuePage })));
+
+// Biblioteca y búsqueda son destinos de la barra de navegación, así que no
+// pueden llegar con un "Cargando" a pantalla completa la primera vez que se
+// tocan. Van partidas igual —su chunk sale del bundle inicial, que es lo que
+// paga la primera pantalla— pero se PRECARGAN en cuanto el hilo queda libre
+// tras el primer render (ver prefetchTabs), así que para cuando el usuario
+// pulsa la pestaña el módulo ya está en memoria.
+const importLibraryPage = () => import('../presentation/pages/LibraryPage');
+const importSearchPage = () => import('../presentation/pages/SearchPage');
+const LibraryPage = lazy(() => importLibraryPage().then(m => ({ default: m.LibraryPage })));
+const SearchPage = lazy(() => importSearchPage().then(m => ({ default: m.SearchPage })));
+
+/**
+ * Trae los chunks de las pestañas cuando el navegador no tiene nada mejor que
+ * hacer. `requestIdleCallback` no está en todos los navegadores del target
+ * (Safari lo añadió en 16.4), de ahí el respaldo con `setTimeout`.
+ */
+function prefetchTabs(): () => void {
+    const run = () => {
+        void importLibraryPage();
+        void importSearchPage();
+    };
+    if (typeof requestIdleCallback === 'function') {
+        const id = requestIdleCallback(run, { timeout: 2000 });
+        return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(run, 300);
+    return () => clearTimeout(id);
+}
 
 import {
     useTweaks, TweaksPanel, TweakSection, TweakRadio
@@ -116,6 +143,8 @@ function AuthedApp() {
         return () => { window.history.scrollRestoration = prev; };
     }, []);
 
+    useEffect(prefetchTabs, []);
+
     // Scroll al top en cada cambio de ruta. Un único reset no basta: la
     // inercia del ratón puede seguir viva tras el click y el documento crece
     // cuando llegan datos e imágenes (lo que reabre el rango de scroll). Por
@@ -194,10 +223,10 @@ function AuthedApp() {
                 {/* key por ruta también en la barrera: navegar resetea el error. */}
                 <ErrorBoundary>
                     {route.page === 'home' && <HomePage navigate={navigate} />}
-                    {route.page === 'series' && <LibraryPage kind='series' navigate={navigate} />}
-                    {route.page === 'movies' && <LibraryPage kind='movies' navigate={navigate} />}
-                    {route.page === 'search' && <SearchPage navigate={navigate} />}
                     <Suspense fallback={<PageFallback />}>
+                        {route.page === 'series' && <LibraryPage kind='series' navigate={navigate} />}
+                        {route.page === 'movies' && <LibraryPage kind='movies' navigate={navigate} />}
+                        {route.page === 'search' && <SearchPage navigate={navigate} />}
                         {route.page === 'show' && <ShowPage showId={route.showId} navigate={navigate} hero={t} />}
                         {route.page === 'season' && <SeasonPage showId={route.showId} seasonN={route.seasonN} navigate={navigate} />}
                         {route.page === 'episode' && <EpisodePage showId={route.showId} seasonN={route.seasonN} epN={route.epN} navigate={navigate} />}

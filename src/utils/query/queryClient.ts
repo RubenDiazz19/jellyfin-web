@@ -1,4 +1,4 @@
-import { QueryCache, QueryClient } from '@tanstack/react-query';
+import { QueryCache, QueryClient, type Query } from '@tanstack/react-query';
 import type { PersistedClient, Persister } from '@tanstack/react-query-persist-client';
 import { get, set, del } from 'idb-keyval';
 
@@ -59,6 +59,29 @@ queryClient = new QueryClient({
         }
     }
 });
+
+/**
+ * How long a persisted cache stays usable after being written.
+ *
+ * Without it, `persistQueryClient` falls back to its own 24 h default, which
+ * silently duplicates `MAX_GC_TIME`: stating it here keeps the two numbers
+ * tied together instead of drifting apart.
+ */
+export const PERSIST_MAX_AGE = MAX_GC_TIME;
+
+/**
+ * What is worth writing to IndexedDB.
+ *
+ * The persister serialises the WHOLE cache on every change, so anything that
+ * survives dehydration is paid for again and again. Errored and still-pending
+ * queries are never worth restoring — a failure is not a cache — and neither
+ * are the ones already stale beyond `PERSIST_MAX_AGE`, which would be thrown
+ * away on the next restore anyway.
+ */
+export const shouldDehydrateQuery = (query: Query): boolean => {
+    if (query.state.status !== 'success') return false;
+    return Date.now() - query.state.dataUpdatedAt < PERSIST_MAX_AGE;
+};
 
 /** Create an IndexedDB persister for react-query-persist-client. Uses idb-keyval for simplicity. */
 const createIDBPersister = (idbValidKey: IDBValidKey = 'query-cache') => ({

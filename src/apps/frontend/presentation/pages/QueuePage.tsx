@@ -3,7 +3,8 @@ import globalize from 'lib/globalize';
 import { Nav } from '../components/layout/Nav';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { QueuePanel } from '../components/queue/QueuePanel';
-import { MC, useResponsive } from '../theme/responsive';
+import { PageSection } from '../components/layout/PageSection';
+import { useResponsive } from '../theme/responsive';
 import { T } from '../theme/tokens';
 import { queueVM } from '../../domain/viewModels/QueueViewModel';
 import type { Navigate } from '../../app/router';
@@ -23,13 +24,7 @@ export function QueuePage({ navigate }: { navigate: Navigate }) {
                     { label: globalize.translate('HeaderPlayQueue') }
                 ]}
             />
-            <section style={{
-                background: r.touch ? MC.bg : '#000',
-                color: r.touch ? MC.fg : '#fff',
-                minHeight: '100vh',
-                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px',
-                fontFamily: T.ui
-            }}>
+            <PageSection>
                 <h1 style={{
                     fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
                     fontSize: r.touch ? 32 : 52, margin: '0 0 36px', letterSpacing: -0.5
@@ -45,7 +40,7 @@ export function QueuePage({ navigate }: { navigate: Navigate }) {
                         }}
                     />
                 </div>
-            </section>
+            </PageSection>
         </>
     );
 }

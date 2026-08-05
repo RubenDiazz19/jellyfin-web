@@ -132,13 +132,40 @@ describe('VideoPlayerViewModel · Media Session', () => {
         await vm.open('item1');
 
         video.duration = 1400;
-        video.dispatchEvent(new Event('durationchange'));
         video.currentTime = 60;
-        video.dispatchEvent(new Event('timeupdate'));
+        // durationchange no espera al freno: la duración invalida lo publicado.
+        video.dispatchEvent(new Event('durationchange'));
 
         expect(ms.setPositionState).toHaveBeenCalledWith(
             expect.objectContaining({ duration: 1400, position: 60 })
         );
+    });
+
+    test('los timeupdate se publican como mucho una vez por segundo', async () => {
+        vi.useFakeTimers();
+        try {
+            document.documentElement.classList.add('layout-mobile');
+            await vm.open('item1');
+            video.duration = 1400;
+            video.dispatchEvent(new Event('durationchange'));
+            ms.setPositionState.mockClear();
+
+            // Cuatro timeupdate en el mismo segundo (la cadencia real del
+            // <video>): solo el primero llega a la Media Session.
+            for (let i = 1; i <= 4; i++) {
+                video.currentTime = i * 0.25;
+                vi.advanceTimersByTime(250);
+                video.dispatchEvent(new Event('timeupdate'));
+            }
+            expect(ms.setPositionState).toHaveBeenCalledTimes(1);
+
+            vi.advanceTimersByTime(1000);
+            video.currentTime = 2;
+            video.dispatchEvent(new Event('timeupdate'));
+            expect(ms.setPositionState).toHaveBeenCalledTimes(2);
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     test('close() limpia metadata, handlers y estado', async () => {

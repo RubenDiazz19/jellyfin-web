@@ -8,25 +8,19 @@
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import type { CatalogSlice } from '../../data/api/discover';
-import type { Movie, Show } from '../../data/models';
-import { LoadGuard } from './loadGuard';
+import { CatalogViewModel } from './CatalogViewModel';
 
 /** Qué se le pide al servidor para un sujeto dado. */
 type CatalogQuery = (api: ApiService, subject: string) => Promise<CatalogSlice>;
 
-export class DiscoverViewModel {
-    shows = signal<Show[]>([]);
-    movies = signal<Movie[]>([]);
-    // Arranca en true: estas pantallas siempre cargan al montar, y empezar en
-    // false pintaría el estado vacío un frame antes de que salga la petición.
-    loading = signal(true);
-    error = signal<string | null>(null);
+export class DiscoverViewModel extends CatalogViewModel {
     /** El último sujeto cargado: el género, el nombre o el id de la ficha. */
     subject = signal<string | null>(null);
 
-    private loads = new LoadGuard();
-
-    constructor(private api: ApiService, private query: CatalogQuery) {}
+    constructor(private api: ApiService, private query: CatalogQuery) {
+        // Estas pantallas siempre cargan al montar.
+        super({ loadsOnMount: true });
+    }
 
     async load(subject: string) {
         // Al cambiar de sujeto se vacía antes de pedir: si no, durante la
@@ -38,22 +32,21 @@ export class DiscoverViewModel {
             this.movies.value = [];
         }
 
-        const isLatest = this.loads.begin();
-        this.loading.value = true;
-        this.error.value = null;
-        try {
-            const slice = await this.query(this.api, subject);
-            if (!isLatest()) return;
-            this.shows.value = slice.shows;
-            this.movies.value = slice.movies;
-        } catch (e) {
-            if (!isLatest()) return;
-            this.error.value = (e as Error).message;
-            this.shows.value = [];
-            this.movies.value = [];
-        } finally {
-            if (isLatest()) this.loading.value = false;
-        }
+        await this.guarded(
+            async (isLatest) => {
+                this.loading.value = true;
+                this.error.value = null;
+                const slice = await this.query(this.api, subject);
+                if (!isLatest()) return;
+                this.shows.value = slice.shows;
+                this.movies.value = slice.movies;
+            },
+            () => {
+                // Con un fallo no se deja a medias lo del sujeto anterior.
+                this.shows.value = [];
+                this.movies.value = [];
+            }
+        );
     }
 }
 

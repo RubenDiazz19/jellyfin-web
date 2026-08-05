@@ -9,18 +9,18 @@ import { SeasonCard } from '../components/cards/SeasonCard';
 import { EpCard } from '../components/cards/EpCard';
 import { MovieCard } from '../components/cards/MovieCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
+import { PageSection } from '../components/layout/PageSection';
+import { CardGrid } from '../components/layout/CardGrid';
 import { ListBackLink } from './ListsPage';
 import { favoritesVM } from '../../domain/viewModels/FavoritesViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
 import { useFavListener } from '../../domain/bridge/useFav';
-import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { episodeKey, seasonKey } from '../../domain/stores';
 
 type Props = { navigate: Navigate };
 
 export function FavoritesPage({ navigate }: Props) {
-    const r = useResponsive();
     useViewModel(favoritesVM);
 
     useEffect(() => {
@@ -35,10 +35,7 @@ export function FavoritesPage({ navigate }: Props) {
     return (
         <>
             <Nav navigate={navigate} active='lists' />
-            <section style={{
-                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff', minHeight: '100vh',
-                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px', fontFamily: T.ui
-            }}>
+            <PageSection>
                 <ListBackLink navigate={navigate} />
                 <h1 style={{
                     fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
@@ -92,7 +89,7 @@ export function FavoritesPage({ navigate }: Props) {
                         )}
                     </div>
                 )}
-            </section>
+            </PageSection>
         </>
     );
 }
@@ -110,11 +107,9 @@ function FavSection({
             }}>
                 {title}
             </h3>
-            <div style={{
-                display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`, gap: 24
-            }}>
+            <CardGrid minWidth={minWidth} gap={24}>
                 {children}
-            </div>
+            </CardGrid>
         </div>
     );
 }

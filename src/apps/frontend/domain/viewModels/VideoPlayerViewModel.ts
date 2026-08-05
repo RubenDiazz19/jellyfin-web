@@ -12,33 +12,22 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import type {
     MediaStreamInfo, PlaybackDecision, PlaybackOptions
 } from '../../data/api/playback';
-import {
-    preferredTrackIndices,
-    type ItemChapter, type NextEpisode, type PlaybackContext
-} from '../../data/api/playbackContext';
+import type { ItemChapter, PlaybackContext } from '../../data/api/playbackContext';
 import { segmentsFromChapters } from '../../data/api/chapterSegments';
 import type { MediaSegment } from '../../data/api/segments';
-import {
-    clearTitleLanguagePref, countTitleLanguagePrefs, getTitleLanguagePref,
-    setTitleLanguagePref, type TitleLanguagePref
-} from '../../data/preferences/languagePrefs';
+import type { TitleLanguagePref } from '../../data/preferences/languagePrefs';
 import { TICKS_PER_SECOND, type AspectRatio } from '../player/format';
 import { attachHlsSource, playsHlsNatively } from '../player/hlsSource';
 import { MediaSessionBinding } from '../player/mediaSession';
+import { AutoNextTracker } from '../player/autoNext';
+import { SegmentTracker } from '../player/segmentTracker';
+import { TitlePreferences } from '../player/titlePreferences';
 import { currentMobileLayout } from '../../shared/layoutMode';
 
 const PROGRESS_REPORT_MS = 10_000;
 const VOLUME_KEY = 'jfp-volume';
 /** Margen antes de reintentar una fuente que ha fallado al arrancar. */
 const RETRY_SOURCE_MS = 1200;
-/**
- * Sin créditos detectados, el aviso de "siguiente episodio" sale en los
- * últimos segundos del capítulo. Con créditos detectados manda su inicio: la
- * cuenta acompaña a los créditos, como en Netflix.
- */
-const AUTO_NEXT_WINDOW_SECONDS = 25;
-/** Un outro que acaba a menos de esto del final cierra el episodio. */
-const OUTRO_TAIL_SECONDS = 15;
 
 /**
  * Marca de propiedad del <video>: el elemento lo comparten todas las
@@ -53,8 +42,32 @@ function videoOwner(video: HTMLVideoElement): number | undefined {
 
 let nextInstanceId = 0;
 
+/**
+ * Granularidad con la que se publica la posición, en segundos.
+ *
+ * El <video> emite `timeupdate` a ~4 Hz, y publicar cada uno repintaba el OSD
+ * entero cuatro veces por segundo para mover la barra una fracción de píxel.
+ * Al segundo entero el reloj sigue siendo exacto (es lo que enseña la
+ * etiqueta) y la barra avanza en pasos de 1 s: sobre un capítulo de 40 min,
+ * un 0,04% de su ancho.
+ *
+ * Quien necesita la posición REAL (reportar progreso, reanudar, saltar) lee
+ * `video.currentTime` y no este signal.
+ */
+const TIME_STEP_SECONDS = 1;
+
 export class VideoPlayerViewModel {
-    // Estado observable que la View pinta.
+    // Los tres colaboradores con estado propio. Se declaran ANTES que los
+    // signals públicos porque estos delegan en ellos, y los inicializadores de
+    // campo corren en orden de declaración.
+    private readonly segments = new SegmentTracker();
+    private readonly prefs = new TitlePreferences(() => this.userId());
+    private readonly autoNext = new AutoNextTracker(
+        (duration, tail) => this.segments.outroStart(duration, tail)
+    );
+
+    // Estado observable que la View pinta. `currentTime` va redondeado al
+    // segundo: ver TIME_STEP_SECONDS.
     currentTime = signal(0);
     duration = signal(0);
     playing = signal(false);
@@ -95,43 +108,34 @@ export class VideoPlayerViewModel {
     castState = signal<RemotePlaybackState>('disconnected');
     /**
      * Segmento (intro, créditos, resumen…) que contiene la posición actual, o
-     * null. La View lo usa para ofrecer el botón de salto. Los segmentos ya
-     * saltados no vuelven a ofrecerse aunque el usuario pase por encima otra
-     * vez, para no tapar la imagen con un botón que acaba de descartar.
+     * null, y la lista completa para la barra de progreso. Los mantiene
+     * `SegmentTracker`; se reexponen aquí para que la View siga leyendo todo
+     * del ViewModel.
      */
-    activeSegment = signal<MediaSegment | null>(null);
-    /**
-     * Todos los segmentos del item (no solo el que contiene la posición). La
-     * barra de progreso los pinta como tramos para ver de un vistazo dónde
-     * cae la intro o los créditos.
-     */
-    segmentList = signal<MediaSegment[]>([]);
+    activeSegment = this.segments.active;
+    segmentList = this.segments.list;
     /**
      * Capítulos del item, para dividir la barra de progreso y poder saltar a
      * uno por su nombre. Vacío si el fichero no trae capítulos.
      */
     chapters = signal<ItemChapter[]>([]);
-    /** Episodio que viene después del actual, o null (película o final). */
-    nextEpisode = signal<NextEpisode | null>(null);
     /**
-     * Avance del aviso de "siguiente episodio" (0 → 1) mientras corren los
-     * créditos, o null si no toca mostrarlo. Al llegar a 1 el capítulo acaba
-     * y la View encadena con el siguiente.
+     * Episodio siguiente y avance del aviso que lo anuncia mientras corren
+     * los créditos. Los mantiene `AutoNextTracker`.
      */
-    autoNextProgress = signal<number | null>(null);
+    nextEpisode = this.autoNext.next;
+    autoNextProgress = this.autoNext.progress;
     /**
      * Sube a true cuando la reproducción llega al final. La View lo usa para
      * encadenar con la cola; el VM no navega (regla MVVM).
      */
     ended = signal(false);
     /**
-     * Idiomas recordados para este título (la serie entera si es un episodio),
-     * o null si nunca se han tocado. Mandan sobre la preferencia del usuario
-     * que aplica el servidor. La View los muestra en el menú de pistas.
+     * Idiomas recordados para este título (la serie entera si es un episodio)
+     * y si el item es un episodio. Los mantiene `TitlePreferences`.
      */
-    titlePref = signal<TitleLanguagePref | null>(null);
-    /** El item en reproducción es un episodio: la preferencia es de la serie. */
-    titleIsSeries = signal(false);
+    titlePref = this.prefs.pref;
+    titleIsSeries = this.prefs.isSeries;
 
     private video: HTMLVideoElement | null = null;
     private container: HTMLElement | null = null;
@@ -141,6 +145,12 @@ export class VideoPlayerViewModel {
     private startSeconds = 0;
     private progressTimer: ReturnType<typeof setInterval> | null = null;
     private detachFns: (() => void)[] = [];
+    /**
+     * Quita el `loadedmetadata` de la carga en curso. Va aparte de `detachFns`
+     * porque cada `loadSource` (y hay uno por cambio de pista) instala el
+     * suyo: apilarlos ahí hacía crecer la lista hasta el `close()`.
+     */
+    private detachOnMeta: (() => void) | null = null;
     private closed = false;
     /** Subtítulo no-texto quemado en el transcode actual (índice Jellyfin). */
     private burnedSubtitle: number | null = null;
@@ -148,19 +158,12 @@ export class VideoPlayerViewModel {
     private pendingSubtitleUrl: string | null = null;
     /** La reproducción ha llegado a arrancar al menos una vez en este item. */
     private hasStarted = false;
-    /** El usuario ha cerrado el aviso de siguiente episodio. */
-    private autoNextDismissed = false;
     /** Opciones de la última carga, para poder reintentarla igual. */
     private lastSourceOpts: PlaybackOptions = {};
     /** Posición que hay que recuperar si el arranque falla y se reintenta. */
     private resumeSeconds = 0;
     private retriedSource = false;
     private retryTimer: ReturnType<typeof setTimeout> | null = null;
-    private segments: MediaSegment[] = [];
-    /** Segmentos ya saltados o descartados, por inicio. */
-    private skippedSegments = new Set<number>();
-    /** Id bajo el que se recuerdan las pistas: la serie, o la película. */
-    private titleId = '';
     private context: PlaybackContext | null = null;
     /**
      * La carga del contexto en vuelo. Como ya no siempre se espera antes de
@@ -186,9 +189,13 @@ export class VideoPlayerViewModel {
         position: () => {
             const duration = this.duration.value;
             if (!Number.isFinite(duration) || duration <= 0) return null;
+            // Del <video> y no del signal: ese va cuantizado al segundo para
+            // la View (ver TIME_STEP_SECONDS) y aquí interesa la posición
+            // exacta, que es la que interpola la pantalla de bloqueo.
+            const position = this.video?.currentTime ?? 0;
             return {
                 duration,
-                position: Math.min(this.currentTime.value, duration),
+                position: Math.min(Math.max(position, 0), duration),
                 playbackRate: this.playbackRate.value || 1
             };
         },
@@ -230,16 +237,23 @@ export class VideoPlayerViewModel {
         };
 
         on('timeupdate', () => {
-            this.currentTime.value = video.currentTime;
-            this.syncActiveSegment(video.currentTime);
-            this.syncAutoNext(video.currentTime);
+            this.publishTime(video.currentTime);
+            this.segments.syncTo(video.currentTime);
+            this.autoNext.syncTo(video.currentTime, this.duration.value);
         });
         on('durationchange', () => {
             if (Number.isFinite(video.duration)) this.duration.value = video.duration;
         });
-        on('play', () => { this.playing.value = true; });
+        on('play', () => {
+            this.playing.value = true;
+            // El reporte periódico solo tiene sentido mientras algo avanza.
+            this.startProgressTimer();
+        });
         on('pause', () => {
             this.playing.value = false;
+            // Un timer vivo en pausa reenviaba la MISMA posición cada 10 s.
+            // El estado de pausa se manda una vez, aquí.
+            this.stopProgressTimer();
             void this.reportProgress();
         });
         on('waiting', () => { this.buffering.value = true; });
@@ -259,6 +273,8 @@ export class VideoPlayerViewModel {
         });
         on('ended', () => {
             this.playing.value = false;
+            // Nada más que reportar de este item: el stop lo manda close().
+            this.stopProgressTimer();
             void this.reportProgress();
             this.ended.value = true;
         });
@@ -267,9 +283,12 @@ export class VideoPlayerViewModel {
         // Media Session (mobile/tablet): controles del sistema sincronizados.
         on('play', () => this.mediaSession.syncPlayback());
         on('pause', () => this.mediaSession.syncPlayback());
+        // `timeupdate` va sin `immediate`: es el que llega a ~4 Hz y el que el
+        // freno de la propia binding recorta a ~1 Hz. Duración y velocidad sí
+        // invalidan lo publicado, así que no pueden esperar.
         on('timeupdate', () => this.mediaSession.syncPosition());
-        on('durationchange', () => this.mediaSession.syncPosition());
-        on('ratechange', () => this.mediaSession.syncPosition());
+        on('durationchange', () => this.mediaSession.syncPosition({ immediate: true }));
+        on('ratechange', () => this.mediaSession.syncPosition({ immediate: true }));
 
         this.pipAvailable.value =
             typeof video.requestPictureInPicture === 'function'
@@ -321,9 +340,7 @@ export class VideoPlayerViewModel {
         // Cada item estrena su reintento de arranque.
         this.retriedSource = false;
         this.hasStarted = false;
-        this.autoNextDismissed = false;
-        this.nextEpisode.value = null;
-        this.autoNextProgress.value = null;
+        this.autoNext.reset();
         this.resumeSeconds = this.startSeconds;
         // El contexto y la fuente arrancan a la vez, y solo se espera al
         // primero cuando puede cambiar lo que se le pide al segundo: si este
@@ -332,10 +349,11 @@ export class VideoPlayerViewModel {
         // empezar. Sin ninguno recordado —la primera reproducción— esperarlo
         // era una vuelta a la red de más delante del primer fotograma.
         this.contextReady = this.loadContext(itemId);
-        if (countTitleLanguagePrefs(this.userId()) > 0) await this.contextReady;
-        await this.loadSource(this.preferredTracks());
+        if (this.prefs.hasAny()) await this.contextReady;
+        await this.loadSource(this.prefs.tracksFor(this.context));
         void this.api.playback.reportPlaybackStart(itemId);
-        this.startProgressTimer();
+        // El timer de progreso lo arranca el evento 'play' y lo para 'pause':
+        // si el autoplay se deniega no hay nada que reportar todavía.
         this.mediaSession.start(!!currentMobileLayout());
         void this.loadSegments(itemId);
     }
@@ -347,17 +365,13 @@ export class VideoPlayerViewModel {
      */
     private async loadContext(itemId: string) {
         this.context = null;
-        this.titleId = itemId;
-        this.titleIsSeries.value = false;
-        this.titlePref.value = null;
+        this.prefs.reset(itemId);
         try {
             const context = await this.api.playback.getPlaybackContext(itemId);
             if (this.closed || this.itemId !== itemId) return;
             this.context = context;
-            this.titleId = context.titleId;
             this.chapters.value = context.chapters;
-            this.titleIsSeries.value = context.isEpisode;
-            this.titlePref.value = getTitleLanguagePref(this.userId(), context.titleId);
+            this.prefs.adopt(context);
             // El siguiente episodio no bloquea el arranque: solo hace falta
             // cuando el capítulo se acerca al final.
             if (context.isEpisode) void this.loadNextEpisode(context.titleId, itemId);
@@ -381,33 +395,16 @@ export class VideoPlayerViewModel {
         return this.api.session.load()?.userId ?? '';
     }
 
-    /**
-     * Los índices de pista con los que abrir, según los idiomas recordados del
-     * título. La traducción vive en la capa de datos porque el
-     * pre-calentamiento de la ficha tiene que llegar a los mismos: ver
-     * `preferredTrackIndices`.
-     */
-    private preferredTracks() {
-        return preferredTrackIndices(this.titlePref.value, this.context);
-    }
-
     /** Recuerda un idioma para este título (o para su serie). */
     private rememberLanguage(patch: TitleLanguagePref) {
-        if (!this.titleId) return;
-        const userId = this.userId();
-        setTitleLanguagePref(userId, this.titleId, patch);
-        this.titlePref.value = getTitleLanguagePref(userId, this.titleId);
+        this.prefs.remember(patch);
     }
 
     /**
      * Olvida los idiomas recordados de este título: a partir de la próxima
      * reproducción vuelve a mandar la preferencia del usuario.
      */
-    clearTitlePref = () => {
-        if (!this.titleId) return;
-        clearTitleLanguagePref(this.userId(), this.titleId);
-        this.titlePref.value = null;
-    };
+    clearTitlePref = this.prefs.clear;
 
     /**
      * Segmentos del item (intro, créditos…). No bloquea la reproducción: si
@@ -435,67 +432,12 @@ export class VideoPlayerViewModel {
         if (segments.length === 0 && this.context) {
             segments = segmentsFromChapters(this.context.chapters, this.context.runtime);
         }
-        this.segments = segments;
-        this.segmentList.value = segments;
-        this.syncActiveSegment(this.video?.currentTime ?? 0);
-    }
-
-    private syncActiveSegment(time: number) {
-        if (this.segments.length === 0) {
-            if (this.activeSegment.value) this.activeSegment.value = null;
-            return;
-        }
-        // Los créditos no ofrecen botón de salto: ese tramo es el del aviso
-        // de siguiente episodio, que hace el mismo trabajo y además encadena.
-        const found = this.segments.find(
-            (s) => s.kind !== 'Outro'
-                && time >= s.start && time < s.end
-                && !this.skippedSegments.has(s.start)
-        ) ?? null;
-        // Comparar por referencia evita repintar la View en cada timeupdate.
-        if (found !== this.activeSegment.value) this.activeSegment.value = found;
-    }
-
-    /**
-     * Instante en el que aparece el aviso de "siguiente episodio": el inicio
-     * de los créditos si el servidor (o los capítulos) los han marcado y
-     * llegan hasta el final, o los últimos segundos del capítulo si no.
-     */
-    private autoNextStart(duration: number): number {
-        const outro = this.segments.find(
-            (s) => s.kind === 'Outro' && s.end >= duration - OUTRO_TAIL_SECONDS
-        );
-        return outro ? outro.start : duration - AUTO_NEXT_WINDOW_SECONDS;
-    }
-
-    /**
-     * Avance del aviso mientras el capítulo termina. La barra se llena justo
-     * cuando se acaba el vídeo: ahí la View encadena con el siguiente.
-     */
-    private syncAutoNext(time: number) {
-        const duration = this.duration.value;
-        if (!this.nextEpisode.value || this.autoNextDismissed || duration <= 0) {
-            if (this.autoNextProgress.value != null) this.autoNextProgress.value = null;
-            return;
-        }
-        const start = this.autoNextStart(duration);
-        if (time < start) {
-            if (this.autoNextProgress.value != null) this.autoNextProgress.value = null;
-            return;
-        }
-        const span = Math.max(duration - start, 1);
-        const progress = Math.min(Math.max((time - start) / span, 0), 1);
-        // Redondeo al 1%: evita repintar el OSD en cada timeupdate por una
-        // diferencia invisible.
-        const rounded = Math.round(progress * 100) / 100;
-        if (rounded !== this.autoNextProgress.value) this.autoNextProgress.value = rounded;
+        this.segments.replace(segments);
+        this.segments.syncTo(this.video?.currentTime ?? 0);
     }
 
     /** El usuario descarta el aviso: no vuelve en este episodio. */
-    dismissAutoNext = () => {
-        this.autoNextDismissed = true;
-        this.autoNextProgress.value = null;
-    };
+    dismissAutoNext = this.autoNext.dismiss;
 
     // ── Comandos ────────────────────────────────────────────────────────────
 
@@ -513,7 +455,7 @@ export class VideoPlayerViewModel {
      * vez aunque ya la hubieras saltado.
      */
     seek = (seconds: number) => {
-        this.unskipSegmentsFrom(seconds);
+        this.segments.unskipFrom(seconds);
         this.seekTo(seconds);
     };
 
@@ -522,15 +464,19 @@ export class VideoPlayerViewModel {
         const v = this.video;
         if (!v || !Number.isFinite(seconds)) return;
         v.currentTime = Math.min(Math.max(seconds, 0), this.duration.value || seconds);
-        this.currentTime.value = v.currentTime;
+        this.publishTime(v.currentTime);
+        // El salto invalida lo que la pantalla de bloqueo tuviera pintado.
+        this.mediaSession.syncPosition({ immediate: true });
     }
 
-    /** Vuelve a ofrecer los segmentos que no han terminado en `time`. */
-    private unskipSegmentsFrom(time: number) {
-        if (this.skippedSegments.size === 0) return;
-        for (const segment of this.segments) {
-            if (segment.end > time) this.skippedSegments.delete(segment.start);
-        }
+    /**
+     * Publica la posición para la View, cuantizada (ver TIME_STEP_SECONDS).
+     * Escribir el signal solo cuando el valor redondeado cambia es lo que
+     * recorta el repintado del OSD de ~4 Hz a 1 Hz.
+     */
+    private publishTime(seconds: number) {
+        const step = Math.floor(seconds / TIME_STEP_SECONDS) * TIME_STEP_SECONDS;
+        if (step !== this.currentTime.value) this.currentTime.value = step;
     }
 
     seekBy = (delta: number) => this.seek((this.video?.currentTime ?? 0) + delta);
@@ -589,20 +535,12 @@ export class VideoPlayerViewModel {
     };
 
     /**
-     * Salta el segmento activo: lleva la reproducción a su final. Marca el
-     * segmento para no volver a ofrecerlo en esta sesión de reproducción.
+     * Salta el segmento activo: lleva la reproducción a su final. El tramo
+     * queda descartado y no se vuelve a ofrecer.
      */
     skipActiveSegment = () => {
-        const segment = this.activeSegment.value;
-        if (!segment) return;
-        this.skippedSegments.add(segment.start);
-        this.activeSegment.value = null;
-        // Un outro suele acabar exactamente en el final del fichero; sin el
-        // recorte, el seek dispara 'ended' antes de que el <video> reporte la
-        // posición y el progreso se guardaría en 0.
-        const target = this.duration.value > 0 ?
-            Math.min(segment.end, this.duration.value - 0.25) :
-            segment.end;
+        const target = this.segments.skipActive(this.duration.value);
+        if (target === null) return;
         // seekTo y no seek: este salto NO debe rehabilitar el tramo que se
         // acaba de descartar (el destino cae dentro de él por el recorte).
         this.seekTo(target);
@@ -686,6 +624,7 @@ export class VideoPlayerViewModel {
         // Los listeners se quitan ANTES de tocar el <video>: pause() y load()
         // emiten eventos que ya no son de nadie.
         this.mediaSession.stop();
+        this.detachOnMeta?.();
         this.detachFns.forEach((fn) => { fn(); });
         this.detachFns = [];
         // Solo se limpia el <video> si sigue siendo nuestro. Tras un recambio
@@ -758,20 +697,13 @@ export class VideoPlayerViewModel {
         this.castAvailable.value = false;
         this.castState.value = 'disconnected';
         this.burnedSubtitle = null;
-        this.segments = [];
-        this.skippedSegments.clear();
-        this.activeSegment.value = null;
-        this.segmentList.value = [];
+        this.segments.reset();
         this.chapters.value = [];
-        this.nextEpisode.value = null;
-        this.autoNextProgress.value = null;
-        this.autoNextDismissed = false;
+        this.autoNext.reset();
         this.ended.value = false;
         this.itemId = '';
-        this.titleId = '';
         this.context = null;
-        this.titlePref.value = null;
-        this.titleIsSeries.value = false;
+        this.prefs.reset('');
     }
 
     /**
@@ -855,8 +787,14 @@ export class VideoPlayerViewModel {
                     this.loading.value = false;
                 });
             };
+            // Solo puede haber uno vivo: el de la carga anterior ya no
+            // corresponde a esta fuente.
+            this.detachOnMeta?.();
             video.addEventListener('loadedmetadata', onMeta, { once: true });
-            this.detachFns.push(() => video.removeEventListener('loadedmetadata', onMeta));
+            this.detachOnMeta = () => {
+                video.removeEventListener('loadedmetadata', onMeta);
+                this.detachOnMeta = null;
+            };
         } catch (e) {
             if (this.closed) return;
             this.error.value = (e as Error).message || globalize.translate('MessagePlaybackStartFailed');

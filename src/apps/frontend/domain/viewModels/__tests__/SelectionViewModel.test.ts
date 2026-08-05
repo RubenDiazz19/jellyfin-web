@@ -101,6 +101,20 @@ describe('marcar como visto en lote', () => {
         expect(vm.busy.value).toBe(false);
     });
 
+    test('al revertir, lo que ya estaba visto sigue visto', async () => {
+        // El fallo que esto fija: revertir poniendo TODO a `!watched` dejaba
+        // sin marcar lo que ya venía marcado desde antes del lote.
+        WATCHED.setMany([watchedKey(show)], true);
+        const markPlayed = vi.fn(() => Promise.reject(new Error('403')));
+        const vm = makeVm({ markPlayed });
+        vm.selectAll([movie, show]);
+
+        await expect(vm.markWatched(true)).rejects.toThrow('403');
+
+        expect(WATCHED.has('movie-m1')).toBe(false);
+        expect(WATCHED.has('s1')).toBe(true);
+    });
+
     test('sin selección no toca el servidor', async () => {
         const markPlayed = vi.fn(() => Promise.resolve());
         const vm = makeVm({ markPlayed });

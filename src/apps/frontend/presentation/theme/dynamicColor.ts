@@ -9,13 +9,16 @@
 // píxeles. Calcular la segunda es un recorrido más de un array que ya está en
 // memoria.
 
-import {
-    argbFromRgb,
-    Hct,
-    hexFromArgb,
-    QuantizerCelebi,
-    Score
-} from '@material/material-color-utilities';
+// La librería de color se carga con `import()` y no de forma estática: son
+// ~100 KB que solo hacen falta en mobile/tablet, y este módulo lo importa el
+// provider del tema, que está en el shell (ver colorScheme.ts). El primer
+// análisis paga la descarga; los siguientes reutilizan la promesa.
+let colorLib: Promise<typeof import('@material/material-color-utilities')> | null = null;
+
+function loadColorLib() {
+    colorLib ??= import('@material/material-color-utilities');
+    return colorLib;
+}
 
 // Lado mayor del downscale. 96px ≈ 9k píxeles: suficiente para el ranking
 // y barato de cuantizar (< 10 ms).
@@ -34,7 +37,9 @@ const MAX_TONE = 72;
 // croma inventaría un tinte al azar, así que mejor dejar la seed que hubiera.
 const NEUTRAL_CHROMA = 8;
 
-function normalizeSeed(argb: number): string | null {
+type ColorLib = Awaited<ReturnType<typeof loadColorLib>>;
+
+function normalizeSeed(argb: number, { Hct, hexFromArgb }: ColorLib): string | null {
     const hct = Hct.fromInt(argb);
     if (hct.chroma < NEUTRAL_CHROMA) return null;
     if (hct.chroma < MIN_CHROMA) hct.chroma = MIN_CHROMA;
@@ -182,7 +187,8 @@ export async function analyzeImage(url: string): Promise<ImageAnalysis> {
 
     let analysis = UNREADABLE;
     try {
-        const img = await loadImage(url);
+        // En paralelo: la imagen viaja por la red mientras llega el chunk.
+        const [img, lib] = await Promise.all([loadImage(url), loadColorLib()]);
         const ratio = img.naturalHeight / Math.max(1, img.naturalWidth);
         const w = SAMPLE;
         const h = Math.max(1, Math.round(SAMPLE * ratio));
@@ -197,11 +203,11 @@ export async function analyzeImage(url: string): Promise<ImageAnalysis> {
             const pixels: number[] = [];
             for (let i = 0; i < data.length; i += 4) {
                 if (data[i + 3] < 255) continue; // ignora píxeles translúcidos
-                pixels.push(argbFromRgb(data[i], data[i + 1], data[i + 2]));
+                pixels.push(lib.argbFromRgb(data[i], data[i + 1], data[i + 2]));
             }
-            const ranked = Score.score(QuantizerCelebi.quantize(pixels, MAX_COLORS));
+            const ranked = lib.Score.score(lib.QuantizerCelebi.quantize(pixels, MAX_COLORS));
             analysis = {
-                seed: ranked.length ? normalizeSeed(ranked[0]) : null,
+                seed: ranked.length ? normalizeSeed(ranked[0], lib) : null,
                 focusX: focusFromPixels(data, w, h)
             };
         }

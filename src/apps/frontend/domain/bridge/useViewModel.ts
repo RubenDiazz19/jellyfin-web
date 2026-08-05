@@ -13,6 +13,8 @@
 //   2. `useVmSignals(vm, pick)` — igual pero solo a los signals elegidos.
 //
 //   3. `useSignalValue(signal)` — un único signal, devuelve su valor.
+//   4. `useSignalSelector(signal, pick)` — un único signal del que solo
+//      interesa una parte: re-renderiza únicamente si esa parte cambia.
 //
 // NOTA: getSnapshot de useSyncExternalStore debe devolver un valor cacheado
 // (comparado con Object.is entre renders). Construir un objeto nuevo en cada
@@ -20,7 +22,7 @@
 // contador de versión que solo avanza cuando algún signal notifica.
 
 import { useCallback, useRef, useSyncExternalStore } from 'react';
-import type { Signal } from '@preact/signals-core';
+import type { ReadonlySignal, Signal } from '@preact/signals-core';
 
 function isSignal(value: unknown): value is Signal<unknown> {
     return !!value
@@ -82,4 +84,30 @@ export function useSignalValue<T>(signal: Signal<T>): T {
         () => signal.value,
         () => signal.peek()
     );
+}
+
+/**
+ * Suscribe a un signal pero re-renderiza solo si la parte elegida cambia.
+ *
+ * El caso que lo justifica: una rejilla de N tarjetas sobre un signal de tipo
+ * lista. Suscribirse a la lista entera repinta las N tarjetas cada vez que la
+ * lista se reemplaza; con un `pick` que devuelve un escalar, `useSyncExternal
+ * Store` compara con `Object.is` y solo repinta la tarjeta cuyo valor cambió.
+ *
+ * `pick` debe ser puro y derivar SOLO de `signal`: React lo llama en cada
+ * render y en cada notificación, y espera el mismo resultado mientras el
+ * signal no cambie.
+ */
+export function useSignalSelector<T, S>(
+    signal: ReadonlySignal<T> | Signal<T>,
+    pick: (value: T) => S
+): S {
+    const subscribe = useCallback(
+        (onChange: () => void) => signal.subscribe(onChange),
+        [signal]
+    );
+    // `peek()` y no `.value`: fuera de un efecto reactivo leer `.value` solo
+    // añadiría al signal a un scope de tracking que aquí no existe.
+    const snapshot = () => pick(signal.peek());
+    return useSyncExternalStore(subscribe, snapshot, snapshot);
 }

@@ -7,8 +7,10 @@ import { Ic } from '../theme/icons';
 import { Nav } from '../components/layout/Nav';
 import { EmptyState } from '../components/skeleton/Skeleton';
 import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
+import { PageSection } from '../components/layout/PageSection';
+import { CardGrid } from '../components/layout/CardGrid';
 import { LISTS, type ListKind, type ListRef } from '../../domain/stores';
-import { MC, useResponsive } from '../theme/responsive';
+import { useResponsive } from '../theme/responsive';
 import type { Navigate, Route } from '../../app/router';
 
 type Props = { navigate: Navigate };
@@ -46,12 +48,7 @@ export function ListsPage({ navigate }: Props) {
     return (
         <>
             <Nav navigate={navigate} active='lists' />
-            <section style={{
-                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
-                minHeight: '100vh',
-                padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px',
-                fontFamily: T.ui
-            }}>
+            <PageSection>
                 <h1 style={{
                     fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
                     fontSize: r.touch ? 34 : 52, margin: '0 0 44px', letterSpacing: -0.5
@@ -116,7 +113,7 @@ export function ListsPage({ navigate }: Props) {
                         {globalize.translate('ListsEmpty')}
                     </div>
                 )}
-            </section>
+            </PageSection>
         </>
     );
 }
@@ -149,13 +146,9 @@ function Group({ title, empty, children }: {
                     {globalize.translate('ListsEmpty')}
                 </div>
             ) : (
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? 150 : 210}px, 1fr))`,
-                    gap: r.touch ? 16 : 20
-                }}>
+                <CardGrid minWidth={r.touch ? 150 : 210} gap={r.touch ? 16 : 20}>
                     {children}
-                </div>
+                </CardGrid>
             )}
         </div>
     );

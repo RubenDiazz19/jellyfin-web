@@ -12,14 +12,14 @@
 // tiñe las superficies con su croma. Con SchemeTonalSpot —el anterior— un
 // póster rojo daba un gris casi neutro: se perdía la idea de que el color de
 // la interfaz es el del contenido que se está viendo.
+//
+// OJO — este módulo NO puede importar @material/material-color-utilities en
+// tiempo de ejecución: son ~100 KB que solo hacen falta en mobile/tablet y lo
+// importa el shell entero. La derivación vive en `colorScheme.ts`, que se
+// carga con `import()` desde el provider (ver MobileThemeProvider). Aquí solo
+// entra el TIPO `DynamicScheme`, que TypeScript borra al compilar.
 
-import {
-    argbFromHex,
-    Hct,
-    hexFromArgb,
-    SchemeContent,
-    type DynamicScheme
-} from '@material/material-color-utilities';
+import type { DynamicScheme } from '@material/material-color-utilities';
 
 import { T } from './tokens';
 
@@ -71,12 +71,17 @@ export const M3_CONTRAST = {
 type ColorGetter = (s: DynamicScheme) => number;
 
 /** Fuera de −1…1 material-color-utilities produce colores degenerados. */
-function clampContrast(level: number): number {
+export function clampContrast(level: number): number {
     if (!Number.isFinite(level)) return M3_CONTRAST.standard;
     return Math.min(1, Math.max(-1, level));
 }
 
-const COLOR_TOKENS: ReadonlyArray<readonly [string, ColorGetter]> = [
+/**
+ * Rol md-sys-color → de dónde se saca en el esquema derivado. La lista vive
+ * aquí (y no junto a la derivación) porque `M3_COLOR_ROLE_COUNT` es lo que
+ * cuenta los roles y no debe arrastrar la librería.
+ */
+export const COLOR_TOKENS: ReadonlyArray<readonly [string, ColorGetter]> = [
     ['primary', (s) => s.primary],
     ['on-primary', (s) => s.onPrimary],
     ['primary-container', (s) => s.primaryContainer],
@@ -141,28 +146,8 @@ const COLOR_TOKENS: ReadonlyArray<readonly [string, ColorGetter]> = [
 /** Número de roles md-sys-color que emite `makeColorTokens`. */
 export const M3_COLOR_ROLE_COUNT = COLOR_TOKENS.length;
 
-/**
- * Deriva la paleta md-sys-color completa desde un seed #rrggbb.
- * `contrast` es el nivel M3 (ver M3_CONTRAST); por defecto, el estándar.
- * Devuelve `{ '--md-sys-color-primary': '#rrggbb', … }`.
- */
-export function makeColorTokens(
-    seedHex: string,
-    scheme: M3SchemeName,
-    contrast: number = M3_CONTRAST.standard
-): Record<string, string> {
-    const dyn = new SchemeContent(
-        Hct.fromInt(argbFromHex(seedHex)),
-        scheme === 'dark',
-        clampContrast(contrast),
-        M3_SPEC
-    );
-    const out: Record<string, string> = {};
-    for (const [token, get] of COLOR_TOKENS) {
-        out[`--md-sys-color-${token}`] = hexFromArgb(get(dyn));
-    }
-    return out;
-}
+// La derivación de la paleta (`makeColorTokens`, `buildM3Css`) está en
+// `colorScheme.ts`: es lo único que necesita la librería de color.
 
 // ── md-sys-elevation (niveles 0–5, sombras del spec M3) ────────────────
 
@@ -280,19 +265,10 @@ const M3_TYPE_FONT = T.ui;
  * CSS completo de tokens para inyectar en un `<style>`: paleta del scheme
  * activo + elevation + shape + typescale, todo scopeado a M3_SCOPE, más la
  * regla de transición suave activada por M3_ANIM_CLASS.
- */
-export function buildM3Css(
-    seedHex: string,
-    scheme: M3SchemeName,
-    contrast: number = M3_CONTRAST.standard
-): string {
-    return buildM3CssFromTokens(makeColorTokens(seedHex, scheme, contrast), scheme, contrast);
-}
-
-/**
- * Igual que `buildM3Css` pero con la paleta ya calculada. Existe porque el
- * provider necesita además un token suelto (el `surface`, para el
- * `theme-color` de la barra de estado): así los 53 roles se derivan una sola
+ *
+ * Toma la paleta ya calculada (`colorScheme.makeColorTokens`) porque el
+ * provider necesita además un token suelto —el `surface`, para el
+ * `theme-color` de la barra de estado— y así los 53 roles se derivan una sola
  * vez por cambio de seed/scheme/contraste en vez de dos.
  */
 export function buildM3CssFromTokens(

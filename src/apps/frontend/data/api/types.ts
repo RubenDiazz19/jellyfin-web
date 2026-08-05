@@ -103,5 +103,21 @@ export const FIELDS_GRID =
 /** Las dos únicas imágenes que pinta una tarjeta de la rejilla. */
 export const GRID_IMAGE_TYPES = 'Primary,Logo';
 
+/**
+ * Jellyfin cuenta el tiempo en «ticks» de 100 ns.
+ *
+ * ÚNICA definición del repo: estaba copiada en cuatro sitios y suelta como
+ * literal en otros tantos. Vive aquí, en la capa de datos, porque es una
+ * unidad del servidor; `domain/player/format.ts` la reexporta para la vista,
+ * que no puede importar de `data/` (regla de capas).
+ */
+export const TICKS_PER_SECOND = 10_000_000;
+
+const SECONDS_PER_MINUTE = 60;
+
 export const ticksToMinutes = (ticks?: number): number | undefined =>
-    ticks ? Math.round(ticks / 10_000_000 / 60) : undefined;
+    ticks ? Math.round(ticks / TICKS_PER_SECOND / SECONDS_PER_MINUTE) : undefined;
+
+/** Ticks → minutos SIN redondear. Para cuentas que siguen operando después. */
+export const ticksToExactMinutes = (ticks?: number): number =>
+    (ticks ? ticks / TICKS_PER_SECOND / SECONDS_PER_MINUTE : 0);

@@ -20,15 +20,13 @@
 // (marcar visto, editar metadatos, borrar…) invalida todo esto — ver
 // `invalidateLists` y quién la llama.
 
-import { loadSession } from '../session/session';
+import { createTtlCache, type Stamped } from './ttlCache';
 
 /**
- * Ventana en la que una lista se sirve sin comprobar nada. Corta a propósito:
- * con stale-while-revalidate lo peor que pasa al cumplirse es servir una
- * versión de hace un minuto mientras se comprueba, no una espera.
+ * Lo que se guarda de cada lista. El sello de tiempo y el alcance por usuario
+ * los pone `createTtlCache`; la revalidación en segundo plano es política
+ * propia de este caché y vive aquí.
  */
-const TTL_MS = 60_000;
-
 type Entry = {
     /** La carga en curso, o ya resuelta. Se comparte entre lectores. */
     promise: Promise<unknown>;
@@ -36,20 +34,15 @@ type Entry = {
     value?: unknown;
     /** Huella del valor, para saber si una revalidación trae algo nuevo. */
     signature?: string;
-    /** Cuándo se selló por última vez (carga o revalidación). */
-    at: number;
     revalidating?: boolean;
 };
 
-const entries = new Map<string, Entry>();
-
-// El userId va en la clave, no como filtro: los listados llevan estado por
-// usuario (visto, progreso) y al cambiar de cuenta en la misma pestaña la
-// nueva sesión leería la biblioteca de la anterior. Mismo criterio que
-// `showCache`. `.` como separador: no aparece en un userId.
-function keyFor(key: string): string {
-    return `${loadSession()?.userId ?? ''}.${key}`;
-}
+/**
+ * TTL corto a propósito: con stale-while-revalidate lo peor que pasa al
+ * cumplirse es servir una versión de hace un minuto mientras se comprueba, no
+ * una espera.
+ */
+const cache = createTtlCache<Entry>({ ttlMs: 60_000, userScoped: true });
 
 // FNV-1a sobre el JSON del valor. Se guarda la huella y no el JSON: comparar
 // dos listas de mil items no debe costar otro megabyte de memoria.
@@ -75,37 +68,36 @@ export function cachedList<T>(
     load: () => Promise<T>,
     onRefreshed?: () => void
 ): Promise<T> {
-    const k = keyFor(key);
-    const entry = entries.get(k);
-    if (!entry) return fill(k, load);
+    const k = cache.key(key);
+    const stamped = cache.peek(k);
+    if (!stamped) return fill(k, load);
     // Fresca, o todavía en vuelo: en ambos casos la promesa que hay es la
     // respuesta correcta, y lanzar otra petición encima no adelantaría nada.
-    if (Date.now() - entry.at <= TTL_MS || entry.value === undefined) {
-        return entry.promise as Promise<T>;
+    if (cache.isFresh(stamped) || stamped.value.value === undefined) {
+        return stamped.value.promise as Promise<T>;
     }
-    revalidate(k, entry, load, onRefreshed);
-    return Promise.resolve(entry.value as T);
+    revalidate(k, stamped, load, onRefreshed);
+    return Promise.resolve(stamped.value.value as T);
 }
 
 /** Tira TODOS los listados cacheados. La llama cualquier mutación de item. */
 export function invalidateLists(): void {
-    entries.clear();
+    cache.clear();
 }
 
 function fill<T>(k: string, load: () => Promise<T>): Promise<T> {
     const promise = load();
-    const entry: Entry = { promise, at: Date.now() };
-    entries.set(k, entry);
+    const stamped = cache.set(k, { promise });
     promise.then(
         (value) => {
             // Una invalidación pudo tirar la entrada mientras cargaba: esta
             // respuesta es anterior a la mutación, así que no se resucita.
-            if (entries.get(k) !== entry) return;
-            entry.value = value;
-            entry.signature = signatureOf(value);
+            if (!cache.holds(k, stamped)) return;
+            stamped.value.value = value;
+            stamped.value.signature = signatureOf(value);
         },
         () => {
-            if (entries.get(k) === entry) entries.delete(k);
+            if (cache.holds(k, stamped)) cache.delete(k);
         }
     );
     return promise;
@@ -113,21 +105,22 @@ function fill<T>(k: string, load: () => Promise<T>): Promise<T> {
 
 function revalidate<T>(
     k: string,
-    entry: Entry,
+    stamped: Stamped<Entry>,
     load: () => Promise<T>,
     onRefreshed?: () => void
 ): void {
+    const entry = stamped.value;
     if (entry.revalidating) return;
     entry.revalidating = true;
     // El sello se renueva ya, antes de saber el resultado: si no, cada lectura
     // que llegue mientras la revalidación está en vuelo vería la entrada
     // vencida y pediría otra.
-    entry.at = Date.now();
+    cache.touch(stamped);
     load().then(
         (value) => {
-            if (entries.get(k) !== entry) return;
+            if (!cache.holds(k, stamped)) return;
             entry.revalidating = false;
-            entry.at = Date.now();
+            cache.touch(stamped);
             const signature = signatureOf(value);
             // Sin cambios se conserva el valor anterior a propósito: los
             // ViewModels publican la lista en un signal y una lista nueva
@@ -139,7 +132,7 @@ function revalidate<T>(
             onRefreshed?.();
         },
         () => {
-            if (entries.get(k) !== entry) return;
+            if (!cache.holds(k, stamped)) return;
             // El servidor no contesta: se sigue sirviendo lo que hay y se
             // reintentará en la siguiente lectura pasada de TTL.
             entry.revalidating = false;

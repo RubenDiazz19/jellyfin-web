@@ -8,10 +8,15 @@ export function useWatched(id: string): [boolean, () => void] {
 }
 
 /**
- * Re-renderiza cuando cambia cualquier «visto». Para los componentes que
- * derivan estado agregado de varios ids (temporada completa, serie completa)
- * en vez de suscribirse a uno solo.
+ * Re-renderiza cuando cambia algún «visto» de `scope`. Para los componentes
+ * que derivan estado agregado de varios ids (temporada completa, serie
+ * completa) en vez de suscribirse a uno solo.
+ *
+ * `scope` es la raíz de las claves que le afectan —el id de la serie— y es lo
+ * que evita que marcar un episodio repinte la rejilla entera. Omitirlo
+ * significa «cualquier cambio», y solo es correcto para vistas que de verdad
+ * dependen de todo el store.
  */
-export function useWatchedVersion() {
-    useStoreVersion(WATCHED.event);
+export function useWatchedVersion(scope?: string) {
+    useStoreVersion(WATCHED.event, scope);
 }

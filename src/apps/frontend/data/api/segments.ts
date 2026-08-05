@@ -4,6 +4,8 @@
 
 import { apiFetch } from './http';
 
+import { TICKS_PER_SECOND } from './types';
+
 export type MediaSegmentKind = 'Intro' | 'Outro' | 'Recap' | 'Preview' | 'Commercial' | 'Unknown';
 
 export type MediaSegment = {
@@ -12,8 +14,6 @@ export type MediaSegment = {
     start: number;
     end: number;
 };
-
-const TICKS_PER_SECOND = 10_000_000;
 
 const KNOWN_KINDS: MediaSegmentKind[] = ['Intro', 'Outro', 'Recap', 'Preview', 'Commercial'];
 

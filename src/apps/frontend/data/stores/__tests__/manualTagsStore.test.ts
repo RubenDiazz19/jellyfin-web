@@ -3,6 +3,7 @@
 
 import { beforeEach, describe, expect, test } from 'vitest';
 import { MANUAL_TAGS } from '../manualTagsStore';
+import { flushPersistentStores } from '../persistentStore';
 
 beforeEach(() => {
     localStorage.clear();
@@ -26,12 +27,17 @@ describe('manualTagsStore', () => {
 
     test('persiste entre instancias', () => {
         MANUAL_TAGS.add(['Navideño']);
+        // Las escrituras van por lotes (ver persistentStore): sin volcar,
+        // `_reset()` releería un localStorage que aún no las tiene. Esto es
+        // justo lo que se quiere comprobar aquí — que llega al disco.
+        flushPersistentStores();
         MANUAL_TAGS._reset();
         expect(MANUAL_TAGS.has('Navideño')).toBe(true);
     });
 
     test('descarta vacíos', () => {
         MANUAL_TAGS.add(['', '   ']);
+        flushPersistentStores();
         expect(JSON.parse(localStorage.getItem('jfp-manual-tags') || '[]')).toEqual([]);
     });
 
