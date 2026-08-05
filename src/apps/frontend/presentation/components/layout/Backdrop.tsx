@@ -45,10 +45,25 @@ export function Backdrop({
 
     // Dynamic color M3: la seed del tema sigue al backdrop visible. En
     // desktop applyImageSeed es un no-op (el provider queda inerte).
-    const { applyImageSeed } = useMobileTheme();
+    const { applyImageSeed, imageFocusX } = useMobileTheme();
     useEffect(() => {
         if (current) applyImageSeed(current);
     }, [current, applyImageSeed]);
+
+    // Encuadre: en vertical el recorte se come casi todo el ancho de un
+    // fotograma apaisado, así que se centra en donde está el detalle en vez de
+    // en la mitad geométrica. No se reinicia al cambiar de imagen: viniendo del
+    // encuadre anterior la transición desliza, y reiniciando daría un salto al
+    // centro y otro a su sitio. En desktop siempre es null → 50%, el de antes.
+    const [focusX, setFocusX] = useState<number | null>(null);
+    useEffect(() => {
+        if (!current) return;
+        let alive = true;
+        void imageFocusX(current).then((x) => {
+            if (alive) setFocusX(x);
+        });
+        return () => { alive = false; };
+    }, [current, imageFocusX]);
 
     // La hero image es el LCP de la página y via background-image el
     // navegador la pide con prioridad baja: un preload hint la adelanta.
@@ -80,7 +95,13 @@ export function Backdrop({
 
     return (
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            <Crossfade url={current} fadeMs={fadeMs} filter={filter} transform={transform} />
+            <Crossfade
+                url={current}
+                fadeMs={fadeMs}
+                filter={filter}
+                transform={transform}
+                position={`${focusX ?? 50}% center`}
+            />
             <div style={{
                 position: 'absolute', inset: 0,
                 background: `rgba(0,0,0,${blurred ? 0.35 : 0.08})`
@@ -108,9 +129,9 @@ export function Backdrop({
 // entrante monta a opacity 0 y transiciona a 1; la saliente se desmonta al
 // terminar el fade.
 function Crossfade({
-    url, fadeMs, filter, transform
+    url, fadeMs, filter, transform, position
 }: {
-    url: string; fadeMs: number; filter: string; transform: string;
+    url: string; fadeMs: number; filter: string; transform: string; position: string;
 }) {
     const keyRef = useRef(0);
     const [layers, setLayers] = useState<{ url: string; key: number }[]>(
@@ -142,6 +163,7 @@ function Crossfade({
                     fadeMs={fadeMs}
                     filter={filter}
                     transform={transform}
+                    position={position}
                 />
             ))}
         </>
@@ -149,9 +171,10 @@ function Crossfade({
 }
 
 function FadeLayer({
-    url, fadeIn, fadeMs, filter, transform
+    url, fadeIn, fadeMs, filter, transform, position
 }: {
-    url: string; fadeIn: boolean; fadeMs: number; filter: string; transform: string;
+    url: string; fadeIn: boolean; fadeMs: number;
+    filter: string; transform: string; position: string;
 }) {
     const [opacity, setOpacity] = useState(fadeIn ? 0 : 1);
     useEffect(() => {
@@ -167,10 +190,13 @@ function FadeLayer({
         <div style={{
             position: 'absolute', inset: 0,
             backgroundImage: `url(${url})`,
-            backgroundSize: 'cover', backgroundPosition: 'center',
+            backgroundSize: 'cover', backgroundPosition: position,
             filter, transform,
             opacity,
-            transition: `opacity ${fadeMs}ms ease-in-out`
+            // El encuadre llega después de decodificar la imagen, así que la
+            // primera pintada va centrada: se desliza hasta su sitio en vez de
+            // dar el salto. `background-position` es interpolable.
+            transition: `opacity ${fadeMs}ms ease-in-out, background-position 420ms ease-out`
         }} />
     );
 }

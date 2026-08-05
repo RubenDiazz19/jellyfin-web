@@ -35,7 +35,7 @@ import {
     makeColorTokens,
     type M3SchemeName
 } from './m3';
-import { seedFromImage } from './dynamicColor';
+import { analyzeImage } from './dynamicColor';
 
 const STYLE_ID = 'jfp-m3-tokens';
 
@@ -55,9 +55,17 @@ type MobileThemeValue = {
     setSeed: (seed: string | null) => void;
     /** Dynamic color: alimenta la seed desde la URL del backdrop visible. */
     applyImageSeed: (url: string) => void;
+    /**
+     * Punto de interés horizontal de una imagen, en % de su ancho, para
+     * encuadrarla cuando el recorte se come casi todo el ancho (un fotograma
+     * 16:9 en un hero vertical). `null` = no se pudo medir, o es escritorio,
+     * donde el hero es apaisado y no hay nada que reencuadrar.
+     */
+    imageFocusX: (url: string) => Promise<number | null>;
 };
 
 const noop = () => { /* desktop/tests sin provider: tema inerte */ };
+const noFocus = () => Promise.resolve(null);
 
 const INERT: MobileThemeValue = {
     layout: null,
@@ -68,7 +76,8 @@ const INERT: MobileThemeValue = {
     seedSource: 'auto',
     setMode: noop,
     setSeed: noop,
-    applyImageSeed: noop
+    applyImageSeed: noop,
+    imageFocusX: noFocus
 };
 
 const MobileThemeContext = createContext<MobileThemeValue>(INERT);
@@ -182,21 +191,28 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         // Guard en vivo (no sobre `layout` capturado): así un desktop nunca
         // paga la decodificación de imagen aunque el estado esté desfasado.
         if (!currentMobileLayout() || !url) return;
-        void seedFromImage(url).then((hex) => {
+        void analyzeImage(url).then(({ seed: hex }) => {
             if (hex) themeVM.applyDynamicSeed(hex);
         });
+    }, []);
+
+    // Mismo guard y misma caché: si el color ya analizó esta imagen, el
+    // encuadre sale de memoria sin decodificar nada otra vez.
+    const imageFocusX = useCallback(async (url: string) => {
+        if (!currentMobileLayout() || !url) return null;
+        return (await analyzeImage(url)).focusX;
     }, []);
 
     const value = useMemo<MobileThemeValue>(() => (
         active ?
             {
                 layout, scheme, mode, contrast, seed, seedSource,
-                setMode, setSeed, applyImageSeed
+                setMode, setSeed, applyImageSeed, imageFocusX
             } :
             INERT
     ), [
         active, layout, scheme, mode, contrast, seed, seedSource,
-        setMode, setSeed, applyImageSeed
+        setMode, setSeed, applyImageSeed, imageFocusX
     ]);
 
     return (
