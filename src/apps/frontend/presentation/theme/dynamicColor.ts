@@ -158,9 +158,25 @@ function cacheSet(url: string, analysis: ImageAnalysis): void {
     }
 }
 
+// El encuadre se guarda aparte del análisis completo porque se resuelve ANTES:
+// no necesita la librería de color, solo los píxeles. Ver `imageFocus`.
+const focusCache = new Map<string, number | null>();
+
+function focusSet(url: string, focus: number | null): void {
+    focusCache.delete(url);
+    focusCache.set(url, focus);
+    while (focusCache.size > CACHE_MAX) {
+        const oldest = focusCache.keys().next();
+        if (oldest.done) break;
+        focusCache.delete(oldest.value);
+    }
+}
+
 /** Solo para tests: vacía la memoización. */
 export function resetAnalysisCache(): void {
     cache.clear();
+    focusCache.clear();
+    sampling.clear();
 }
 
 /** Solo para tests: cuántas imágenes hay memoizadas ahora mismo. */
@@ -180,15 +196,18 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     });
 }
 
-/** Seed y encuadre de la imagen; ambos a null si no se pudo leer. */
-export async function analyzeImage(url: string): Promise<ImageAnalysis> {
-    const memo = cacheGet(url);
-    if (memo !== undefined) return memo;
+/** La imagen bajada a un canvas: lo caro, y lo que comparten seed y encuadre. */
+type Sampled = { data: Uint8ClampedArray; w: number; h: number };
 
-    let analysis = UNREADABLE;
+// Muestreos en vuelo. El hero pide seed y encuadre en el mismo commit, y sin
+// esto serían dos descargas y dos decodificaciones de la MISMA imagen. Solo
+// guarda lo que está a medias: al terminar, el resultado ya vive en las cachés
+// y el pixel buffer se puede tirar (son ~20 KB por imagen).
+const sampling = new Map<string, Promise<Sampled | null>>();
+
+async function readPixels(url: string): Promise<Sampled | null> {
     try {
-        // En paralelo: la imagen viaja por la red mientras llega el chunk.
-        const [img, lib] = await Promise.all([loadImage(url), loadColorLib()]);
+        const img = await loadImage(url);
         const ratio = img.naturalHeight / Math.max(1, img.naturalWidth);
         const w = SAMPLE;
         const h = Math.max(1, Math.round(SAMPLE * ratio));
@@ -197,9 +216,66 @@ export async function analyzeImage(url: string): Promise<ImageAnalysis> {
         canvas.width = w;
         canvas.height = h;
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        if (ctx) {
-            ctx.drawImage(img, 0, 0, w, h);
-            const data = ctx.getImageData(0, 0, w, h).data;
+        if (!ctx) return null;
+        ctx.drawImage(img, 0, 0, w, h);
+        return { data: ctx.getImageData(0, 0, w, h).data, w, h };
+    } catch {
+        // Imagen inaccesible o canvas tainted: no hay píxeles que mirar.
+        return null;
+    }
+}
+
+function sampleImage(url: string): Promise<Sampled | null> {
+    const inflight = sampling.get(url);
+    if (inflight) return inflight;
+    const job = readPixels(url);
+    sampling.set(url, job);
+    void job.finally(() => {
+        if (sampling.get(url) === job) sampling.delete(url);
+    });
+    return job;
+}
+
+/**
+ * Encuadre de la imagen, sin esperar a la librería de color.
+ *
+ * Va por su cuenta y no por `analyzeImage` porque el encuadre TIENE que estar
+ * listo antes de la primera pintada: si llega después, la imagen aparece
+ * centrada y se desliza a su sitio a la vista del usuario. Y de las dos cosas
+ * que salen de los píxeles, el encuadre es la que no necesita los ~100 KB del
+ * chunk de Material — hacerle esperar a ese `import()` era justo lo que abría
+ * la ventana del salto.
+ */
+export async function imageFocus(url: string): Promise<number | null> {
+    const memo = peekImageFocus(url);
+    if (memo !== undefined) return memo;
+    const px = await sampleImage(url);
+    const focus = px ? focusFromPixels(px.data, px.w, px.h) : null;
+    focusSet(url, focus);
+    return focus;
+}
+
+/**
+ * El encuadre ya memoizado, sin promesa de por medio. `undefined` = todavía no
+ * se sabe. Sirve para pintar bien A LA PRIMERA una imagen ya vista (el carrusel
+ * que vuelve a un slide, una ficha que se reabre): con un `await` de por medio,
+ * aunque el valor esté en memoria, React ya ha pintado un frame centrado.
+ */
+export function peekImageFocus(url: string): number | null | undefined {
+    return focusCache.get(url);
+}
+
+/** Seed y encuadre de la imagen; ambos a null si no se pudo leer. */
+export async function analyzeImage(url: string): Promise<ImageAnalysis> {
+    const memo = cacheGet(url);
+    if (memo !== undefined) return memo;
+
+    let analysis = UNREADABLE;
+    try {
+        // En paralelo: la imagen viaja por la red mientras llega el chunk.
+        const [px, lib] = await Promise.all([sampleImage(url), loadColorLib()]);
+        if (px) {
+            const { data, w, h } = px;
             const pixels: number[] = [];
             for (let i = 0; i < data.length; i += 4) {
                 if (data[i + 3] < 255) continue; // ignora píxeles translúcidos
@@ -210,12 +286,16 @@ export async function analyzeImage(url: string): Promise<ImageAnalysis> {
                 seed: ranked.length ? normalizeSeed(ranked[0], lib) : null,
                 focusX: focusFromPixels(data, w, h)
             };
+            focusSet(url, analysis.focusX);
         }
     } catch {
-        // Imagen inaccesible o canvas tainted: ni color ni encuadre. Se memoiza
-        // el fallo para no reintentarlo en cada rotación del carrusel.
+        // El chunk de color no llegó, o la imagen no se pudo leer: sin seed. El
+        // encuadre no depende de esto y lo resuelve `imageFocus` por su cuenta,
+        // así que aquí no se toca su caché.
         analysis = UNREADABLE;
     }
+    // Se memoiza también el fallo, para no reintentarlo en cada rotación del
+    // carrusel.
     cacheSet(url, analysis);
     return analysis;
 }

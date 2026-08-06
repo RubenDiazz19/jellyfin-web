@@ -45,25 +45,10 @@ export function Backdrop({
 
     // Dynamic color M3: la seed del tema sigue al backdrop visible. En
     // desktop applyImageSeed es un no-op (el provider queda inerte).
-    const { applyImageSeed, imageFocusX } = useMobileTheme();
+    const { applyImageSeed } = useMobileTheme();
     useEffect(() => {
         if (current) applyImageSeed(current);
     }, [current, applyImageSeed]);
-
-    // Encuadre: en vertical el recorte se come casi todo el ancho de un
-    // fotograma apaisado, así que se centra en donde está el detalle en vez de
-    // en la mitad geométrica. No se reinicia al cambiar de imagen: viniendo del
-    // encuadre anterior la transición desliza, y reiniciando daría un salto al
-    // centro y otro a su sitio. En desktop siempre es null → 50%, el de antes.
-    const [focusX, setFocusX] = useState<number | null>(null);
-    useEffect(() => {
-        if (!current) return;
-        let alive = true;
-        void imageFocusX(current).then((x) => {
-            if (alive) setFocusX(x);
-        });
-        return () => { alive = false; };
-    }, [current, imageFocusX]);
 
     // La hero image es el LCP de la página y via background-image el
     // navegador la pide con prioridad baja: un preload hint la adelanta.
@@ -100,7 +85,6 @@ export function Backdrop({
                 fadeMs={fadeMs}
                 filter={filter}
                 transform={transform}
-                position={`${focusX ?? 50}% center`}
             />
             <div style={{
                 position: 'absolute', inset: 0,
@@ -129,9 +113,9 @@ export function Backdrop({
 // entrante monta a opacity 0 y transiciona a 1; la saliente se desmonta al
 // terminar el fade.
 function Crossfade({
-    url, fadeMs, filter, transform, position
+    url, fadeMs, filter, transform
 }: {
-    url: string; fadeMs: number; filter: string; transform: string; position: string;
+    url: string; fadeMs: number; filter: string; transform: string;
 }) {
     const keyRef = useRef(0);
     const [layers, setLayers] = useState<{ url: string; key: number }[]>(
@@ -163,40 +147,93 @@ function Crossfade({
                     fadeMs={fadeMs}
                     filter={filter}
                     transform={transform}
-                    position={position}
                 />
             ))}
         </>
     );
 }
 
+// Cuánto tarda en aparecer una capa que estaba esperando su encuadre. Corto:
+// no es un crossfade entre dos imágenes, es la primera saliendo de la nada.
+const REVEAL_MS = 260;
+
+// Tope de espera del encuadre. Es una red de seguridad, no un plazo esperado:
+// el análisis y el `background-image` compiten por la MISMA descarga, así que
+// en la práctica el encuadre está listo justo cuando la imagen se puede pintar.
+// Solo entra en juego si el análisis se queda colgado sin resolver ni fallar.
+//
+// Se acota además por el fade: la capa saliente se desmonta a `fadeMs + 120`,
+// así que esperar más que eso dejaría el hero en negro entre una imagen y la
+// siguiente. Con el tope por debajo, la entrante siempre ha empezado a
+// aparecer antes de que se vaya la que tapaba.
+const FOCUS_DEADLINE_MS = 1200;
+
 function FadeLayer({
-    url, fadeIn, fadeMs, filter, transform, position
+    url, fadeIn, fadeMs, filter, transform
 }: {
     url: string; fadeIn: boolean; fadeMs: number;
-    filter: string; transform: string; position: string;
+    filter: string; transform: string;
 }) {
-    const [opacity, setOpacity] = useState(fadeIn ? 0 : 1);
+    const { peekFocusX, imageFocusX } = useMobileTheme();
+
+    // Encuadre: en vertical el recorte se come casi todo el ancho de un
+    // fotograma apaisado, así que se centra en donde está el detalle y no en la
+    // mitad geométrica. En desktop siempre es null → 50%, el de siempre.
+    //
+    // Es de la CAPA y no del Backdrop porque cada capa tiene su propia imagen:
+    // con un solo encuadre compartido, al rotar el carrusel la imagen que se
+    // estaba yendo se recolocaba con el encuadre de la que entraba, y se veía
+    // deslizarse mientras se desvanecía.
+    //
+    // La lectura inicial es SÍNCRONA: si ya se analizó esta imagen (el carrusel
+    // que vuelve a un slide, una ficha que se reabre), este primer render ya
+    // sale colocado. Con un `await` de por medio, aunque el valor estuviera en
+    // memoria, React pintaba un frame centrado antes de corregir.
+    const [focus, setFocus] = useState<number | null | undefined>(() => peekFocusX(url));
+    const framed = focus !== undefined;
+    // ¿Se supo desde el primer render? Entonces la capa nace bien puesta y no
+    // tiene que esconderse a esperar nada.
+    const bornFramed = useRef(framed).current;
+
     useEffect(() => {
-        if (!fadeIn) return;
+        if (framed) return;
+        let alive = true;
+        void imageFocusX(url).then((x) => { if (alive) setFocus(x); });
+        const t = setTimeout(() => {
+            if (alive) setFocus((f) => (f === undefined ? null : f));
+        }, Math.min(FOCUS_DEADLINE_MS, fadeMs));
+        return () => { alive = false; clearTimeout(t); };
+    }, [url, framed, fadeMs, imageFocusX]);
+
+    // Una capa sin encuadre todavía no se enseña: aparecer centrada y
+    // recolocarse a la vista es justo lo que se está quitando. La que ya nace
+    // encuadrada y no viene de un crossfade se pinta entera de una — es el LCP
+    // de la página y no hay nada que esperar.
+    const [opacity, setOpacity] = useState(fadeIn || !bornFramed ? 0 : 1);
+    useEffect(() => {
+        if (!framed || (!fadeIn && bornFramed)) return;
         // Doble rAF: garantiza un frame pintado a opacity 0 antes de
         // transicionar (con uno solo, a veces el navegador colapsa ambos).
         const raf = requestAnimationFrame(() => {
             requestAnimationFrame(() => setOpacity(1));
         });
         return () => cancelAnimationFrame(raf);
-    }, [fadeIn]);
+    }, [framed, fadeIn, bornFramed]);
+
     return (
         <div style={{
             position: 'absolute', inset: 0,
             backgroundImage: `url(${url})`,
-            backgroundSize: 'cover', backgroundPosition: position,
+            backgroundSize: 'cover',
+            backgroundPosition: `${focus ?? 50}% center`,
             filter, transform,
             opacity,
-            // El encuadre llega después de decodificar la imagen, así que la
-            // primera pintada va centrada: se desliza hasta su sitio en vez de
-            // dar el salto. `background-position` es interpolable.
-            transition: `opacity ${fadeMs}ms ease-in-out, background-position 420ms ease-out`
+            // La transición de posición ya no debería verse nunca: la capa no
+            // se enseña hasta tener su encuadre. Se queda para el único caso
+            // que se escapa —el encuadre llegando después del tope de arriba—,
+            // donde deslizar se lee mucho mejor que saltar.
+            transition: `opacity ${fadeIn ? fadeMs : REVEAL_MS}ms ease-in-out,`
+                + ' background-position 420ms ease-out'
         }} />
     );
 }

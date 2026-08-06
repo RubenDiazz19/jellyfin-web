@@ -34,7 +34,7 @@ import {
     M3_DEFAULT_SEED,
     type M3SchemeName
 } from './m3';
-import { analyzeImage } from './dynamicColor';
+import { analyzeImage, imageFocus, peekImageFocus } from './dynamicColor';
 
 const STYLE_ID = 'jfp-m3-tokens';
 
@@ -87,10 +87,19 @@ type MobileThemeValue = {
      * donde el hero es apaisado y no hay nada que reencuadrar.
      */
     imageFocusX: (url: string) => Promise<number | null>;
+    /**
+     * El mismo encuadre pero ya memoizado y sin promesa. `undefined` = aún no
+     * se sabe. Quien pinta la imagen lo consulta ANTES de su primer render:
+     * con el valor a mano sale colocada de una, sin el deslizamiento de
+     * corrección.
+     */
+    peekFocusX: (url: string) => number | null | undefined;
 };
 
 const noop = () => { /* desktop/tests sin provider: tema inerte */ };
 const noFocus = () => Promise.resolve(null);
+// En escritorio el encuadre se sabe desde el principio: no hay ninguno.
+const noPeek = () => null;
 
 const INERT: MobileThemeValue = {
     layout: null,
@@ -102,7 +111,8 @@ const INERT: MobileThemeValue = {
     setMode: noop,
     setSeed: noop,
     applyImageSeed: noop,
-    imageFocusX: noFocus
+    imageFocusX: noFocus,
+    peekFocusX: noPeek
 };
 
 const MobileThemeContext = createContext<MobileThemeValue>(INERT);
@@ -243,23 +253,28 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    // Mismo guard y misma caché: si el color ya analizó esta imagen, el
-    // encuadre sale de memoria sin decodificar nada otra vez.
-    const imageFocusX = useCallback(async (url: string) => {
+    // Mismo guard, y el muestreo de píxeles se comparte con el del color: si
+    // los dos piden la misma imagen a la vez, se decodifica una sola vez.
+    const imageFocusX = useCallback((url: string) => {
+        if (!currentMobileLayout() || !url) return Promise.resolve(null);
+        return imageFocus(url);
+    }, []);
+
+    const peekFocusX = useCallback((url: string) => {
         if (!currentMobileLayout() || !url) return null;
-        return (await analyzeImage(url)).focusX;
+        return peekImageFocus(url);
     }, []);
 
     const value = useMemo<MobileThemeValue>(() => (
         active ?
             {
                 layout, scheme, mode, contrast, seed, seedSource,
-                setMode, setSeed, applyImageSeed, imageFocusX
+                setMode, setSeed, applyImageSeed, imageFocusX, peekFocusX
             } :
             INERT
     ), [
         active, layout, scheme, mode, contrast, seed, seedSource,
-        setMode, setSeed, applyImageSeed, imageFocusX
+        setMode, setSeed, applyImageSeed, imageFocusX, peekFocusX
     ]);
 
     return (

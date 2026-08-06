@@ -17,6 +17,7 @@ import { CwCard } from '../components/cards/CwCard';
 import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
 import { PlayBtn } from '../components/controls/PlayBtn';
+import { TextButton } from '../components/controls/TextButton';
 import { SkeletonRow } from '../components/skeleton/Skeleton';
 import { MobileHero } from '../components/home/MobileHero';
 import { MC, useResponsive } from '../theme/responsive';
@@ -210,6 +211,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                     tablet={r.tablet}
                     goSlide={goSlide}
                     onPlay={onPlay}
+                    navigate={navigate}
                 />
                 <HomeLibrary navigate={navigate} />
             </>
@@ -279,16 +281,6 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     );
 }
 
-// Botón "de texto": mismo reset que los géneros clicables de ShowPage, para
-// que T1/E1 y el logo del hero se vean como el resto del texto pero
-// naveguen al pulsarlos.
-const textBtnStyle: React.CSSProperties = {
-    background: 'none', border: 'none', padding: 0,
-    font: 'inherit', color: 'inherit',
-    letterSpacing: 'inherit', textTransform: 'inherit',
-    cursor: 'pointer'
-};
-
 const HeroSlide = React.memo(function HeroSlideBase({
     slide,
     width,
@@ -334,13 +326,12 @@ const HeroSlide = React.memo(function HeroSlideBase({
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
                 textAlign: 'center'
             }}>
-                {logo ? (
-                    <button
-                        onClick={goDetail}
-                        onMouseDown={(e) => e.preventDefault()}
-                        aria-label={slide.title}
-                        style={{ ...textBtnStyle, display: 'block', marginBottom: 18 }}
-                    >
+                <TextButton
+                    onClick={goDetail}
+                    label={slide.title}
+                    style={{ display: 'block', marginBottom: 18 }}
+                >
+                    {logo ? (
                         <img
                             src={logo}
                             alt={slide.title}
@@ -350,13 +341,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                 objectFit: 'contain', filter: 'drop-shadow(0 4px 50px rgba(0,0,0,0.6))'
                             }}
                         />
-                    </button>
-                ) : (
-                    <button
-                        onClick={goDetail}
-                        onMouseDown={(e) => e.preventDefault()}
-                        style={{ ...textBtnStyle, display: 'block', marginBottom: 18 }}
-                    >
+                    ) : (
                         <h1 style={{
                             fontFamily: T.display, fontSize: 'clamp(64px, 8vw, 130px)', lineHeight: 0.92,
                             margin: 0, fontWeight: 250, letterSpacing: -2,
@@ -364,8 +349,8 @@ const HeroSlide = React.memo(function HeroSlideBase({
                         }}>
                             {slide.title}
                         </h1>
-                    </button>
-                )}
+                    )}
+                </TextButton>
 
                 {/* Solo las series enseñan esta línea, porque lleva a algún
                     sitio: la temporada y el episodio por los que se iba. En
@@ -384,15 +369,9 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                 width: 5, height: 5, borderRadius: 999, background: '#fff',
                                 display: 'inline-block', animation: 'jfp-pulse 1.8s ease-in-out infinite'
                             }} />
-                            <button
-                                onClick={goSeason}
-                                onMouseDown={(e) => e.preventDefault()}
-                                style={textBtnStyle}
-                                onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                                onMouseLeave={(e) => (e.currentTarget.style.color = '')}
-                            >
+                            <TextButton onClick={goSeason} highlight>
                                 {`T${slide.season}`}
-                            </button>
+                            </TextButton>
                             {/* "E6 · Inicio de semestre" es UN solo botón: el
                                 número y el nombre son la misma cosa (el
                                 capítulo) y llevaban ya al mismo sitio, así que
@@ -401,15 +380,10 @@ const HeroSlide = React.memo(function HeroSlideBase({
                             {slide.episode != null && (
                                 <>
                                     {' · '}
-                                    <button
+                                    <TextButton
                                         onClick={goEpisode}
-                                        onMouseDown={(e) => e.preventDefault()}
-                                        style={{
-                                            ...textBtnStyle,
-                                            display: 'flex', alignItems: 'center', gap: 12
-                                        }}
-                                        onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
-                                        onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+                                        highlight
+                                        style={{ display: 'flex', alignItems: 'center', gap: 12 }}
                                     >
                                         {`E${slide.episode}`}
                                         {slide.episodeTitle && (
@@ -422,7 +396,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                                 </span>
                                             </>
                                         )}
-                                    </button>
+                                    </TextButton>
                                 </>
                             )}
                         </span>

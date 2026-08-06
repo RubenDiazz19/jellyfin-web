@@ -4,7 +4,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-    analysisCacheSize, analyzeImage, focusFromPixels, resetAnalysisCache
+    analysisCacheSize, analyzeImage, focusFromPixels, imageFocus, peekImageFocus,
+    resetAnalysisCache
 } from '../dynamicColor';
 
 // `analyzeImage` carga la librería de color con `import()` (son ~100 KB que
@@ -74,6 +75,80 @@ describe('dynamicColor: caché de seeds', () => {
         expect(built, 'la 0 seguía en caché').toBe(0);
         await analyzeImage('http://srv/1.jpg');
         expect(built, 'la 1 fue la desalojada').toBe(1);
+    });
+});
+
+// El encuadre tiene que estar listo ANTES de la primera pintada: si llega
+// después, la imagen aparece centrada y se recoloca a la vista del usuario.
+// Por eso va por su cuenta y no colgando del análisis de color, que espera a un
+// `import()` de ~100 KB que al encuadre no le hace ninguna falta.
+describe('dynamicColor: el encuadre no cuelga del color', () => {
+    // Aquí sí hace falta un canvas que devuelva píxeles: lo que se prueba es el
+    // camino entero (descarga → muestreo → encuadre), no la función pura.
+    const realGetContext = HTMLCanvasElement.prototype.getContext;
+
+    /** Píxeles con el detalle en el tercio izquierdo. */
+    function leftHeavy(w: number, h: number): Uint8ClampedArray {
+        const data = new Uint8ClampedArray(w * h * 4);
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const v = x < w / 3 && (x + y) % 2 === 0 ? 255 : 0;
+                const i = (y * w + x) * 4;
+                data[i] = v;
+                data[i + 1] = v;
+                data[i + 2] = v;
+                data[i + 3] = 255;
+            }
+        }
+        return data;
+    }
+
+    beforeEach(() => {
+        built = 0;
+        resetAnalysisCache();
+        vi.stubGlobal('Image', FakeImage);
+        HTMLCanvasElement.prototype.getContext = function fake(this: HTMLCanvasElement) {
+            return {
+                drawImage: () => undefined,
+                getImageData: (_x: number, _y: number, w: number, h: number) => ({
+                    data: leftHeavy(w, h)
+                })
+            };
+        } as unknown as typeof realGetContext;
+    });
+
+    afterEach(() => {
+        HTMLCanvasElement.prototype.getContext = realGetContext;
+        vi.unstubAllGlobals();
+        resetAnalysisCache();
+    });
+
+    it('una imagen sin ver todavía no tiene encuadre que consultar', () => {
+        expect(peekImageFocus('http://srv/a.jpg')).toBeUndefined();
+    });
+
+    it('tras medirla, el encuadre se lee sin promesa de por medio', async () => {
+        const focus = await imageFocus('http://srv/a.jpg');
+        expect(focus).not.toBeNull();
+        expect(focus).toBeLessThan(40); // el detalle está a la izquierda
+
+        // Esto es lo que evita el salto al volver a la misma imagen: el valor
+        // está disponible en el mismo render, no un tick después.
+        expect(peekImageFocus('http://srv/a.jpg')).toBe(focus);
+    });
+
+    it('color y encuadre a la vez decodifican la imagen una sola vez', async () => {
+        const [analysis, focus] = await Promise.all([
+            analyzeImage('http://srv/a.jpg'),
+            imageFocus('http://srv/a.jpg')
+        ]);
+        expect(built, 'una sola descarga para los dos').toBe(1);
+        expect(analysis.focusX).toBe(focus);
+    });
+
+    it('analizar el color deja el encuadre listo para el peek', async () => {
+        await analyzeImage('http://srv/a.jpg');
+        expect(peekImageFocus('http://srv/a.jpg')).not.toBeUndefined();
     });
 });
 

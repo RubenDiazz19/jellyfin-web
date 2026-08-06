@@ -22,7 +22,9 @@ import { useShortViewport } from '../../theme/responsive';
 import { formatRemainingCompact } from '../../theme/format';
 import { Backdrop } from '../layout/Backdrop';
 import { PlayBtn } from '../controls/PlayBtn';
+import { TextButton, TEXT_BTN_TAP } from '../controls/TextButton';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
+import type { Navigate } from '../../../app/router';
 
 type Props = {
     slides: CarouselSlide[];
@@ -30,9 +32,10 @@ type Props = {
     tablet: boolean;
     goSlide: (n: number) => void;
     onPlay: () => void;
+    navigate: Navigate;
 };
 
-export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
+export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: Props) {
     const slide = slides[Math.min(idx, slides.length - 1)];
     const short = useShortViewport();
 
@@ -55,9 +58,25 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
     if (!slide) return null;
 
     const isContinue = slide.type === 'continue';
-    const meta = isContinue ?
-        (slide.season != null ? `T${slide.season} · E${slide.episode}` : 'Continuar viendo') :
-        String(slide.year);
+    // Las mismas tres navegaciones que el hero de escritorio: el logo lleva a
+    // la ficha, la temporada a la suya y el episodio al que ibas.
+    const goDetail = () => {
+        if (slide.kind === 'movie') navigate({ page: 'movie', movieId: slide.id });
+        else navigate({ page: 'show', showId: slide.id });
+    };
+    const goSeason = () => {
+        if (slide.season == null) return;
+        navigate({ page: 'season', showId: slide.id, seasonN: slide.season });
+    };
+    const goEpisode = () => {
+        if (slide.season == null || slide.episode == null) return;
+        navigate({ page: 'episode', showId: slide.id, seasonN: slide.season, epN: slide.episode });
+    };
+
+    // Solo las series traen T·E que enseñar, y solo ahí la línea navega.
+    const hasEpisode = isContinue && slide.season != null;
+    const plainMeta = isContinue ? 'Continuar viendo' : String(slide.year);
+    const remaining = isContinue ? formatRemainingCompact(slide.remaining) : '';
 
     // El Backdrop alimenta la seed del dynamic color con lo que se ve, así
     // que el tema (y con él la píldora de navegación) toma el color de esta
@@ -138,40 +157,46 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
                         animation: 'jfp-fade-in 0.45s ease-out both'
                     }}
                 >
-                    {slide.logo ? (
-                        <img
-                            src={slide.logo}
-                            alt={slide.title}
-                            decoding='async'
-                            style={{
-                                maxWidth: tablet ? 'min(70vw, 440px)' : 'min(78vw, 320px)',
-                                maxHeight: logoMax,
-                                width: 'auto',
-                                height: 'auto',
-                                objectFit: 'contain',
-                                filter: 'drop-shadow(0 3px 24px rgba(0, 0, 0, 0.6))'
+                    <TextButton
+                        onClick={goDetail}
+                        label={slide.title}
+                        style={{ display: 'block', maxWidth: '100%' }}
+                    >
+                        {slide.logo ? (
+                            <img
+                                src={slide.logo}
+                                alt={slide.title}
+                                decoding='async'
+                                style={{
+                                    maxWidth: tablet ? 'min(70vw, 440px)' : 'min(78vw, 320px)',
+                                    maxHeight: logoMax,
+                                    width: 'auto',
+                                    height: 'auto',
+                                    objectFit: 'contain',
+                                    filter: 'drop-shadow(0 3px 24px rgba(0, 0, 0, 0.6))'
+                                }}
+                            />
+                        ) : (
+                            <h1 style={{
+                                fontFamily: T.display,
+                                fontSize: short ? 'clamp(24px, 5vh, 34px)' :
+                                    (tablet ? 'clamp(40px, 6vw, 72px)' : 'clamp(30px, 9vw, 46px)'),
+                                lineHeight: 1.02,
+                                margin: 0,
+                                fontWeight: 300,
+                                letterSpacing: -0.5,
+                                textShadow: '0 2px 24px rgba(0, 0, 0, 0.5)',
+                                textWrap: 'balance',
+                                overflow: 'hidden',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical'
                             }}
-                        />
-                    ) : (
-                        <h1 style={{
-                            fontFamily: T.display,
-                            fontSize: short ? 'clamp(24px, 5vh, 34px)' :
-                                (tablet ? 'clamp(40px, 6vw, 72px)' : 'clamp(30px, 9vw, 46px)'),
-                            lineHeight: 1.02,
-                            margin: 0,
-                            fontWeight: 300,
-                            letterSpacing: -0.5,
-                            textShadow: '0 2px 24px rgba(0, 0, 0, 0.5)',
-                            textWrap: 'balance',
-                            overflow: 'hidden',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: 'vertical'
-                        }}
-                        >
-                            {slide.title}
-                        </h1>
-                    )}
+                            >
+                                {slide.title}
+                            </h1>
+                        )}
+                    </TextButton>
 
                     <div style={{
                         fontSize: 'var(--md-sys-typescale-label-large-size, 14px)',
@@ -182,10 +207,32 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay }: Props) {
                         textOverflow: 'ellipsis'
                     }}
                     >
-                        {meta}
-                        {isContinue && slide.episodeTitle ? ` · ${slide.episodeTitle}` : ''}
-                        {isContinue && formatRemainingCompact(slide.remaining) ?
-                            ` · ${formatRemainingCompact(slide.remaining)}` : ''}
+                        {hasEpisode ? (
+                            <>
+                                <TextButton onClick={goSeason} style={TEXT_BTN_TAP}>
+                                    {`T${slide.season}`}
+                                </TextButton>
+                                {/* «E6 · Inicio de semestre» es UN solo botón:
+                                    el número y el nombre son la misma cosa y
+                                    llevan al mismo sitio; separarlos daría dos
+                                    dianas pequeñas en vez de una cómoda. */}
+                                {slide.episode != null ? (
+                                    <>
+                                        {' · '}
+                                        <TextButton onClick={goEpisode} style={TEXT_BTN_TAP}>
+                                            {`E${slide.episode}`}
+                                            {slide.episodeTitle ? ` · ${slide.episodeTitle}` : ''}
+                                        </TextButton>
+                                    </>
+                                ) : (slide.episodeTitle ? ` · ${slide.episodeTitle}` : '')}
+                            </>
+                        ) : (
+                            <>
+                                {plainMeta}
+                                {isContinue && slide.episodeTitle ? ` · ${slide.episodeTitle}` : ''}
+                            </>
+                        )}
+                        {remaining ? ` · ${remaining}` : ''}
                     </div>
 
                     <PlayBtn
