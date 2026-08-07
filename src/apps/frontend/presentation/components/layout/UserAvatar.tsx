@@ -3,6 +3,7 @@ import globalize from 'lib/globalize';
 import { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
+import { avatarUrl } from '../../../domain/api';
 import { useSession } from '../../../domain/bridge/useSession';
 import { useToast } from '../toast/ToastProvider';
 import { BottomSheet } from '../m3/BottomSheet';
@@ -20,7 +21,17 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
     const [open, setOpen] = useState(false);
     const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
-    const initial = (session?.displayName ?? '?').slice(0, 1).toUpperCase();
+    // `||` y no `??`: el nombre puede llegar como cadena vacía (sesión
+    // restaurada antes de que el ViewModel lo baje del servidor), y ahí `??` no
+    // salta — el avatar se quedaba sin ninguna letra dentro.
+    const name = session?.displayName || '';
+    const initial = (name || '?').slice(0, 1).toUpperCase();
+    // La misma foto que enseña Ajustes: sale del tag que el ViewModel guarda en
+    // la sesión. Sin tag (o si la imagen no carga) queda la inicial de siempre.
+    const photo = session?.avatarTag ? avatarUrl(session.avatarTag) : '';
+    const [photoFailed, setPhotoFailed] = useState(false);
+    useEffect(() => { setPhotoFailed(false); }, [photo]);
+    const showPhoto = !!photo && !photoFailed;
 
     useEffect(() => {
         if (!open || r.touch) return;
@@ -90,19 +101,31 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                 aria-label={globalize.translate('LabelAccount')}
                 style={{
                     width: 28, height: 28, borderRadius: '50%',
-                    background: 'linear-gradient(135deg,#d9a566,#3a1f10)',
+                    // Con foto, el degradado sobra: se vería como un halo por
+                    // los bordes mientras la imagen carga.
+                    background: showPhoto ? 'none' : 'linear-gradient(135deg,#d9a566,#3a1f10)',
                     border: '1px solid rgba(255,255,255,0.2)',
                     color: '#fff', fontFamily: T.ui, fontSize: 12, fontWeight: 600,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', padding: 0
+                    cursor: 'pointer', padding: 0, overflow: 'hidden'
                 }}
             >
-                {initial}
+                {showPhoto ? (
+                    <img
+                        src={photo}
+                        alt=''
+                        // El servidor puede tener el tag de una imagen ya
+                        // borrada desde otra sesión: si no carga, se vuelve a
+                        // la inicial en vez de dejar el icono roto.
+                        onError={() => setPhotoFailed(true)}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                ) : initial}
             </button>
             {/* Táctil: bottom sheet M3. Desktop: popup anclado (sin cambios). */}
             {open && r.touch && (
                 <BottomSheet
-                    title={session?.displayName ?? globalize.translate('Guest')}
+                    title={name || globalize.translate('Guest')}
                     onClose={() => setOpen(false)}
                 >
                     {menuItems}
@@ -123,7 +146,7 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                         padding: '10px 14px 8px',
                         fontSize: 13, color: '#fff', fontWeight: 500
                     }}>
-                        {session?.displayName ?? globalize.translate('Guest')}
+                        {name || globalize.translate('Guest')}
                     </div>
                     <div style={{ padding: '0 14px 10px', fontSize: 11, color: T.dim, wordBreak: 'break-all' }}>
                         {session?.serverUrl}

@@ -2,7 +2,6 @@ import { useEffect, type ReactNode } from 'react';
 
 import globalize from 'lib/globalize';
 
-import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { PosterCard } from '../components/cards/PosterCard';
 import { SeasonCard } from '../components/cards/SeasonCard';
@@ -11,6 +10,7 @@ import { MovieCard } from '../components/cards/MovieCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
+import { PageTitle, SectionTitle } from '../components/layout/Title';
 import { ListBackLink } from './ListsPage';
 import { favoritesVM } from '../../domain/viewModels/FavoritesViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
@@ -37,12 +37,7 @@ export function FavoritesPage({ navigate }: Props) {
             <Nav navigate={navigate} active='lists' />
             <PageSection>
                 <ListBackLink navigate={navigate} />
-                <h1 style={{
-                    fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
-                    fontSize: 52, margin: 0, letterSpacing: -0.5, marginBottom: 44
-                }}>
-                    {globalize.translate('Favorites')}
-                </h1>
+                <PageTitle margin='0 0 44px'>{globalize.translate('Favorites')}</PageTitle>
 
                 {loading.value ? (
                     <SkeletonRow title='' />
@@ -101,12 +96,7 @@ function FavSection({
 }) {
     return (
         <div>
-            <h3 style={{
-                fontFamily: T.display, fontStyle: 'italic', fontSize: 26, fontWeight: 300,
-                margin: '0 0 20px', letterSpacing: -0.3
-            }}>
-                {title}
-            </h3>
+            <SectionTitle>{title}</SectionTitle>
             <CardGrid minWidth={minWidth} gap={24}>
                 {children}
             </CardGrid>

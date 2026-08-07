@@ -31,9 +31,17 @@ export type Session = {
     accessToken?: string;
     userId?: string;
     serverId?: string;
+    /**
+     * Tag de la foto de perfil. Va aquí y no se pide donde haga falta porque
+     * el avatar de la barra superior se pinta en todas las páginas: bajarlo
+     * una vez con el nombre sale más barato que una petición por pantalla.
+     * Sin tag, el avatar cae a la inicial del nombre.
+     */
+    avatarTag?: string;
 };
 
 let cachedDisplayName = '';
+let cachedAvatarTag: string | undefined;
 
 function readFromServerConnections(): Session | null {
     const api = ServerConnections.getApi();
@@ -50,7 +58,8 @@ function readFromServerConnections(): Session | null {
         createdAt: 0,
         accessToken,
         userId,
-        serverId
+        serverId,
+        avatarTag: cachedAvatarTag
     };
 }
 
@@ -70,6 +79,11 @@ export function clearSession() {
     if (ServerConnections.getApi()?.accessToken) {
         void ServerConnections.logout();
     }
+    // Se olvidan con la sesión: al cambiar de cuenta, la barra superior
+    // enseñaría el nombre y la foto del usuario anterior hasta que llegase la
+    // respuesta del servidor con los del nuevo.
+    cachedDisplayName = '';
+    cachedAvatarTag = undefined;
     window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
@@ -77,6 +91,16 @@ export function clearSession() {
 // name in the avatar / greeting. Tokens are untouched.
 export function setSessionDisplayName(name: string) {
     cachedDisplayName = name;
+    window.dispatchEvent(new Event(SESSION_EVENT));
+}
+
+/**
+ * Nombre y foto de perfil de una tacada. Un solo evento para los dos: con un
+ * setter por campo, la UI se repinta a medias (nombre nuevo, foto vieja).
+ */
+export function setSessionUser(name: string, avatarTag?: string) {
+    cachedDisplayName = name;
+    cachedAvatarTag = avatarTag;
     window.dispatchEvent(new Event(SESSION_EVENT));
 }
 

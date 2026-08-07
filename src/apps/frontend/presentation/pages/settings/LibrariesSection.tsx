@@ -2,9 +2,14 @@ import { useEffect, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
-import { getUserViews, refreshLibrary, type UserView } from '../../../domain/api';
+import {
+    getUserViews, refreshItemMetadata, refreshLibrary,
+    type RefreshOptions, type UserView
+} from '../../../domain/api';
 import { LibraryCardMenu } from '../../components/admin/LibraryCardMenu';
+import { RefreshDialog } from '../../components/admin/RefreshDialog';
 import { useToast } from '../../components/toast/ToastProvider';
+import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
 import { T } from '../../theme/tokens';
 import type { GoDashboard } from './types';
 import { SectionStatus, SectionTitle, btnSecondary } from './ui';
@@ -31,7 +36,7 @@ export function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; g
     const toast = useToast();
     const [views, setViews] = useState<UserView[] | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [scanning, setScanning] = useState(false);
+    const [scanAll, setScanAll] = useState(false);
 
     useEffect(() => {
         getUserViews()
@@ -41,15 +46,29 @@ export function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; g
             .catch((e) => setError((e as Error).message));
     }, []);
 
-    const onScan = async () => {
-        setScanning(true);
+    /**
+     * Rescan de todas las bibliotecas con lo que se haya elegido en la caja.
+     *
+     * En modo `scan` va por `/Library/Refresh`, que es exactamente el "Scan
+     * All Libraries" del panel nativo: una sola petición y el servidor recorre
+     * lo que tenga configurado. Los otros dos modos no existen a nivel global
+     * —el endpoint no acepta opciones—, así que se lanzan biblioteca por
+     * biblioteca, que es lo mismo que hace el nativo al seleccionarlas todas.
+     */
+    const onScanAll = async (options: RefreshOptions) => {
         try {
-            await refreshLibrary();
+            if (options.mode === 'scan') {
+                await refreshLibrary();
+            } else {
+                for (const v of views ?? []) {
+                    await refreshItemMetadata(v.id, options);
+                    tasksVM.expect(v.id, v.name);
+                }
+            }
             toast(globalize.translate('MessageLibraryScanStarted'), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
-        } finally {
-            setScanning(false);
+            throw e;
         }
     };
 
@@ -101,13 +120,21 @@ export function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; g
 
             {isAdmin && (
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                    <button style={btnSecondary} disabled={scanning} onClick={onScan}>
-                        {globalize.translate(scanning ? 'Starting' : 'ButtonScanAllLibraries')}
+                    <button style={btnSecondary} onClick={() => setScanAll(true)}>
+                        {globalize.translate('ButtonScanAllLibraries')}
                     </button>
                     <button style={btnSecondary} onClick={() => goDashboard('/libraries')}>
                         {globalize.translate('HeaderLibraryFolders')}
                     </button>
                 </div>
+            )}
+
+            {scanAll && (
+                <RefreshDialog
+                    subject={globalize.translate('AllLibraries')}
+                    onRefresh={onScanAll}
+                    onClose={() => setScanAll(false)}
+                />
             )}
         </div>
     );

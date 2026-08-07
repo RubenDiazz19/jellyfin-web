@@ -5,11 +5,13 @@ import globalize from 'lib/globalize';
 import {
     clearAllTitleLanguagePrefs, countTitleLanguagePrefs,
     getMaxStreamingBitrate, setMaxStreamingBitrate,
+    getShowRemainingTime, setShowRemainingTime,
+    getSkipLengths, setSkipLengths,
     type UserConfig
 } from '../../../domain/api';
 import { useSession } from '../../../domain/bridge/useSession';
 import { useToast } from '../../components/toast/ToastProvider';
-import { getBitrateOptions, getLanguageOptions } from './options';
+import { getBitrateOptions, getLanguageOptions, getSkipLengthOptions } from './options';
 import { SectionTitle, SelectBox, SettingRow, Toggle } from './ui';
 import { T } from '../../theme/tokens';
 
@@ -21,6 +23,10 @@ export function PlaybackSection({
     const toast = useToast();
     const { session } = useSession();
     const [bitrate, setBitrate] = useState(getMaxStreamingBitrate());
+    // Ajustes del reproductor de este dispositivo: se guardan al momento y no
+    // pasan por `patch`, que es para la configuración del servidor.
+    const [skip, setSkip] = useState(getSkipLengths);
+    const [remaining, setRemaining] = useState(getShowRemainingTime);
     // Títulos con idioma propio: se fija al elegir pista en el reproductor y
     // manda sobre lo de aquí, así que desde aquí se puede volver atrás.
     const userId = session?.userId ?? '';
@@ -101,6 +107,38 @@ export function PlaybackSection({
                 <Toggle
                     on={config.EnableNextEpisodeAutoPlay}
                     onChange={(v) => patch({ EnableNextEpisodeAutoPlay: v })}
+                />
+            </SettingRow>
+
+            <SettingRow
+                label={globalize.translate('LabelSkipBackLength')}
+                hint={globalize.translate('LabelSkipLengthHelp')}
+            >
+                <SelectBox
+                    value={String(skip.back)}
+                    options={getSkipLengthOptions()}
+                    onChange={(v) => setSkip(setSkipLengths({ back: Number(v) }))}
+                />
+            </SettingRow>
+
+            <SettingRow label={globalize.translate('LabelSkipForwardLength')}>
+                <SelectBox
+                    value={String(skip.forward)}
+                    options={getSkipLengthOptions()}
+                    onChange={(v) => setSkip(setSkipLengths({ forward: Number(v) }))}
+                />
+            </SettingRow>
+
+            <SettingRow
+                label={globalize.translate('ShowRemainingTime')}
+                hint={globalize.translate('ShowRemainingTimeHelp')}
+            >
+                <Toggle
+                    on={remaining}
+                    onChange={(v) => {
+                        setShowRemainingTime(v);
+                        setRemaining(v);
+                    }}
                 />
             </SettingRow>
 

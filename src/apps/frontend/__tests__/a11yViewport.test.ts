@@ -6,12 +6,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { frontendCss } from './frontendCss';
 
 const read = (p: string) => fs.readFileSync(path.resolve(process.cwd(), p), 'utf-8');
 
 const indexHtml = read('src/index.html');
 const appHost = read('src/components/apphost.js');
-const globalCss = read('src/apps/frontend/presentation/styles/global.css');
+const globalCss = frontendCss();
 
 const VIEWPORT_META = /<meta\s+name="viewport"\s+content="([^"]*)"/;
 const MAX_SCALE = /maximum-scale\s*=\s*([\d.]+)/;

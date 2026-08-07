@@ -1,26 +1,21 @@
 import globalize from 'lib/globalize';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     deleteImage,
     getItemRaw,
-    getRemoteImages,
     imageUrl,
     moveImage,
     setImageByUrl,
-    uploadImageFile,
-    type JFRemoteImage
+    uploadImageFile
 } from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
-import {
-    ConfirmDeleteButton,
-    ImgType,
-    PrimaryBtn,
-    SecondaryBtn,
-    SectionHeader,
-    TextInput
-} from './primitives';
+import { PillButton, TextField } from '../../controls/fields';
+import { BackdropTile } from './BackdropTile';
+import { ConfirmDeleteButton, type ImgType } from './primitives';
+import { RemoteAlternativesGrid, useRemoteAlternatives } from './RemoteAlternatives';
+import { useImageDrop } from './useImageDrop';
 
 export function ImagesTab({ itemId }: { itemId: string }) {
     const [refreshTick, setRefreshTick] = useState(0);
@@ -40,25 +35,30 @@ export function ImagesTab({ itemId }: { itemId: string }) {
         return () => { cancelled = true; };
     }, [itemId, refreshTick]);
 
+    // La etiqueta de la imagen cambia con ella, así que sirve de cache-buster;
+    // donde no la hay (los fondos van por índice) vale el contador de recargas.
     const bust = (u?: string, tag?: string) =>
         u ? `${u}${u.includes('?') ? '&' : '?'}bust=${tag ?? refreshTick}` : undefined;
 
-    const primary = bust(
-        imageUrl(itemId, 'Primary', { maxHeight: 600, tag: primaryTag }),
-        primaryTag
-    );
-    const logo = bust(
-        imageUrl(itemId, 'Logo', { maxHeight: 300, tag: logoTag }),
-        logoTag
-    );
-
+    /**
+     * La imagen que el item tiene AHORA, o nada si no tiene ninguna.
+     *
+     * Sin etiqueta no se compone la URL. `imageUrl` la devuelve igualmente y el
+     * servidor contesta 404, con lo que la caja quedaba en un rectángulo vacío
+     * —sin su «arrastra o pulsa»— que parecía una imagen que no carga y no una
+     * casilla donde soltar la tuya. Se veía en cualquier temporada que el
+     * proveedor no haya catalogado todavía.
+     */
+    const currentImage = (type: 'Primary' | 'Logo', tag?: string, maxHeight?: number) =>
+        (tag ? bust(imageUrl(itemId, type, { maxHeight, tag }), tag) : undefined);
     const applyOk = () => setRefreshTick((n) => n + 1);
     const showErr = (e: unknown) => toast((e as Error).message, 'warn');
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
             <SingleImageSection
-                label={globalize.translate('Primary')} itemId={itemId} type='Primary' src={primary}
+                label={globalize.translate('Primary')} itemId={itemId} type='Primary'
+                src={currentImage('Primary', primaryTag, 600)}
                 onDone={applyOk} onError={showErr}
             />
             <BackdropSection
@@ -66,85 +66,73 @@ export function ImagesTab({ itemId }: { itemId: string }) {
                 onDone={applyOk} onError={showErr}
             />
             <SingleImageSection
-                label={globalize.translate('Logo')} itemId={itemId} type='Logo' src={logo} wide
+                label={globalize.translate('Logo')} itemId={itemId} type='Logo' wide
+                src={currentImage('Logo', logoTag, 300)}
                 onDone={applyOk} onError={showErr}
             />
         </div>
     );
 }
 
-// Single-image section (poster or logo).
+/**
+ * Todo lo que se hace en esta pestaña tiene la misma forma: pedirle algo al
+ * servidor, decir que salió bien y volver a leer las imágenes del item. De
+ * contar los fallos se encarga quien pasa `onError`, que es quien sabe dónde
+ * enseñarlos.
+ */
+function useImageAction(onDone: () => void, onError: (e: unknown) => void) {
+    const toast = useToast();
+    return async (action: Promise<unknown>, ok?: string) => {
+        try {
+            await action;
+            if (ok) toast(ok, 'success');
+            onDone();
+        } catch (e) { onError(e); }
+    };
+}
+
+/**
+ * Una imagen de la que solo hay una: la carátula y el logo.
+ *
+ * La diferencia entre las dos es cómo se encajan —el logo es un PNG con su
+ * propia proporción, así que se ve entero (`contain`) y no recortado— y la
+ * proporción de las alternativas que se ofrecen.
+ */
 function SingleImageSection({
     label, itemId, type, src, wide, onDone, onError
 }: {
     label: string; itemId: string; type: ImgType; src?: string; wide?: boolean;
     onDone: () => void; onError: (e: unknown) => void;
 }) {
-    const [alt, setAlt] = useState<'idle' | 'loading' | 'results'>('idle');
-    const [images, setImages] = useState<JFRemoteImage[]>([]);
-    const [applying, setApplying] = useState<string | null>(null);
-    const toast = useToast();
-
-    const doApplyUrl = async (url: string) => {
-        try {
-            await setImageByUrl(itemId, type, url);
-            onDone();
-        } catch (e) { onError(e); }
-    };
-    const doUploadFile = async (file: File) => {
-        try {
-            await uploadImageFile(itemId, type, file);
-            toast(globalize.translate('MessageImageUploaded', label), 'success');
-            onDone();
-        } catch (e) { onError(e); }
-    };
-    const doDelete = async () => {
-        try {
-            await deleteImage(itemId, type);
-            toast(globalize.translate('MessageImageDeleted'), 'success');
-            onDone();
-        } catch (e) { onError(e); }
-    };
-
-    const openAlternatives = async () => {
-        setAlt('loading');
-        try {
-            const { images: remote } = await getRemoteImages(itemId, type);
-            setImages(remote);
-            setAlt('results');
-        } catch (e) {
-            setAlt('idle');
-            onError(e);
-        }
-    };
-
-    const applyRemote = async (url: string) => {
-        setApplying(url);
-        try {
-            await setImageByUrl(itemId, type, url);
-            toast(globalize.translate('MessageImageApplied', label), 'success');
-            onDone();
-            setAlt('idle');
-        } catch (e) { onError(e); } finally { setApplying(null); }
-    };
+    const fit = type === 'Logo' ? 'contain' : 'cover';
+    const run = useImageAction(onDone, onError);
+    const alt = useRemoteAlternatives({
+        itemId, type, onApplied: onDone, onError,
+        appliedMessage: globalize.translate('MessageImageApplied', label),
+        // Sustituida la que había, no queda nada que elegir.
+        closeOnApply: true
+    });
 
     return (
         <div>
-            <SectionHeader label={label} onSearch={openAlternatives} loading={alt === 'loading'} />
+            <SectionHeader label={label} onSearch={alt.open} loading={alt.loading} />
             <ImageEditor
-                src={src} wide={wide} fit={type === 'Logo' ? 'contain' : 'cover'}
-                onUploadFile={doUploadFile}
-                onApplyUrl={doApplyUrl}
-                onDelete={src ? doDelete : undefined}
+                src={src} wide={wide} fit={fit}
+                onUploadFile={(file) => run(
+                    uploadImageFile(itemId, type, file),
+                    globalize.translate('MessageImageUploaded', label)
+                )}
+                onApplyUrl={(url) => run(setImageByUrl(itemId, type, url))}
+                onDelete={src ? () => run(
+                    deleteImage(itemId, type),
+                    globalize.translate('MessageImageDeleted')
+                ) : undefined}
             />
-            {alt === 'results' && (
-                <RemoteImagesGrid
-                    images={images} thumbAspect={type === 'Primary' ? '2/3' : '16/9'}
-                    fit={type === 'Logo' ? 'contain' : 'cover'}
-                    onPick={applyRemote} applying={applying}
-                    onClose={() => setAlt('idle')}
-                />
-            )}
+            <RemoteAlternativesGrid
+                alt={alt}
+                thumbAspect={type === 'Primary' ? '2/3' : '16/9'}
+                fit={fit}
+            />
         </div>
     );
 }
@@ -160,20 +148,15 @@ export function movedTo<T>(list: readonly T[], from: number, to: number): T[] {
     return next;
 }
 
-// Backdrop section: multiple images with an "add" tile.
+/** Los fondos: varios, ordenables, y con un hueco al final para añadir más. */
 function BackdropSection({
     itemId, tags, refreshTick, onDone, onError
 }: {
     itemId: string; tags: string[]; refreshTick: number;
     onDone: () => void; onError: (e: unknown) => void;
 }) {
-    const [alt, setAlt] = useState<'idle' | 'loading' | 'results'>('idle');
-    const [images, setImages] = useState<JFRemoteImage[]>([]);
-    const [applying, setApplying] = useState<string | null>(null);
-    const [dragOver, setDragOver] = useState(false);
-    const fileRef = useRef<HTMLInputElement>(null);
-    const [newUrl, setNewUrl] = useState('');
     const toast = useToast();
+    const [newUrl, setNewUrl] = useState('');
 
     /**
      * El orden que se pinta. Es copia local de `tags` porque al reordenar se
@@ -194,6 +177,14 @@ function BackdropSection({
     useEffect(() => {
         setOrder(tags.map((tag, index) => ({ tag, index })));
     }, [tags]);
+
+    const added = globalize.translate('MessageBackdropAdded');
+    const run = useImageAction(onDone, onError);
+    const alt = useRemoteAlternatives({
+        itemId, type: 'Backdrop', onApplied: onDone, onError,
+        // Sin cerrar: los fondos se suman, y normalmente se quiere más de uno.
+        appliedMessage: added
+    });
 
     /**
      * Mueve el fondo de la posición `from` a la `to`.
@@ -218,62 +209,25 @@ function BackdropSection({
         }
     };
 
-    const handleFiles = async (files: FileList | null) => {
-        if (!files || files.length === 0) return;
-        for (const f of Array.from(files)) {
-            if (!f.type.startsWith('image/')) continue;
-            try {
-                await uploadImageFile(itemId, 'Backdrop', f);
-                toast(globalize.translate('MessageBackdropAdded'), 'success');
-            } catch (e) { onError(e); }
+    const drop = useImageDrop({
+        multiple: true,
+        onFiles: async (files) => {
+            for (const f of files) {
+                try {
+                    await uploadImageFile(itemId, 'Backdrop', f);
+                    toast(added, 'success');
+                } catch (e) { onError(e); }
+            }
+            onDone();
         }
-        onDone();
-    };
-
-    const addByUrl = async () => {
-        try {
-            await setImageByUrl(itemId, 'Backdrop', newUrl);
-            toast(globalize.translate('MessageBackdropAdded'), 'success');
-            setNewUrl('');
-            onDone();
-        } catch (e) { onError(e); }
-    };
-
-    const deleteAt = async (index: number) => {
-        try {
-            await deleteImage(itemId, 'Backdrop', index);
-            toast(globalize.translate('MessageImageDeleted'), 'success');
-            onDone();
-        } catch (e) { onError(e); }
-    };
-
-    const openAlternatives = async () => {
-        setAlt('loading');
-        try {
-            const { images: remote } = await getRemoteImages(itemId, 'Backdrop');
-            setImages(remote);
-            setAlt('results');
-        } catch (e) {
-            setAlt('idle');
-            onError(e);
-        }
-    };
-
-    const applyRemote = async (url: string) => {
-        setApplying(url);
-        try {
-            await setImageByUrl(itemId, 'Backdrop', url);
-            toast(globalize.translate('MessageBackdropAdded'), 'success');
-            onDone();
-        } catch (e) { onError(e); } finally { setApplying(null); }
-    };
+    });
 
     return (
         <div>
             <SectionHeader
                 label={`Fondos (${order.length})`}
-                onSearch={openAlternatives}
-                loading={alt === 'loading'}
+                onSearch={alt.open}
+                loading={alt.loading}
             />
             <div style={{ fontSize: 12, color: T.dim, marginBottom: 12 }}>
                 {globalize.translate('MessageBackdropsHelp')}
@@ -300,22 +254,18 @@ function BackdropSection({
                             setDragFrom(null);
                             setDragTo(null);
                         }}
-                        onDelete={() => deleteAt(b.index)}
+                        onDelete={() => run(
+                            deleteImage(itemId, 'Backdrop', b.index),
+                            globalize.translate('MessageImageDeleted')
+                        )}
                     />
                 ))}
                 <div
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => {
-                        e.preventDefault();
-                        setDragOver(false);
-                        void handleFiles(e.dataTransfer.files);
-                    }}
-                    onClick={() => fileRef.current?.click()}
+                    {...drop.props}
                     style={{
                         width: 220, aspectRatio: '16/9', borderRadius: 6, cursor: 'pointer',
                         background: 'rgba(255,255,255,0.05)',
-                        border: `1px dashed ${dragOver ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}`,
+                        border: `1px dashed ${drop.over ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: T.dim, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase',
                         transition: 'border-color .15s'
@@ -324,136 +274,51 @@ function BackdropSection({
                     + {globalize.translate('Backdrop')}
                 </div>
             </div>
-            <input
-                ref={fileRef} type='file' accept='image/*' multiple hidden
-                onChange={(e) => { void handleFiles(e.target.files); e.target.value = ''; }}
-            />
+            {drop.input}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <div style={{ flex: 1 }}>
-                    <TextInput value={newUrl} onChange={setNewUrl} placeholder={globalize.translate('LabelImageUrl')} />
+                    <TextField
+                        value={newUrl} onChange={setNewUrl} size='md'
+                        placeholder={globalize.translate('LabelImageUrl')}
+                    />
                 </div>
-                <SecondaryBtn onClick={addByUrl} disabled={!newUrl}>{globalize.translate('ButtonAddImage')}</SecondaryBtn>
+                <PillButton
+                    variant='ghost'
+                    disabled={!newUrl}
+                    onClick={() => {
+                        void run(setImageByUrl(itemId, 'Backdrop', newUrl), added);
+                        setNewUrl('');
+                    }}
+                >
+                    {globalize.translate('ButtonAddImage')}
+                </PillButton>
             </div>
-            {alt === 'results' && (
-                <RemoteImagesGrid
-                    images={images} thumbAspect='16/9'
-                    onPick={applyRemote} applying={applying}
-                    onClose={() => setAlt('idle')}
-                />
-            )}
+            <RemoteAlternativesGrid alt={alt} thumbAspect='16/9' />
         </div>
     );
 }
 
-/**
- * Una miniatura de fondo, con lo que se puede hacer con ella.
- *
- * Se reordena de dos maneras a propósito. Arrastrar es lo que se espera de una
- * fila de imágenes, pero no existe para quien va por teclado y es incómodo con
- * muchas: por eso hay además dos flechas, que aparecen al pasar por encima o al
- * llegar el foco. Entre ellas, la posición — que es lo que de verdad se está
- * editando, porque el primero es el que se ve al abrir la ficha.
- */
-function BackdropTile({
-    src, position, total, active, dragging, dropTarget, busy,
-    onActivate, onMove, onDragStart, onDragEnter, onDragEnd, onDrop, onDelete
+/** El título de una sección y su botón de buscar alternativas. */
+function SectionHeader({
+    label, onSearch, loading
 }: {
-    src: string;
-    position: number;
-    total: number;
-    active: boolean;
-    dragging: boolean;
-    dropTarget: boolean;
-    busy: boolean;
-    onActivate: (on: boolean) => void;
-    onMove: (to: number) => void;
-    onDragStart: () => void;
-    onDragEnter: () => void;
-    onDragEnd: () => void;
-    onDrop: () => void;
-    onDelete: () => Promise<void>;
+    label: string; onSearch: () => void; loading: boolean;
 }) {
-    const arrow: React.CSSProperties = {
-        width: 24, height: 24, borderRadius: '50%', padding: 0,
-        background: 'rgba(255,255,255,0.12)', color: '#fff',
-        border: '1px solid rgba(255,255,255,0.2)',
-        fontSize: 13, lineHeight: 1, cursor: 'pointer'
-    };
-
     return (
-        <div
-            draggable={!busy}
-            onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
-            onDragEnter={onDragEnter}
-            // Sin este preventDefault el navegador no considera el elemento un
-            // destino válido y nunca llega el drop.
-            onDragOver={(e) => e.preventDefault()}
-            onDragEnd={onDragEnd}
-            onDrop={(e) => { e.preventDefault(); onDrop(); }}
-            onMouseEnter={() => onActivate(true)}
-            onMouseLeave={() => onActivate(false)}
-            onFocusCapture={() => onActivate(true)}
-            onBlurCapture={(e) => {
-                // Solo se apaga si el foco sale del tile entero, no al saltar
-                // de una de sus flechas a la otra.
-                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onActivate(false);
-            }}
-            style={{
-                position: 'relative', borderRadius: 6,
-                cursor: busy ? 'wait' : 'grab',
-                opacity: dragging ? 0.35 : 1,
-                outline: dropTarget ? '2px solid #fff' : '2px solid transparent',
-                outlineOffset: 2,
-                transition: 'opacity .15s, outline-color .15s'
-            }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
             <div style={{
-                width: 220, aspectRatio: '16/9', borderRadius: 6,
-                backgroundImage: `url(${src})`,
-                backgroundSize: 'cover', backgroundPosition: 'center',
-                border: '1px solid rgba(255,255,255,0.08)'
-            }} />
-
-            <div style={{
-                position: 'absolute', left: 0, right: 0, bottom: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                padding: '8px 0', borderRadius: '0 0 6px 6px',
-                background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
-                opacity: active ? 1 : 0,
-                // Invisible no debe seguir siendo clicable, ni por ratón ni
-                // por teclado: de ahí el visibility además del opacity.
-                visibility: active ? 'visible' : 'hidden',
-                transition: 'opacity .15s'
-            }}>
-                <button
-                    onClick={() => onMove(position - 1)}
-                    disabled={busy || position === 0}
-                    aria-label={globalize.translate('MoveLeft')}
-                    title={globalize.translate('MoveLeft')}
-                    style={{ ...arrow, opacity: position === 0 ? 0.3 : 1 }}
-                >‹</button>
-                <span style={{ fontFamily: T.ui, fontSize: 11, color: '#fff', letterSpacing: 1 }}>
-                    {position + 1}/{total}
-                </span>
-                <button
-                    onClick={() => onMove(position + 1)}
-                    disabled={busy || position === total - 1}
-                    aria-label={globalize.translate('MoveRight')}
-                    title={globalize.translate('MoveRight')}
-                    style={{ ...arrow, opacity: position === total - 1 ? 0.3 : 1 }}
-                >›</button>
+                fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: T.dim
+            }}>{label}</div>
+            <div style={{ marginLeft: 'auto' }}>
+                <PillButton variant='ghost' onClick={onSearch} busy={loading}>
+                    {loading ? 'Buscando…' : 'Buscar alternativas'}
+                </PillButton>
             </div>
-
-            <ConfirmDeleteButton
-                onConfirm={onDelete}
-                idleLabel={globalize.translate('Delete')}
-                confirmLabel={globalize.translate('ConfirmDeleteImage')}
-            />
         </div>
     );
 }
 
-// Reusable dropzone + URL + delete triplet.
+/** La imagen actual (o el hueco donde iría), y las tres formas de cambiarla. */
 function ImageEditor({
     src, wide, fit = 'cover', onUploadFile, onApplyUrl, onDelete
 }: {
@@ -463,41 +328,23 @@ function ImageEditor({
     onDelete?: () => Promise<void>;
 }) {
     const [newUrl, setNewUrl] = useState('');
-    const [dragOver, setDragOver] = useState(false);
-    const fileRef = useRef<HTMLInputElement>(null);
-    const previewStyle: React.CSSProperties = wide ?
-        { width: 220, aspectRatio: '16/9' } :
-        { width: 100, aspectRatio: '2/3' };
-
-    const handleFiles = (files: FileList | null) => {
-        if (!files || files.length === 0) return;
-        const f = files[0];
-        if (!f.type.startsWith('image/')) return;
-        onUploadFile(f);
-    };
+    const drop = useImageDrop({ onFiles: (files) => onUploadFile(files[0]) });
 
     return (
         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
             <div
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOver(false);
-                    void handleFiles(e.dataTransfer.files);
-                }}
-                onClick={() => fileRef.current?.click()}
+                {...drop.props}
                 style={{
-                    ...previewStyle,
+                    ...(wide ? { width: 220, aspectRatio: '16/9' } : { width: 100, aspectRatio: '2/3' }),
                     borderRadius: 6, cursor: 'pointer',
                     // El logo (fit: 'contain') es un PNG con aspect ratio propio: con
                     // 'cover' se recortaba dentro de la caja 16/9 y no se veía entero.
                     background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.05)',
-                    border: `1px dashed ${dragOver ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.16)'}`,
+                    border: `1px dashed ${drop.over ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.16)'}`,
                     backgroundImage: src ? `url(${src})` : undefined,
                     backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
                     position: 'relative', transition: 'border-color .15s, transform .15s',
-                    transform: dragOver ? 'scale(1.02)' : 'scale(1)'
+                    transform: drop.over ? 'scale(1.02)' : 'scale(1)'
                 }}
             >
                 {!src && (
@@ -512,12 +359,9 @@ function ImageEditor({
                 )}
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <input
-                    ref={fileRef} type='file' accept='image/*' hidden
-                    onChange={(e) => { void handleFiles(e.target.files); e.target.value = ''; }}
-                />
+                {drop.input}
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <PrimaryBtn onClick={() => fileRef.current?.click()}>{globalize.translate('Upload')}</PrimaryBtn>
+                    <PillButton onClick={drop.open}>{globalize.translate('Upload')}</PillButton>
                     {onDelete && (
                         <ConfirmDeleteButton
                             variant='button'
@@ -530,109 +374,16 @@ function ImageEditor({
                 <div style={{ fontSize: 11, color: T.dim, marginTop: 4 }}>o desde una URL:</div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <div style={{ flex: 1 }}>
-                        <TextInput value={newUrl} onChange={setNewUrl} placeholder='https://…' />
+                        <TextField value={newUrl} onChange={setNewUrl} size='md' placeholder='https://…' />
                     </div>
-                    <SecondaryBtn
-                        onClick={() => { onApplyUrl(newUrl); setNewUrl(''); }}
+                    <PillButton
+                        variant='ghost'
                         disabled={!newUrl}
-                    >{globalize.translate('Apply')}</SecondaryBtn>
+                        onClick={() => { onApplyUrl(newUrl); setNewUrl(''); }}
+                    >
+                        {globalize.translate('Apply')}
+                    </PillButton>
                 </div>
-            </div>
-        </div>
-    );
-}
-
-// Grid of alternatives fetched from remote providers.
-function RemoteImagesGrid({
-    images, thumbAspect, fit = 'cover', onPick, applying, onClose
-}: {
-    images: JFRemoteImage[]; thumbAspect: string; fit?: 'cover' | 'contain';
-    onPick: (url: string) => void; applying: string | null;
-    onClose: () => void;
-}) {
-    const [lang, setLang] = useState<string>('');
-    const langs = Array.from(new Set(images.map((i) => i.Language).filter(Boolean))) as string[];
-    const filtered = lang ? images.filter((i) => i.Language === lang) : images;
-    return (
-        <div style={{
-            marginTop: 16, padding: 14, borderRadius: 10,
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: T.dim }}>
-                    {filtered.length} alternativa{filtered.length === 1 ? '' : 's'}
-                    {langs.length > 1 && (
-                        <select
-                            value={lang}
-                            onChange={(e) => setLang(e.target.value)}
-                            style={{
-                                marginLeft: 10, background: 'rgba(255,255,255,0.06)',
-                                color: '#fff', border: '1px solid rgba(255,255,255,0.15)',
-                                borderRadius: 6, padding: '4px 8px', fontSize: 12
-                            }}
-                        >
-                            <option value=''>{globalize.translate('AllLanguages')}</option>
-                            {langs.map((l) => (<option key={l} value={l}>{l}</option>))}
-                        </select>
-                    )}
-                </div>
-                <button
-                    onClick={onClose}
-                    style={{
-                        marginLeft: 'auto', background: 'none', border: 'none',
-                        color: T.dim, cursor: 'pointer', fontSize: 12
-                    }}
-                >{globalize.translate('ButtonClose')}</button>
-            </div>
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                gap: 10, maxHeight: 380, overflowY: 'auto'
-            }}>
-                {filtered.map((im) => {
-                    const isApplying = applying === im.Url;
-                    return (
-                        <button
-                            key={im.Url}
-                            onClick={() => onPick(im.Url)}
-                            disabled={isApplying}
-                            title={[im.Width && im.Height && `${im.Width}×${im.Height}`, im.ProviderName, im.Language]
-                                .filter(Boolean).join(' · ')}
-                            style={{
-                                padding: 0, border: '1px solid rgba(255,255,255,0.08)',
-                                background: 'rgba(255,255,255,0.04)', borderRadius: 6,
-                                cursor: isApplying ? 'wait' : 'pointer',
-                                display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                                opacity: isApplying ? 0.6 : 1,
-                                transition: 'transform .12s, border-color .12s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.02)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                            }}
-                        >
-                            <div style={{
-                                width: '100%', aspectRatio: thumbAspect,
-                                background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : undefined,
-                                backgroundImage: `url(${im.ThumbnailUrl || im.Url})`,
-                                backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
-                            }} />
-                            <div style={{
-                                padding: '6px 8px', fontSize: 10, color: T.dim,
-                                display: 'flex', justifyContent: 'space-between', gap: 6,
-                                textAlign: 'left'
-                            }}>
-                                <span>{im.Width && im.Height ? `${im.Width}×${im.Height}` : ''}</span>
-                                <span>{im.Language ?? ''}</span>
-                            </div>
-                        </button>
-                    );
-                })}
             </div>
         </div>
     );

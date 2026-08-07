@@ -10,6 +10,7 @@ import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
 import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { PageSection } from '../components/layout/PageSection';
+import { SectionTitle } from '../components/layout/Title';
 import type { Movie, Show } from '../../domain/models';
 import type { Navigate } from '../../app/router';
 
@@ -86,9 +87,7 @@ export function CatalogPage({
 function SectionHead({ label, count }: { label: string; count: number }) {
     return (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-            <h2 style={{
-                fontFamily: T.display, fontStyle: 'italic', fontWeight: 300, fontSize: 28, margin: 0
-            }}>{label}</h2>
+            <SectionTitle size={28} margin={0}>{label}</SectionTitle>
             <span style={{ fontSize: 12, color: T.dim }}>{count}</span>
         </div>
     );

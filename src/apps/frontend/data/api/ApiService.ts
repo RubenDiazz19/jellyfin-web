@@ -13,6 +13,7 @@ import {
     restoreSession,
     clearSession,
     setSessionDisplayName,
+    setSessionUser,
     notifySessionChanged,
     wireServerConnectionsEvents,
     SESSION_EVENT,
@@ -90,6 +91,7 @@ const sessionService = {
     restore: restoreSession,
     clear: clearSession,
     setDisplayName: setSessionDisplayName,
+    setUser: setSessionUser,
     notifyChanged: notifySessionChanged,
     wireServerConnectionsEvents,
     changeEvent: SESSION_EVENT

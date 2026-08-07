@@ -1,11 +1,9 @@
 import globalize from 'lib/globalize';
 
-import { useEffect, useState } from 'react';
-import ReactDOM from 'react-dom';
+import { useState } from 'react';
 import { T } from '../../theme/tokens';
-
-/** Rojo de las acciones que no se pueden deshacer. */
-const DANGER = '#d64545';
+import { Dialog } from './Dialog';
+import { PillButton } from './fields';
 
 type Props = {
     title: string;
@@ -35,12 +33,6 @@ type Props = {
 export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onClose }: Props) {
     const [busy, setBusy] = useState(false);
 
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
-    }, [onClose]);
-
     const doConfirm = async () => {
         setBusy(true);
         try {
@@ -53,67 +45,35 @@ export function ConfirmDialog({ title, message, confirmLabel, onConfirm, onClose
         }
     };
 
-    return ReactDOM.createPortal(
-        <div
-            // Pulsar FUERA del panel cancela, salvo mientras se ejecuta. Se
-            // compara el target en vez de parar la propagación desde dentro:
-            // así el panel no necesita manejador propio y puede quedarse con
-            // su `role`. El teclado sale por Escape o por Cancelar, que es
-            // quien arranca con el foco.
-            onClick={(e) => { if (!busy && e.target === e.currentTarget) onClose(); }}
-            style={{
-                position: 'fixed', inset: 0, zIndex: 10000,
-                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-            }}
+    return (
+        <Dialog
+            label={title}
+            role='alertdialog'
+            padding={22}
+            // Mientras borra, pulsar fuera no cierra: la petición seguiría su
+            // curso y esconderla solo confundiría sobre si llegó a pasar.
+            dismissable={!busy}
+            onClose={onClose}
         >
-            <div
-                role='alertdialog'
-                aria-modal='true'
-                aria-label={title}
-                style={{
-                    width: 'min(420px, 100%)',
-                    background: 'rgba(18,18,20,0.98)', borderRadius: 14,
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    boxShadow: '0 18px 50px rgba(0,0,0,0.6)',
-                    padding: 22, fontFamily: T.ui, color: '#fff'
-                }}
-            >
-                <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 10 }}>{title}</div>
-                <div style={{ fontSize: 13, color: T.dim, lineHeight: 1.6 }}>{message}</div>
+            <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 10 }}>{title}</div>
+            <div style={{ fontSize: 13, color: T.dim, lineHeight: 1.6 }}>{message}</div>
 
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
-                    <button
-                        // El foco arranca aquí: un Enter de inercia cancela, no
-                        // borra. Es la diferencia entre esto y un confirm().
-                        autoFocus
-                        onClick={onClose}
-                        disabled={busy}
-                        style={{
-                            padding: '10px 18px', borderRadius: 999,
-                            background: 'transparent', color: '#fff',
-                            border: '1px solid rgba(255,255,255,0.25)',
-                            fontFamily: T.ui, fontSize: 13, fontWeight: 500,
-                            cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1
-                        }}
-                    >
-                        {globalize.translate('ButtonCancel')}
-                    </button>
-                    <button
-                        onClick={doConfirm}
-                        disabled={busy}
-                        style={{
-                            padding: '10px 18px', borderRadius: 999,
-                            background: DANGER, color: '#fff', border: `1px solid ${DANGER}`,
-                            fontFamily: T.ui, fontSize: 13, fontWeight: 600, letterSpacing: 0.3,
-                            cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.6 : 1
-                        }}
-                    >
-                        {busy ? globalize.translate('Deleting') : confirmLabel}
-                    </button>
-                </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
+                {/* El foco arranca en Cancelar: un Enter de inercia cancela, no
+                    borra. Es la diferencia entre esto y un confirm(). */}
+                <PillButton
+                    onClick={onClose}
+                    variant='ghost'
+                    busy={busy}
+                    autoFocus
+                    style={{ opacity: busy ? 0.5 : 1 }}
+                >
+                    {globalize.translate('ButtonCancel')}
+                </PillButton>
+                <PillButton onClick={doConfirm} variant='danger' busy={busy}>
+                    {busy ? globalize.translate('Deleting') : confirmLabel}
+                </PillButton>
             </div>
-        </div>,
-        document.body
+        </Dialog>
     );
 }

@@ -19,11 +19,22 @@ export {
     deleteAvatar,
     getUserViews,
     getUsers,
+    // Cambiar la foto de perfil tiene que verse también en el avatar de la
+    // barra superior, que la lee de la sesión.
+    setSessionUser,
     type CurrentUser,
     type UserConfig,
     type SubtitleMode,
     type UserView,
     type UserListEntry
+} from '../data/api';
+// Idioma de la interfaz y formato de fecha. No están en la configuración del
+// usuario sino en DisplayPreferences, que es de donde los lee globalize.
+export {
+    getAvailableLocales,
+    getLocalePrefs,
+    setLocalePrefs,
+    type LocalePrefs
 } from '../data/api';
 
 // ── Ajustes: servidor y reproducción ────────────────────────────────────────
@@ -32,6 +43,15 @@ export { getSystemInfo, refreshLibrary, type SystemInfo } from '../data/api';
 // TasksViewModel; esto es solo la forma con la que la vista lo pinta.
 export type { BackgroundTask } from '../data/api';
 export { getMaxStreamingBitrate, setMaxStreamingBitrate } from '../data/api';
+// Ajustes del reproductor de este dispositivo: cuánto salta cada botón y si
+// el reloj cuenta hacia atrás. Los lee el reproductor por su ViewModel.
+export {
+    getSkipLengths,
+    setSkipLengths,
+    getShowRemainingTime,
+    setShowRemainingTime,
+    type SkipLengths
+} from '../data/api';
 // Idiomas recordados por película/serie: mandan sobre la preferencia del
 // usuario, y desde Ajustes se pueden borrar todos de golpe.
 export { countTitleLanguagePrefs, clearAllTitleLanguagePrefs } from '../data/api';
@@ -50,7 +70,11 @@ export {
     refreshItemMetadata,
     deleteItem,
     downloadUrl,
-    nativeItemUrl
+    nativeItemUrl,
+    // Qué se vuelve a pedir al servidor en un rescan: lo elige el usuario en
+    // el diálogo de refresco, igual que en el Jellyfin nativo.
+    type RefreshMode,
+    type RefreshOptions
 } from '../data/api';
 
 // ── Editor de metadatos, imágenes y subtítulos ──────────────────────────────

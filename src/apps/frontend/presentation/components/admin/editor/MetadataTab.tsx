@@ -3,16 +3,8 @@ import globalize from 'lib/globalize';
 import { useEffect, useState } from 'react';
 import { getItemRaw, updateItemMetadata } from '../../../../domain/api';
 import { useToast } from '../../toast/ToastProvider';
-import {
-    ErrText,
-    Field,
-    FooterRow,
-    Muted,
-    PrimaryBtn,
-    SecondaryBtn,
-    TextArea,
-    TextInput
-} from './primitives';
+import { ErrText, Muted, PillButton, TextArea, TextField } from '../../controls/fields';
+import { Field, FooterRow } from './primitives';
 
 export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () => void }) {
     const [loading, setLoading] = useState(true);
@@ -75,21 +67,21 @@ export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () =
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Field label={globalize.translate('LabelTitle')}>
-                <TextInput value={name} onChange={setName} autoFocus />
+                <TextField size='md' value={name} onChange={setName} autoFocus />
             </Field>
             <Field label={globalize.translate('LabelOriginalTitle')}>
-                <TextInput value={originalTitle} onChange={setOriginalTitle} />
+                <TextField size='md' value={originalTitle} onChange={setOriginalTitle} />
             </Field>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <Field label={globalize.translate('LabelYear')}>
-                    <TextInput value={year} onChange={setYear} placeholder='2015' />
+                    <TextField size='md' value={year} onChange={setYear} placeholder='2015' />
                 </Field>
                 <Field label={globalize.translate('LabelParentalRating')}>
-                    <TextInput value={officialRating} onChange={setOfficialRating} placeholder='TV-14' />
+                    <TextField size='md' value={officialRating} onChange={setOfficialRating} placeholder='TV-14' />
                 </Field>
             </div>
             <Field label={globalize.translate('LabelGenresCommaSeparated')}>
-                <TextInput value={genres} onChange={setGenres} />
+                <TextField size='md' value={genres} onChange={setGenres} />
             </Field>
             <Field label={globalize.translate('Overview')}>
                 <TextArea value={overview} onChange={setOverview} rows={5} />
@@ -98,10 +90,12 @@ export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () =
                 <TextArea value={taglines} onChange={setTaglines} rows={2} />
             </Field>
             <FooterRow>
-                <PrimaryBtn onClick={save} disabled={saving}>
+                <PillButton onClick={save} busy={saving}>
                     {globalize.translate(saving ? 'Saving' : 'Save')}
-                </PrimaryBtn>
-                <SecondaryBtn onClick={onClose}>{globalize.translate('ButtonCancel')}</SecondaryBtn>
+                </PillButton>
+                <PillButton onClick={onClose} variant='ghost'>
+                    {globalize.translate('ButtonCancel')}
+                </PillButton>
             </FooterRow>
         </div>
     );

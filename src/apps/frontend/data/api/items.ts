@@ -34,11 +34,45 @@ export async function toggleFavorite(itemId: string, favorite: boolean): Promise
     );
 }
 
-export async function refreshItemMetadata(itemId: string): Promise<void> {
-    await apiSend(
-        `/Items/${itemId}/Refresh?metadataRefreshMode=FullRefresh&imageRefreshMode=FullRefresh&replaceAllMetadata=false&replaceAllImages=false`,
-        'POST'
-    );
+/**
+ * Los tres modos de refresco de Jellyfin, con los mismos nombres que usa el
+ * diálogo nativo:
+ *
+ * - `scan`: solo mira el disco a por archivos nuevos o cambiados. Lo que ya
+ *   está catalogado no se vuelve a consultar a los proveedores, así que ni
+ *   los metadatos ni las imágenes existentes se tocan.
+ * - `missing`: además pregunta a los proveedores por lo que esté vacío. Los
+ *   campos que ya tienen valor se respetan.
+ * - `all`: descarta los metadatos actuales y los vuelve a bajar.
+ *
+ * Las imágenes van aparte a propósito: ni `missing` ni `all` sustituyen una
+ * carátula que ya existe salvo que se pida `replaceImages`. Es la diferencia
+ * entre «actualiza el contenido» y «vuelve a bajarlo todo», que es justo lo
+ * que el botón único de antes no dejaba elegir.
+ */
+export type RefreshMode = 'scan' | 'missing' | 'all';
+
+export type RefreshOptions = {
+    mode: RefreshMode;
+    /** Sustituir las imágenes que ya tiene. Se ignora en modo `scan`. */
+    replaceImages?: boolean;
+    /** Regenerar las miniaturas de la barra de progreso. Idem. */
+    replaceTrickplay?: boolean;
+};
+
+export async function refreshItemMetadata(itemId: string, options: RefreshOptions): Promise<void> {
+    // `Default` es «mira el disco»; `FullRefresh`, «vuelve a preguntar a los
+    // proveedores». Los dos reemplazos solo tienen sentido con el segundo.
+    const full = options.mode !== 'scan';
+    const mode = full ? 'FullRefresh' : 'Default';
+    const query = new URLSearchParams({
+        metadataRefreshMode: mode,
+        imageRefreshMode: mode,
+        replaceAllMetadata: String(options.mode === 'all'),
+        replaceAllImages: String(full && !!options.replaceImages),
+        regenerateTrickplay: String(full && !!options.replaceTrickplay)
+    });
+    await apiSend(`/Items/${itemId}/Refresh?${query.toString()}`, 'POST');
     emitItemMutated(itemId);
 }
 

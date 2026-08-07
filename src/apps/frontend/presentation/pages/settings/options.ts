@@ -33,6 +33,44 @@ export function getSubtitleModeOptions(): [SubtitleMode, string, string][] {
     ];
 }
 
+/**
+ * Los idiomas con traducción, con su nombre escrito en el idioma activo.
+ *
+ * Los códigos del diccionario no son todos BCP 47: unos cuantos llevan guion
+ * bajo (`es_419`, `ur_pk`), que `Intl` no entiende. Se normalizan solo para
+ * preguntar el nombre; el valor que se guarda es el código tal cual, que es lo
+ * que el cargador de diccionarios espera.
+ */
+export function getLocaleOptions(locales: string[]): [string, string][] {
+    const displayNames = new Intl.DisplayNames([globalize.getCurrentLocale()], {
+        type: 'language',
+        fallback: 'code'
+    });
+
+    const named = locales.map((code): [string, string] => {
+        let name = code;
+        try {
+            name = displayNames.of(code.replace('_', '-')) ?? code;
+        } catch {
+            // Un código que Intl rechaza se queda con el suyo propio.
+        }
+        return [code, name];
+    });
+    named.sort((a, b) => a[1].localeCompare(b[1], globalize.getCurrentLocale()));
+
+    return [['', globalize.translate('Auto')], ...named];
+}
+
+/** Longitudes de salto, en segundos: las mismas que ofrece el nativo. */
+const SKIP_LENGTHS = [5, 10, 15, 20, 25, 30];
+
+export function getSkipLengthOptions(): [string, string][] {
+    return SKIP_LENGTHS.map((s): [string, string] => [
+        String(s),
+        globalize.translate('ValueSeconds', s)
+    ]);
+}
+
 const BITRATE_TIERS: [number, string][] = [
     [4_000_000, 'StreamingQualitySd'],
     [8_000_000, 'StreamingQualityHdConstrained'],

@@ -8,6 +8,9 @@ import { QueuePanel } from '../queue/QueuePanel';
 import {
     sanitizeVttCueText, segmentSkipLabelKey, subtitleTrackMode, type AspectRatio
 } from '../../../domain/player/format';
+import {
+    applyCueLine, applySubtitleAppearance, getSubtitleAppearance
+} from '../../../domain/player/subtitleStyle';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
@@ -16,8 +19,15 @@ import { PlayerIc } from './playerIcons';
 import { CastButton } from './CastButton';
 import { VideoControls } from './VideoControls';
 import { VideoGestures } from './VideoGestures';
+// El OSD entero se pinta desde aquí, así que sus estilos entran con él: solo
+// se descargan al abrir el reproductor, que es una ruta cargada bajo demanda.
+import '../../styles/player.css';
 
 const HIDE_CONTROLS_MS = 3000;
+/** Actividad del usuario que saca el OSD. Ver el efecto que los engancha. */
+const WAKE_EVENTS = [
+    'pointermove', 'mousemove', 'pointerdown', 'touchstart', 'wheel', 'keydown'
+] as const;
 const HINTS_KEY = 'jfp-gesture-hints-seen';
 
 /** Las dos barras del OSD, que son lo que no debe irse bajo el puntero. */
@@ -110,6 +120,10 @@ export function VideoPlayer({
                     cue.text = sanitizeVttCueText(cue.text);
                 }
             }
+            // La altura solo se puede fijar cue a cue, y las cues no existen
+            // hasta que el VTT termina de cargar: este es el único momento en
+            // que se puede hacer para una pista recién elegida.
+            applyCueLine(el.track.cues, getSubtitleAppearance().verticalPosition);
         });
     }, []);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -224,32 +238,22 @@ export function VideoPlayer({
     // navegador o la capa superior), y entonces los controles se quedaban
     // ocultos sin forma de recuperarlos. También lo mostramos al entrar o
     // salir de fullscreen para que siempre haya un punto de partida visible.
+    // `pointermove` y `mousemove` son el mismo gesto entrando dos veces, y el
+    // `onPointerMove` del contenedor es una tercera. La redundancia se queda A
+    // PROPÓSITO: en pantalla completa no siempre llegan las tres, y quitar las
+    // de más dejó el OSD sin despertar justo ahí. Despertar de sobra no cuesta
+    // nada — el `setState` a un valor igual no repinta y reprogramar el
+    // temporizador son dos llamadas.
     useEffect(() => {
         const wake = (e: Event) => {
             trackPointer(e);
             showControls();
         };
         const opts = { passive: true } as const;
-        // `pointermove` y `mousemove` son el mismo gesto entrando dos veces, y
-        // el `onPointerMove` del contenedor es una tercera. La redundancia se
-        // queda A PROPÓSITO: en pantalla completa no siempre llegan las tres, y
-        // quitar las de más dejó el OSD sin despertar justo ahí. Despertar de
-        // sobra no cuesta nada — el `setState` a un valor igual no repinta y
-        // reprogramar el temporizador son dos llamadas.
-        document.addEventListener('pointermove', wake, opts);
-        document.addEventListener('mousemove', wake, opts);
-        document.addEventListener('pointerdown', wake, opts);
-        document.addEventListener('touchstart', wake, opts);
-        document.addEventListener('wheel', wake, opts);
-        document.addEventListener('keydown', wake, opts);
+        for (const type of WAKE_EVENTS) document.addEventListener(type, wake, opts);
         document.addEventListener('fullscreenchange', wake);
         return () => {
-            document.removeEventListener('pointermove', wake);
-            document.removeEventListener('mousemove', wake);
-            document.removeEventListener('pointerdown', wake);
-            document.removeEventListener('touchstart', wake);
-            document.removeEventListener('wheel', wake);
-            document.removeEventListener('keydown', wake);
+            for (const type of WAKE_EVENTS) document.removeEventListener(type, wake);
             document.removeEventListener('fullscreenchange', wake);
         };
     }, [showControls, trackPointer]);
@@ -308,11 +312,11 @@ export function VideoPlayer({
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
-                    videoPlayerVM.seekBy(-10);
+                    videoPlayerVM.skipBackward();
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    videoPlayerVM.seekBy(10);
+                    videoPlayerVM.skipForward();
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
@@ -350,6 +354,62 @@ export function VideoPlayer({
         }
     }, [subtitleUrl]);
 
+    // Cómo se ven los subtítulos (tamaño, tipografía, color, altura).
+    //
+    // Se aplica al abrir el reproductor y cada vez que Ajustes lo cambia, que
+    // es lo que avisa por `jfp-subtitle-appearance`: así se puede tener el
+    // vídeo puesto en una pestaña y ver el efecto de cada cambio al momento,
+    // sin reabrir nada.
+    useEffect(() => {
+        const apply = () => {
+            const appearance = getSubtitleAppearance();
+            applySubtitleAppearance(appearance);
+            applyCueLine(subtitleTrackRef.current?.track?.cues ?? null, appearance.verticalPosition);
+        };
+        apply();
+        window.addEventListener('jfp-subtitle-appearance', apply);
+        return () => window.removeEventListener('jfp-subtitle-appearance', apply);
+    }, [subtitleUrl]);
+
+    // Longitud de los saltos y formato del reloj: lo mismo, desde Ajustes.
+    useEffect(() => {
+        const apply = videoPlayerVM.reloadPlaybackPrefs;
+        apply();
+        window.addEventListener('jfp-playback-prefs', apply);
+        return () => window.removeEventListener('jfp-playback-prefs', apply);
+    }, []);
+
+    // Los subtítulos, al pasar a la ventana de picture-in-picture.
+    //
+    // Los pinta el navegador a partir del `<track>`, en una capa que monta
+    // junto al vídeo. Al salir a la ventana flotante esa capa no siempre viaja
+    // con él y los subtítulos desaparecen, aunque la pista siga seleccionada y
+    // en la pestaña se vieran hace un segundo. Apagar la pista y volver a
+    // encenderla obliga al navegador a montar la capa de nuevo, ya en la
+    // ventana — y lo mismo al volver.
+    //
+    // El apagado y el encendido tienen que ir en dos frames distintos: en el
+    // mismo, el navegador ve el estado final y no hay nada que rehacer.
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || !subtitleUrl) return;
+        let frame = 0;
+        const remount = () => {
+            const track = subtitleTrackRef.current?.track;
+            if (!track) return;
+            track.mode = 'disabled';
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => { track.mode = 'showing'; });
+        };
+        video.addEventListener('enterpictureinpicture', remount);
+        video.addEventListener('leavepictureinpicture', remount);
+        return () => {
+            cancelAnimationFrame(frame);
+            video.removeEventListener('enterpictureinpicture', remount);
+            video.removeEventListener('leavepictureinpicture', remount);
+        };
+    }, [subtitleUrl]);
+
     const loading = videoPlayerVM.loading.value;
     const buffering = videoPlayerVM.buffering.value;
     const error = videoPlayerVM.error.value;
@@ -367,6 +427,26 @@ export function VideoPlayer({
             thumb: queuedNext.poster
         } :
         videoPlayerVM.nextEpisode.value;
+
+    // El mismo «siguiente» que anuncia el aviso de los créditos alimenta el
+    // botón ▶| de la ventana flotante y de los mandos del sistema. Se registra
+    // desde aquí porque encadenar es navegar, y de eso no se encarga el VM.
+    // Sin nada detrás se retira, y el navegador lo pinta apagado.
+    const onPlayQueuedRef = useRef(onPlayQueued);
+    onPlayQueuedRef.current = onPlayQueued;
+    const nextId = nextEpisode?.id;
+    const nextTitle = nextEpisode?.title;
+    useEffect(() => {
+        if (!nextId) {
+            videoPlayerVM.setNextTrack(null);
+            return;
+        }
+        videoPlayerVM.setNextTrack(
+            () => onPlayQueuedRef.current({ itemId: nextId, title: nextTitle ?? '' })
+        );
+        return () => { videoPlayerVM.setNextTrack(null); };
+    }, [nextId, nextTitle]);
+
     const brightness = videoPlayerVM.brightness.value;
     const idle = !controlsVisible && !error;
     const videoStyle = aspectRatioStyle(videoPlayerVM.aspectRatio.value);
@@ -580,6 +660,7 @@ export function VideoPlayer({
 
             <VideoControls onToggleQueue={() => setQueueOpen((v) => !v)} />
         </div>
+
     );
 }
 

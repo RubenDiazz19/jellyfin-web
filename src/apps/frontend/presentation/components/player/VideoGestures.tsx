@@ -221,11 +221,11 @@ export function VideoGestures({ onClose, onWake }: Props) {
             g.current.lastTapTime = 0;
             if (zone === 'left') {
                 haptic('tick');
-                videoPlayerVM.seekBy(-10);
+                videoPlayerVM.skipBackward();
                 flashFeedback({ kind: 'double', dir: 'back' }, 550);
             } else if (zone === 'right') {
                 haptic('tick');
-                videoPlayerVM.seekBy(10);
+                videoPlayerVM.skipForward();
                 flashFeedback({ kind: 'double', dir: 'forward' }, 550);
             } else {
                 videoPlayerVM.toggleFullscreen();
@@ -267,12 +267,18 @@ export function VideoGestures({ onClose, onWake }: Props) {
 
 function GestureFeedback({ feedback }: { feedback: NonNullable<Feedback> }) {
     if (feedback.kind === 'double') {
+        // Cuánto ha saltado de verdad: el doble toque usa la longitud que el
+        // usuario haya puesto en Ajustes, y el aviso tiene que decir esa.
+        const skip = videoPlayerVM.skip.peek();
+        const seconds = feedback.dir === 'back' ? skip.back : skip.forward;
         return (
             <div className={`jfp-gesture-double jfp-gesture-double-${feedback.dir}`}>
                 <span className='jfp-gesture-double-icon'>
-                    {feedback.dir === 'back' ? <PlayerIc.Replay10 size={34} /> : <PlayerIc.Forward10 size={34} />}
+                    {feedback.dir === 'back' ?
+                        <PlayerIc.Replay size={34} seconds={seconds} /> :
+                        <PlayerIc.Forward size={34} seconds={seconds} />}
                 </span>
-                <span className='jfp-gesture-double-label'>10s</span>
+                <span className='jfp-gesture-double-label'>{seconds}s</span>
             </div>
         );
     }

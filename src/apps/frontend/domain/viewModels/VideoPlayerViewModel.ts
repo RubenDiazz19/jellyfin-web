@@ -16,13 +16,13 @@ import type { ItemChapter, PlaybackContext } from '../../data/api/playbackContex
 import { segmentsFromChapters } from '../../data/api/chapterSegments';
 import type { MediaSegment } from '../../data/api/segments';
 import type { TitleLanguagePref } from '../../data/preferences/languagePrefs';
+import { getSkipLengths, getShowRemainingTime } from '../../data/api/playbackPrefs';
 import { TICKS_PER_SECOND, type AspectRatio } from '../player/format';
 import { attachHlsSource, playsHlsNatively } from '../player/hlsSource';
 import { MediaSessionBinding } from '../player/mediaSession';
 import { AutoNextTracker } from '../player/autoNext';
 import { SegmentTracker } from '../player/segmentTracker';
 import { TitlePreferences } from '../player/titlePreferences';
-import { currentMobileLayout } from '../../shared/layoutMode';
 
 const PROGRESS_REPORT_MS = 10_000;
 const VOLUME_KEY = 'jfp-volume';
@@ -70,6 +70,14 @@ export class VideoPlayerViewModel {
     // segundo: ver TIME_STEP_SECONDS.
     currentTime = signal(0);
     duration = signal(0);
+    /**
+     * Cuánto salta cada botón y si el reloj cuenta hacia atrás. Son ajustes
+     * del usuario (Ajustes → Reproducción), y están aquí como signals porque
+     * la View pinta el número dentro del propio icono: cambiarlos tiene que
+     * repintar los botones, no solo cambiar lo que hacen.
+     */
+    skip = signal(getSkipLengths());
+    showRemainingTime = signal(getShowRemainingTime());
     playing = signal(false);
     volume = signal(1);
     muted = signal(false);
@@ -176,8 +184,10 @@ export class VideoPlayerViewModel {
     private readonly instanceId = ++nextInstanceId;
 
     /**
-     * Los controles del sistema (pantalla de bloqueo, notificación). Se
-     * construye siempre pero solo se activa en mobile/tablet, al abrir un item.
+     * Los controles que pinta el navegador o el sistema fuera de nuestro OSD:
+     * la pantalla de bloqueo y la notificación en un móvil, y en escritorio la
+     * ventana flotante de picture-in-picture, las teclas de multimedia y el
+     * hub del navegador. Se activa al abrir un item, en cualquier layout.
      */
     private mediaSession = new MediaSessionBinding({
         title: () => this.title.value,
@@ -354,7 +364,7 @@ export class VideoPlayerViewModel {
         void this.api.playback.reportPlaybackStart(itemId);
         // El timer de progreso lo arranca el evento 'play' y lo para 'pause':
         // si el autoplay se deniega no hay nada que reportar todavía.
-        this.mediaSession.start(!!currentMobileLayout());
+        this.mediaSession.start();
         void this.loadSegments(itemId);
     }
 
@@ -481,6 +491,16 @@ export class VideoPlayerViewModel {
 
     seekBy = (delta: number) => this.seek((this.video?.currentTime ?? 0) + delta);
 
+    /** Rebobinar y adelantar, con la longitud que el usuario haya elegido. */
+    skipBackward = () => this.seekBy(-this.skip.value.back);
+    skipForward = () => this.seekBy(this.skip.value.forward);
+
+    /** Relee las preferencias del reproductor tras un cambio en Ajustes. */
+    reloadPlaybackPrefs = () => {
+        this.skip.value = getSkipLengths();
+        this.showRemainingTime.value = getShowRemainingTime();
+    };
+
     setVolume = (value: number) => {
         const v = this.video;
         if (!v) return;
@@ -532,6 +552,19 @@ export class VideoPlayerViewModel {
         } else {
             void v.requestPictureInPicture().catch(() => {});
         }
+    };
+
+    /**
+     * Qué hace el botón de «siguiente» de los mandos del sistema y de la
+     * ventana de picture-in-picture. Lo pone la View: qué viene después
+     * depende de la cola —que es suya— y encadenar significa navegar, que el
+     * VM no hace.
+     *
+     * Con `null` el botón se queda apagado, que es lo correcto cuando no hay
+     * nada detrás: un botón pulsable que no hace nada es peor que uno gris.
+     */
+    setNextTrack = (handler: (() => void) | null) => {
+        this.mediaSession.setNextTrack(handler);
     };
 
     /**

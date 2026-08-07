@@ -3,13 +3,18 @@ import { useNavigate } from 'react-router-dom';
 
 import globalize from 'lib/globalize';
 
-import { getCurrentUser, updateUserConfig, type CurrentUser, type UserConfig } from '../../domain/api';
+import {
+    getCurrentUser, setSessionUser, updateUserConfig,
+    type CurrentUser, type UserConfig
+} from '../../domain/api';
 import { useSession } from '../../domain/bridge/useSession';
 import { Nav } from '../components/layout/Nav';
 import { useToast } from '../components/toast/ToastProvider';
+import { PageTitle } from '../components/layout/Title';
 import { MC, useResponsive } from '../theme/responsive';
 import { T } from '../theme/tokens';
 import { AppearanceSection } from './settings/AppearanceSection';
+import { DisplaySection } from './settings/DisplaySection';
 import { LibrariesSection } from './settings/LibrariesSection';
 import { PlaybackSection } from './settings/PlaybackSection';
 import { ProfileSection } from './settings/ProfileSection';
@@ -70,6 +75,7 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
 
     const sections: { id: SectionId; label: string }[] = [
         { id: 'perfil', label: globalize.translate('Profile') },
+        { id: 'pantalla', label: globalize.translate('Display') },
         { id: 'reproduccion', label: globalize.translate('TitlePlayback') },
         { id: 'subtitulos', label: globalize.translate('Subtitles') },
         { id: 'bibliotecas', label: globalize.translate('HeaderLibraries') },
@@ -86,10 +92,19 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
                     user={user as CurrentUser}
                     serverUrl={session?.serverUrl ?? ''}
                     onAvatarChange={() => {
-                        getCurrentUser().then(setUser).catch(() => {});
+                        getCurrentUser().then((u) => {
+                            setUser(u);
+                            // El avatar de la barra superior sale de la sesión:
+                            // sin esto, cambiar la foto aquí no se vería arriba
+                            // hasta recargar la página.
+                            setSessionUser(u.name, u.avatarTag);
+                        }).catch(() => {});
                     }}
                     logout={logout}
                 />
+            )}
+            {id === 'pantalla' && (
+                <DisplaySection config={(user as CurrentUser).config} patch={patchConfig} />
             )}
             {id === 'reproduccion' && (
                 <PlaybackSection config={(user as CurrentUser).config} patch={patchConfig} />
@@ -192,12 +207,7 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
                 background: '#000', color: '#fff', minHeight: '100vh',
                 padding: '120px 56px 96px', fontFamily: T.ui
             }}>
-                <h1 style={{
-                    fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
-                    fontSize: 52, margin: 0, letterSpacing: -0.5, marginBottom: 44
-                }}>
-                    {globalize.translate('Settings')}
-                </h1>
+                <PageTitle margin='0 0 44px'>{globalize.translate('Settings')}</PageTitle>
 
                 <div style={{
                     display: 'grid', gridTemplateColumns: 'minmax(0, 260px) minmax(0, 1fr)',

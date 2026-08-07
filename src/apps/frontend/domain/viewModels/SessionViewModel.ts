@@ -13,6 +13,8 @@ export class SessionViewModel {
 
     private started = false;
     private hydrated = false;
+    // Usuario cuyo perfil ya se ha pedido al servidor. Ver `ensureUserProfile`.
+    private profiledUser: string | null = null;
 
     constructor(private api: ApiService) {}
 
@@ -66,6 +68,38 @@ export class SessionViewModel {
         if (session?.accessToken && otherUser) {
             void this.api.items.hydrateFavorites().catch(() => {});
         }
+        this.ensureUserProfile(session);
+    }
+
+    /**
+     * Baja del servidor lo que la barra superior enseña del usuario: su nombre
+     * y su foto de perfil.
+     *
+     * El nombre solo lo guardaba el login, en memoria, y la foto no la guardaba
+     * nadie. Al recargar la página la sesión se restaura del ApiClient —token y
+     * userId siguen ahí— pero las dos vuelven vacías: el avatar se quedaba en un
+     * círculo sin nada dentro hasta el siguiente login.
+     *
+     * Se pide una vez por usuario, y no «solo si falta el nombre»: por el camino
+     * del login el nombre ya viene puesto, y con esa condición la foto no habría
+     * llegado nunca. Las dos salen de la misma respuesta de /Users/Me.
+     */
+    private ensureUserProfile(session: Session | null) {
+        if (!session?.accessToken || !session.userId) {
+            this.profiledUser = null;
+            return;
+        }
+        if (this.profiledUser === session.userId) return;
+        this.profiledUser = session.userId;
+        void this.api.users.getCurrentUser()
+            .then((user) => {
+                this.api.session.setUser(user.name || session.displayName, user.avatarTag);
+            })
+            .catch(() => {
+                // Servidor caído o token recién caducado: se reintenta en el
+                // siguiente evento de sesión en vez de quedarse sin perfil.
+                this.profiledUser = null;
+            });
     }
 
     logout = () => {

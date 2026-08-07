@@ -50,6 +50,8 @@ export function VideoControls({ onToggleQueue }: Props) {
     const queueLength = useSignalValue(queueVM.items).length;
     const chapters = useSignalValue(videoPlayerVM.chapters);
     const segments = useSignalValue(videoPlayerVM.segmentList);
+    const skip = useSignalValue(videoPlayerVM.skip);
+    const showRemaining = useSignalValue(videoPlayerVM.showRemainingTime);
     // Se recalcula solo al cambiar de item o al llegar los segmentos, no en
     // cada timeupdate.
     const dividers = useMemo(
@@ -142,10 +144,10 @@ export function VideoControls({ onToggleQueue }: Props) {
                     <button
                         type='button'
                         className='jfp-video-btn'
-                        onClick={() => videoPlayerVM.seekBy(-10)}
+                        onClick={videoPlayerVM.skipBackward}
                         aria-label={globalize.translate('AttributeSkipBackward')}
                     >
-                        <PlayerIc.Replay10 />
+                        <PlayerIc.Replay seconds={skip.back} />
                     </button>
                     <button
                         type='button'
@@ -158,15 +160,21 @@ export function VideoControls({ onToggleQueue }: Props) {
                     <button
                         type='button'
                         className='jfp-video-btn'
-                        onClick={() => videoPlayerVM.seekBy(10)}
+                        onClick={videoPlayerVM.skipForward}
                         aria-label={globalize.translate('AttributeSkipForward')}
                     >
-                        <PlayerIc.Forward10 />
+                        <PlayerIc.Forward seconds={skip.forward} />
                     </button>
                     <VolumeSlider />
                     <span className='jfp-video-time'>
                         {formatTime(shownTime)}
-                        <span className='jfp-video-time-total'> / {formatTime(duration)}</span>
+                        {/* Lo que queda o lo que dura: el signo delante es lo
+                            que distingue una lectura de la otra de un vistazo. */}
+                        <span className='jfp-video-time-total'>
+                            {showRemaining ?
+                                ` -${formatTime(Math.max(duration - shownTime, 0))}` :
+                                ` / ${formatTime(duration)}`}
+                        </span>
                     </span>
                 </div>
                 <div className='jfp-video-controls-group'>

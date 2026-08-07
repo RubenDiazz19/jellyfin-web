@@ -1,10 +1,18 @@
-// Media Session: los controles del sistema (pantalla de bloqueo,
-// notificación, botones del manos libres) hablando con nuestro <video>.
+// Media Session: los controles que pinta el navegador o el sistema —pantalla
+// de bloqueo, notificación, teclas de multimedia, el hub del navegador y la
+// ventana flotante de picture-in-picture— hablando con nuestro <video>.
 //
-// Solo se activa en mobile/tablet: en desktop manda el OSD y no hay ninguna
-// superficie del sistema que rellenar. Toda la API se toca dentro de try/catch
-// porque cada navegador soporta un subconjunto distinto y lanzar aquí tumbaría
-// una reproducción que por lo demás va bien.
+// Se activa en todas partes. Durante un tiempo se restringió a mobile/tablet,
+// razonando que en escritorio manda el OSD y no hay superficie del sistema que
+// rellenar; el picture-in-picture desmiente eso, porque saca el vídeo a una
+// ventana con sus propios botones y ESOS botones son estos handlers. Sin
+// registrarlos, en la ventana flotante solo funcionaba play/pausa —que el
+// navegador aplica directo al elemento— y ni el ±10 s ni arrastrar la barra
+// hacían nada.
+//
+// Toda la API se toca dentro de try/catch porque cada navegador soporta un
+// subconjunto distinto y lanzar aquí tumbaría una reproducción que por lo
+// demás va bien.
 
 /** Lo que la sesión del sistema necesita saber y poder pedirle al reproductor. */
 export type MediaSessionHost = {
@@ -21,7 +29,7 @@ export type MediaSessionHost = {
 };
 
 const ACTIONS: MediaSessionAction[] = [
-    'play', 'pause', 'seekbackward', 'seekforward', 'seekto'
+    'play', 'pause', 'seekbackward', 'seekforward', 'seekto', 'nexttrack'
 ];
 
 /** Salto por defecto cuando el sistema no dice cuánto. */
@@ -42,12 +50,14 @@ export class MediaSessionBinding {
     private active = false;
     /** Cuándo se publicó el último estado de posición (ver POSITION_MIN_MS). */
     private lastPositionAt = 0;
+    /** Lo que hace el botón de «siguiente», si es que hay algo detrás. */
+    private nextTrack: (() => void) | null = null;
 
     constructor(private host: MediaSessionHost) {}
 
-    /** Publica el item actual y engancha los mandos. No hace nada en desktop. */
-    start(enabled: boolean) {
-        if (!enabled || !('mediaSession' in navigator)) return;
+    /** Publica el item actual y engancha los mandos. */
+    start() {
+        if (!('mediaSession' in navigator)) return;
         const ms = navigator.mediaSession;
 
         try {
@@ -57,16 +67,11 @@ export class MediaSessionBinding {
             });
         } catch { /* MediaMetadata no disponible: seguimos sin carátula */ }
 
-        const set = (action: MediaSessionAction, handler: MediaSessionActionHandler) => {
-            try {
-                ms.setActionHandler(action, handler);
-            } catch { /* acción no soportada por este navegador */ }
-        };
-        set('play', () => this.host.play());
-        set('pause', () => this.host.pause());
-        set('seekbackward', (d) => this.host.seekBy(-(d.seekOffset ?? DEFAULT_SEEK_OFFSET)));
-        set('seekforward', (d) => this.host.seekBy(d.seekOffset ?? DEFAULT_SEEK_OFFSET));
-        set('seekto', (d) => {
+        this.set('play', () => this.host.play());
+        this.set('pause', () => this.host.pause());
+        this.set('seekbackward', (d) => this.host.seekBy(-(d.seekOffset ?? DEFAULT_SEEK_OFFSET)));
+        this.set('seekforward', (d) => this.host.seekBy(d.seekOffset ?? DEFAULT_SEEK_OFFSET));
+        this.set('seekto', (d) => {
             if (d.seekTime != null) this.host.seekTo(d.seekTime);
         });
 
@@ -74,6 +79,33 @@ export class MediaSessionBinding {
         this.lastPositionAt = 0;
         this.syncPlayback();
         this.syncPosition({ immediate: true });
+        this.publishNextTrack();
+    }
+
+    private set(action: MediaSessionAction, handler: MediaSessionActionHandler | null) {
+        try {
+            navigator.mediaSession.setActionHandler(action, handler);
+        } catch { /* acción no soportada por este navegador */ }
+    }
+
+    /**
+     * Qué hacer cuando el sistema pide «pista siguiente». Lo pone la View, que
+     * es quien sabe qué viene después —la cola si el usuario encoló algo, y si
+     * no el siguiente episodio— y quien puede navegar hasta ello.
+     *
+     * Con `null` el handler se retira, y entonces el navegador pinta su botón
+     * apagado: es la diferencia entre «no hay siguiente» y un botón que se
+     * puede pulsar y no hace nada.
+     */
+    setNextTrack(handler: (() => void) | null) {
+        this.nextTrack = handler;
+        this.publishNextTrack();
+    }
+
+    private publishNextTrack() {
+        if (!this.active) return;
+        const handler = this.nextTrack;
+        this.set('nexttrack', handler ? () => handler() : null);
     }
 
     /** El sistema pinta play o pausa según esto. */
@@ -108,13 +140,14 @@ export class MediaSessionBinding {
     stop() {
         if (!this.active) return;
         this.active = false;
+        // Se suelta el handler del item que se va: el siguiente lo pone su
+        // View, y hasta entonces no hay «siguiente» que valga.
+        this.nextTrack = null;
         const ms = navigator.mediaSession;
         ms.metadata = null;
         ms.playbackState = 'none';
         for (const action of ACTIONS) {
-            try {
-                ms.setActionHandler(action, null);
-            } catch { /* ignorar */ }
+            this.set(action, null);
         }
     }
 }

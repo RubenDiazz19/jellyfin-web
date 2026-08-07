@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { Ic } from '../../theme/icons';
 import { IconButton } from '../controls/IconButton';
 import { useToast } from '../toast/ToastProvider';
-import { refreshItemMetadata } from '../../../domain/api';
+import { refreshItemMetadata, type RefreshOptions } from '../../../domain/api';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
+import { RefreshDialog } from './RefreshDialog';
 
 type Props = {
     libraryId: string;
@@ -15,37 +16,43 @@ type Props = {
 // Rescan por biblioteca (Ajustes → Bibliotecas): mismo comportamiento que el
 // "Scan Library" nativo de Jellyfin — el propio escaneo es quien regenera la
 // imagen de la biblioteca en el server, no hace falta un editor aparte aquí.
+//
+// Qué se rescanea lo elige el usuario en la caja: pulsar el botón ya no lanza
+// un refresco completo a ciegas, que era lo que podía cambiar carátulas de
+// paso. Ver RefreshDialog.
 export function LibraryCardMenu({ libraryId, libraryName }: Props) {
-    const [scanning, setScanning] = useState(false);
+    const [open, setOpen] = useState(false);
     const toast = useToast();
 
-    const doRescan = async () => {
-        setScanning(true);
+    const doRescan = async (options: RefreshOptions) => {
         try {
-            await refreshItemMetadata(libraryId);
+            await refreshItemMetadata(libraryId, options);
             // El progreso lo enseña TaskProgress; se anota aquí porque es
             // quien sabe cómo se llama esta biblioteca.
             tasksVM.expect(libraryId, libraryName);
             toast(globalize.translate('MessageLibraryScanStartedFor', libraryName), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
-        } finally {
-            setScanning(false);
+            // Que la caja siga abierta: la elección no se ha llegado a aplicar.
+            throw e;
         }
     };
 
     return (
-        <IconButton
-            onClick={() => { void doRescan(); }}
-            ariaLabel={`Reescanear ${libraryName}`}
-            style={scanning ? { cursor: 'wait' } : undefined}
-        >
-            <span style={{
-                display: 'block',
-                animation: scanning ? 'jfp-video-spin 1s linear infinite' : undefined
-            }}>
+        <>
+            <IconButton
+                onClick={() => setOpen(true)}
+                ariaLabel={globalize.translate('RefreshMetadata') + ` · ${libraryName}`}
+            >
                 <Ic.Refresh size={15} />
-            </span>
-        </IconButton>
+            </IconButton>
+            {open && (
+                <RefreshDialog
+                    subject={libraryName}
+                    onRefresh={doRescan}
+                    onClose={() => setOpen(false)}
+                />
+            )}
+        </>
     );
 }

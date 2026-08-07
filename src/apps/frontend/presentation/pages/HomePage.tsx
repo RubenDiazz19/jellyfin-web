@@ -469,9 +469,13 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
             </section>
         );
     }
+    // Solo en táctil: en escritorio, Series y Películas ya están arriba en la
+    // barra, y ahí el título de la fila nunca ha llevado a ningún sitio.
+    const goSeries = r.touch ? () => navigate({ page: 'series' }) : undefined;
+    const goMovies = r.touch ? () => navigate({ page: 'movies' }) : undefined;
     return (
         <section style={sectionStyle}>
-            <Row title={globalize.translate('Shows')}>
+            <Row title={globalize.translate('Shows')} onTitleClick={goSeries}>
                 {series.length === 0 ? (
                     <div style={{ padding: r.touch ? `0 ${r.pagePad}px` : '0 56px', color: T.dim, fontSize: 14 }}>
                         {globalize.translate('MessageNoShowsInLibrary')}
@@ -483,7 +487,7 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
                 )}
             </Row>
             {movies.length > 0 && (
-                <Row title={globalize.translate('Movies')}>
+                <Row title={globalize.translate('Movies')} onTitleClick={goMovies}>
                     <RowScroller>
                         {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
                     </RowScroller>

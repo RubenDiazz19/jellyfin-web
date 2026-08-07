@@ -4,6 +4,7 @@ import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
+import { PageTitle } from '../components/layout/Title';
 import { CatalogPage } from './CatalogPage';
 import { genreVM } from '../../domain/viewModels/DiscoverViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
@@ -39,12 +40,7 @@ export function GenrePage({ genre, navigate }: Props) {
             }
             header={
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 44 }}>
-                    <h1 style={{
-                        fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
-                        fontSize: 52, margin: 0, letterSpacing: -0.5
-                    }}>
-                        {genre}
-                    </h1>
+                    <PageTitle>{genre}</PageTitle>
                     <span style={{ fontFamily: T.ui, fontSize: 13, color: T.dim }}>
                         {globalize.translate('TitleCount', shows.length + movies.length)}
                     </span>

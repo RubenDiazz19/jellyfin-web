@@ -6,11 +6,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { frontendCss } from './frontendCss';
 
 const read = (p: string) => fs.readFileSync(path.resolve(process.cwd(), p), 'utf-8');
 
 const siteScss = read('src/styles/site.scss');
-const globalCss = read('src/apps/frontend/presentation/styles/global.css');
+const globalCss = frontendCss();
 
 const REDUCE = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{/;
 
@@ -44,7 +45,7 @@ describe('prefers-reduced-motion: cobertura', () => {
 });
 
 describe('prefers-reduced-motion: los keyframes existentes se respetan', () => {
-    for (const [name, css] of [['site.scss', siteScss], ['global.css', globalCss]] as const) {
+    for (const [name, css] of [['site.scss', siteScss], ['frontend', globalCss]] as const) {
         describe(name, () => {
             const block = reduceBlock(css);
 

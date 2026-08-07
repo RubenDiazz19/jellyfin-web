@@ -1,14 +1,14 @@
 import globalize from 'lib/globalize';
 
 import { useEffect, useState } from 'react';
-import ReactDOM from 'react-dom';
-import { T } from '../../theme/tokens';
 import { useToast } from '../toast/ToastProvider';
 import {
     getPlaylists, addToPlaylist, createPlaylist,
     getCollections, addToCollection, createCollection,
     type ListEntry
 } from '../../../domain/api';
+import { Dialog, DialogFooter, DialogHeader, DialogInputRow, DialogRow } from './Dialog';
+import { ErrText, Muted, PillButton, TextField } from './fields';
 
 type Props = {
     kind: 'playlist' | 'collection';
@@ -71,114 +71,53 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
         }
     };
 
-    return ReactDOM.createPortal(
-        <div
-            onClick={onClose}
-            style={{
-                position: 'fixed', inset: 0, zIndex: 10000,
-                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-            }}
-        >
-            <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                    width: 'min(420px, 100%)', maxHeight: '70vh', overflowY: 'auto',
-                    background: 'rgba(18,18,20,0.98)', borderRadius: 14,
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    boxShadow: '0 18px 50px rgba(0,0,0,0.6)',
-                    padding: 20, fontFamily: T.ui, color: '#fff'
-                }}
-            >
-                <div style={{
-                    display: 'flex', alignItems: 'center', marginBottom: 16
-                }}>
-                    <div style={{ fontSize: 15, fontWeight: 500 }}>{labels.title}</div>
-                    <button
-                        onClick={onClose}
-                        aria-label={globalize.translate('ButtonClose')}
-                        style={{
-                            marginLeft: 'auto', background: 'none', border: 'none',
-                            color: T.dim, cursor: 'pointer', fontSize: 18, lineHeight: 1
-                        }}
-                    >×</button>
-                </div>
+    return (
+        <Dialog label={labels.title} maxHeight='70vh' onClose={onClose}>
+            <DialogHeader title={labels.title} onClose={onClose} />
 
-                {error ? (
-                    <div style={{ color: '#ff6b6b', fontSize: 13 }}>{error}</div>
-                ) : !entries ? (
-                    <div style={{ color: T.dim, fontSize: 13 }}>{globalize.translate('Loading')}</div>
-                ) : entries.length === 0 ? (
-                    <div style={{ color: T.dim, fontSize: 13, marginBottom: 8 }}>{labels.empty}</div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 14 }}>
-                        {entries.map((e) => (
-                            <button
-                                key={e.id}
-                                disabled={busy}
-                                onClick={() => doAdd(e)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: 12,
-                                    padding: '9px 10px', borderRadius: 8,
-                                    background: 'none', border: 'none', color: '#fff',
-                                    cursor: busy ? 'wait' : 'pointer', textAlign: 'left',
-                                    fontFamily: T.ui, fontSize: 14, transition: 'background .15s'
-                                }}
-                                onMouseEnter={(ev) => (ev.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-                                onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
-                            >
-                                <div style={{
-                                    width: 40, height: 40, borderRadius: 6, flexShrink: 0,
-                                    background: e.image ?
-                                        `url(${e.image}) center/cover` :
-                                        'rgba(255,255,255,0.08)'
-                                }} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{
-                                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                    }}>
-                                        {e.name}
-                                    </div>
-                                    {e.count != null && (
-                                        <div style={{ fontSize: 12, color: T.dim }}>{globalize.translate('ItemCount', e.count)}</div>
-                                    )}
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                <div style={{
-                    display: 'flex', gap: 8, paddingTop: 12,
-                    borderTop: '1px solid rgba(255,255,255,0.08)'
-                }}>
-                    <input
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') void doCreate(); }}
-                        placeholder='Nombre de la nueva…'
-                        style={{
-                            flex: 1, background: 'rgba(255,255,255,0.06)', color: '#fff',
-                            border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
-                            padding: '9px 12px', fontFamily: T.ui, fontSize: 13, outline: 'none'
-                        }}
-                    />
-                    <button
-                        disabled={busy || !newName.trim()}
-                        onClick={doCreate}
-                        style={{
-                            padding: '9px 16px', borderRadius: 999,
-                            background: newName.trim() ? '#fff' : 'rgba(255,255,255,0.15)',
-                            color: newName.trim() ? '#000' : T.dim,
-                            border: 'none', fontFamily: T.ui, fontSize: 13, fontWeight: 600,
-                            cursor: busy || !newName.trim() ? 'default' : 'pointer'
-                        }}
-                    >
-                        {labels.create}
-                    </button>
+            {error ? (
+                <ErrText>{error}</ErrText>
+            ) : !entries ? (
+                <Muted>{globalize.translate('Loading')}</Muted>
+            ) : entries.length === 0 ? (
+                <div style={{ marginBottom: 8 }}><Muted>{labels.empty}</Muted></div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 14 }}>
+                    {entries.map((e) => (
+                        <DialogRow
+                            key={e.id}
+                            image={e.image}
+                            name={e.name}
+                            count={e.count}
+                            busy={busy}
+                            onClick={() => doAdd(e)}
+                        />
+                    ))}
                 </div>
-            </div>
-        </div>,
-        document.body
+            )}
+
+            <DialogFooter>
+                <DialogInputRow
+                    field={
+                        <TextField
+                            value={newName}
+                            onChange={setNewName}
+                            onEnter={doCreate}
+                            placeholder='Nombre de la nueva…'
+                        />
+                    }
+                    action={
+                        <PillButton
+                            onClick={doCreate}
+                            size='sm'
+                            busy={busy}
+                            disabled={!newName.trim()}
+                        >
+                            {labels.create}
+                        </PillButton>
+                    }
+                />
+            </DialogFooter>
+        </Dialog>
     );
 }

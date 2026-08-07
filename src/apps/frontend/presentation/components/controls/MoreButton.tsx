@@ -1,5 +1,5 @@
 import {
-    useEffect, useImperativeHandle, useRef, useState, type ReactNode, type RefObject
+    useEffect, useImperativeHandle, useRef, useState, type RefObject
 } from 'react';
 import ReactDOM from 'react-dom';
 
@@ -12,12 +12,15 @@ import { useToast } from '../toast/ToastProvider';
 import { useSession } from '../../../domain/bridge/useSession';
 import {
     refreshItemMetadata, deleteItem,
-    downloadUrl, nativeItemUrl
+    downloadUrl, nativeItemUrl,
+    type RefreshOptions
 } from '../../../domain/api';
 import { MetadataEditor, type EditorKind } from '../admin/editor';
+import { RefreshDialog } from '../admin/RefreshDialog';
 import { AddToDialog } from './AddToDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { TagsDialog } from './TagsDialog';
+import { ItemMenuList, type MenuItem } from './ItemMenuList';
 import { knownTags } from '../../../domain/viewModels/knownTags';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
@@ -25,13 +28,10 @@ import { usePlayer } from '../player/PlayerProvider';
 import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
 
-type MenuItem =
-  | { isDivider: true }
-  | { isCustom: true; component: ReactNode }
-  | { label: string; fn: () => void; danger?: boolean; disabled?: boolean };
-
 /** Permite abrir el menú desde fuera, en un punto: el clic derecho. */
 export type ItemMenuHandle = { openAt: (x: number, y: number) => void };
+
+type ItemKind = 'movie' | 'show' | 'season' | 'episode';
 
 type Props = {
     id: string;
@@ -44,7 +44,7 @@ type Props = {
     handle?: RefObject<ItemMenuHandle | null>;
     hideTrigger?: boolean;
     items?: MenuItem[];
-    type?: 'movie' | 'show' | 'season' | 'episode';
+    type?: ItemKind;
     itemTitle?: string;
     // Datos para la cola de reproducción. Sin `itemTitle` no encolamos: la
     // fila de la cola quedaría sin texto.
@@ -58,6 +58,14 @@ type Props = {
 // Botón "más opciones" (tres puntos) con menú flotante y editor de metadata
 // integrado. Las acciones se ejecutan contra la API real de Jellyfin.
 const MENU_W = 260;
+/** Alto que se le supone al menú para decidir si abre hacia arriba. */
+const MENU_H = 540;
+const GAP = 8;
+
+/** Dónde plantar el desplegable para que quepa en pantalla. */
+type MenuPos = {
+    top?: number; bottom?: number; left?: number; right?: number; maxHeight: number;
+};
 
 export function MoreButton({
     id, size = 18, items, type = 'show', itemTitle, nextEpisodeId,
@@ -67,10 +75,9 @@ export function MoreButton({
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
     const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
     const [tagsOpen, setTagsOpen] = useState(false);
+    const [refreshOpen, setRefreshOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const [menuPos, setMenuPos] = useState<{
-        top?: number; bottom?: number; left?: number; right?: number; maxHeight: number;
-    } | null>(null);
+    const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
     const ref = useRef<HTMLDivElement>(null);
     const toast = useToast();
     const { session } = useSession();
@@ -124,15 +131,11 @@ export function MoreButton({
         // En touch el menú es un bottom sheet: no hay que anclar nada.
         if (!r.touch) {
             const rect = ref.current?.getBoundingClientRect();
+            // Colgando del botón, separado de él y alineado a su derecha.
             if (rect) {
-                const MENU_H = 540;
-                const GAP = 8;
-                const dropUp = rect.bottom + MENU_H + GAP > window.innerHeight;
                 setMenuPos({
-                    top: dropUp ? undefined : rect.bottom + GAP,
-                    bottom: dropUp ? window.innerHeight - rect.top + GAP : undefined,
-                    right: Math.max(12, window.innerWidth - rect.right),
-                    maxHeight: dropUp ? rect.top - GAP - 12 : window.innerHeight - rect.bottom - GAP - 12
+                    ...verticalPlacement(rect.bottom, rect.top, GAP),
+                    right: Math.max(12, window.innerWidth - rect.right)
                 });
             }
         }
@@ -146,14 +149,11 @@ export function MoreButton({
      */
     const openAt = (x: number, y: number) => {
         if (!r.touch) {
-            const MENU_H = 540;
-            const dropUp = y + MENU_H > window.innerHeight;
             setMenuPos({
-                top: dropUp ? undefined : y,
-                bottom: dropUp ? window.innerHeight - y : undefined,
+                // Sin separación: un menú contextual sale pegado al puntero.
+                ...verticalPlacement(y, y, 0),
                 // Se voltea al otro lado del cursor si no cabe a la derecha.
-                left: Math.min(x, window.innerWidth - MENU_W - 12),
-                maxHeight: dropUp ? y - 12 : window.innerHeight - y - 12
+                left: Math.min(x, window.innerWidth - MENU_W - 12)
             });
         }
         setOpen(true);
@@ -164,15 +164,17 @@ export function MoreButton({
     // -------- handlers reales --------
     const label = itemTitle ? ` · ${itemTitle}` : '';
 
-    const doRefresh = async () => {
+    const doRefresh = async (options: RefreshOptions) => {
         try {
-            await refreshItemMetadata(id);
+            await refreshItemMetadata(id, options);
             // Refrescar una serie entera tarda; sin esto el aviso era todo lo
             // que el usuario llegaba a ver del proceso.
             tasksVM.expect(id, itemTitle ?? '');
             toast(globalize.translate('MessageRefreshQueued'), 'success');
         } catch (e) {
             toast((e as Error).message, 'warn');
+            // Que la caja siga abierta: no se ha llegado a lanzar nada.
+            throw e;
         }
     };
 
@@ -212,86 +214,77 @@ export function MoreButton({
     const t = (key: string) => globalize.translate(key);
     const canQueue = !!queueableId && !!itemTitle;
 
-    const menuByType: Record<'movie' | 'show' | 'season' | 'episode', MenuItem[]> = {
+    /** Mandar a la cola: idéntico para los cuatro tipos. */
+    const queueing: MenuItem[] = [
+        { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
+        { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue }
+    ];
+
+    /**
+     * El bloque de edición, que cierra los cuatro menús. Lo que cambia entre
+     * tipos es solo qué existe para cada uno: una temporada no se identifica
+     * por sí sola (se hace desde la serie) y un episodio no tiene imágenes
+     * propias que valga la pena editar aquí.
+     */
+    const editing = (has: { identify?: boolean; images?: boolean; subtitles?: boolean }): MenuItem[] => [
+        ...(has.identify ? [{ label: t('Identify'), fn: () => setEditor('identify') }] : []),
+        { label: t('RefreshMetadata'), fn: () => setRefreshOpen(true) },
+        { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+        { label: t('EditTags'), fn: () => setTagsOpen(true) },
+        ...(has.images ? [{ label: t('EditImages'), fn: () => setEditor('images') }] : []),
+        ...(has.subtitles ? [{ label: t('EditSubtitles'), fn: () => setEditor('subtitles') }] : []),
+        { isDivider: true },
+        { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
+    ];
+
+    /** Series y temporadas arrancan por el episodio que toca, no por sí mismas. */
+    const continueEntries: MenuItem[] = nextEpisodeId ? [
+        { label: t('PlayNextEpisode'), fn: doPlayNextEpisode },
+        { label: t('HeaderPlayAll'), fn: doPlayNextEpisode }
+    ] : [];
+
+    const menuByType: Record<ItemKind, MenuItem[]> = {
         movie: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
-            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
-            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
+            ...queueing,
             // Sin «añadir a lista/colección»: de eso se encarga el botón
             // «Mi lista» de la ficha, que además enseña de un vistazo si el
             // título ya está en alguna y permite marcar varias a la vez.
             { isDivider: true },
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
-            { label: t('Identify'), fn: () => setEditor('identify') },
-            { label: t('RefreshMetadata'), fn: doRefresh },
-            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
-            { label: t('EditTags'), fn: () => setTagsOpen(true) },
-            { label: t('EditImages'), fn: () => setEditor('images') },
-            { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
-            { isDivider: true },
-            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
+            ...editing({ identify: true, images: true, subtitles: true })
         ],
         show: [
-            ...(nextEpisodeId ? [
-                { label: t('PlayNextEpisode'), fn: doPlayNextEpisode },
-                { label: t('HeaderPlayAll'), fn: doPlayNextEpisode }
-            ] : []),
+            ...continueEntries,
             { label: t('Shuffle'), fn: () => openNative(undefined, '&shuffle=true') },
             { isDivider: true },
-            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
-            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
-            // Sin «añadir a lista/colección»: de eso se encarga el botón
-            // «Mi lista» de la ficha, que además enseña de un vistazo si el
-            // título ya está en alguna y permite marcar varias a la vez.
+            ...queueing,
             { isDivider: true },
-            { label: t('Identify'), fn: () => setEditor('identify') },
-            { label: t('RefreshMetadata'), fn: doRefresh },
-            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
-            { label: t('EditTags'), fn: () => setTagsOpen(true) },
-            { label: t('EditImages'), fn: () => setEditor('images') },
-            { isDivider: true },
-            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
+            ...editing({ identify: true, images: true })
         ],
         season: [
-            ...(nextEpisodeId ? [
-                { label: t('PlayNextEpisode'), fn: doPlayNextEpisode },
-                { label: t('HeaderPlayAll'), fn: doPlayNextEpisode }
-            ] : []),
+            ...continueEntries,
             { isDivider: true },
-            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
-            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
+            ...queueing,
             { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
             { label: t('AddToCollection'), fn: () => setAddTo('collection') },
             { isDivider: true },
-            // Sin "Identificar…": las temporadas no tienen búsqueda remota
-            // propia en Jellyfin, se identifican desde la serie.
-            { label: t('RefreshMetadata'), fn: doRefresh },
-            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
-            { label: t('EditTags'), fn: () => setTagsOpen(true) },
-            { label: t('EditImages'), fn: () => setEditor('images') },
-            { isDivider: true },
-            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
+            ...editing({ images: true })
         ],
         episode: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
-            { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
-            { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue },
+            ...queueing,
             { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
             { isDivider: true },
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
-            { label: t('Identify'), fn: () => setEditor('identify') },
-            { label: t('RefreshMetadata'), fn: doRefresh },
-            { label: t('EditMetadata'), fn: () => setEditor('metadata') },
-            { label: t('EditTags'), fn: () => setTagsOpen(true) },
-            { label: t('EditSubtitles'), fn: () => setEditor('subtitles') },
-            { isDivider: true },
-            { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
+            ...editing({ identify: true, subtitles: true })
         ]
     };
 
     const menu = items ?? (isReal ? menuByType[type] : legacyMenu(toast));
+    const close = () => setOpen(false);
 
     return (
         <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
@@ -302,37 +295,8 @@ export function MoreButton({
             )}
             {/* Touch: bottom sheet M3 (spec 4.3). Desktop: popup anclado. */}
             {open && r.touch && (
-                <BottomSheet title={itemTitle} onClose={() => setOpen(false)}>
-                    {menu.map((it, i) =>
-                        'isDivider' in it ? (
-                            <div key={i} style={{
-                                height: 1, margin: '6px 16px',
-                                background: 'var(--md-sys-color-outline-variant, rgba(255,255,255,0.08))'
-                            }} />
-                        ) : 'isCustom' in it ? (
-                            <div key={i}>{it.component}</div>
-                        ) : (
-                            <button
-                                key={i}
-                                data-ripple
-                                onClick={(e) => { e.stopPropagation(); it.fn(); setOpen(false); }}
-                                disabled={it.disabled}
-                                style={{
-                                    display: 'block', width: '100%', textAlign: 'left',
-                                    background: 'none', border: 'none',
-                                    color: it.disabled ? 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.35))' :
-                                        it.danger ? 'var(--md-sys-color-error, #ff6b6b)' :
-                                            'var(--md-sys-color-on-surface, #fff)',
-                                    cursor: it.disabled ? 'not-allowed' : 'pointer',
-                                    minHeight: 48, padding: '12px 16px',
-                                    fontSize: 15, fontFamily: T.ui,
-                                    borderRadius: 'var(--md-sys-shape-corner-large, 16px)'
-                                }}
-                            >
-                                {it.label}
-                            </button>
-                        )
-                    )}
+                <BottomSheet title={itemTitle} onClose={close}>
+                    <ItemMenuList items={menu} sheet onPick={close} />
                 </BottomSheet>
             )}
             {open && !r.touch && menuPos && ReactDOM.createPortal(
@@ -349,36 +313,7 @@ export function MoreButton({
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                 >
-                    {menu.map((it, i) =>
-                        'isDivider' in it ? (
-                            <div key={i} style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 0' }} />
-                        ) : 'isCustom' in it ? (
-                            <div key={i}>{it.component}</div>
-                        ) : (
-                            <button
-                                key={i}
-                                onClick={(e) => { e.stopPropagation(); it.fn(); setOpen(false); }}
-                                disabled={it.disabled}
-                                style={{
-                                    display: 'block', width: '100%', textAlign: 'left', background: 'none',
-                                    border: 'none',
-                                    color: it.disabled ? 'rgba(255,255,255,0.35)' :
-                                        it.danger ? '#ff6b6b' : '#fff',
-                                    cursor: it.disabled ? 'not-allowed' : 'pointer',
-                                    padding: '11px 12px',
-                                    fontSize: 14, borderRadius: 8, fontFamily: T.ui, letterSpacing: 0.1,
-                                    transition: 'background .15s'
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (it.disabled) return;
-                                    e.currentTarget.style.background = it.danger ? 'rgba(255,80,80,0.12)' : 'rgba(255,255,255,0.08)';
-                                }}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                            >
-                                {it.label}
-                            </button>
-                        )
-                    )}
+                    <ItemMenuList items={menu} onPick={close} />
                 </div>,
                 document.body
             )}
@@ -406,6 +341,13 @@ export function MoreButton({
                     onClose={() => setTagsOpen(false)}
                 />
             )}
+            {refreshOpen && (
+                <RefreshDialog
+                    subject={itemTitle ?? ''}
+                    onRefresh={doRefresh}
+                    onClose={() => setRefreshOpen(false)}
+                />
+            )}
             {confirmDelete && (
                 <ConfirmDialog
                     title={itemTitle ?
@@ -419,6 +361,21 @@ export function MoreButton({
             )}
         </div>
     );
+}
+
+/**
+ * Si el menú cae del borde inferior, se ancla por arriba y crece hacia el
+ * otro lado. `below` es desde dónde colgaría y `above` hasta dónde llegaría
+ * al voltearse: son el mismo punto en el clic derecho y los dos bordes del
+ * botón cuando cuelga de él.
+ */
+function verticalPlacement(below: number, above: number, gap: number): Omit<MenuPos, 'left' | 'right'> {
+    const dropUp = below + MENU_H + gap > window.innerHeight;
+    return {
+        top: dropUp ? undefined : below + gap,
+        bottom: dropUp ? window.innerHeight - above + gap : undefined,
+        maxHeight: dropUp ? above - gap - 12 : window.innerHeight - below - gap - 12
+    };
 }
 
 // Menú antiguo (modo prototipo sin sesión Jellyfin) — solo toasts. Se

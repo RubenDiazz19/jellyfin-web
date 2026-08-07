@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { searchVM } from '../../../../domain/viewModels/SearchViewModel';
 import { MobileThemeProvider } from '../../../theme/MobileThemeProvider';
 import { MobileNav } from '../MobileNav';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../navMetrics';
@@ -42,6 +43,20 @@ vi.mock('../../../../data/api/theme', () => ({
     saveServerThemePrefs: () => Promise.resolve()
 }));
 
+// El VM de búsqueda de verdad pide resultados al servidor al abrirse; aquí solo
+// interesa que el segmento central abra la capa y se marque mientras está.
+vi.mock('../../../../domain/viewModels/SearchViewModel', async () => {
+    const { signal } = await import('@preact/signals-core');
+    const overlayOpen = signal(false);
+    return {
+        searchVM: {
+            overlayOpen,
+            openOverlay: vi.fn(() => { overlayOpen.value = true; }),
+            closeOverlay: vi.fn(() => { overlayOpen.value = false; })
+        }
+    };
+});
+
 let root: Root | null = null;
 let host: HTMLElement | null = null;
 
@@ -63,6 +78,9 @@ function render(initialPath = '/') {
 describe('MobileNav', () => {
     beforeEach(() => {
         sessionState.token = 'tok';
+        searchVM.overlayOpen.value = false;
+        vi.mocked(searchVM.openOverlay).mockClear();
+        vi.mocked(searchVM.closeOverlay).mockClear();
         localStorage.clear();
         document.documentElement.className = '';
         document.documentElement.removeAttribute('style');
@@ -81,7 +99,7 @@ describe('MobileNav', () => {
         document.getElementById('jfp-m3-tokens')?.remove();
     });
 
-    it('móvil: bottom bar con los 3 destinos de contenido y hueco en el body', () => {
+    it('móvil: bottom bar con portada, búsqueda y listas, y hueco en el body', () => {
         document.documentElement.classList.add('layout-mobile');
         render('/');
 
@@ -92,7 +110,7 @@ describe('MobileNav', () => {
         expect(document.body.classList.contains('jfp-has-nav')).toBe(true);
         // Los tres se nombran siempre, aunque en reposo solo se vea el icono.
         expect(buttons.map((b) => b.getAttribute('aria-label')))
-            .toEqual(['Home', 'Shows', 'Movies']);
+            .toEqual(['Home', 'Search', 'Lists']);
     });
 
     it('solo el destino activo enseña su nombre', () => {
@@ -101,13 +119,84 @@ describe('MobileNav', () => {
         expect(host?.textContent).toBe('Home');
     });
 
-    it('la lupa y Ajustes NO son destinos de la píldora', () => {
-        // Buscar vive arriba a la derecha (capa sobre la página) y Ajustes
-        // dentro del menú del avatar, como en escritorio.
+    it('Ajustes NO es un destino de la píldora', () => {
+        // Vive dentro del menú del avatar, como en escritorio: no es un sitio
+        // donde uno esté.
         document.documentElement.classList.add('layout-mobile');
         render('/');
-        expect(host?.textContent).not.toContain('Search');
         expect(host?.textContent).not.toContain('Settings');
+    });
+
+    it('el segmento central abre la capa de búsqueda, no navega', () => {
+        document.documentElement.classList.add('layout-mobile');
+        render('/');
+
+        const search = [...(host?.querySelectorAll('button') ?? [])]
+            .find((b) => b.getAttribute('aria-label') === 'Search');
+        act(() => { search?.click(); });
+
+        expect(vi.mocked(searchVM.openOverlay)).toHaveBeenCalledTimes(1);
+        // Se anuncia como capa que se abre y no como la página donde se está.
+        expect(search?.getAttribute('aria-current')).toBeNull();
+        expect(search?.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('con la capa abierta manda la búsqueda, no la página de debajo', () => {
+        document.documentElement.classList.add('layout-mobile');
+        render('/');
+        expect(host?.textContent).toBe('Home');
+
+        act(() => { searchVM.overlayOpen.value = true; });
+        expect(host?.textContent).toBe('Search');
+        // Marcar dos a la vez (la capa y la portada de debajo) sería mentir.
+        expect(host?.querySelector('[aria-current="page"]')).toBeNull();
+    });
+
+    // Salir de la búsqueda no debe obligar a ir a por la X de arriba.
+    it('pulsar otro segmento cierra la búsqueda y navega', () => {
+        document.documentElement.classList.add('layout-mobile');
+        render('/');
+        act(() => { searchVM.overlayOpen.value = true; });
+
+        const listas = [...(host?.querySelectorAll('button') ?? [])]
+            .find((b) => b.getAttribute('aria-label') === 'Lists');
+        act(() => { listas?.click(); });
+
+        expect(searchVM.overlayOpen.value).toBe(false);
+        expect(listas?.getAttribute('aria-current')).toBe('page');
+    });
+
+    it('cierra la búsqueda aunque ya estuvieras en ese destino', () => {
+        // Aquí la URL no cambia, así que cerrar «al navegar» no bastaría.
+        document.documentElement.classList.add('layout-mobile');
+        render('/');
+        act(() => { searchVM.overlayOpen.value = true; });
+
+        const inicio = [...(host?.querySelectorAll('button') ?? [])]
+            .find((b) => b.getAttribute('aria-label') === 'Home');
+        act(() => { inicio?.click(); });
+
+        expect(searchVM.overlayOpen.value).toBe(false);
+    });
+
+    it('el propio segmento de búsqueda abre y cierra', () => {
+        document.documentElement.classList.add('layout-mobile');
+        render('/');
+
+        const search = [...(host?.querySelectorAll('button') ?? [])]
+            .find((b) => b.getAttribute('aria-label') === 'Search');
+        act(() => { search?.click(); });
+        expect(searchVM.overlayOpen.value).toBe(true);
+
+        act(() => { search?.click(); });
+        expect(searchVM.overlayOpen.value).toBe(false);
+        expect(vi.mocked(searchVM.openOverlay)).toHaveBeenCalledTimes(1);
+    });
+
+    it('la ficha de una lista sigue contando como Listas', () => {
+        document.documentElement.classList.add('layout-mobile');
+        render('/list/playlist/abc123');
+        expect(host?.textContent).toBe('Lists');
     });
 
     it('en Ajustes no queda ningún destino marcado', () => {
@@ -157,12 +246,12 @@ describe('MobileNav', () => {
 
         const buttons = [...(host?.querySelectorAll('button') ?? [])];
         const inicio = buttons.find((b) => b.getAttribute('aria-label') === 'Home');
-        const series = buttons.find((b) => b.getAttribute('aria-label') === 'Shows');
+        const listas = buttons.find((b) => b.getAttribute('aria-label') === 'Lists');
         expect(inicio?.getAttribute('aria-current')).toBe('page');
-        expect(series?.getAttribute('aria-current')).toBeNull();
+        expect(listas?.getAttribute('aria-current')).toBeNull();
 
-        act(() => { series?.click(); });
-        expect(series?.getAttribute('aria-current')).toBe('page');
+        act(() => { listas?.click(); });
+        expect(listas?.getAttribute('aria-current')).toBe('page');
         expect(inicio?.getAttribute('aria-current')).toBeNull();
     });
 

@@ -103,19 +103,24 @@ export function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) =
 }
 
 export function SelectBox({
-    value, options, onChange
+    value, options, disabled, onChange
 }: {
-    value: string; options: [string, string][]; onChange: (v: string) => void;
+    value: string; options: [string, string][];
+    /** Hay un guardado en vuelo: cambiarlo otra vez ahora se perdería. */
+    disabled?: boolean;
+    onChange: (v: string) => void;
 }) {
     return (
         <select
             value={value}
+            disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
             style={{
                 background: 'rgba(255,255,255,0.06)', color: T.fg,
                 border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
                 padding: '9px 12px', fontFamily: T.ui, fontSize: 13,
-                cursor: 'pointer', minWidth: 220
+                cursor: disabled ? 'wait' : 'pointer', minWidth: 220,
+                opacity: disabled ? 0.6 : 1
             }}
         >
             {/* El popup nativo lo tiñe global.css (select/option): inline se

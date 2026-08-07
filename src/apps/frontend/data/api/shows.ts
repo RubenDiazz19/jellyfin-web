@@ -236,9 +236,15 @@ async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
             synopsis: s.Overview,
             // Seasons usually have their own Primary (poster) and no backdrop;
             // reuse the poster as the SeasonCard background.
-            backdrop: imageUrl(s.Id, 'Primary', {
-                tag: s.ImageTags?.Primary, maxHeight: 900
-            }),
+            //
+            // Sin etiqueta no se compone la URL: la temporada NO tiene póster
+            // (pasa con las que el proveedor todavía no ha catalogado) y pedirla
+            // igual devuelve un 404 que se pinta como un rectángulo gris. Vacío
+            // deja que la tarjeta caiga al póster de la serie. Misma regla que
+            // `firstImageUrl`.
+            backdrop: s.ImageTags?.Primary ?
+                imageUrl(s.Id, 'Primary', { tag: s.ImageTags.Primary, maxHeight: 900 }) :
+                undefined,
             episodes: eps
         });
     }

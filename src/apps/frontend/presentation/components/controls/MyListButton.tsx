@@ -1,12 +1,13 @@
 import globalize from 'lib/globalize';
 
 import { useEffect, useState } from 'react';
-import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useToast } from '../toast/ToastProvider';
 import { useInLists } from '../../../domain/bridge/useLists';
 import { LISTS, type ListKind, type ListRef } from '../../../domain/stores';
+import { Dialog, DialogFooter, DialogHeader, DialogInputRow, DialogRow } from './Dialog';
+import { ErrText, Muted, PillButton, TextField } from './fields';
 
 // «Mi lista» de las fichas de película y serie. Abre un diálogo con TODAS las
 // listas —de reproducción y colecciones— marcables a la vez: el título puede
@@ -96,12 +97,6 @@ function MyListDialog({ itemId, itemTitle, onClose }: {
         return () => window.removeEventListener(LISTS.event, sync);
     }, []);
 
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        window.addEventListener('keydown', onKey);
-        return () => window.removeEventListener('keydown', onKey);
-    }, [onClose]);
-
     const toggle = async (list: ListRef) => {
         const wasIn = LISTS.contains(list.kind, list.id, itemId);
         setBusy(`${list.kind}:${list.id}`);
@@ -137,107 +132,71 @@ function MyListDialog({ itemId, itemTitle, onClose }: {
     const playlists = lists.filter((l) => l.kind === 'playlist');
     const collections = lists.filter((l) => l.kind === 'collection');
 
-    return ReactDOM.createPortal(
-        <div
-            // Solo cierra si el clic cae en el fondo. Comparar el objetivo con
-            // el propio elemento evita tener que parar la propagación dentro
-            // del diálogo, que es lo que obligaba a colgarle un manejador de
-            // ratón al contenedor con `role="dialog"`.
-            onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-            style={{
-                position: 'fixed', inset: 0, zIndex: 10000,
-                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24
-            }}
+    return (
+        <Dialog
+            label={globalize.translate('MyList')}
+            width={440}
+            maxHeight='76vh'
+            column
+            onClose={onClose}
         >
-            <div
-                role='dialog'
-                aria-modal='true'
-                aria-label={globalize.translate('MyList')}
-                style={{
-                    width: 'min(440px, 100%)', maxHeight: '76vh',
-                    display: 'flex', flexDirection: 'column',
-                    background: 'rgba(18,18,20,0.98)', borderRadius: 14,
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    boxShadow: '0 18px 50px rgba(0,0,0,0.6)',
-                    padding: 20, fontFamily: T.ui, color: '#fff'
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
-                    <div style={{ fontSize: 15, fontWeight: 500 }}>
-                        {globalize.translate('MyList')}
-                    </div>
-                    <button
-                        onClick={onClose}
-                        aria-label={globalize.translate('ButtonClose')}
-                        style={{
-                            marginLeft: 'auto', background: 'none', border: 'none',
-                            color: T.dim, cursor: 'pointer', fontSize: 18, lineHeight: 1
-                        }}
-                    >×</button>
-                </div>
-                <div style={{
-                    fontSize: 12, color: T.dim, marginBottom: 16,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                }}>
-                    {itemTitle}
-                </div>
+            <DialogHeader
+                title={globalize.translate('MyList')}
+                subtitle={itemTitle}
+                onClose={onClose}
+            />
 
-                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: 14 }}>
-                    {error ? (
-                        <div style={{ color: '#ff6b6b', fontSize: 13 }}>{error}</div>
-                    ) : loading ? (
-                        <div style={{ color: T.dim, fontSize: 13 }}>{globalize.translate('Loading')}</div>
-                    ) : lists.length === 0 ? (
-                        <div style={{ color: T.dim, fontSize: 13 }}>
-                            {globalize.translate('MessageNoPlaylistsYet')}
-                        </div>
-                    ) : (
-                        <>
-                            <ListGroup
-                                title={globalize.translate('Playlists')}
-                                lists={playlists}
-                                itemId={itemId}
-                                busy={busy}
-                                onToggle={toggle}
-                            />
-                            <ListGroup
-                                title={globalize.translate('Collections')}
-                                lists={collections}
-                                itemId={itemId}
-                                busy={busy}
-                                onToggle={toggle}
-                            />
-                        </>
-                    )}
-                </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: 14 }}>
+                {error ? (
+                    <ErrText>{error}</ErrText>
+                ) : loading ? (
+                    <Muted>{globalize.translate('Loading')}</Muted>
+                ) : lists.length === 0 ? (
+                    <Muted>{globalize.translate('MessageNoPlaylistsYet')}</Muted>
+                ) : (
+                    <>
+                        <ListGroup
+                            title={globalize.translate('Playlists')}
+                            lists={playlists}
+                            itemId={itemId}
+                            busy={busy}
+                            onToggle={toggle}
+                        />
+                        <ListGroup
+                            title={globalize.translate('Collections')}
+                            lists={collections}
+                            itemId={itemId}
+                            busy={busy}
+                            onToggle={toggle}
+                        />
+                    </>
+                )}
+            </div>
 
-                <div style={{
-                    paddingTop: 12, flexShrink: 0,
-                    borderTop: '1px solid rgba(255,255,255,0.08)'
-                }}>
-                    {/* Qué se crea se elige aquí: lista de reproducción o
-                        colección. Las dos aceptan lo mismo, pero la colección
-                        guarda las series enteras y la lista las desmenuza en
-                        capítulos, así que no da igual cuál. */}
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                        <KindTab
-                            label={globalize.translate('Playlists')}
-                            active={newKind === 'playlist'}
-                            onClick={() => setNewKind('playlist')}
-                        />
-                        <KindTab
-                            label={globalize.translate('Collections')}
-                            active={newKind === 'collection'}
-                            onClick={() => setNewKind('collection')}
-                        />
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <input
+            <DialogFooter>
+                {/* Qué se crea se elige aquí: lista de reproducción o
+                    colección. Las dos aceptan lo mismo, pero la colección
+                    guarda las series enteras y la lista las desmenuza en
+                    capítulos, así que no da igual cuál. */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                    <KindTab
+                        label={globalize.translate('Playlists')}
+                        active={newKind === 'playlist'}
+                        onClick={() => setNewKind('playlist')}
+                    />
+                    <KindTab
+                        label={globalize.translate('Collections')}
+                        active={newKind === 'collection'}
+                        onClick={() => setNewKind('collection')}
+                    />
+                </div>
+                <DialogInputRow
+                    field={
+                        <TextField
                             value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
+                            onChange={setNewName}
+                            onEnter={() => { void create(); }}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') void create();
                                 // Con texto a medio escribir, Escape cancela el
                                 // nombre, no cierra el diálogo entero.
                                 if (e.key === 'Escape' && newName) {
@@ -246,31 +205,21 @@ function MyListDialog({ itemId, itemTitle, onClose }: {
                                 }
                             }}
                             placeholder={globalize.translate('LabelNewName')}
-                            style={{
-                                flex: 1, background: 'rgba(255,255,255,0.06)', color: '#fff',
-                                border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
-                                padding: '9px 12px', fontFamily: T.ui, fontSize: 13, outline: 'none'
-                            }}
                         />
-                        <button
-                            disabled={busy !== null || !newName.trim()}
+                    }
+                    action={
+                        <PillButton
                             onClick={() => { void create(); }}
-                            style={{
-                                padding: '9px 16px', borderRadius: 999,
-                                background: newName.trim() ? '#fff' : 'rgba(255,255,255,0.15)',
-                                color: newName.trim() ? '#000' : T.dim,
-                                border: 'none', fontFamily: T.ui, fontSize: 13, fontWeight: 600,
-                                cursor: busy !== null || !newName.trim() ? 'default' : 'pointer',
-                                whiteSpace: 'nowrap'
-                            }}
+                            size='sm'
+                            busy={busy !== null}
+                            disabled={!newName.trim()}
                         >
                             {globalize.translate('ButtonCreate')}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>,
-        document.body
+                        </PillButton>
+                    }
+                />
+            </DialogFooter>
+        </Dialog>
     );
 }
 
@@ -311,54 +260,20 @@ function ListGroup({ title, lists, itemId, busy, onToggle }: {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {lists.map((l) => {
-                    const checked = LISTS.contains(l.kind, l.id, itemId);
+                    const key = `${l.kind}:${l.id}`;
                     return (
-                        <button
-                            key={`${l.kind}:${l.id}`}
-                            role='checkbox'
-                            aria-checked={checked}
-                            disabled={busy !== null}
+                        <DialogRow
+                            key={key}
+                            image={l.image}
+                            name={l.name}
+                            count={l.count}
+                            checked={LISTS.contains(l.kind, l.id, itemId)}
+                            busy={busy !== null}
+                            // En vuelo pero en otra fila: se apaga para que se
+                            // vea cuál se está moviendo.
+                            dimmed={busy !== null && busy !== key}
                             onClick={() => onToggle(l)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 12,
-                                padding: '9px 10px', borderRadius: 8,
-                                background: 'none', border: 'none', color: '#fff',
-                                cursor: busy ? 'wait' : 'pointer', textAlign: 'left',
-                                fontFamily: T.ui, fontSize: 14, transition: 'background .15s',
-                                opacity: busy && busy !== `${l.kind}:${l.id}` ? 0.5 : 1
-                            }}
-                            onMouseEnter={(ev) => (ev.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-                            onMouseLeave={(ev) => (ev.currentTarget.style.background = 'transparent')}
-                        >
-                            <span style={{
-                                flexShrink: 0,
-                                width: 20, height: 20, borderRadius: 4,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: checked ? '#fff' : 'transparent',
-                                border: checked ? 'none' : '2px solid rgba(255,255,255,0.35)',
-                                color: '#000', fontSize: 13, lineHeight: 1
-                            }}>
-                                {checked ? '✓' : ''}
-                            </span>
-                            <div style={{
-                                width: 40, height: 40, borderRadius: 6, flexShrink: 0,
-                                background: l.image ?
-                                    `url(${l.image}) center/cover` :
-                                    'rgba(255,255,255,0.08)'
-                            }} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{
-                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                }}>
-                                    {l.name}
-                                </div>
-                                {l.count != null && (
-                                    <div style={{ fontSize: 12, color: T.dim }}>
-                                        {globalize.translate('ItemCount', l.count)}
-                                    </div>
-                                )}
-                            </div>
-                        </button>
+                        />
                     );
                 })}
             </div>

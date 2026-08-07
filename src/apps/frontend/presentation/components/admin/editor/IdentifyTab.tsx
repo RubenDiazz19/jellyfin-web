@@ -10,7 +10,8 @@ import {
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
 import type { IdentifiableKind } from './MetadataEditor';
-import { Field, Muted, PrimaryBtn, SecondaryBtn, TextInput } from './primitives';
+import { Muted, PillButton, TextField } from '../../controls/fields';
+import { Field } from './primitives';
 
 type Props = {
     itemId: string;
@@ -74,15 +75,15 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
             </Muted>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 12 }}>
                 <Field label={globalize.translate('LabelName')}>
-                    <TextInput value={name} onChange={setName} />
+                    <TextField size='md' value={name} onChange={setName} />
                 </Field>
                 <Field label={globalize.translate('LabelYear')}>
-                    <TextInput value={year} onChange={setYear} placeholder={globalize.translate('Optional')} />
+                    <TextField size='md' value={year} onChange={setYear} placeholder={globalize.translate('Optional')} />
                 </Field>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <PrimaryBtn onClick={doSearch} disabled={searching}>
+                    <PillButton onClick={doSearch} busy={searching}>
                         {globalize.translate(searching ? 'Searching' : 'Search')}
-                    </PrimaryBtn>
+                    </PillButton>
                 </div>
             </div>
 
@@ -118,9 +119,13 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                                 )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center' }}>
-                                <SecondaryBtn onClick={() => apply(i)} disabled={applying === i}>
+                                <PillButton
+                                    onClick={() => apply(i)}
+                                    variant='ghost'
+                                    busy={applying === i}
+                                >
                                     {globalize.translate(applying === i ? 'Applying' : 'Apply')}
-                                </SecondaryBtn>
+                                </PillButton>
                             </div>
                         </div>
                     ))}

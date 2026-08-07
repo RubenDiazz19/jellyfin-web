@@ -27,9 +27,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import globalize from 'lib/globalize';
 
+import CollectionsBookmarkRounded from '@mui/icons-material/CollectionsBookmarkRounded';
 import HomeRounded from '@mui/icons-material/HomeRounded';
-import LiveTvRounded from '@mui/icons-material/LiveTvRounded';
-import MovieRounded from '@mui/icons-material/MovieRounded';
+import SearchRounded from '@mui/icons-material/SearchRounded';
 
 import {
     fromAppPath,
@@ -39,6 +39,8 @@ import {
     type Route
 } from '../../../app/router';
 import { useSession } from '../../../domain/bridge/useSession';
+import { searchVM } from '../../../domain/viewModels/SearchViewModel';
+import { useSignalValue } from '../../../domain/bridge/useViewModel';
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
 import { useLandscape } from '../../theme/responsive';
 import { haptic } from '../../../shared/haptics';
@@ -54,17 +56,24 @@ import {
 
 export const NAV_CLASS = 'jfp-has-nav';
 
-type Tab = { id: string; key: string; icon: ReactNode; route: Route };
+/** Un segmento lleva a una página, o —la búsqueda— abre su capa encima. */
+type Tab = { id: string; key: string; icon: ReactNode; route?: Route };
 
 const ICON_STYLE = { fontSize: 22 } as const;
 
-// Solo las tres secciones de contenido, como el menú de escritorio. La lupa
-// vive arriba a la derecha (Nav.tsx) y Ajustes, dentro del menú del avatar:
-// no son destinos donde uno «esté», son acciones.
+// Portada, búsqueda y listas. La búsqueda está aquí y no arriba a la derecha
+// porque en un móvil el pulgar llega abajo y no al canto superior; en
+// escritorio la lupa sigue donde estaba (Nav.tsx), que allí manda el ratón.
+// Ajustes sigue dentro del menú del avatar: no es un sitio donde uno «esté».
 const TABS: Tab[] = [
     { id: 'home', key: 'Home', icon: <HomeRounded style={ICON_STYLE} />, route: { page: 'home' } },
-    { id: 'series', key: 'Shows', icon: <LiveTvRounded style={ICON_STYLE} />, route: { page: 'series' } },
-    { id: 'movies', key: 'Movies', icon: <MovieRounded style={ICON_STYLE} />, route: { page: 'movies' } }
+    { id: 'search', key: 'Search', icon: <SearchRounded style={ICON_STYLE} /> },
+    {
+        id: 'lists',
+        key: 'Lists',
+        icon: <CollectionsBookmarkRounded style={ICON_STYLE} />,
+        route: { page: 'lists' }
+    }
 ];
 
 // Superficie de un segmento en reposo: translúcida donde haya color-mix
@@ -96,8 +105,9 @@ const ENTER_EASING = 'var(--md-sys-motion-easing-emphasized-decelerate, cubic-be
 function activeTab(page: Route['page']): string | null {
     switch (page) {
         case 'home': return 'home';
-        case 'series': return 'series';
-        case 'movies': return 'movies';
+        // La ficha de una lista es «estar» en Listas, igual que la portada.
+        case 'lists': return 'lists';
+        case 'list': return 'lists';
         default: return null;
     }
 }
@@ -108,6 +118,9 @@ export function MobileNav() {
     const { session } = useSession();
     const location = useLocation();
     const navigate = useNavigate();
+    // La búsqueda no es una página: se marca activa mientras su capa está
+    // abierta, que es lo que el segmento representa en ese momento.
+    const searching = useSignalValue(searchVM.overlayOpen);
 
     const visible = layout !== null && !!session?.accessToken;
     const isRail = layout === 'tablet' && !landscape;
@@ -132,7 +145,11 @@ export function MobileNav() {
 
     if (!visible) return null;
 
-    const active = activeTab(pathToRoute(fromAppPath(location.pathname)).page);
+    // La capa de búsqueda tapa la página, así que mientras está abierta manda
+    // ella: dejar además marcada la de debajo sería marcar dos.
+    const active = searching ?
+        'search' :
+        activeTab(pathToRoute(fromAppPath(location.pathname)).page);
 
     // El contenedor no pinta nada: es solo la fila (o columna) de segmentos.
     // `fit-content` + márgenes automáticos = ocupa lo justo y va centrado.
@@ -173,14 +190,24 @@ export function MobileNav() {
                     <button
                         key={tab.id}
                         data-ripple
-                        aria-current={isActive ? 'page' : undefined}
+                        // La búsqueda no es una página: se anuncia como una capa
+                        // que se abre, no como el sitio donde uno está.
+                        aria-current={isActive && tab.route ? 'page' : undefined}
+                        aria-expanded={tab.route ? undefined : searching}
                         // El nombre accesible no depende de que se vea la
                         // etiqueta: en reposo el segmento es solo el icono.
                         aria-label={label}
                         title={label}
                         onClick={() => {
                             if (!isActive) haptic('select');
-                            navigate(toAppPath(routeToPath(tab.route)));
+                            // Pulsar cualquier segmento sale de la búsqueda,
+                            // incluido el suyo (que así abre y cierra). Se
+                            // cierra aquí y no solo al cambiar de página: si ya
+                            // estabas en el destino la URL no cambia, y la capa
+                            // se quedaría puesta obligando a buscar la X.
+                            if (searching) searchVM.closeOverlay();
+                            if (tab.route) navigate(toAppPath(routeToPath(tab.route)));
+                            else if (!searching) searchVM.openOverlay();
                         }}
                         style={{
                             ...SEGMENT,

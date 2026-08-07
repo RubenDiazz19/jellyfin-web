@@ -4,18 +4,12 @@
 // La regla es CSS, así que se comprueba sobre el texto: sobre todo que cubra
 // lo clicable y que NO se cuele en lo que gestiona su propio gesto.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { frontendCss } from './frontendCss';
 
 // Sin comentarios: si no, el texto que explica la regla cuenta como si fuera
 // parte del selector (los comentarios de aquí nombran justo lo que se excluye).
-const globalCss = fs
-    .readFileSync(
-        path.resolve(process.cwd(), 'src/apps/frontend/presentation/styles/global.css'),
-        'utf-8'
-    )
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+const globalCss = frontendCss().replace(/\/\*[\s\S]*?\*\//g, '');
 
 /**
  * Selectores (sin comentarios ni declaraciones) de las reglas que declaran

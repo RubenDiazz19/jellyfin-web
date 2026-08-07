@@ -5,7 +5,8 @@
 // funciona igual esté uno en Inicio, en una ficha o en la biblioteca, y la
 // capa queda por encima de cualquier hero a pantalla completa.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import globalize from 'lib/globalize';
 
@@ -25,6 +26,24 @@ export function SearchOverlay({ navigate }: { navigate: Navigate }) {
     useViewModel(searchVM);
     const r = useResponsive();
     const open = searchVM.overlayOpen.value;
+
+    // La capa se abre ENCIMA de una página. Si esa página cambia por debajo, ya
+    // no está encima de lo que el usuario estaba mirando: se cierra sola.
+    //
+    // Va aquí y no en cada sitio que navega porque las salidas son muchas —la
+    // píldora de navegación, el logo, el botón de atrás del navegador— y basta
+    // con que a una se le olvide para que la capa se quede pegada y haya que ir
+    // a buscar la X.
+    const { pathname } = useLocation();
+    const openedAt = useRef<string | null>(null);
+    useEffect(() => {
+        if (!open) {
+            openedAt.current = null;
+            return;
+        }
+        if (openedAt.current === null) openedAt.current = pathname;
+        else if (openedAt.current !== pathname) searchVM.closeOverlay();
+    }, [open, pathname]);
 
     useEffect(() => {
         if (!open) return;

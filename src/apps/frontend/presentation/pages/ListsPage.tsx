@@ -9,6 +9,7 @@ import { EmptyState } from '../components/skeleton/Skeleton';
 import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
+import { PageTitle, SectionTitle } from '../components/layout/Title';
 import { LISTS, type ListKind, type ListRef } from '../../domain/stores';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate, Route } from '../../app/router';
@@ -49,12 +50,7 @@ export function ListsPage({ navigate }: Props) {
         <>
             <Nav navigate={navigate} active='lists' />
             <PageSection>
-                <h1 style={{
-                    fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
-                    fontSize: r.touch ? 34 : 52, margin: '0 0 44px', letterSpacing: -0.5
-                }}>
-                    {globalize.translate('Lists')}
-                </h1>
+                <PageTitle margin='0 0 44px'>{globalize.translate('Lists')}</PageTitle>
 
                 {error ? (
                     <EmptyState title={globalize.translate('MessageNoPlaylistsYet')} hint={error} />
@@ -135,12 +131,7 @@ function Group({ title, empty, children }: {
     const r = useResponsive();
     return (
         <div>
-            <h3 style={{
-                fontFamily: T.display, fontStyle: 'italic', fontSize: 26, fontWeight: 300,
-                margin: '0 0 20px', letterSpacing: -0.3
-            }}>
-                {title}
-            </h3>
+            <SectionTitle>{title}</SectionTitle>
             {empty ? (
                 <div style={{ color: T.dim, fontSize: 13 }}>
                     {globalize.translate('ListsEmpty')}

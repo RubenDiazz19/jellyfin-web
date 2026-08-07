@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { downloadSubtitle, searchSubtitles, type RemoteSubtitle } from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
-import { Field, Muted, PrimaryBtn, SecondaryBtn, TextInput } from './primitives';
+import { Muted, PillButton, TextField } from '../../controls/fields';
+import { Field } from './primitives';
 
 export function SubtitlesTab({ itemId }: { itemId: string }) {
     const [lang, setLang] = useState('spa');
@@ -45,12 +46,12 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
             </Muted>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12 }}>
                 <Field label={globalize.translate('LabelSubtitleLanguageCode')}>
-                    <TextInput value={lang} onChange={setLang} />
+                    <TextField size='md' value={lang} onChange={setLang} />
                 </Field>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <PrimaryBtn onClick={doSearch} disabled={searching || !lang}>
+                    <PillButton onClick={doSearch} busy={searching} disabled={!lang}>
                         {globalize.translate(searching ? 'Searching' : 'Search')}
-                    </PrimaryBtn>
+                    </PillButton>
                 </div>
             </div>
 
@@ -68,9 +69,13 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
                                     {[r.ProviderName, r.Language, r.Format].filter(Boolean).join(' · ')}
                                 </div>
                             </div>
-                            <SecondaryBtn onClick={() => doDownload(r.Id)} disabled={downloading === r.Id}>
+                            <PillButton
+                                onClick={() => doDownload(r.Id)}
+                                variant='ghost'
+                                busy={downloading === r.Id}
+                            >
                                 {globalize.translate(downloading === r.Id ? 'Downloading' : 'Download')}
-                            </SecondaryBtn>
+                            </PillButton>
                         </div>
                     ))}
                 </div>

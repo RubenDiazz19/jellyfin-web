@@ -8,9 +8,8 @@
 // reaparecía al salir con Esc—, así que estas son las reglas que no pueden
 // volver a olvidarse.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { frontendCss } from './frontendCss';
 
 /**
  * Quita los comentarios. Sin esto, buscar «touch-action: manipulation»
@@ -32,10 +31,7 @@ function stripComments(css: string): string {
     }
 }
 
-const globalCss = stripComments(fs.readFileSync(
-    path.resolve(process.cwd(), 'src/apps/frontend/presentation/styles/global.css'),
-    'utf-8'
-));
+const globalCss = stripComments(frontendCss());
 
 /**
  * Los selectores de cada regla cuyo cuerpo declara `needle`.

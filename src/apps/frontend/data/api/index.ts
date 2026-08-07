@@ -32,7 +32,9 @@ export {
     refreshItemMetadata,
     deleteItem,
     downloadUrl,
-    nativeItemUrl
+    nativeItemUrl,
+    type RefreshMode,
+    type RefreshOptions
 } from './items';
 export { getFavoriteKeys, favoriteServerId, hydrateFavorites } from './favorites';
 export {
@@ -101,3 +103,17 @@ export {
     type UserView,
     type UserListEntry
 } from './users';
+export {
+    getAvailableLocales,
+    getLocalePrefs,
+    setLocalePrefs,
+    type LocalePrefs
+} from './preferences';
+export {
+    getSkipLengths,
+    setSkipLengths,
+    getShowRemainingTime,
+    setShowRemainingTime,
+    type SkipLengths
+} from './playbackPrefs';
+export { setSessionUser } from '../session/session';

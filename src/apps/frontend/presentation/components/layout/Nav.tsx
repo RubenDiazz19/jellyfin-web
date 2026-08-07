@@ -109,19 +109,10 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                             )}
                         </>
                     )}
-                    {/* La lupa va aquí arriba, como en escritorio: abre la capa
-                        de búsqueda encima de la página en vez de navegar. */}
-                    <button
-                        onClick={searchVM.openOverlay}
-                        aria-label={globalize.translate('Search')}
-                        style={{
-                            ...linkReset, display: 'flex', alignItems: 'center',
-                            padding: 4, borderRadius: 'var(--md-sys-shape-corner-full, 9999px)',
-                            color: 'inherit'
-                        }}
-                    >
-                        <Ic.Search size={19} />
-                    </button>
+                    {/* Sin lupa aquí: en táctil la búsqueda es el segmento
+                        central de la píldora de abajo (MobileNav), donde llega
+                        el pulgar. Arriba quedan el logo, las acciones del item
+                        y la cuenta. En escritorio sigue estando, más abajo. */}
                     <UserAvatar navigate={navigate} />
                 </div>
             </div>

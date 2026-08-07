@@ -18,6 +18,7 @@ import { SelectionBar } from '../components/controls/SelectionBar';
 import { SelectToggle } from '../components/controls/SelectToggle';
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
+import { PageTitle } from '../components/layout/Title';
 import { useViewModel } from '../../domain/bridge/useViewModel';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
@@ -60,12 +61,7 @@ export function LibraryPage({ kind, navigate }: Props) {
                     display: 'flex', alignItems: 'baseline', gap: 16,
                     marginBottom: r.touch ? 22 : 44
                 }}>
-                    <h1 style={{
-                        fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
-                        fontSize: r.touch ? 32 : 52, margin: 0, letterSpacing: -0.5
-                    }}>
-                        {title}
-                    </h1>
+                    <PageTitle>{title}</PageTitle>
                     {!loading && (
                         <span style={{ fontFamily: T.ui, fontSize: 13, color: T.dim }}>
                             {globalize.translate(isSeries ? 'ShowCount' : 'MovieCount', items.length)}
