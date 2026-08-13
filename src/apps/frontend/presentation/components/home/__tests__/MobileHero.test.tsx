@@ -87,7 +87,7 @@ describe('MobileHero', () => {
     it('respeta el orden título → dato → play → puntos, todo en flujo', () => {
         render(false);
         const title = host?.querySelector('h1');
-        const play = host?.querySelector('button[aria-label="Reproducir"]');
+        const play = host?.querySelector('button[aria-label="Play"]');
         const dot = host?.querySelector('button[aria-label="Slide 2"]');
         expect(title).not.toBeNull();
         expect(play).not.toBeNull();
@@ -162,6 +162,8 @@ describe('MobileHero', () => {
         const labels = [...(host?.querySelectorAll('button') ?? [])]
             .map((b) => b.getAttribute('aria-label'));
         // Solo el título y el play: nada que navegar en una novedad.
-        expect(labels).toEqual(['The Batman', 'Reproducir']);
+        // El aria-label del play ahora pasa por globalize; el setup de test
+        // carga el diccionario en-US, así que es 'Play' (no 'Reproducir').
+        expect(labels).toEqual(['The Batman', 'Play']);
     });
 });

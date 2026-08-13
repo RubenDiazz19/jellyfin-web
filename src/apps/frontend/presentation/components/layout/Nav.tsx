@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -7,7 +7,7 @@ import globalize from 'lib/globalize';
 // funciona en dev, donde Vite sirve src/ tal cual.
 import jellyfinLogo from '../../../../../assets/img/jellyfin-white.png';
 import { T } from '../../theme/tokens';
-import { Ic } from '../../theme/icons';
+import { Ic, JellyfinLogo } from '../../theme/icons';
 import { useScrollY } from '../../../domain/bridge/useScrollY';
 import { FavButton } from '../controls/FavButton';
 import { WatchedButton } from '../controls/WatchedButton';
@@ -49,6 +49,25 @@ const linkReset: React.CSSProperties = {
     cursor: 'pointer'
 };
 
+// Logo con fallback: si el asset falla (servidor sin el fichero, base path
+// distinto, proxy que devuelve HTML…), el <img> no se queda roto: se descarta
+// y se pinta la silueta SVG inline JellyfinLogo. El estado vive por icono,
+// no global —un fallo no afecta a otras navs montadas a la vez.
+function Logo({ size, style }: { size: number; style?: React.CSSProperties }) {
+    const [failed, setFailed] = useState(false);
+    if (failed) return <JellyfinLogo size={size} style={style} />;
+    return (
+        <img
+            src={jellyfinLogo}
+            alt=''
+            width={size}
+            height={size}
+            style={{ display: 'block', ...style }}
+            onError={() => setFailed(true)}
+        />
+    );
+}
+
 export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionData }: NavProps) {
     const y = useScrollY();
     const scrolled = y > 80;
@@ -79,13 +98,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                         color: 'var(--md-sys-color-on-surface, #fff)'
                     }}
                 >
-                    <img
-                        src={jellyfinLogo}
-                        alt=''
-                        width={19}
-                        height={19}
-                        style={{ display: 'block' }}
-                    />
+                    <Logo size={19} />
                     jellyfin
                 </button>
                 <div style={{
@@ -142,13 +155,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
             >
                 {/* Silueta blanca del logo: el original a color desentona con
                     el blanco y negro del resto de la interfaz. */}
-                <img
-                    src='assets/img/jellyfin-white.png'
-                    alt=''
-                    width={22}
-                    height={22}
-                    style={{ display: 'block' }}
-                />
+                <Logo size={22} />
                 jellyfin
             </button>
 

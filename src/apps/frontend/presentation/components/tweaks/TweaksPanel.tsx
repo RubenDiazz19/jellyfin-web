@@ -5,6 +5,8 @@
 
 import React, { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
+import globalize from 'lib/globalize';
+
 const STYLE = `
   .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
     max-height:calc(100vh - 32px);display:flex;flex-direction:column;
@@ -172,7 +174,7 @@ export function TweaksPanel({ title = 'Tweaks', children }: PanelProps) {
                     <b>{title}</b>
                     <button
                         className='twk-x'
-                        aria-label='Close tweaks'
+                        aria-label={globalize.translate('ButtonClose')}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={dismiss}
                     >

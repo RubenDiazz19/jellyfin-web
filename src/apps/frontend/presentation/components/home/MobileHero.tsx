@@ -16,6 +16,8 @@
 
 import { useRef } from 'react';
 
+import globalize from 'lib/globalize';
+
 import type { CarouselSlide } from '../../../domain/models';
 import { T } from '../../theme/tokens';
 import { useShortViewport } from '../../theme/responsive';
@@ -75,7 +77,7 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: P
 
     // Solo las series traen T·E que enseñar, y solo ahí la línea navega.
     const hasEpisode = isContinue && slide.season != null;
-    const plainMeta = isContinue ? 'Continuar viendo' : String(slide.year);
+    const plainMeta = isContinue ? globalize.translate('ContinueWatching') : String(slide.year);
     const remaining = isContinue ? formatRemainingCompact(slide.remaining) : '';
 
     // El Backdrop alimenta la seed del dynamic color con lo que se ve, así

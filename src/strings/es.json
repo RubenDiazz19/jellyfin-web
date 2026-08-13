@@ -1279,6 +1279,7 @@
     "MoreMediaInfo": "Información del archivo",
     "LabelVideoCodec": "Codec de video",
     "LabelVideoBitrate": "Bitrade de video",
+    "LabelVolume": "Volumen",
     "LabelTranscodingProgress": "Progreso de la conversión",
     "LabelTranscodingFramerate": "Velocidad de la conversión",
     "LabelSize": "Tamaño",

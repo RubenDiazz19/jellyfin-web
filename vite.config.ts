@@ -317,7 +317,11 @@ function emitStaticFiles(): Plugin {
             // estas dos rutas tal cual — un nombre hasheado por Vite sería
             // distinto en cada build y manifest.json no tiene forma de
             // enterarse de cuál le tocó.
-            for (const name of ['jellyfin-icon.png', 'jellyfin-icon-180.png']) {
+            for (const name of [
+                'jellyfin-icon.png',
+                'jellyfin-icon-180.png',
+                'jellyfin-maskable-512.png'
+            ]) {
                 emit(`assets/img/${name}`, fs.readFileSync(path.join(SRC_DIR, 'assets/img', name)));
             }
         }

@@ -1,4 +1,5 @@
 // Control de volumen: botón mute + slider horizontal.
+import globalize from 'lib/globalize';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
@@ -15,7 +16,9 @@ export function VolumeSlider() {
                 type='button'
                 className='jfp-video-btn'
                 onClick={videoPlayerVM.toggleMute}
-                aria-label={muted ? 'Activar sonido' : 'Silenciar'}
+                aria-label={muted ?
+                    globalize.translate('Unmute') :
+                    globalize.translate('Mute')}
             >
                 {muted ? <PlayerIc.VolumeMuted /> : <PlayerIc.VolumeHigh />}
             </button>
@@ -25,7 +28,7 @@ export function VolumeSlider() {
                 max={1}
                 step={0.02}
                 value={volume}
-                aria-label='Volumen'
+                aria-label={globalize.translate('LabelVolume')}
                 onChange={(e) => videoPlayerVM.setVolume(Number(e.target.value))}
                 style={{ ['--jfp-vol' as string]: `${volume * 100}%` }}
             />

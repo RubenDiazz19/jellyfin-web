@@ -1,4 +1,6 @@
 import { useState } from 'react';
+
+import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 
@@ -78,7 +80,10 @@ export function PlayBtn({
                 // También al llegar con el teclado: quien navega con Tab
                 // merece el mismo adelanto que quien llega con el ratón.
                 onFocus={() => onHover?.()}
-                aria-label={label || (watched ? 'Visto — reproducir de nuevo' : 'Reproducir')}
+                aria-label={label || (watched ?
+                    globalize.translate('PlayFromBeginning') :
+                    globalize.translate('Play')
+                )}
                 style={{
                     position: 'absolute', inset: 0,
                     width: size, height: size, borderRadius: '50%',

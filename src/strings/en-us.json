@@ -1249,6 +1249,7 @@
     "LabelVersion": "Version",
     "LabelVersionInstalled": "{0} installed",
     "LabelVideoBitrate": "Video bitrate",
+    "LabelVolume": "Volume",
     "LabelVideoCodec": "Video codec",
     "LabelVideoRange": "Video range",
     "LabelVideoResolution": "Video resolution",

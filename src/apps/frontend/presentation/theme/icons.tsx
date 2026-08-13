@@ -156,3 +156,33 @@ const Dots = ({ size = 18 }: { size?: number }) => (
 );
 
 export const Ic = { Play, Plus, Check, Search, Arrow, Tomato, Imdb, Dot, Heart, Tick, Dots, Refresh };
+
+// Silueta del logo de Jellyfin como SVG inline. No reproduce el PNG a color
+// (es un perfil blanco) sino que da un fallback estable cuando el asset falla
+// —otro servidor, base path distinto, proxy que traga imágenes, etc.— para que
+// la nav nunca se quede con el icono roto del navegador.
+export function JellyfinLogo({ size = 22, style }: { size?: number; style?: CSSProperties }) {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox='0 0 24 24'
+            fill='none'
+            style={{ display: 'block', ...style }}
+            aria-hidden='true'
+        >
+            {/* Cabeza: cúpula redondeada */}
+            <path
+                d='M5 10.5C5 6.4 8.1 3 12 3s7 3.4 7 7.5'
+                fill='#fff'
+            />
+            {/* Bandeau horizontal: separa la cúpula de los tentáculos */}
+            <rect x='5' y='9' width='14' height='2.2' rx='1.1' fill='#fff' />
+            {/* Tentáculos colgantes */}
+            <path
+                d='M8 11.8v5.7c0 .9-.7 1.5-1.5 1.5S5 18.4 5 17.5M12 11.8v6.7c0 .8-.7 1.5-1.5 1.5S9 19.3 9 18.5M14 11.8v6.7c0 .8.7 1.5 1.5 1.5s1.5-.7 1.5-1.5M18 11.8v5.7c0 .9.7 1.5 1.5 1.5s1.5-.6 1.5-1.5'
+                fill='#fff'
+            />
+        </svg>
+    );
+}
