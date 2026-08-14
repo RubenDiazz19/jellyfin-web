@@ -5,6 +5,7 @@ import { WatchedButton } from '../controls/WatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { PlayBtn } from '../controls/PlayBtn';
 import { Progress } from '../controls/Progress';
+import { useItemContextMenu } from '../controls/useItemContextMenu';
 import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
 import type { CarouselSlide } from '../../../domain/models';
@@ -18,9 +19,21 @@ export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props)
     // Apaisada 16:9 aprox — 380x214 en desktop; compacta en touch.
     const w = r.touch ? (r.mobile ? 250 : 300) : 380;
     const h = Math.round(w * 214 / 380);
+    const ctx = useItemContextMenu({
+        // Con id real del servidor el menú sabe reproducir/descargar/etc.; sin
+        // él (modo prototipo) cae al menú legado, que no hace daño.
+        id: slide.jfEpisodeId ?? slide.id,
+        type: slide.jfEpisodeId ? 'episode' : 'show',
+        itemTitle: slide.title,
+        queueSubtitle: slide.season != null && slide.episode != null ?
+            `T${slide.season} E${String(slide.episode).padStart(2, '0')}` :
+            String(slide.year),
+        queuePoster: slide.poster
+    });
     return (
         <div
             onClick={() => navigate({ page: 'show', showId: slide.id })}
+            onContextMenu={ctx.onContextMenu}
             style={{ width: w, flex: `0 0 ${w}px`, cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
@@ -74,6 +87,7 @@ export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props)
                     <span>{slide.remaining}</span>
                 </div>
             </div>
+            {ctx.menu}
         </div>
     );
 });

@@ -18,6 +18,7 @@ import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
 import { MyListButton } from '../components/controls/MyListButton';
+import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { CastList } from '../components/cast/CastList';
@@ -80,12 +81,27 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             navigate({ page: 'episode', showId: show.id, seasonN: target.seasonN, epN: target.epN });
         }
     };
+    // Menú contextual sobre el hero: el mismo que el MoreButton visible, pero
+    // se invoca con clic derecho sin tocar el botón.
+    const ctx = useItemContextMenu({
+        id: show.id,
+        type: 'show',
+        itemTitle: show.title,
+        nextEpisodeId: targetEp?.jfId,
+        queueSubtitle: globalize.translate(
+            'ValueSeasonEpisode',
+            show.cont?.seasonN ?? show.defaultSeason,
+            show.cont?.epN ?? 1
+        ),
+        queuePoster: show.poster
+    });
     return (
         <HeroFrame
             hero={hero}
             backdrop={heroImage}
             backdrops={portraitPhone ? undefined : show.backdrops}
             itemId={show.id}
+            onContextMenu={ctx.onContextMenu}
             nav={
                 <Nav
                     navigate={navigate}
@@ -191,6 +207,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                     />
                 </HeroActionsRow>
             </>
+            {ctx.menu}
         </HeroFrame>
     );
 }

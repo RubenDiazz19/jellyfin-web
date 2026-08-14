@@ -16,6 +16,7 @@ import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
 import { MyListButton } from '../components/controls/MyListButton';
+import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
@@ -69,12 +70,22 @@ function MovieHero({
             startTicks: inProgress ? ticksFromProgress(runtimeMin, progress) : undefined
         });
     };
+    // Menú contextual sobre el hero: el mismo que el MoreButton visible, pero
+    // se invoca con clic derecho sin tocar el botón.
+    const ctx = useItemContextMenu({
+        id: movie.id,
+        type: 'movie',
+        itemTitle: movie.title,
+        queueSubtitle: String(movie.year),
+        queuePoster: movie.poster
+    });
     return (
         <HeroFrame
             hero={hero}
             backdrop={heroImage}
             backdrops={portraitPhone ? undefined : movie.backdrops}
             itemId={movie.id}
+            onContextMenu={ctx.onContextMenu}
             nav={
                 <Nav
                     navigate={navigate}
@@ -174,6 +185,7 @@ function MovieHero({
                     />
                 </HeroActionsRow>
             </div>
+            {ctx.menu}
         </HeroFrame>
     );
 }

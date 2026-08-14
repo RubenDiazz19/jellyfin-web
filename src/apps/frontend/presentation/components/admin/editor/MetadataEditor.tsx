@@ -41,6 +41,12 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
     return ReactDOM.createPortal(
         <div
             onMouseDown={onClose}
+            // El editor vive en un portal a <body>, pero React propaga el clic
+            // sintético por el árbol original: sin esto, pulsar cualquier botón
+            // del editor burbujea hasta el div de la tarjeta (que lleva a la
+            // ficha con su `onClick`) y navega lejos. El `onMouseDown` de más
+            // arriba solo frena el mousedown; el click sigue su curso.
+            onClick={(e) => e.stopPropagation()}
             style={{
                 position: 'fixed', inset: 0, zIndex: 9999,
                 background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',

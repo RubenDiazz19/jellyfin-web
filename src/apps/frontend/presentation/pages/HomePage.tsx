@@ -18,6 +18,7 @@ import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { TextButton } from '../components/controls/TextButton';
+import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { SkeletonRow } from '../components/skeleton/Skeleton';
 import { MobileHero } from '../components/home/MobileHero';
 import { MC, useResponsive } from '../theme/responsive';
@@ -298,6 +299,19 @@ const HeroSlide = React.memo(function HeroSlideBase({
     const { prewarm } = usePlayer();
     const showData = PROTO_DATA.shows[slide.id] || PROTO_DATA.movies[slide.id];
     const logo = slide.logo ?? showData?.logo;
+    // Menú contextual del slide: el mismo de la ficha, abierto con clic derecho
+    // sin ir al botón. «Continuar» con id real de episodio se abre como tal; el
+    // resto (novedades o modo prototipo) como serie o película según el `kind`.
+    const ctx = useItemContextMenu({
+        id: slide.jfEpisodeId ?? slide.id,
+        type: slide.type === 'continue' && slide.jfEpisodeId ? 'episode' :
+            (slide.kind === 'movie' ? 'movie' : 'show'),
+        itemTitle: slide.title,
+        queueSubtitle: isContinue && slide.season != null && slide.episode != null ?
+            `T${slide.season} E${String(slide.episode).padStart(2, '0')}` :
+            String(slide.year),
+        queuePoster: slide.poster
+    });
     const goDetail = () => {
         if (slide.kind === 'movie') navigate({ page: 'movie', movieId: slide.id });
         else navigate({ page: 'show', showId: slide.id });
@@ -311,7 +325,10 @@ const HeroSlide = React.memo(function HeroSlideBase({
         navigate({ page: 'episode', showId: slide.id, seasonN: slide.season, epN: slide.episode });
     };
     return (
-        <div style={{ width, height: '100%', position: 'relative', flexShrink: 0 }}>
+        <div
+            style={{ width, height: '100%', position: 'relative', flexShrink: 0 }}
+            onContextMenu={ctx.onContextMenu}
+        >
             {/* itemId: aplica el fondo personalizado guardado en local para
                 ese item (el mismo que usa la ficha) — sin él, cambiar la
                 imagen se veía en la ficha pero no aquí.
@@ -423,6 +440,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                     />
                 </div>
             </div>
+            {ctx.menu}
         </div>
     );
 });

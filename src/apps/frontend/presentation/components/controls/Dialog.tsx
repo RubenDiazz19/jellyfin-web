@@ -62,7 +62,18 @@ export function Dialog({
             // el propio elemento evita tener que parar la propagación dentro
             // del panel, que es lo que obligaba a colgarle un manejador de
             // ratón al contenedor con `role="dialog"`.
-            onClick={(e) => { if (dismissable && e.target === e.currentTarget) onClose(); }}
+            //
+            // `stopPropagation`: el diálogo vive en un portal a <body>, pero
+            // React propaga el clic sintético por el árbol original. Sin frenarlo,
+            // pulsar cualquier botón del diálogo (que cuelga de un `MoreButton`
+            // dentro de una tarjeta) burbujea hasta el `onClick` de la tarjeta y
+            // manda a la ficha. El check `target === currentTarget` sigue
+            // funcionando porque se evalúa ANTES de que stopPropagation pare la
+            // subida.
+            onClick={(e) => {
+                e.stopPropagation();
+                if (dismissable && e.target === e.currentTarget) onClose();
+            }}
             style={{
                 position: 'fixed', inset: 0, zIndex,
                 background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',

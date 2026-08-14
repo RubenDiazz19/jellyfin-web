@@ -80,9 +80,9 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
             <div data-jfp-nav='' style={{
                 position: 'fixed', top: 0, right: 0, zIndex: 50,
                 left: besideNav(),
-                padding: `calc(10px + env(safe-area-inset-top, 0px)) ${r.pagePad + 4}px 10px`,
+                padding: `calc(12px + env(safe-area-inset-top, 0px)) ${r.pagePad + 4}px 12px`,
                 display: 'flex', alignItems: 'center', gap: 14,
-                fontFamily: T.ui, fontSize: 13,
+                fontFamily: T.ui, fontSize: 14,
                 background: scrolled ? 'var(--md-sys-color-surface, rgba(0,0,0,0.65))' : 'transparent',
                 borderBottom: scrolled ?
                     '1px solid var(--md-sys-color-outline-variant, rgba(255,255,255,0.12))' :
@@ -94,11 +94,11 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                     style={{
                         ...linkReset,
                         display: 'flex', alignItems: 'center', gap: 8,
-                        fontFamily: T.display, fontStyle: 'italic', fontSize: 19, letterSpacing: 0.5,
+                        fontFamily: T.display, fontStyle: 'italic', fontSize: 21, letterSpacing: 0.5,
                         color: 'var(--md-sys-color-on-surface, #fff)'
                     }}
                 >
-                    <Logo size={19} />
+                    <Logo size={21} />
                     jellyfin
                 </button>
                 <div style={{
@@ -108,16 +108,16 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                 }}>
                     {actionId && (
                         <>
-                            <FavButton id={actionId} size={17} />
+                            <FavButton id={actionId} size={18} />
                             {actionData?.type === 'show' ? (
-                                <ShowNavWatchedButton showId={actionData.id} size={17} />
+                                <ShowNavWatchedButton showId={actionData.id} size={18} />
                             ) : actionData?.type === 'movie' ? (
-                                <MovieWatchedButton movie={actionData.movie} size={17} />
+                                <MovieWatchedButton movie={actionData.movie} size={18} />
                             ) : (
                                 <WatchedButton
                                     id={actionId}
                                     serverId={actionData?.type === 'episode' ? actionData.id : undefined}
-                                    size={17}
+                                    size={18}
                                 />
                             )}
                         </>
@@ -135,9 +135,9 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
     return (
         <div data-jfp-nav='' style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-            padding: '20px 24px 20px 56px',
+            padding: '22px 24px 22px 56px',
             display: 'flex', alignItems: 'center', gap: 44,
-            fontFamily: T.ui, fontSize: 13, letterSpacing: 0.2,
+            fontFamily: T.ui, fontSize: 14, letterSpacing: 0.2,
             background: scrolled ? 'rgba(0,0,0,0.65)' : 'transparent',
             backdropFilter: scrolled ? 'blur(16px) saturate(180%)' : 'none',
             WebkitBackdropFilter: scrolled ? 'blur(16px) saturate(180%)' : 'none',
@@ -149,13 +149,13 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                 style={{
                     ...linkReset,
                     display: 'flex', alignItems: 'center', gap: 10,
-                    fontFamily: T.display, fontStyle: 'italic', fontSize: 22, letterSpacing: 0.5,
+                    fontFamily: T.display, fontStyle: 'italic', fontSize: 24, letterSpacing: 0.5,
                     color: T.fg
                 }}
             >
                 {/* Silueta blanca del logo: el original a color desentona con
                     el blanco y negro del resto de la interfaz. */}
-                <Logo size={22} />
+                <Logo size={24} />
                 jellyfin
             </button>
 
@@ -207,19 +207,19 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, color: T.dim, marginLeft: 'auto' }}>
                 {actionId && (
                     <>
-                        <FavButton id={actionId} size={17} />
+                        <FavButton id={actionId} size={18} />
                         {actionData?.type === 'show' ? (
-                            <ShowNavWatchedButton showId={actionData.id} size={17} />
+                            <ShowNavWatchedButton showId={actionData.id} size={18} />
                         ) : actionData?.type === 'movie' ? (
-                            <MovieWatchedButton movie={actionData.movie} size={17} />
+                            <MovieWatchedButton movie={actionData.movie} size={18} />
                         ) : (
                             <WatchedButton
                                 id={actionId}
                                 serverId={actionData?.type === 'episode' ? actionData.id : undefined}
-                                size={17}
+                                size={18}
                             />
                         )}
-                        <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.18)' }} />
+                        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.18)' }} />
                     </>
                 )}
                 <button
@@ -234,7 +234,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                    <Ic.Search size={16} />
+                    <Ic.Search size={18} />
                 </button>
                 <UserAvatar navigate={navigate} />
             </div>

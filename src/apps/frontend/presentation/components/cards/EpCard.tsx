@@ -4,6 +4,7 @@ import { Ic } from '../../theme/icons';
 import { useWatched } from '../../../domain/bridge/useWatched';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
+import { useItemContextMenu } from '../controls/useItemContextMenu';
 import type { Show, Season, Episode } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 import { episodeKey } from '../../../domain/stores';
@@ -17,9 +18,17 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
     const watched = ep.watched >= 1 || liveW;
     const inProgress = !watched && ep.watched > 0 && ep.watched < 1;
     const revealed = watched || inProgress;
+    const ctx = useItemContextMenu({
+        id: ep.jfId ?? episodeKey(show.id, season.n, ep.n),
+        type: 'episode',
+        itemTitle: ep.title ?? `${show.title} · E${ep.n}`,
+        queueSubtitle: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')}`,
+        queuePoster: ep.thumb ?? show.poster
+    });
     return (
         <div
             onClick={() => navigate({ page: 'episode', showId: show.id, seasonN: season.n, epN: ep.n })}
+            onContextMenu={ctx.onContextMenu}
             style={{ position: 'relative', cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
@@ -67,6 +76,7 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
                     </div>
                 )}
             </div>
+            {ctx.menu}
         </div>
     );
 });

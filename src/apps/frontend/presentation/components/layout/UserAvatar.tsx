@@ -100,12 +100,12 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                 onClick={openMenu}
                 aria-label={globalize.translate('LabelAccount')}
                 style={{
-                    width: 28, height: 28, borderRadius: '50%',
+                    width: 32, height: 32, borderRadius: '50%',
                     // Con foto, el degradado sobra: se vería como un halo por
                     // los bordes mientras la imagen carga.
                     background: showPhoto ? 'none' : 'linear-gradient(135deg,#d9a566,#3a1f10)',
                     border: '1px solid rgba(255,255,255,0.2)',
-                    color: '#fff', fontFamily: T.ui, fontSize: 12, fontWeight: 600,
+                    color: '#fff', fontFamily: T.ui, fontSize: 13, fontWeight: 600,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     cursor: 'pointer', padding: 0, overflow: 'hidden'
                 }}

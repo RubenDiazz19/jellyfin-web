@@ -14,6 +14,7 @@ import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { MoreButton } from '../components/controls/MoreButton';
+import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { FavButton } from '../components/controls/FavButton';
 import { WatchedButton } from '../components/controls/WatchedButton';
 import { CastList } from '../components/cast/CastList';
@@ -77,6 +78,15 @@ function EpisodeHero({
             startTicks: ep.watched < 1 ? ticksFromProgress(ep.runtime, ep.watched) : undefined
         });
     };
+    // Menú contextual sobre el hero: el mismo que el MoreButton visible, pero
+    // se invoca con clic derecho sin tocar el botón.
+    const ctx = useItemContextMenu({
+        id: ep.jfId ?? episodeKey(show.id, season.n, ep.n),
+        type: 'episode',
+        itemTitle: ep.title ?? `${show.title} · E${ep.n}`,
+        queueSubtitle: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')}`,
+        queuePoster: ep.thumb ?? show.poster
+    });
     return (
         <HeroFrame
             // El fondo es el fotograma del propio episodio: nítido y sin
@@ -85,6 +95,7 @@ function EpisodeHero({
             pos='Inferior'
             pad='0 56px 100px'
             backdrop={ep.thumbHD || ep.thumb || ''}
+            onContextMenu={ctx.onContextMenu}
             nav={
                 <Nav
                     navigate={navigate}
@@ -189,6 +200,7 @@ function EpisodeHero({
                     </div>
                 </div>
             </>
+            {ctx.menu}
         </HeroFrame>
     );
 }

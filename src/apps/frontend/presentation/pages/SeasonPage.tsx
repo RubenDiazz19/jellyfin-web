@@ -11,6 +11,7 @@ import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { MoreButton } from '../components/controls/MoreButton';
+import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
 import { useResponsive, useShortViewport } from '../theme/responsive';
@@ -61,6 +62,16 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
             navigate({ page: 'episode', showId: show.id, seasonN: season.n, epN: nextEp.n });
         }
     };
+    // Menú contextual sobre el hero: el mismo que el MoreButton visible, pero
+    // se invoca con clic derecho sin tocar el botón.
+    const ctx = useItemContextMenu({
+        id: season.jfId ?? `season-${show.id}-${season.n}`,
+        type: 'season',
+        itemTitle: `${show.title} · ${globalize.translate('ValueSeason', season.n)}`,
+        nextEpisodeId: nextEp?.jfId,
+        queueSubtitle: nextEp?.title,
+        queuePoster: show.poster
+    });
     return (
         <HeroFrame
             // La imagen es la de la serie, no la de la temporada: desenfocada
@@ -70,6 +81,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
             pos='Centro'
             pad='0 48px 110px'
             backdrop={show.backdrop || ''}
+            onContextMenu={ctx.onContextMenu}
             nav={
                 <Nav
                     navigate={navigate}
@@ -175,6 +187,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                             `Continuar con E${nextEp?.n} · ${nextEp?.title}`}
                 </div>
             </>
+            {ctx.menu}
         </HeroFrame>
     );
 }

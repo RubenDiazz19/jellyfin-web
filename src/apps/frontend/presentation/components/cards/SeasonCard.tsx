@@ -1,8 +1,11 @@
+import globalize from 'lib/globalize';
+
 import React from 'react';
 import { T } from '../../theme/tokens';
 import { SeasonWatchedButton } from '../controls/SeasonWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { Progress } from '../controls/Progress';
+import { useItemContextMenu } from '../controls/useItemContextMenu';
 import type { Show, Season } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 import { seasonKey } from '../../../domain/stores';
@@ -11,9 +14,21 @@ type Props = { show: Show; season: Season; navigate: Navigate };
 
 export const SeasonCard = React.memo(function SeasonCardBase({ show, season, navigate }: Props) {
     const pct = season.total ? season.watched / season.total : 0;
+    // Primer episodio no visto: lo mismo que calcula la ficha de temporada,
+    // para que «Reproducir siguiente» del menú contextual arranque bien.
+    const nextEp = season.episodes.find((e) => e.watched < 1) || season.episodes[0];
+    const ctx = useItemContextMenu({
+        id: season.jfId ?? seasonKey(show.id, season.n),
+        type: 'season',
+        itemTitle: `${show.title} · ${globalize.translate('ValueSeason', season.n)}`,
+        nextEpisodeId: nextEp?.jfId,
+        queueSubtitle: nextEp?.title,
+        queuePoster: show.poster
+    });
     return (
         <div
             onClick={() => navigate({ page: 'season', showId: show.id, seasonN: season.n })}
+            onContextMenu={ctx.onContextMenu}
             style={{ cursor: 'pointer', width: 230, flex: '0 0 230px' }}
             className='jfp-hoverlift'
         >
@@ -74,6 +89,7 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
                     </div>
                 )}
             </div>
+            {ctx.menu}
         </div>
     );
 });
