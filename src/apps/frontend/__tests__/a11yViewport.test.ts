@@ -11,7 +11,7 @@ import { frontendCss } from './frontendCss';
 const read = (p: string) => fs.readFileSync(path.resolve(process.cwd(), p), 'utf-8');
 
 const indexHtml = read('src/index.html');
-const appHost = read('src/components/apphost.js');
+const appHost = read('src/legacy/components/apphost.js');
 const globalCss = frontendCss();
 
 const VIEWPORT_META = /<meta\s+name="viewport"\s+content="([^"]*)"/;

@@ -3,12 +3,12 @@ import { createRoot } from 'react-dom/client';
 // NOTE: We need to import this first to initialize the connection
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 
-import { appHost } from './components/apphost';
+import { appHost } from './legacy/components/apphost';
 import loading from 'components/loading/loading';
-import { appRouter } from './components/router/appRouter';
-import globalize from './lib/globalize';
+import { appRouter } from './legacy/components/router/appRouter';
+import globalize from './legacy/lib/globalize';
 import { loadCoreDictionary } from 'lib/globalize/loader';
-import { currentSettings as userSettings } from './scripts/settings/userSettings';
+import { currentSettings as userSettings } from './legacy/scripts/settings/userSettings';
 import { serverAddress } from './utils/dashboard';
 import Events from './utils/events';
 import { preconnectToServer } from './utils/preconnect';
@@ -16,7 +16,7 @@ import { preconnectToServer } from './utils/preconnect';
 import RootApp from './RootApp';
 
 // Import the button webcomponent for the legacy dashboard views
-import './elements/emby-button/emby-button';
+import './legacy/elements/emby-button/emby-button';
 
 // Import site styles
 import './styles/site.scss';

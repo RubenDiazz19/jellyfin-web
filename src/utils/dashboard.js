@@ -5,17 +5,17 @@ import viewContainer from 'components/viewContainer';
 import { AppFeature } from 'constants/appFeature';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 
-import toast from '../components/toast/toast';
-import loading from '../components/loading/loading';
-import { appRouter } from '../components/router/appRouter';
-import baseAlert from '../components/alert';
-import baseConfirm from '../components/confirm/confirm';
-import globalize from '../lib/globalize';
-import * as webSettings from '../scripts/settings/webSettings';
-import datetime from '../scripts/datetime';
-import { setBackdropTransparency } from '../components/backdrop/backdrop';
-import DirectoryBrowser from '../components/directorybrowser/directorybrowser';
-import dialogHelper from '../components/dialogHelper/dialogHelper';
+import toast from 'components/toast/toast';
+import loading from 'components/loading/loading';
+import { appRouter } from 'components/router/appRouter';
+import baseAlert from 'components/alert';
+import baseConfirm from 'components/confirm/confirm';
+import globalize from 'lib/globalize';
+import * as webSettings from 'scripts/settings/webSettings';
+import datetime from 'scripts/datetime';
+import { setBackdropTransparency } from 'components/backdrop/backdrop';
+import DirectoryBrowser from 'components/directorybrowser/directorybrowser';
+import dialogHelper from 'components/dialogHelper/dialogHelper';
 import { getLocationSearch } from './url.ts';
 import { queryClient } from './query/queryClient';
 

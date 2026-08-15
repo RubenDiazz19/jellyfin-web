@@ -76,7 +76,7 @@ describe('prefers-reduced-motion: lo que el CSS no alcanza', () => {
     it('el scroll suave por JS del scrollManager consulta la preferencia', () => {
         // `behavior: 'smooth'` y el scroll animado a mano ganan siempre a la
         // propiedad CSS `scroll-behavior`.
-        const scrollManager = read('src/components/scrollManager.js');
+        const scrollManager = read('src/legacy/components/scrollManager.js');
         expect(scrollManager).toContain('prefersReducedMotion()');
     });
 

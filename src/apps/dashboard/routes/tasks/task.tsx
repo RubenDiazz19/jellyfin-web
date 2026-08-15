@@ -13,7 +13,7 @@ import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import Loading from 'components/loading/LoadingComponent';
 import { type MRT_ColumnDef, MRT_Table, type MRT_Theme, useMaterialReactTable } from 'material-react-table';
 import type { TaskTriggerInfo } from '@jellyfin/sdk/lib/generated-client/models/task-trigger-info';
-import globalize from '../../../../lib/globalize';
+import globalize from 'lib/globalize';
 import { useTask } from 'apps/dashboard/features/tasks/api/useTask';
 import { useUpdateTask } from 'apps/dashboard/features/tasks/api/useUpdateTask';
 import ConfirmDialog from 'components/ConfirmDialog';

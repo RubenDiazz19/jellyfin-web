@@ -13,7 +13,7 @@ propio, y conviven dos mundos:
 |---|---|---|
 | `src/apps/frontend/` | El frontend propio: React + TypeScript con MVVM estricto | Donde se trabaja |
 | `src/apps/dashboard/` | El panel de administración oficial | Se conserva tal cual |
-| `src/components/`, `src/scripts/`, `src/elements/`, `src/lib/` | Legacy del cliente oficial (web components `emby-*`, `.template.html`, JS imperativo) | Se toca solo lo necesario |
+| `src/legacy/components/`, `src/legacy/scripts/`, `src/legacy/elements/`, `src/legacy/lib/` | Legacy del cliente oficial (web components `emby-*`, `.template.html`, JS imperativo) | Se toca solo lo necesario |
 
 El reproductor de vídeo es propio (`presentation/components/player/` +
 `domain/viewModels/VideoPlayerViewModel.ts`), no el del cliente oficial.

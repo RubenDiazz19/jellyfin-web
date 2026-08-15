@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html class="preload" dir="ltr">
+<!-- `data-culture` fija el idioma por defecto de la interfaz: globalize lo lee
+     en getDefaultLanguage antes que el idioma del navegador, así que la app
+     arranca en español independientemente de la cultura del sistema. Quien
+     cambie el idioma en Ajustes lo sobreescribe (userSettings.language). -->
+<html class="preload" dir="ltr" lang="es" data-culture="es">
 <head>
     <meta charset="utf-8">
     <!-- El zoom queda habilitado (accesibilidad): `user-scalable=no` /

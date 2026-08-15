@@ -1,0 +1,40 @@
+services:
+  jellyfin-backend:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin-backend
+    environment:
+      - JELLYFIN_PublishedServerUrl=http://localhost:8080
+    volumes:
+      - ../../docker-config:/config
+      - ../../docker-cache:/cache
+      - ../../docker-media:/media
+    ports:
+      - "8096:8096"
+    restart: unless-stopped
+    # La imagen ya trae un healthcheck propio; este lo pisa para consultar cada
+    # 10 s en vez de cada 30, que es lo que tardaría de más el `depends_on` de
+    # abajo en cada `up`. `/System/Info/Public` es el endpoint que contesta sin
+    # sesión, y el start_period va largo porque el primer arranque escanea la
+    # biblioteca entera.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8096/System/Info/Public || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  jellyfin-web:
+    build:
+      context: ../..
+      dockerfile: config/docker/Dockerfile
+    container_name: jellyfin-web
+    ports:
+      - "8080:80"
+    # Con un `depends_on` a secas, Caddy arranca en cuanto el contenedor del
+    # backend existe y devuelve 502 hasta que Jellyfin termina de levantar —lo
+    # que desde el navegador parece que la web está rota, no que aún no ha
+    # llegado el otro.
+    depends_on:
+      jellyfin-backend:
+        condition: service_healthy
+    restart: unless-stopped

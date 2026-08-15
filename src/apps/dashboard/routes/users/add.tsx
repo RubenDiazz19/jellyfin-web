@@ -1,14 +1,14 @@
 import type { BaseItemDto, CreateUserByName } from '@jellyfin/sdk/lib/generated-client';
 import { useCallback, useEffect, useState, useRef } from 'react';
 
-import globalize from '../../../../lib/globalize';
-import loading from '../../../../components/loading/loading';
-import SectionTitleContainer from '../../../../elements/SectionTitleContainer';
-import Input from '../../../../elements/emby-input/Input';
-import Button from '../../../../elements/emby-button/Button';
-import AccessContainer from '../../../../components/dashboard/users/AccessContainer';
-import CheckBoxElement from '../../../../elements/CheckBoxElement';
-import Page from '../../../../components/Page';
+import globalize from 'lib/globalize';
+import loading from 'components/loading/loading';
+import SectionTitleContainer from 'elements/SectionTitleContainer';
+import Input from 'elements/emby-input/Input';
+import Button from 'elements/emby-button/Button';
+import AccessContainer from 'components/dashboard/users/AccessContainer';
+import CheckBoxElement from 'elements/CheckBoxElement';
+import Page from 'components/Page';
 import Toast from 'apps/dashboard/components/Toast';
 
 import { useLibraryMediaFolders } from 'apps/dashboard/features/users/api/useLibraryMediaFolders';

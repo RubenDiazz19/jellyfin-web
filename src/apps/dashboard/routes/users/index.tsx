@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import globalize from '../../../../lib/globalize';
-import confirm from '../../../../components/confirm/confirm';
-import UserCardBox from '../../../../components/dashboard/users/UserCardBox';
-import SectionTitleContainer from '../../../../elements/SectionTitleContainer';
-import '../../../../elements/emby-button/emby-button';
-import '../../../../elements/emby-button/paper-icon-button-light';
-import '../../../../components/cardbuilder/card.scss';
-import '../../../../components/indicators/indicators.scss';
-import '../../../../styles/flexstyles.scss';
-import Page from '../../../../components/Page';
+import globalize from 'lib/globalize';
+import confirm from 'components/confirm/confirm';
+import UserCardBox from 'components/dashboard/users/UserCardBox';
+import SectionTitleContainer from 'elements/SectionTitleContainer';
+import 'elements/emby-button/emby-button';
+import 'elements/emby-button/paper-icon-button-light';
+import 'components/cardbuilder/card.scss';
+import 'components/indicators/indicators.scss';
+import 'styles/flexstyles.scss';
+import Page from 'components/Page';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Toast from 'apps/dashboard/components/Toast';
 import { useUsers } from 'hooks/useUsers';
@@ -81,7 +81,7 @@ const UserProfiles = () => {
                 icon: 'delete'
             });
 
-            import('../../../../components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
+            import('../../../../legacy/components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
                 actionsheet.show({
                     items: menuItems,
                     positionTo: card,

@@ -61,16 +61,16 @@ bun run lint && bun run stylelint && bun run build:check && bun run test:coverag
 
 ## Despliegue
 
-`docker-compose.yml` levanta el frontend (build de este repo) junto al backend oficial
+`config/docker/docker-compose.yml` levanta el frontend (build de este repo) junto al backend oficial
 ([jellyfin/jellyfin](https://github.com/jellyfin/jellyfin)):
 
 ```sh
-docker compose up -d
+docker compose -f config/docker/docker-compose.yml up -d
 ```
 
 Sirve el frontend en `:8080` y el backend en `:8096`. Los datos persistentes del backend
-(config, caché, biblioteca) quedan en `docker-config/`, `docker-cache/` y `docker-media/`,
-ignorados por git.
+(config, caché, biblioteca) quedan en `docker-config/`, `docker-cache/` y `docker-media/`
+(en la raíz del repo), ignorados por git.
 
 ## Licencia
 
