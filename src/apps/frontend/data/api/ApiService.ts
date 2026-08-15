@@ -74,6 +74,14 @@ import { searchSubtitles, downloadSubtitle } from './subtitles';
 import { getSystemInfo, refreshLibrary } from './admin';
 import { getRunningTasks, watchScheduledTasks, watchItemRefresh } from './tasks';
 import {
+    getLibraryCharacters,
+    searchLibraryCharacters,
+    buildAvatarFile
+} from './avatars';
+import { searchAniListCharacters } from './anilist';
+import { resolveSeriesArt } from './characterArt';
+import { searchTmdbCharacters, isTmdbConfigured } from './tmdb';
+import {
     getCurrentUser,
     updateUserConfig,
     changePassword,
@@ -162,6 +170,17 @@ const adminService = { getSystemInfo, refreshLibrary };
 
 const taskService = { getRunningTasks, watchScheduledTasks, watchItemRefresh };
 
+// Las fuentes del selector de avatares y la composición de la imagen final.
+const avatarService = {
+    getLibraryCharacters,
+    searchLibraryCharacters,
+    searchAniListCharacters,
+    searchTmdbCharacters,
+    isTmdbConfigured,
+    resolveSeriesArt,
+    buildAvatarFile
+};
+
 const userService = {
     getCurrentUser,
     updateUserConfig,
@@ -185,6 +204,7 @@ export type RemoteImageService = typeof remoteImageService;
 export type SubtitleService = typeof subtitleService;
 export type AdminService = typeof adminService;
 export type TaskService = typeof taskService;
+export type AvatarService = typeof avatarService;
 export type UserService = typeof userService;
 
 export class ApiService {
@@ -202,7 +222,8 @@ export class ApiService {
         readonly subtitles: SubtitleService = subtitleService,
         readonly admin: AdminService = adminService,
         readonly tasks: TaskService = taskService,
-        readonly users: UserService = userService
+        readonly users: UserService = userService,
+        readonly avatars: AvatarService = avatarService
     ) {}
 }
 

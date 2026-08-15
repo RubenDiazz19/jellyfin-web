@@ -7,6 +7,7 @@ import {
     type CurrentUser
 } from '../../../domain/api';
 import { useToast } from '../../components/toast/ToastProvider';
+import { AvatarPickerDialog } from './AvatarPickerDialog';
 import {
     InfoRow, SectionTitle, btnDanger, btnSecondary, inputStyle
 } from './ui';
@@ -23,6 +24,7 @@ export function ProfileSection({
     const [pwNew, setPwNew] = useState('');
     const [pwRepeat, setPwRepeat] = useState('');
     const [pwBusy, setPwBusy] = useState(false);
+    const [pickerOpen, setPickerOpen] = useState(false);
 
     const onUpload = async (file: File) => {
         setBusy(true);
@@ -75,21 +77,21 @@ export function ProfileSection({
                         src={avatarUrl(user.avatarTag)}
                         alt={user.name}
                         style={{
-                            width: 88, height: 88, borderRadius: '50%', objectFit: 'cover',
+                            width: 112, height: 112, borderRadius: '50%', objectFit: 'cover',
                             border: '1px solid rgba(255,255,255,0.2)'
                         }}
                     />
                 ) : (
                     <div style={{
-                        width: 88, height: 88, borderRadius: '50%',
+                        width: 112, height: 112, borderRadius: '50%',
                         background: 'linear-gradient(135deg,#d9a566,#3a1f10)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 34, fontWeight: 600
+                        fontSize: 42, fontWeight: 600
                     }}>
                         {user.name.slice(0, 1).toUpperCase()}
                     </div>
                 )}
-                <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                     <input
                         ref={fileRef} type='file' accept='image/*' style={{ display: 'none' }}
                         onChange={(e) => {
@@ -98,6 +100,9 @@ export function ProfileSection({
                             e.target.value = '';
                         }}
                     />
+                    <button style={btnSecondary} disabled={busy} onClick={() => setPickerOpen(true)}>
+                        {globalize.translate('AvatarPickerOpen')}
+                    </button>
                     <button style={btnSecondary} disabled={busy} onClick={() => fileRef.current?.click()}>
                         {globalize.translate('UploadCustomImage')}
                     </button>
@@ -108,6 +113,16 @@ export function ProfileSection({
                     )}
                 </div>
             </div>
+
+            {pickerOpen && (
+                <AvatarPickerDialog
+                    onClose={() => setPickerOpen(false)}
+                    onApplied={() => {
+                        onAvatarChange();
+                        setPickerOpen(false);
+                    }}
+                />
+            )}
 
             <InfoRow label={globalize.translate('LabelUsername')} value={user.name} />
             <InfoRow label={globalize.translate('TabServer')} value={serverUrl} />

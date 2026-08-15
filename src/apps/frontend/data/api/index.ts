@@ -117,3 +117,14 @@ export {
     type SkipLengths
 } from './playbackPrefs';
 export { setSessionUser } from '../session/session';
+// Selector de avatares: personajes de la biblioteca local, de AniList y de
+// TMDB, y la composición de la imagen elegida con su color de fondo.
+export {
+    getLibraryCharacters,
+    searchLibraryCharacters,
+    buildAvatarFile,
+    type AvatarCandidate,
+    type AvatarSource
+} from './avatars';
+export { searchAniListCharacters } from './anilist';
+export { searchTmdbCharacters, isTmdbConfigured } from './tmdb';

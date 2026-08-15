@@ -165,6 +165,13 @@ export class PlaybackManager {
             // Defer setup past module evaluation to avoid the circular dependency:
             // playbackmanager → lib/jellyfin-apiclient → ServerConnections → utils/dashboard → backdrop → playbackmanager
             queueMicrotask(() => {
+                // Bajo el runner de vitest (vite-node) el ciclo de imports de
+                // arriba congela un namespace parcial: ServerConnections llega
+                // undefined aquí y Events.on truena como uncaught en cada suite
+                // que carga este grafo. En navegador (live bindings del bundle)
+                // el binding siempre está poblado a estas alturas.
+                if (!ServerConnections) return;
+
                 let _unsubscribeRemoteControl;
                 Events.on(ServerConnections, 'localusersignedin', () => {
                     _unsubscribeRemoteControl?.();
