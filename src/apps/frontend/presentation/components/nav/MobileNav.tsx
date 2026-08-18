@@ -6,7 +6,8 @@
 // redondeado con solo el icono. Así la navegación ocupa lo justo (y el nombre
 // de dónde estás se lee sin apretar tres etiquetas en una barra).
 //   móvil  (< 600px): abajo, centrados
-//   tablet (≥ 600px) EN VERTICAL: apilados a la izquierda
+//   tablet (≥ 600px) claramente alta EN VERTICAL: apilados a la izquierda;
+//   tablet casi cuadrada: barra inferior centrada, como mobile
 //   cualquier pantalla EN HORIZONTAL: abajo y centrados
 //
 // Por qué el rail solo en vertical: al girar el móvil, el ancho pasa de 390 a
@@ -42,7 +43,7 @@ import { useSession } from '../../../domain/bridge/useSession';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
-import { useLandscape } from '../../theme/responsive';
+import { useLandscape, useTallTablet } from '../../theme/responsive';
 import { haptic } from '../../../shared/haptics';
 import {
     NAV_BOTTOM_VAR,
@@ -115,6 +116,7 @@ function activeTab(page: Route['page']): string | null {
 export function MobileNav() {
     const { layout } = useMobileTheme();
     const landscape = useLandscape();
+    const tallTablet = useTallTablet();
     const { session } = useSession();
     const location = useLocation();
     const navigate = useNavigate();
@@ -123,7 +125,7 @@ export function MobileNav() {
     const searching = useSignalValue(searchVM.overlayOpen);
 
     const visible = layout !== null && !!session?.accessToken;
-    const isRail = layout === 'tablet' && !landscape;
+    const isRail = layout === 'tablet' && !landscape && tallTablet;
 
     useEffect(() => {
         const root = document.documentElement;

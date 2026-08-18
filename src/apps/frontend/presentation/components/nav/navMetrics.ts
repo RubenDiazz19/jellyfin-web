@@ -1,16 +1,16 @@
 // Geometría de la navegación M3 flotante (Fase 8).
 //
 // La barra ya no está pegada al borde ni es una cápsula continua: son tres
-// segmentos sueltos que flotan sobre el contenido (abajo y centrados; en
-// tablet vertical, apilados a la izquierda). Eso rompe la cuenta que antes
+// segmentos sueltos que flotan sobre el contenido (abajo y centrados; en una
+// tablet claramente vertical, apilados a la izquierda). Eso rompe la cuenta que antes
 // hacía cada componente por su lado ("la nav mide 80, me separo 92"), así que
 // las medidas viven aquí y MobileNav las publica como custom properties en
 // <html>:
 //
-//   --jfp-nav-bottom  franja inferior ocupada (móvil) — en tablet, solo el
-//                     safe-area, porque el rail no toca la franja de abajo
-//   --jfp-nav-left    franja izquierda ocupada (tablet) — en móvil, solo el
-//                     safe-area
+//   --jfp-nav-bottom  franja inferior ocupada (barra centrada) — en tablet con
+//                     rail, solo el safe-area, porque el rail no toca abajo
+//   --jfp-nav-left    franja izquierda ocupada (rail) — en barra inferior,
+//                     solo el safe-area
 //
 // Las dos vars llevan SIEMPRE el safe-area dentro, así quien las consume no
 // tiene que volver a sumarlo (y no se cuenta dos veces). Sin navegación
@@ -23,7 +23,7 @@ export const NAV_HEIGHT = 48;
 export const NAV_MARGIN = 12;
 /** Hueco entre segmentos: van sueltos, no dentro de una misma cápsula. */
 export const NAV_GAP = 6;
-/** Ancho del rail vertical (tablet): sus segmentos son cuadrados. */
+/** Ancho del rail vertical (tablet alta): sus segmentos son cuadrados. */
 export const RAIL_WIDTH = NAV_HEIGHT;
 /** Separación del rail con el borde izquierdo. */
 export const RAIL_MARGIN = 12;

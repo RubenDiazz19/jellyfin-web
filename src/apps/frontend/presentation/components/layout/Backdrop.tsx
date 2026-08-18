@@ -220,12 +220,32 @@ function FadeLayer({
         return () => cancelAnimationFrame(raf);
     }, [framed, fadeIn, bornFramed]);
 
+    // Encuadre amortiguado: el valor medido dice dónde está el sujeto
+    // (20-80% del ancho), pero usarlo TAL CUAL como posición lleva el sujeto
+    // a ese mismo tanto del contenedor. En tablet, donde el recorte
+    // horizontal de un backdrop 16:9 se come más de la mitad del fotograma,
+    // un sujeto al 30% de la imagen acababa al 30% de la pantalla y se leía
+    // como una foto descuadrada. Con medio recorrido queda entre el 40 y el
+    // 60% —composición centrada con sesgo hacia el detalle— y sigue cabiendo
+    // en el recorte visible: solo un foco clavado a los topes (20/80%) en
+    // recortes muy anchos puede asomar al borde un ~2% de la imagen.
+    const focusPos = focus == null ? 50 : 50 + (focus - 50) / 2;
+
     return (
         <div style={{
-            position: 'absolute', inset: 0,
+            position: 'absolute',
+            top: 0, bottom: 0, right: 0,
+            // En tablet el hero va a sangre pero TODO lo demás (el bloque de
+            // texto, las filas de la biblioteca) vive a la derecha del rail.
+            // Si la imagen compone sobre el ancho entero, su centro queda a
+            // media franja del rail del centro de todo lo demás — se ve
+            // descuadrada. La capa se recorta al área útil para que el 50%
+            // de aquí sea el 50% que ve el ojo. La var solo existe con el
+            // rail montado; en móvil es el safe-area y en escritorio, 0.
+            left: 'var(--jfp-nav-left, 0px)',
             backgroundImage: `url(${url})`,
             backgroundSize: 'cover',
-            backgroundPosition: `${focus ?? 50}% center`,
+            backgroundPosition: `${focusPos}% center`,
             filter, transform,
             opacity,
             // La transición de posición ya no debería verse nunca: la capa no

@@ -61,8 +61,13 @@ describe('Backdrop: encuadre sin salto', () => {
         // estaba en caché y aun así se pintaba centrado un frame.
         theme.peek = 30;
         render();
-        expect(layer().style.backgroundPosition).toBe('30% center');
+        // 30 medido → 50 + (30-50)/2: el encuadre se amortigua a medio
+        // recorrido hacia el centro (ver FadeLayer).
+        expect(layer().style.backgroundPosition).toBe('40% center');
         expect(layer().style.opacity).toBe('1');
+        // La capa de imagen se recorta al área útil (a la derecha del rail
+        // de tablet): sin eso, su centro no casaba con el del contenido.
+        expect(layer().style.left).toBe('var(--jfp-nav-left, 0px)');
     });
 
     it('sin encuadre todavía, la imagen no se enseña centrada', async () => {
@@ -74,7 +79,7 @@ describe('Backdrop: encuadre sin salto', () => {
             theme.resolve?.(30);
             await Promise.resolve();
         });
-        expect(layer().style.backgroundPosition).toBe('30% center');
+        expect(layer().style.backgroundPosition).toBe('40% center');
     });
 
     it('una imagen sin encuadre medible se queda en el centro de siempre', async () => {

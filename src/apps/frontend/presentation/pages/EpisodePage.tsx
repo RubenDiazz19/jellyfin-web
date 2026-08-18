@@ -113,7 +113,7 @@ function EpisodeHero({
         >
             <>
                 <PlayBtn
-                    size={short ? 64 : r.touch ? 84 : 108}
+                    size={short ? 58 : r.touch ? 76 : 96}
                     onClick={startPlay}
                     onHover={() => ep.jfId && prewarm(ep.jfId)}
                     progress={inProgress ? ep.watched : null}
@@ -147,7 +147,7 @@ function EpisodeHero({
                         {!r.touch && (
                             <span aria-hidden='true' style={{
                                 visibility: 'hidden', justifySelf: 'end',
-                                display: 'inline-flex', fontSize: 'clamp(32px, 4vw, 58px)',
+                                display: 'inline-flex', fontSize: 'clamp(29px, 3.6vw, 52px)',
                                 transform: 'translateY(0.15em)'
                             }}>
                                 <MoreButton id={ep.jfId ?? 'spacer'} size={28} type='episode' />
@@ -156,7 +156,7 @@ function EpisodeHero({
                         <h1 style={{
                             fontFamily: T.display,
                             fontSize: short ? 'clamp(20px, 5vh, 30px)' :
-                                r.touch ? 'clamp(24px, 6vw, 38px)' : 'clamp(32px, 4vw, 58px)',
+                                r.touch ? 'clamp(24px, 6vw, 38px)' : 'clamp(29px, 3.6vw, 52px)',
                             lineHeight: 1.05,
                             margin: 0, fontWeight: 300, letterSpacing: -0.5,
                             textShadow: '0 2px 24px rgba(0,0,0,0.7)', textWrap: 'balance',
@@ -170,7 +170,7 @@ function EpisodeHero({
                         </h1>
                         <span style={{
                             justifySelf: 'start',
-                            display: 'inline-flex', fontSize: 'clamp(32px, 4vw, 58px)',
+                            display: 'inline-flex', fontSize: 'clamp(29px, 3.6vw, 52px)',
                             transform: 'translateY(0.15em)'
                         }}>
                             <MoreButton

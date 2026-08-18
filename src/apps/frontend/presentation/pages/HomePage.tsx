@@ -354,13 +354,13 @@ const HeroSlide = React.memo(function HeroSlideBase({
                             alt={slide.title}
                             decoding='async'
                             style={{
-                                maxWidth: 520, maxHeight: 180, width: 'auto', height: 'auto',
+                                maxWidth: 470, maxHeight: 160, width: 'auto', height: 'auto',
                                 objectFit: 'contain', filter: 'drop-shadow(0 4px 50px rgba(0,0,0,0.6))'
                             }}
                         />
                     ) : (
                         <h1 style={{
-                            fontFamily: T.display, fontSize: 'clamp(64px, 8vw, 130px)', lineHeight: 0.92,
+                            fontFamily: T.display, fontSize: 'clamp(58px, 7vw, 116px)', lineHeight: 0.92,
                             margin: 0, fontWeight: 250, letterSpacing: -2,
                             textShadow: '0 4px 50px rgba(0,0,0,0.55)', textWrap: 'balance'
                         }}>
@@ -429,7 +429,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
 
                 <div style={{ marginBottom: isContinue ? 14 : 0 }}>
                     <PlayBtn
-                        size={108}
+                        size={96}
                         onClick={onPlay}
                         // Solo los slides de «continuar viendo» abren el
                         // reproductor; los de «novedad» llevan a la ficha, y

@@ -130,14 +130,14 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                 <HeroTitle
                     logo={show.logo}
                     title={show.title}
-                    logoMaxWidth={r.touch ? 'min(78vw, 340px)' : 500}
+                    logoMaxWidth={r.touch ? 'min(78vw, 305px)' : 450}
                     // En táctil el tope va en vh: lo que no debe pasar es que
                     // el logo se coma el alto que necesitan el dato y el botón.
-                    logoMaxHeight={r.touch ? (short ? 'min(22vh, 64px)' : 'min(15vh, 104px)') : 170}
+                    logoMaxHeight={r.touch ? (short ? 'min(20vh, 58px)' : 'min(14vh, 94px)') : 153}
                     logoShadow='rgba(0,0,0,0.5)'
                     fontSize={
-                        short ? 'clamp(24px, 6vh, 38px)' :
-                            r.touch ? 'clamp(34px, 8vw, 60px)' : 'clamp(76px, 9vw, 134px)'
+                        short ? 'clamp(22px, 5.5vh, 34px)' :
+                            r.touch ? 'clamp(31px, 7vw, 54px)' : 'clamp(68px, 8vw, 120px)'
                     }
                     letterSpacing={r.touch ? -1 : -3}
                 />

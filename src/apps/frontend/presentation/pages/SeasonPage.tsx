@@ -22,7 +22,7 @@ import { useLeaveWhen, useShowEntity } from './useDetailEntity';
 type PageProps = { showId: string; seasonN: number; navigate: Navigate };
 
 /** Diámetro del play del hero y hueco hasta el botón de opciones. */
-const PLAY_SIZE = 104;
+const PLAY_SIZE = 94;
 const MORE_GAP = 26;
 
 export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
@@ -48,7 +48,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
     const inProgress = nextEp && nextEp.watched > 0 && nextEp.watched < 1;
     const r = useResponsive();
     const short = useShortViewport();
-    const playSize = short ? 64 : r.touch ? 84 : PLAY_SIZE;
+    const playSize = short ? 58 : r.touch ? 76 : PLAY_SIZE;
     const { play, prewarm } = usePlayer();
     const startPlay = () => {
         if (!nextEp) return;
@@ -117,8 +117,8 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     // El número gigante es el protagonista, pero en táctil se
                     // mide contra el alto disponible: con `clamp(160px…)` no
                     // dejaba sitio ni al dato ni al botón.
-                    fontSize: short ? 'clamp(64px, 20vh, 110px)' :
-                        r.touch ? 'clamp(96px, 26vh, 190px)' : 'clamp(160px, 18vw, 260px)',
+                    fontSize: short ? 'clamp(58px, 18vh, 100px)' :
+                        r.touch ? 'clamp(88px, 24vh, 172px)' : 'clamp(145px, 16vw, 235px)',
                     lineHeight: 0.85,
                     margin: 0, fontWeight: 200, letterSpacing: r.touch ? -3 : -6,
                     textShadow: '0 6px 60px rgba(0,0,0,0.6)'

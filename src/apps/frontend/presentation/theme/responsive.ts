@@ -85,6 +85,16 @@ export function useLandscape(): boolean {
     return useMediaQuery('(orientation: landscape)');
 }
 
+/**
+ * Tablet suficientemente alta para que el rail lateral tenga sentido. Una
+ * pantalla casi cuadrada (por ejemplo 943×992) conserva el layout tablet,
+ * pero usa la barra inferior centrada como un móvil para no dejar una franja
+ * negra vertical a la izquierda.
+ */
+export function useTallTablet(): boolean {
+    return useMediaQuery('(min-aspect-ratio: 6/5)');
+}
+
 // Atajos de color M3 con fallback al look dark actual: en desktop las vars
 // no existen y el fallback reproduce el valor de siempre.
 export const MC = {

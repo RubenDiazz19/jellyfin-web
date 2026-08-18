@@ -102,8 +102,10 @@ export function HeroFrame({
             position: 'relative',
             height: heroHeight(r.touch),
             // A sangre en táctil: el body reserva el hueco del rail (tablet) y
-            // del safe-area, y aquí se devuelve para que la imagen llegue al
-            // borde. El lado derecho no se toca: nada desborda.
+            // del safe-area, y aquí se devuelve para que el fondo del hero
+            // llegue al borde; la IMAGEN se recorta al área útil desde
+            // Backdrop, alineada con el contenido. El lado derecho no se toca:
+            // nada desborda.
             marginLeft: r.touch ? `calc(-1 * var(${NAV_LEFT_VAR}, 0px))` : undefined,
             width: r.touch ? `calc(100% + var(${NAV_LEFT_VAR}, 0px))` : '100%',
             overflow: 'hidden', background: '#000'

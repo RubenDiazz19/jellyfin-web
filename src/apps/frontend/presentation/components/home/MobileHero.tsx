@@ -90,8 +90,8 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: P
     const side = tablet ? 32 : 20;
     const topPad = short ? 44 : 64;
     const gap = short ? 8 : (tablet ? 18 : 14);
-    const playSize = short ? 64 : (tablet ? 104 : 84);
-    const logoMax = short ? 'min(30vh, 84px)' : (tablet ? 'min(22vh, 160px)' : 'min(18vh, 110px)');
+    const playSize = short ? 58 : (tablet ? 94 : 76);
+    const logoMax = short ? 'min(28vh, 78px)' : (tablet ? 'min(20vh, 145px)' : 'min(16vh, 100px)');
 
     return (
         <section
@@ -101,9 +101,10 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: P
                 position: 'relative',
                 height: 'var(--jfp-viewport-h, 100vh)',
                 // A sangre: el body lleva reservado el hueco del rail (tablet)
-                // y el safe-area, y aquí se devuelve para que la imagen llegue
-                // al borde y el rail flote encima. El lado derecho no se toca,
-                // así que no hay desbordamiento horizontal.
+                // y el safe-area, y aquí se devuelve para que el fondo del hero
+                // (degradados, viñeta) llegue al borde. La IMAGEN se recorta
+                // al área útil desde Backdrop, alineada con el contenido. El
+                // lado derecho no se toca, así que no hay desbordamiento.
                 marginLeft: 'calc(-1 * var(--jfp-nav-left, 0px))',
                 width: 'calc(100% + var(--jfp-nav-left, 0px))',
                 overflow: 'hidden',

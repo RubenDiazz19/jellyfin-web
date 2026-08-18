@@ -69,13 +69,15 @@ const FOCUS_MAX = 80;
  * la imagen (una pared de ladrillo) no arrastra el resultado al centro y solo
  * pesan los picos.
  *
- * El valor se usa tal cual como `background-position-x`. Un porcentaje ahí
- * significa «alinea ese punto de la IMAGEN con ese punto del CONTENEDOR», que
- * es justo la semántica de un punto focal, y tiene una propiedad que viene de
- * regalo: el punto elegido nunca se sale del recorte visible, por estrecho que
- * sea. La demostración: con una fracción visible f, el centro de la ventana
- * queda en `c + f·(0.5 - c)`, que dista del foco `f·|0.5 - c| ≤ f/2`, y f/2 es
- * exactamente la semianchura de la ventana.
+ * El consumidor (FadeLayer de Backdrop) lo usa como base de
+ * `background-position-x`, AMORTIGUADO a medio recorrido hacia el centro.
+ * Con el valor tal cual, un porcentaje ahí significa «alinea ese punto de la
+ * IMAGEN con ese punto del CONTENEDOR», que es la semántica de un punto
+ * focal y tiene una propiedad que viene de regalo: el punto elegido nunca se
+ * sale del recorte visible, por estrecho que sea. La demostración: con una
+ * fracción visible f, el centro de la ventana queda en `c + f·(0.5 - c)`,
+ * que dista del foco `f·|0.5 - c| ≤ f/2`, y f/2 es exactamente la
+ * semianchura de la ventana.
  */
 export function focusFromPixels(
     data: Uint8ClampedArray, w: number, h: number

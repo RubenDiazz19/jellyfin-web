@@ -14,7 +14,6 @@ import { WatchedButton } from '../controls/WatchedButton';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
 import { UserAvatar } from './UserAvatar';
-import { besideNav } from '../nav/navMetrics';
 import { useResponsive } from '../../theme/responsive';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import type { Movie } from '../../../domain/models';
@@ -79,7 +78,11 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
         return (
             <div data-jfp-nav='' style={{
                 position: 'fixed', top: 0, right: 0, zIndex: 50,
-                left: besideNav(),
+                // El rail de tablet es vertical y centrado: nunca llega hasta
+                // arriba, así que la barra arranca del borde izquierdo (si
+                // esperaba al rail, el logo quedaba flotando a media pantalla).
+                // En móvil lo único que hay que respetar es el safe-area.
+                left: 'env(safe-area-inset-left, 0px)',
                 padding: `calc(12px + env(safe-area-inset-top, 0px)) ${r.pagePad + 4}px 12px`,
                 display: 'flex', alignItems: 'center', gap: 14,
                 fontFamily: T.ui, fontSize: 14,

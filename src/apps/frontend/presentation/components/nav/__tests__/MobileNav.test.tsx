@@ -12,10 +12,11 @@ import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../navMetrics';
 
 const navVar = (name: string) => document.documentElement.style.getPropertyValue(name);
 
-/** matchMedia de mentira: solo casa la query que se le diga. */
-function stubMedia({ landscape }: { landscape: boolean }) {
+/** matchMedia de mentira: solo casa las queries que se le digan. */
+function stubMedia({ landscape, tall = false }: { landscape: boolean; tall?: boolean }) {
     vi.stubGlobal('matchMedia', (query: string) => ({
-        matches: landscape && query.includes('landscape'),
+        matches: query.includes('landscape') ? landscape :
+            query.includes('aspect-ratio') ? tall : false,
         media: query,
         onchange: null,
         addEventListener: () => undefined,
@@ -206,6 +207,7 @@ describe('MobileNav', () => {
     });
 
     it('tablet: variante rail', () => {
+        stubMedia({ landscape: false, tall: true });
         document.documentElement.classList.add('layout-mobile', 'layout-tablet');
         render('/');
         expect(host?.querySelector('nav[data-variant="rail"]')).not.toBeNull();
@@ -221,6 +223,7 @@ describe('MobileNav', () => {
     });
 
     it('tablet: el hueco se pasa a la franja izquierda', () => {
+        stubMedia({ landscape: false, tall: true });
         document.documentElement.classList.add('layout-mobile', 'layout-tablet');
         render('/');
         expect(navVar(NAV_LEFT_VAR)).toContain('72px');
@@ -230,7 +233,7 @@ describe('MobileNav', () => {
     it('en horizontal la píldora sigue abajo, aunque el ancho sea de tablet', () => {
         // Girar el móvil pasa el ancho de 390 a 844 y, por ancho, tocaría
         // rail: la navegación no debe cambiar de sitio al girar.
-        stubMedia({ landscape: true });
+        stubMedia({ landscape: true, tall: false });
         document.documentElement.classList.add('layout-mobile', 'layout-tablet');
         render('/');
 

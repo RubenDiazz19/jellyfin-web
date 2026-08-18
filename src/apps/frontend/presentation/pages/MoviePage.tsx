@@ -119,12 +119,12 @@ function MovieHero({
                 <HeroTitle
                     logo={movie.logo}
                     title={movie.title}
-                    logoMaxWidth={r.touch ? 'min(78vw, 360px)' : 580}
-                    logoMaxHeight={r.touch ? (short ? 'min(22vh, 64px)' : 'min(16vh, 112px)') : 200}
+                    logoMaxWidth={r.touch ? 'min(78vw, 325px)' : 520}
+                    logoMaxHeight={r.touch ? (short ? 'min(20vh, 58px)' : 'min(15vh, 100px)') : 180}
                     logoShadow='rgba(0,0,0,0.6)'
                     fontSize={
-                        short ? 'clamp(24px, 6vh, 40px)' :
-                            r.touch ? 'clamp(36px, 9vw, 64px)' : 'clamp(82px, 10vw, 150px)'
+                        short ? 'clamp(22px, 5.5vh, 36px)' :
+                            r.touch ? 'clamp(33px, 8vw, 58px)' : 'clamp(74px, 9vw, 135px)'
                     }
                     letterSpacing={r.touch ? -1 : -2}
                     balance
