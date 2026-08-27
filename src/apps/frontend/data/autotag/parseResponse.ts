@@ -13,7 +13,8 @@
 // etiquetas sin que nada lo delatara. Con un número de una o dos cifras el
 // error deja de ocurrir, y si ocurriera se ve al validar el rango.
 
-import { canonicalTag, dropRedundant, MAX_TAGS_PER_ITEM } from './vocabulary';
+import { canonicalTag, dropRedundant, MAX_TAGS_PER_ITEM, translateEnglishTag } from './vocabulary';
+const STRICT = !!process.env.AUTOTAG_STRICT;
 
 export type ParsedTags = {
     /** itemId -> etiquetas canónicas del vocabulario. */
@@ -81,10 +82,17 @@ export function parseTagResponse(raw: string, batchIds: readonly string[]): Pars
         const clean: string[] = [];
         for (const rawTag of Array.isArray(entry.tags) ? entry.tags : []) {
             if (typeof rawTag !== 'string') continue;
-            const tag = canonicalTag(rawTag);
+            let tag = canonicalTag(rawTag);
             if (!tag) {
-                rejectedTags.push(rawTag);
-                continue;
+                // Try English to Spanish translation
+                const translated = translateEnglishTag(rawTag);
+                if (translated) {
+                    tag = translated;
+                    console.warn(`Translated English tag "${rawTag}" to Spanish "${tag}"`);
+                } else {
+                    rejectedTags.push(rawTag);
+                    continue;
+                }
             }
             if (!clean.includes(tag)) clean.push(tag);
         }
@@ -96,6 +104,10 @@ export function parseTagResponse(raw: string, batchIds: readonly string[]): Pars
         if (useful.length > 0) tags.set(itemId, useful.slice(0, MAX_TAGS_PER_ITEM));
     }
 
+    // If strict mode is enabled, fail on any rejected or stray tags
+    if (STRICT && (rejectedTags.length > 0 || strayRefs.length > 0)) {
+        throw new Error(`Strict mode: encountered ${rejectedTags.length} rejected tags and ${strayRefs.length} stray references`);
+    }
     return {
         tags,
         rejectedTags,

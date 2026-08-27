@@ -12,7 +12,7 @@
 // parte de `item.tags`.
 
 import rawFile from './autoTags.json';
-import { canonicalTag, dropRedundant, MAX_TAGS_PER_ITEM } from './vocabulary';
+import { canonicalTag, dropRedundant, MAX_TAGS_PER_ITEM, translateEnglishTag } from './vocabulary';
 
 type AutoTagsFile = {
     _generatedAt?: string | null;
@@ -37,7 +37,7 @@ function ensure(): Map<string, string[]> {
         const clean: string[] = [];
         for (const raw of tags) {
             if (typeof raw !== 'string') continue;
-            const tag = canonicalTag(raw);
+            const tag = canonicalTag(raw) ?? translateEnglishTag(raw);
             if (tag && !clean.includes(tag)) clean.push(tag);
         }
         // También se quitan aquí las redundantes: un JSON generado antes de que

@@ -10,6 +10,7 @@ import { useResponsive, useShortViewport } from '../../theme/responsive';
 import { Backdrop } from './Backdrop';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
+import { translateGenre } from '../../../domain/genres';
 
 /**
  * Alto del hero de ficha: la pantalla entera, igual que el de la portada. Lo
@@ -178,7 +179,7 @@ export function HeroGenres({ genres, navigate, fontSize, marginBottom, justifyCo
                         onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
                         onMouseLeave={(e) => (e.currentTarget.style.color = '')}
                     >
-                        {g}
+                        {translateGenre(g)}
                     </button>
                     {i < genres.length - 1 && <span style={{ opacity: 0.5 }}>·</span>}
                 </span>

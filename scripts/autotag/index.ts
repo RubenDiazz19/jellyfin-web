@@ -13,7 +13,8 @@
 // de la capa gratuita a media pasada— no pierde el trabajo hecho.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseTagResponse } from '../../src/apps/frontend/data/autotag/parseResponse';
 import { fetchLibrary, resolveUserId, type JellyfinConfig } from './jellyfin';
 import { buildSystemPrompt, buildUserPrompt, type PromptItem } from './prompt';
@@ -21,7 +22,8 @@ import {
     createProvider, DEFAULT_MODELS, needsApiKey, type Provider, type ProviderName
 } from './providers';
 
-const OUT_PATH = resolve(import.meta.dir, '../../src/apps/frontend/data/autotag/autoTags.json');
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const OUT_PATH = resolve(SCRIPT_DIR, '../../src/apps/frontend/data/autotag/autoTags.json');
 const PROVIDERS: readonly ProviderName[] = ['groq', 'gemini', 'ollama', 'openai'];
 
 /** Lotes fallidos seguidos tras los que se da la pasada por perdida. */
@@ -62,6 +64,7 @@ type Options = {
     batchSize: number;
     delayMs: number;
     only: 'all' | 'movies' | 'series';
+    strict: boolean; // new flag
 };
 
 function parseArgs(argv: string[]): Options {
@@ -69,12 +72,13 @@ function parseArgs(argv: string[]): Options {
         dryRun: false,
         force: false,
         prune: false,
+        limit: undefined,
         batchSize: Number(process.env.AUTOTAG_BATCH ?? 20),
-        // Las capas gratuitas limitan por minuto. Un respiro entre lotes evita
-        // pasarse la mitad de la pasada en reintentos por 429.
         delayMs: Number(process.env.AUTOTAG_DELAY_MS ?? 1500),
-        only: 'all'
+        only: 'all',
+        strict: false
     };
+
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         const value = () => argv[++i];
@@ -94,8 +98,8 @@ function parseArgs(argv: string[]): Options {
             case '--batch':
                 opts.batchSize = Number(value());
                 break;
-            case '--delay':
-                opts.delayMs = Number(value());
+            case '--strict':
+                opts.strict = true;
                 break;
             case '--only':
                 opts.only = parseOnly(value());
@@ -285,11 +289,12 @@ function report(totals: Totals, opts: Options) {
 
 async function main() {
     const opts = parseArgs(process.argv.slice(2));
+    if (opts.strict) {
+        process.env.AUTOTAG_STRICT = '1';
+    }
+
     const jf = resolveJellyfin();
     const llm = resolveProvider();
-
-    console.log(`Servidor : ${jf.server}`);
-    console.log(`Modelo   : ${llm.label}`);
 
     const library = await fetchLibrary(jf, await resolveUserId(jf), opts.only);
     console.log(`Biblioteca: ${library.length} títulos`);

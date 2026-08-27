@@ -2,7 +2,7 @@
 // son la red para que una edición descuidada no rompa el etiquetado.
 
 import { describe, expect, test } from 'vitest';
-import { canonicalTag, isVocabularyTag, VOCABULARY, VOCABULARY_TAGS } from '../vocabulary';
+import { canonicalTag, isVocabularyTag, translateEnglishTag, VOCABULARY, VOCABULARY_TAGS } from '../vocabulary';
 
 describe('vocabulary', () => {
     test('no hay etiquetas repetidas', () => {
@@ -34,5 +34,11 @@ describe('vocabulary', () => {
         // `canonicalTag`; que pase de rebote sería un bug silencioso.
         expect(canonicalTag('Belico')).toBeUndefined();
         expect(canonicalTag('Bélico')).toBe('Bélico');
+    });
+
+    test('translateEnglishTag mapea términos comunes en inglés al español', () => {
+        expect(translateEnglishTag('action')).toBe('Acción');
+        expect(translateEnglishTag('Science Fiction')).toBe('Ciencia ficción');
+        expect(translateEnglishTag('unknown_tag')).toBeUndefined();
     });
 });

@@ -34,6 +34,7 @@ export function PosterTile({ title, kindLabel, cover, logo, interactions }: Prop
         >
             <div style={{
                 aspectRatio: '2/3', borderRadius: 8, overflow: 'hidden', position: 'relative',
+                containerType: 'inline-size',
                 background: 'rgba(255,255,255,0.05)',
                 // Igual que en PosterShell: el marco no se pinta hasta que se
                 // acerca al viewport. Ver la nota larga de allí.
@@ -81,36 +82,68 @@ export function PosterTile({ title, kindLabel, cover, logo, interactions }: Prop
                         {title?.[0]}
                     </div>
                 )}
-                <div style={{
-                    position: 'absolute', left: 12, right: 12, bottom: 12,
-                    filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.7))'
-                }}>
-                    {logo ? (
+                {/* El logo va acotado a una caja con alto proporcional fijo
+                    (11.9% del alto del póster) y ancho disponible de hasta el
+                    86% de la tarjeta para unificar tamaños y escalar en responsive. */}
+                {logo ? (
+                    <div style={{
+                        position: 'absolute',
+                        left: '6%',
+                        right: '8%',
+                        bottom: '5%',
+                        height: '11.9%',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        justifyContent: 'flex-start',
+                        filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.7))',
+                        pointerEvents: 'none'
+                    }}>
                         <img
                             src={logo}
                             alt={title}
                             loading='lazy'
                             decoding='async'
                             style={{
-                                maxWidth: '100%', maxHeight: 36, width: 'auto', height: 'auto',
-                                objectFit: 'contain', objectPosition: 'left center'
+                                maxWidth: '100%',
+                                maxHeight: '100%',
+                                width: 'auto',
+                                height: 'auto',
+                                objectFit: 'contain',
+                                objectPosition: 'left bottom'
                             }}
                         />
-                    ) : (
-                        // La sombra va como `drop-shadow` del contenedor y no
-                        // como `text-shadow` aquí: el recorte a dos líneas
-                        // necesita `overflow: hidden`, que cortaría la sombra
-                        // en seco y dejaría un rectángulo alrededor del título.
+                    </div>
+                ) : (
+                    // La sombra va como `drop-shadow` del contenedor y no
+                    // como `text-shadow` aquí: el recorte a dos líneas
+                    // necesita `overflow: hidden`, que cortaría la sombra
+                    // en seco y dejaría un rectángulo alrededor del título.
+                    <div style={{
+                        position: 'absolute',
+                        left: '6%',
+                        right: '6%',
+                        bottom: '5%',
+                        maxHeight: '24%',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.7))',
+                        pointerEvents: 'none'
+                    }}>
                         <div style={{
-                            fontFamily: T.display, fontSize: 15, fontWeight: 600, lineHeight: 1.2,
+                            fontFamily: T.display,
+                            fontSize: 'clamp(11px, 7.5cqi, 15px)',
+                            fontWeight: 600,
+                            lineHeight: 1.2,
                             color: '#fff',
                             overflow: 'hidden',
-                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical'
                         }}>
                             {title}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
             {contextMenu}
         </div>

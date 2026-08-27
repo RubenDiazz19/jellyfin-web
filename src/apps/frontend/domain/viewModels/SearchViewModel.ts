@@ -21,9 +21,11 @@ import type { SavedView } from '../../data/stores/viewsStore';
 import { MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
 import { LoadGuard } from './loadGuard';
+import { translateGenre } from '../genres';
 
 export type TypeFilter = 'todo' | 'series' | 'peliculas';
 export type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
+export type FilterCategory = 'tipo' | 'estado' | 'generos';
 
 const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas'];
 const STATE_FILTERS: readonly string[] = ['todo', 'favs', 'vistos', 'no-vistos'];
@@ -76,7 +78,8 @@ export function parseQuery(raw: string): { text: string; tags: string[] } {
  * tanto lo etiquetado a mano como lo que dedujo el script.
  */
 function tagsOf(item: SearchResult): string[] {
-    return [...(item.tags ?? []), ...(item.autoTags ?? [])];
+    const translatedGenres = (item.genres ?? []).map((g) => translateGenre(g));
+    return [...(item.tags ?? []), ...(item.autoTags ?? []), ...translatedGenres];
 }
 
 function isSeriesWatched(show: Show): boolean {
@@ -95,7 +98,7 @@ function matchesText(item: SearchResult, q: string): boolean {
     return !!(
         item.title?.toLowerCase().includes(q)
         || item.synopsis?.toLowerCase().includes(q)
-        || item.genres?.some((g) => g.toLowerCase().includes(q))
+        || item.genres?.some((g) => g.toLowerCase().includes(q) || translateGenre(g).toLowerCase().includes(q))
         || item.cast?.some((c) => c.name?.toLowerCase().includes(q))
     );
 }
@@ -114,8 +117,14 @@ const REMOTE_DEBOUNCE_MS = 250;
 
 export class SearchViewModel {
     query = signal('');
-    typeFilter = signal<TypeFilter>('todo');
-    stateFilter = signal<StateFilter>('todo');
+    typeFilters = signal<string[]>([]);
+    stateFilters = signal<string[]>([]);
+    /**
+     * Categoría padre activa cuando se despliega su submenú horizontal.
+     * Si no es null, el buscador principal pasa a buscar en las subcategorías.
+     */
+    categoryMode = signal<FilterCategory | null>(null);
+    categoryQuery = signal<string>('');
     /**
      * Etiquetas elegidas en la fila de chips. Se acumulan en Y: pulsar
      * «Anime» y «Instituto» deja lo que tenga las dos, no la unión. Es lo que
@@ -123,6 +132,21 @@ export class SearchViewModel {
      * acota y el matiz afina.
      */
     tagFilters = signal<string[]>([]);
+
+    /** Acceso y compatibilidad con TypeFilter / StateFilter unitario */
+    typeFilter = computed<TypeFilter>(() => {
+        if (this.typeFilters.value.length === 1) {
+            return this.typeFilters.value[0] as TypeFilter;
+        }
+        return 'todo';
+    });
+
+    stateFilter = computed<StateFilter>(() => {
+        if (this.stateFilters.value.length === 1) {
+            return this.stateFilters.value[0] as StateFilter;
+        }
+        return 'todo';
+    });
 
     /**
      * La búsqueda como superposición sobre la página actual, que es lo que
@@ -185,8 +209,8 @@ export class SearchViewModel {
             .map((m) => ({ ...m, kind: 'movie' as const }));
         const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies];
 
-        const type = this.typeFilter.value;
-        const state = this.stateFilter.value;
+        const types = this.typeFilters.value;
+        const states = this.stateFilters.value;
         const { text: q, tags: queryTags } = parseQuery(this.query.value);
         // Los chips y las etiquetas escritas con `#` se acumulan todos: hay
         // que cumplirlos todos para aparecer en los resultados.
@@ -198,24 +222,28 @@ export class SearchViewModel {
         // Los chips y el tipo se aplican igual vengan de donde vengan los
         // resultados; el texto solo a los de casa (ver `remote`).
         const passesFilters = (item: SearchResult) => {
-            if (type === 'series' && item.kind !== 'show') return false;
-            if (type === 'peliculas' && item.kind !== 'movie') return false;
+            if (types.length > 0) {
+                const matchesType = (types.includes('series') && item.kind === 'show')
+                    || (types.includes('peliculas') && item.kind === 'movie');
+                if (!matchesType) return false;
+            }
 
             if (requiredTags.length > 0) {
                 const own = tagsOf(item).map((t) => t.toLowerCase());
                 if (!requiredTags.every((t) => own.includes(t))) return false;
             }
 
-            if (state !== 'todo') {
+            if (states.length > 0) {
                 const isFav = item.kind === 'show' ?
                     FAVS.has(item.id) :
                     FAVS.has(movieKey(item.id));
                 const isWatched = item.kind === 'show' ?
                     isSeriesWatched(item) :
                     isMovieWatched(item);
-                if (state === 'favs' && !isFav) return false;
-                if (state === 'vistos' && !isWatched) return false;
-                if (state === 'no-vistos' && isWatched) return false;
+
+                if (states.includes('favs') && !isFav) return false;
+                if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) return false;
+                if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) return false;
             }
             return true;
         };
@@ -255,21 +283,71 @@ export class SearchViewModel {
                 const key = tag.toLowerCase();
                 if (!seen.has(key) && MANUAL_TAGS.has(tag)) seen.set(key, tag);
             }
+            for (const g of item.genres ?? []) {
+                const translated = translateGenre(g);
+                if (translated) {
+                    const key = translated.toLowerCase();
+                    if (!seen.has(key)) seen.set(key, translated);
+                }
+            }
         }
         return [...seen.values()].sort((a, b) => a.localeCompare(b));
     });
 
     anyFilterActive = computed(() =>
-        this.typeFilter.value !== 'todo'
-        || this.stateFilter.value !== 'todo'
+        this.typeFilters.value.length > 0
+        || this.stateFilters.value.length > 0
         || this.tagFilters.value.length > 0
         || !!this.query.value.trim()
     );
 
     setQuery = (q: string) => { this.query.value = q; };
-    setTypeFilter = (f: TypeFilter) => { this.typeFilter.value = f; };
-    setStateFilter = (f: StateFilter) => { this.stateFilter.value = f; };
+    setTypeFilter = (f: TypeFilter) => {
+        this.typeFilters.value = (f === 'todo' || !f) ? [] : [f];
+    };
+    setStateFilter = (f: StateFilter) => {
+        this.stateFilters.value = (f === 'todo' || !f) ? [] : [f];
+    };
+    toggleTypeFilter = (t: string) => {
+        const current = this.typeFilters.value;
+        this.typeFilters.value = current.includes(t) ?
+            current.filter((x) => x !== t) :
+            [...current, t];
+    };
+    toggleStateFilter = (s: string) => {
+        const current = this.stateFilters.value;
+        this.stateFilters.value = current.includes(s) ?
+            current.filter((x) => x !== s) :
+            [...current, s];
+    };
+    hasTypeFilter = (t: string): boolean => this.typeFilters.value.includes(t);
+    hasStateFilter = (s: string): boolean => this.stateFilters.value.includes(s);
+
+    clearTypeFilters = () => { this.typeFilters.value = []; };
+    clearStateFilters = () => { this.stateFilters.value = []; };
     clearQuery = () => { this.query.value = ''; };
+
+    openCategory = (cat: FilterCategory) => {
+        this.categoryMode.value = cat;
+        this.categoryQuery.value = '';
+    };
+
+    closeCategory = () => {
+        this.categoryMode.value = null;
+        this.categoryQuery.value = '';
+    };
+
+    toggleCategory = (cat: FilterCategory) => {
+        if (this.categoryMode.value === cat) {
+            this.closeCategory();
+        } else {
+            this.openCategory(cat);
+        }
+    };
+
+    setCategoryQuery = (q: string) => {
+        this.categoryQuery.value = q;
+    };
 
     /** True si esa etiqueta está entre los filtros activos. */
     hasTagFilter = (tag: string): boolean =>
@@ -302,8 +380,10 @@ export class SearchViewModel {
     closeOverlay = () => {
         this.overlayOpen.value = false;
         this.query.value = '';
-        this.typeFilter.value = 'todo';
-        this.stateFilter.value = 'todo';
+        this.categoryMode.value = null;
+        this.categoryQuery.value = '';
+        this.typeFilters.value = [];
+        this.stateFilters.value = [];
         this.tagFilters.value = [];
     };
 
@@ -312,8 +392,8 @@ export class SearchViewModel {
         const tags = this.tagFilters.value;
         return {
             name,
-            typeFilter: this.typeFilter.value,
-            stateFilter: this.stateFilter.value,
+            typeFilter: this.typeFilters.value[0] ?? 'todo',
+            stateFilter: this.stateFilters.value[0] ?? 'todo',
             tags: tags.length > 0 ? [...tags] : undefined,
             query: this.query.value.trim() || undefined
         };
@@ -325,8 +405,10 @@ export class SearchViewModel {
      * existe, y aplicarla a ciegas dejaría la búsqueda en un estado imposible.
      */
     applyView(view: SavedView) {
-        this.typeFilter.value = isTypeFilter(view.typeFilter) ? view.typeFilter : 'todo';
-        this.stateFilter.value = isStateFilter(view.stateFilter) ? view.stateFilter : 'todo';
+        const type = isTypeFilter(view.typeFilter) ? view.typeFilter : 'todo';
+        this.typeFilters.value = type === 'todo' ? [] : [type];
+        const state = isStateFilter(view.stateFilter) ? view.stateFilter : 'todo';
+        this.stateFilters.value = state === 'todo' ? [] : [state];
         // `tag` en singular es el formato viejo, de cuando solo se podía
         // filtrar por una: las vistas guardadas entonces siguen funcionando.
         this.tagFilters.value = view.tags ?? (view.tag ? [view.tag] : []);

@@ -21,11 +21,11 @@ import type { ApiService } from '../../../data/api/ApiService';
 import type { Movie, Show } from '../../../data/models';
 import { MANUAL_TAGS } from '../../../data/stores/manualTagsStore';
 
-function show(id: string, title: string, tags?: string[], autoTags?: string[]): Show {
-    return { id, title, tags, autoTags, genres: [], seasons: [] } as unknown as Show;
+function show(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = []): Show {
+    return { id, title, tags, autoTags, genres, seasons: [] } as unknown as Show;
 }
-function movie(id: string, title: string, tags?: string[], autoTags?: string[]): Movie {
-    return { id, title, tags, autoTags, genres: [] } as unknown as Movie;
+function movie(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = []): Movie {
+    return { id, title, tags, autoTags, genres } as unknown as Movie;
 }
 
 /** VM con la biblioteca ya cargada; sin sesión para que `load()` no dispare. */
@@ -173,12 +173,28 @@ describe('allTags (los chips que se pintan)', () => {
         expect(v.allTags.value).toEqual(['Anime', 'Pendiente']);
     });
 
-    test('sin etiquetas devuelve lista vacía (la fila de chips se oculta)', () => {
+    test('los géneros de las películas y series se traducen y aparecen como chips', () => {
+        const v = makeVm(
+            [show('s1', 'A', [], [], ['War & Politics', 'Drama'])],
+            [movie('m1', 'B', [], [], ['Action & Adventure'])]
+        );
+        expect(v.allTags.value).toEqual(['Acción y Aventura', 'Bélico y Política', 'Drama']);
+    });
+
+    test('sin etiquetas ni géneros devuelve lista vacía (la fila de chips se oculta)', () => {
         expect(makeVm([show('s1', 'A')]).allTags.value).toEqual([]);
     });
 });
 
-describe('etiquetas automáticas y filtrado', () => {
+describe('etiquetas y géneros: filtrado', () => {
+    test('el chip de un género traducido filtra correctamente', () => {
+        const v = makeVm(
+            [show('s1', 'A', [], [], ['War & Politics'])],
+            [movie('m1', 'B', [], [], ['Comedy'])]
+        );
+        v.toggleTagFilter('Bélico y Política');
+        expect(ids(v)).toEqual(['s1']);
+    });
     test('el chip de una automática filtra', () => {
         const v = makeVm(
             [show('s1', 'A', [], ['Anime'])],
@@ -501,5 +517,67 @@ describe('búsqueda en el servidor', () => {
         await settle();
 
         expect(searchCatalog).not.toHaveBeenCalled();
+    });
+});
+
+describe('filtros múltiples de tipo y estado', () => {
+    const vm = () => makeVm(
+        [show('s1', 'Serie A'), show('s2', 'Serie B')],
+        [movie('m1', 'Peli 1'), movie('m2', 'Peli 2')]
+    );
+
+    test('toggleTypeFilter activa y desactiva tipo individualmente', () => {
+        const v = vm();
+        expect(ids(v)).toEqual(['s1', 's2', 'm1', 'm2']);
+        expect(v.typeFilters.value).toEqual([]);
+
+        v.toggleTypeFilter('series');
+        expect(v.typeFilters.value).toEqual(['series']);
+        expect(ids(v)).toEqual(['s1', 's2']);
+
+        v.toggleTypeFilter('peliculas');
+        expect(v.typeFilters.value).toEqual(['series', 'peliculas']);
+        expect(ids(v)).toEqual(['s1', 's2', 'm1', 'm2']);
+
+        v.toggleTypeFilter('series');
+        expect(v.typeFilters.value).toEqual(['peliculas']);
+        expect(ids(v)).toEqual(['m1', 'm2']);
+
+        v.toggleTypeFilter('peliculas');
+        expect(v.typeFilters.value).toEqual([]);
+        expect(ids(v)).toEqual(['s1', 's2', 'm1', 'm2']);
+    });
+
+    test('toggleStateFilter activa y desactiva estado', () => {
+        const v = vm();
+        expect(v.stateFilters.value).toEqual([]);
+        v.toggleStateFilter('favs');
+        expect(v.stateFilters.value).toEqual(['favs']);
+        expect(v.hasStateFilter('favs')).toBe(true);
+        v.toggleStateFilter('favs');
+        expect(v.stateFilters.value).toEqual([]);
+        expect(v.hasStateFilter('favs')).toBe(false);
+    });
+
+    test('openCategory, closeCategory y toggleCategory gestionan la categoría activa', () => {
+        const v = vm();
+        expect(v.categoryMode.value).toBeNull();
+        expect(v.categoryQuery.value).toBe('');
+
+        v.openCategory('generos');
+        expect(v.categoryMode.value).toBe('generos');
+
+        v.setCategoryQuery('com');
+        expect(v.categoryQuery.value).toBe('com');
+
+        v.toggleCategory('generos');
+        expect(v.categoryMode.value).toBeNull();
+        expect(v.categoryQuery.value).toBe('');
+
+        v.toggleCategory('tipo');
+        expect(v.categoryMode.value).toBe('tipo');
+
+        v.closeCategory();
+        expect(v.categoryMode.value).toBeNull();
     });
 });

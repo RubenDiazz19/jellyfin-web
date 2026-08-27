@@ -10,6 +10,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { T } from '../../theme/tokens';
 import { MC, useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
+import { translateGenre } from '../../../domain/genres';
 
 const FULL_SCREEN: CSSProperties = {
     minHeight: '100vh', background: '#000', fontFamily: T.ui,
@@ -150,7 +151,7 @@ export function GenreLinks({ genres, navigate }: { genres: string[]; navigate: N
                             font: 'inherit', color: 'inherit', cursor: 'pointer',
                             textDecoration: 'underline dotted', textUnderlineOffset: 3
                         }}
-                    >{g}</button>
+                    >{translateGenre(g)}</button>
                     {i < genres.length - 1 && ', '}
                 </span>
             ))}

@@ -22,6 +22,7 @@ import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
+import { translateGenre } from '../../domain/genres';
 import { useMovieEntity } from './useDetailEntity';
 import { movieKey } from '../../domain/stores';
 import { ticksFromProgress } from '../../domain/player/format';
@@ -91,7 +92,7 @@ function MovieHero({
                     navigate={navigate}
                     breadcrumb={[
                         { label: globalize.translate('Movies'), to: { page: 'home' } },
-                        { label: movie.genres[0] },
+                        { label: translateGenre(movie.genres[0]) },
                         { label: movie.title }
                     ]}
                     actionId={movieKey(movie.id)}

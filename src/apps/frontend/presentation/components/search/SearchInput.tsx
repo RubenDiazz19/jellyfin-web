@@ -20,7 +20,12 @@ type Props = {
 export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
     const r = useResponsive();
     const inputRef = useRef<HTMLInputElement>(null);
-    const query = searchVM.query.value;
+    const categoryMode = searchVM.categoryMode.value;
+    const categoryQuery = searchVM.categoryQuery.value;
+    const globalQuery = searchVM.query.value;
+
+    const isCategoryMode = categoryMode !== null;
+    const currentValue = isCategoryMode ? categoryQuery : globalQuery;
 
     useEffect(() => {
         if (!autoFocus) return;
@@ -30,26 +35,64 @@ export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
         return () => clearTimeout(t);
     }, [autoFocus]);
 
+    // Al abrir una categoría se re-enfoca la caja de búsqueda para filtrar al vuelo
+    useEffect(() => {
+        if (isCategoryMode) {
+            inputRef.current?.focus();
+        }
+    }, [isCategoryMode]);
+
+    const getPlaceholder = () => {
+        if (!categoryMode) return globalize.translate('SearchPlaceholder');
+        if (categoryMode === 'tipo') return `${globalize.translate('Search')} ${globalize.translate('LabelType').toLowerCase()}...`;
+        if (categoryMode === 'estado') return `${globalize.translate('Search')} ${globalize.translate('LabelStatus').toLowerCase()}...`;
+        return `${globalize.translate('Search')} ${globalize.translate('Genres').toLowerCase()}...`;
+    };
+
+    const handleClear = () => {
+        if (isCategoryMode) {
+            searchVM.setCategoryQuery('');
+        } else {
+            searchVM.clearQuery();
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Escape' && isCategoryMode) {
+            e.stopPropagation();
+            searchVM.closeCategory();
+            return;
+        }
+        onKeyDown?.(e);
+    };
+
     return (
         <div style={{ position: 'relative', maxWidth: r.touch ? undefined : maxWidth }}>
             <div style={{
                 position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)',
-                color: T.dim, pointerEvents: 'none'
+                color: isCategoryMode ? '#fff' : T.dim, pointerEvents: 'none',
+                transition: 'color .2s'
             }}>
                 <Ic.Search size={r.touch ? 18 : 20} />
             </div>
             <input
                 ref={inputRef}
-                value={query}
-                onChange={(e) => searchVM.setQuery(e.target.value)}
-                onKeyDown={onKeyDown}
-                placeholder={globalize.translate('SearchPlaceholder')}
+                value={currentValue}
+                onChange={(e) => {
+                    if (isCategoryMode) {
+                        searchVM.setCategoryQuery(e.target.value);
+                    } else {
+                        searchVM.setQuery(e.target.value);
+                    }
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={getPlaceholder()}
                 style={{
                     width: '100%', boxSizing: 'border-box',
                     background: r.touch ?
                         'var(--md-sys-color-surface-container-high, rgba(255,255,255,0.06))' :
                         'rgba(255,255,255,0.06)',
-                    border: r.touch ? 'none' : '1px solid rgba(255,255,255,0.12)',
+                    border: r.touch ? 'none' : isCategoryMode ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.12)',
                     borderRadius: r.touch ? 'var(--md-sys-shape-corner-full, 28px)' : 12,
                     padding: r.touch ? '15px 18px 15px 50px' : '18px 20px 18px 52px',
                     color: 'inherit', fontFamily: T.ui,
@@ -57,12 +100,12 @@ export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
                     transition: 'border-color .2s'
                 }}
                 onFocus={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.35)')}
-                onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.12)')}
+                onBlur={(e) => (e.target.style.borderColor = isCategoryMode ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.12)')}
             />
-            {query && (
+            {currentValue && (
                 <button
                     type='button'
-                    onClick={searchVM.clearQuery}
+                    onClick={handleClear}
                     aria-label={globalize.translate('Clear')}
                     style={{
                         position: 'absolute', right: 10, top: '50%',

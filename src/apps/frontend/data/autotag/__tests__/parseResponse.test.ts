@@ -44,6 +44,12 @@ describe('parseTagResponse', () => {
         expect(r.tags.get('a')).toEqual(['Anime']);
     });
 
+    test('traduce etiquetas conocidas en inglés al español', () => {
+        const r = parseTagResponse(ok([{ n: 1, tags: ['Action', 'Thriller'] }]), ['a']);
+        expect(r.tags.get('a')).toEqual(['Acción', 'Suspense']);
+        expect(r.rejectedTags).toEqual([]);
+    });
+
     test('un item sin etiquetas reconocibles no se guarda', () => {
         const r = parseTagResponse(ok([{ n: 1, tags: ['Chorrada'] }]), ['a']);
         expect(r.tags.has('a')).toBe(false);

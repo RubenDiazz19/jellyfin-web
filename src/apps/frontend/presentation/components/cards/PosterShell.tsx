@@ -62,6 +62,7 @@ export function PosterShell({
                 className='jfp-card-m3'
                 style={{
                     aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden', position: 'relative',
+                    containerType: 'inline-size',
                     // Reserva del hueco mientras la carátula llega —y fondo
                     // definitivo si el item no tiene ninguna—, para que la
                     // rejilla no parpadee en blanco al ir apareciendo.
@@ -117,31 +118,66 @@ export function PosterShell({
                         <div style={{ position: 'absolute', top: 10, right: 12 }}>{favButton}</div>
                     </>
                 )}
-                {/* Con barra de progreso el título sube para no quedar debajo. */}
-                <div style={{
-                    position: 'absolute', left: 16, right: 16, bottom: inProgress ? 22 : 16
-                }}>
-                    {logo ? (
+                {/* Con barra de progreso el título sube para no quedar debajo.
+                    El logo va acotado a una caja con alto proporcional fijo
+                    (11.9% del alto del póster) y ancho disponible de hasta el
+                    86% de la tarjeta: así todos los logos tienen la misma altura
+                    visual máxima (evitando que logos verticales o cuadrados como
+                    Demon Slayer se hagan gigantes) y escalan fluidamente en
+                    responsive. */}
+                {logo ? (
+                    <div style={{
+                        position: 'absolute',
+                        left: '6%',
+                        right: '8%',
+                        bottom: inProgress ? '8%' : '5%',
+                        height: '11.9%',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        justifyContent: 'flex-start',
+                        pointerEvents: 'none'
+                    }}>
                         <img
                             src={logo}
                             alt={title}
                             loading='lazy'
                             decoding='async'
                             style={{
-                                maxWidth: 140, maxHeight: 44, width: 'auto', height: 'auto',
-                                objectFit: 'contain', objectPosition: 'left center',
+                                maxWidth: '100%',
+                                maxHeight: '100%',
+                                width: 'auto',
+                                height: 'auto',
+                                objectFit: 'contain',
+                                objectPosition: 'left bottom',
                                 filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))'
                             }}
                         />
-                    ) : (
+                    </div>
+                ) : (
+                    <div style={{
+                        position: 'absolute',
+                        left: '6%',
+                        right: '6%',
+                        bottom: inProgress ? '8%' : '5%',
+                        maxHeight: '24%',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        pointerEvents: 'none'
+                    }}>
                         <div style={{
-                            fontFamily: T.display, fontSize: 20, lineHeight: 1.05,
-                            textShadow: '0 2px 20px rgba(0,0,0,0.5)'
+                            fontFamily: T.display,
+                            fontSize: 'clamp(12px, 8.5cqi, 20px)',
+                            lineHeight: 1.05,
+                            textShadow: '0 2px 20px rgba(0,0,0,0.5)',
+                            overflow: 'hidden',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical'
                         }}>
                             {title}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
                 {inProgress && (
                     <div style={{ position: 'absolute', left: 0, right: 0, bottom: 3 }}>
                         <Progress value={progress} height={3} />

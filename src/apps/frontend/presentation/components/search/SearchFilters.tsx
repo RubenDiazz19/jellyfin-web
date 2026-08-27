@@ -1,9 +1,12 @@
-// Filas de filtro de la búsqueda: tipo, estado, etiquetas y vistas guardadas.
+// Filas de filtro de la búsqueda:
+// 1. En reposo se muestran las 3 píldoras principales: Tipo, Estado y Géneros.
+// 2. Al seleccionar una categoría, las otras dos desaparecen y sus subcategorías
+//    se despliegan en la misma línea a la derecha con scroll horizontal.
+// 3. La caja de búsqueda principal pasa a filtrar las subcategorías activas.
 //
 // Vive aparte de SearchPage porque lo usan dos sitios —la página /search y la
 // superposición que abre la lupa— y son exactamente los mismos filtros sobre
-// el mismo ViewModel. Duplicarlo era garantizar que se separasen a la primera
-// corrección.
+// el mismo ViewModel.
 
 import { useEffect, useState } from 'react';
 
@@ -12,158 +15,328 @@ import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { useToast } from '../toast/ToastProvider';
-import { searchVM, type StateFilter, type TypeFilter } from '../../../domain/viewModels/SearchViewModel';
+import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import { VIEWS, type SavedView } from '../../../domain/stores';
 
-const TYPE_TABS: { id: TypeFilter; key: string }[] = [
-    { id: 'todo', key: 'All' },
+const TYPE_OPTIONS = [
     { id: 'series', key: 'Shows' },
     { id: 'peliculas', key: 'Movies' }
 ];
 
-const STATE_TABS: { id: StateFilter; key: string }[] = [
-    { id: 'todo', key: 'All' },
+const STATE_OPTIONS = [
     { id: 'favs', key: 'Favorites' },
     { id: 'vistos', key: 'Watched' },
     { id: 'no-vistos', key: 'Unwatched' }
 ];
 
 export function SearchFilters() {
-    const typeFilter = searchVM.typeFilter.value;
-    const stateFilter = searchVM.stateFilter.value;
+    const r = useResponsive();
+    const categoryMode = searchVM.categoryMode.value;
+    const categoryQuery = searchVM.categoryQuery.value.trim().toLowerCase();
+
+    const typeCount = searchVM.typeFilters.value.length;
+    const stateCount = searchVM.stateFilters.value.length;
+    const tagCount = searchVM.tagFilters.value.length;
     const allTags = searchVM.allTags.value;
 
-    return (
-        <>
-            <FilterRow<TypeFilter>
-                label={globalize.translate('LabelType')}
-                tabs={TYPE_TABS}
-                active={typeFilter}
-                onChange={searchVM.setTypeFilter}
-            />
-            <FilterRow<StateFilter>
-                label={globalize.translate('LabelStatus')}
-                tabs={STATE_TABS}
-                active={stateFilter}
-                onChange={searchVM.setStateFilter}
-            />
-            {/* Sin etiquetas en la biblioteca la fila sobra: no se pinta. */}
-            {allTags.length > 0 && <TagFilterRow tags={allTags} />}
-            <SavedViewsRow />
-        </>
+    const filteredTypeOptions = TYPE_OPTIONS.filter((opt) =>
+        !categoryQuery || globalize.translate(opt.key).toLowerCase().includes(categoryQuery)
     );
-}
 
-/** Etiqueta de la fila, a la izquierda. Se oculta en móvil por sitio. */
-function RowLabel({ text }: { text: string }) {
-    const r = useResponsive();
-    if (r.mobile) return null;
-    return (
-        <span style={{
-            fontSize: 10, letterSpacing: 3, textTransform: 'uppercase',
-            color: T.dim, minWidth: 60
-        }}>
-            {text}
-        </span>
+    const filteredStateOptions = STATE_OPTIONS.filter((opt) =>
+        !categoryQuery || globalize.translate(opt.key).toLowerCase().includes(categoryQuery)
     );
-}
 
-/**
- * Contenedor de una fila de chips.
- *
- * En touch hace scroll horizontal (es el gesto natural ahí); en escritorio
- * envuelve, porque no hay tal gesto y los chips que no cabían se quedaban
- * fuera del viewport sin forma de alcanzarlos con el ratón.
- */
-function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
-    const r = useResponsive();
+    const filteredTags = allTags.filter((tag) =>
+        !categoryQuery || tag.toLowerCase().includes(categoryQuery)
+    );
+
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: r.touch ? 14 : 20 }}>
-            <RowLabel text={label} />
+        <div style={{ marginTop: r.touch ? 14 : 20 }}>
+            {/* Animaciones CSS para transiciones limpias, suaves y escalonadas */}
+            <style>{`
+                @keyframes jfpPillsFadeIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.96);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+                @keyframes jfpSubPillIn {
+                    from {
+                        opacity: 0;
+                        transform: translateX(12px) scale(0.94);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0) scale(1);
+                    }
+                }
+                @keyframes jfpParentPillIn {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-6px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+            `}</style>
+
+            {/* Fila principal en una sola línea */}
             <div style={{
-                display: 'flex', gap: 8, alignItems: 'center',
-                flexWrap: r.touch ? 'nowrap' : 'wrap',
-                overflowX: r.touch ? 'auto' : undefined,
-                scrollbarWidth: r.touch ? 'none' : undefined,
-                paddingBottom: r.touch ? 2 : undefined
+                display: 'flex',
+                gap: 10,
+                alignItems: 'center',
+                flexWrap: 'nowrap',
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                WebkitOverflowScrolling: 'touch',
+                paddingBottom: 2
             }}>
-                {children}
+                {/* Caso A: Ninguna categoría abierta -> Mostrar las 3 píldoras principales */}
+                {categoryMode === null && (
+                    <div style={{
+                        display: 'flex',
+                        gap: 10,
+                        alignItems: 'center',
+                        animation: 'jfpPillsFadeIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both'
+                    }}>
+                        <MainPill
+                            label={globalize.translate('LabelType')}
+                            count={typeCount}
+                            isOpen={false}
+                            onClick={() => searchVM.openCategory('tipo')}
+                        />
+                        <MainPill
+                            label={globalize.translate('LabelStatus')}
+                            count={stateCount}
+                            isOpen={false}
+                            onClick={() => searchVM.openCategory('estado')}
+                        />
+                        <MainPill
+                            label={globalize.translate('Genres')}
+                            count={tagCount}
+                            isOpen={false}
+                            onClick={() => searchVM.openCategory('generos')}
+                        />
+                    </div>
+                )}
+
+                {/* Caso B: Una categoría seleccionada -> Mostrarla como única a la izquierda y sus hijos a la derecha */}
+                {categoryMode !== null && (
+                    <>
+                        {/* Píldora padre seleccionada */}
+                        {categoryMode === 'tipo' && (
+                            <MainPill
+                                label={globalize.translate('LabelType')}
+                                count={typeCount}
+                                isOpen={true}
+                                onClick={searchVM.closeCategory}
+                            />
+                        )}
+                        {categoryMode === 'estado' && (
+                            <MainPill
+                                label={globalize.translate('LabelStatus')}
+                                count={stateCount}
+                                isOpen={true}
+                                onClick={searchVM.closeCategory}
+                            />
+                        )}
+                        {categoryMode === 'generos' && (
+                            <MainPill
+                                label={globalize.translate('Genres')}
+                                count={tagCount}
+                                isOpen={true}
+                                onClick={searchVM.closeCategory}
+                            />
+                        )}
+
+                        {/* Divisor vertical sutil */}
+                        <div style={{
+                            width: 1,
+                            height: 20,
+                            background: 'rgba(255,255,255,0.18)',
+                            flexShrink: 0,
+                            margin: '0 2px'
+                        }} />
+
+                        {/* Tira horizontal de subcategorías con entrada progresiva */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                flex: 1,
+                                overflowX: 'auto',
+                                scrollbarWidth: 'none',
+                                WebkitOverflowScrolling: 'touch'
+                            }}
+                        >
+                            {categoryMode === 'tipo' && (
+                                filteredTypeOptions.length === 0 ? (
+                                    <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
+                                        {globalize.translate('MessageNoResultsFound')}
+                                    </span>
+                                ) : (
+                                    filteredTypeOptions.map((opt, index) => {
+                                        const selected = searchVM.hasTypeFilter(opt.id);
+                                        return (
+                                            <OptionPill
+                                                key={opt.id}
+                                                index={index}
+                                                label={globalize.translate(opt.key)}
+                                                selected={selected}
+                                                onClick={() => searchVM.toggleTypeFilter(opt.id)}
+                                            />
+                                        );
+                                    })
+                                )
+                            )}
+
+                            {categoryMode === 'estado' && (
+                                filteredStateOptions.length === 0 ? (
+                                    <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
+                                        {globalize.translate('MessageNoResultsFound')}
+                                    </span>
+                                ) : (
+                                    filteredStateOptions.map((opt, index) => {
+                                        const selected = searchVM.hasStateFilter(opt.id);
+                                        return (
+                                            <OptionPill
+                                                key={opt.id}
+                                                index={index}
+                                                label={globalize.translate(opt.key)}
+                                                selected={selected}
+                                                onClick={() => searchVM.toggleStateFilter(opt.id)}
+                                            />
+                                        );
+                                    })
+                                )
+                            )}
+
+                            {categoryMode === 'generos' && (
+                                filteredTags.length === 0 ? (
+                                    <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
+                                        {globalize.translate('MessageNoResultsFound')}
+                                    </span>
+                                ) : (
+                                    filteredTags.map((tag, index) => {
+                                        const selected = searchVM.hasTagFilter(tag);
+                                        return (
+                                            <OptionPill
+                                                key={tag}
+                                                index={index}
+                                                label={tag}
+                                                selected={selected}
+                                                onClick={() => searchVM.toggleTagFilter(tag)}
+                                            />
+                                        );
+                                    })
+                                )
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
+
+            <SavedViewsRow />
         </div>
     );
 }
 
-function Chip({ active, onClick, children, dashed }: {
-    active?: boolean;
+/**
+ * Píldora principal de categoría (Tipo, Estado, Géneros).
+ * Si hay opciones seleccionadas se marca en blanco y muestra (X).
+ * Si no hay opciones seleccionadas es transparente y no lleva (X).
+ * Al estar abierta, pulsarla cierra el submenú y regresa a las 3 opciones principales.
+ */
+function MainPill({
+    label,
+    count,
+    isOpen,
+    onClick
+}: {
+    label: string;
+    count: number;
+    isOpen: boolean;
     onClick: () => void;
-    children: React.ReactNode;
-    dashed?: boolean;
 }) {
+    const isSelected = count > 0;
+    const displayText = isSelected ? `${label} (${count})` : label;
+
     return (
         <button
             onClick={onClick}
-            // Chrome desplaza el scroll para dejar visible lo que enfoca al
-            // pulsar; en una fila que envuelve eso salta la página entera.
             onMouseDown={(e) => e.preventDefault()}
+            aria-expanded={isOpen}
             style={{
-                padding: '7px 16px', borderRadius: 999, cursor: 'pointer',
-                fontFamily: T.ui, fontSize: 13, fontWeight: 500, transition: 'all .15s',
+                padding: '7px 16px',
+                borderRadius: 999,
+                cursor: 'pointer',
+                fontFamily: T.ui,
+                fontSize: 13,
+                fontWeight: isSelected ? 600 : 500,
+                transition: 'all .18s ease',
                 whiteSpace: 'nowrap',
-                background: active ? T.fg : dashed ? 'none' : 'rgba(255,255,255,0.08)',
-                color: active ? '#000' : T.dim,
-                border: dashed ? '1px dashed rgba(255,255,255,0.25)' : 'none'
+                background: isSelected ? '#fff' : isOpen ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
+                color: isSelected ? '#000' : isOpen ? '#fff' : T.dim,
+                border: isSelected ? '1px solid #fff' : isOpen ? '1px solid rgba(255,255,255,0.35)' : '1px solid transparent',
+                boxShadow: isSelected ? '0 2px 10px rgba(255,255,255,0.18)' : 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                flexShrink: 0
             }}
         >
-            {children}
+            <span>{displayText}</span>
         </button>
     );
 }
 
-// Un chip lleva o `key` (clave a traducir, para las opciones fijas) o `label`
-// (texto tal cual, para las etiquetas: las escribe el usuario y no se traducen).
-type Tab<T extends string> =
-    | { id: T; key: string; label?: never }
-    | { id: T; label: string; key?: never };
-
-/** Fila de una sola opción activa: tipo y estado. */
-function FilterRow<T extends string>({ label, tabs, active, onChange }: {
+/**
+ * Pequeña píldora de opción para la fila horizontal.
+ * Si está seleccionada se marca en blanco.
+ * Aparece con animación escalonada progresiva según su índice.
+ */
+function OptionPill({
+    label,
+    selected,
+    onClick,
+    index = 0
+}: {
     label: string;
-    tabs: Tab<T>[];
-    active: T;
-    onChange: (v: T) => void;
+    selected: boolean;
+    onClick: () => void;
+    index?: number;
 }) {
     return (
-        <ChipRow label={label}>
-            {tabs.map((tab) => (
-                <Chip key={tab.id} active={active === tab.id} onClick={() => onChange(tab.id)}>
-                    {tab.key ? globalize.translate(tab.key) : tab.label}
-                </Chip>
-            ))}
-        </ChipRow>
-    );
-}
-
-/**
- * Fila de etiquetas, con varias activas a la vez. «Todo» no es una etiqueta
- * más: limpia el filtro, y se marca cuando no hay ninguna puesta.
- */
-function TagFilterRow({ tags }: { tags: string[] }) {
-    const active = searchVM.tagFilters.value;
-    return (
-        <ChipRow label={globalize.translate('Tags')}>
-            <Chip active={active.length === 0} onClick={searchVM.clearTagFilters}>
-                {globalize.translate('All')}
-            </Chip>
-            {tags.map((tag) => (
-                <Chip
-                    key={tag}
-                    active={searchVM.hasTagFilter(tag)}
-                    onClick={() => searchVM.toggleTagFilter(tag)}
-                >
-                    {tag}
-                </Chip>
-            ))}
-        </ChipRow>
+        <button
+            onClick={onClick}
+            onMouseDown={(e) => e.preventDefault()}
+            style={{
+                padding: '5px 14px',
+                borderRadius: 999,
+                cursor: 'pointer',
+                fontFamily: T.ui,
+                fontSize: 12,
+                fontWeight: selected ? 600 : 400,
+                transition: 'background .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease',
+                whiteSpace: 'nowrap',
+                background: selected ? '#fff' : 'rgba(255,255,255,0.06)',
+                color: selected ? '#000' : 'rgba(255,255,255,0.75)',
+                border: selected ? '1px solid #fff' : '1px solid rgba(255,255,255,0.14)',
+                boxShadow: selected ? '0 2px 8px rgba(255,255,255,0.18)' : 'none',
+                flexShrink: 0,
+                animation: 'jfpSubPillIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+                animationDelay: `${Math.min(index * 25, 200)}ms`
+            }}
+        >
+            {label}
+        </button>
     );
 }
 
@@ -178,6 +351,7 @@ function SavedViewsRow() {
     const [name, setName] = useState('');
     const toast = useToast();
     const anyFilterActive = searchVM.anyFilterActive.value;
+    const r = useResponsive();
 
     useEffect(() => {
         const sync = () => setViews(VIEWS.all());
@@ -197,76 +371,99 @@ function SavedViewsRow() {
     };
 
     return (
-        <ChipRow label={globalize.translate('HeaderMyViews')}>
-            {views.map((v) => (
-                <span
-                    key={v.id}
-                    style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        borderRadius: 999, background: 'rgba(255,255,255,0.08)'
-                    }}
-                >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: r.touch ? 12 : 16 }}>
+            {!r.mobile && (
+                <span style={{
+                    fontSize: 10, letterSpacing: 3, textTransform: 'uppercase',
+                    color: T.dim, minWidth: 60
+                }}>
+                    {globalize.translate('HeaderMyViews')}
+                </span>
+            )}
+            <div style={{
+                display: 'flex', gap: 8, alignItems: 'center',
+                flexWrap: r.touch ? 'nowrap' : 'wrap',
+                overflowX: r.touch ? 'auto' : undefined,
+                scrollbarWidth: 'none'
+            }}>
+                {views.map((v) => (
+                    <span
+                        key={v.id}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center',
+                            borderRadius: 999, background: 'rgba(255,255,255,0.08)'
+                        }}
+                    >
+                        <button
+                            onClick={() => searchVM.applyView(v)}
+                            onMouseDown={(e) => e.preventDefault()}
+                            style={{
+                                padding: '6px 8px 6px 14px', border: 'none', background: 'none',
+                                color: T.dim, fontFamily: T.ui, fontSize: 12, cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            {v.name}
+                        </button>
+                        <button
+                            onClick={() => VIEWS.remove(v.id)}
+                            onMouseDown={(e) => e.preventDefault()}
+                            aria-label={`${globalize.translate('Delete')} ${v.name}`}
+                            style={{
+                                padding: '0 10px 0 2px', border: 'none', background: 'none',
+                                color: T.dim, fontSize: 13, lineHeight: 1, cursor: 'pointer'
+                            }}
+                        >×</button>
+                    </span>
+                ))}
+
+                {naming ? (
+                    <span style={{ display: 'inline-flex', gap: 6 }}>
+                        <input
+                            autoFocus
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') save();
+                                if (e.key === 'Escape') {
+                                    e.stopPropagation();
+                                    setNaming(false);
+                                }
+                            }}
+                            placeholder={globalize.translate('LabelViewName')}
+                            style={{
+                                background: 'rgba(255,255,255,0.06)', color: 'inherit',
+                                border: '1px solid rgba(255,255,255,0.15)', borderRadius: 999,
+                                padding: '5px 12px', fontFamily: T.ui, fontSize: 12, outline: 'none'
+                            }}
+                        />
+                        <button
+                            onClick={save}
+                            style={{
+                                padding: '5px 12px', borderRadius: 999, border: 'none',
+                                background: '#fff', color: '#000',
+                                fontFamily: T.ui, fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                            }}
+                        >
+                            {globalize.translate('Save')}
+                        </button>
+                    </span>
+                ) : anyFilterActive && (
                     <button
-                        onClick={() => searchVM.applyView(v)}
+                        onClick={() => setNaming(true)}
                         onMouseDown={(e) => e.preventDefault()}
                         style={{
-                            padding: '7px 8px 7px 16px', border: 'none', background: 'none',
-                            color: T.dim, fontFamily: T.ui, fontSize: 13, cursor: 'pointer',
+                            padding: '5px 12px', borderRadius: 999, cursor: 'pointer',
+                            fontFamily: T.ui, fontSize: 12, fontWeight: 500,
+                            background: 'none', color: T.dim,
+                            border: '1px dashed rgba(255,255,255,0.25)',
                             whiteSpace: 'nowrap'
                         }}
                     >
-                        {v.name}
+                        + {globalize.translate('SaveCurrentView')}
                     </button>
-                    <button
-                        onClick={() => VIEWS.remove(v.id)}
-                        onMouseDown={(e) => e.preventDefault()}
-                        aria-label={`${globalize.translate('Delete')} ${v.name}`}
-                        style={{
-                            padding: '0 12px 0 4px', border: 'none', background: 'none',
-                            color: T.dim, fontSize: 14, lineHeight: 1, cursor: 'pointer'
-                        }}
-                    >×</button>
-                </span>
-            ))}
-
-            {naming ? (
-                <span style={{ display: 'inline-flex', gap: 6 }}>
-                    <input
-                        autoFocus
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') save();
-                            // Se para aquí: si no, el Escape llegaría a la
-                            // superposición y la cerraría al cancelar el nombre.
-                            if (e.key === 'Escape') {
-                                e.stopPropagation();
-                                setNaming(false);
-                            }
-                        }}
-                        placeholder={globalize.translate('LabelViewName')}
-                        style={{
-                            background: 'rgba(255,255,255,0.06)', color: 'inherit',
-                            border: '1px solid rgba(255,255,255,0.15)', borderRadius: 999,
-                            padding: '6px 14px', fontFamily: T.ui, fontSize: 13, outline: 'none'
-                        }}
-                    />
-                    <button
-                        onClick={save}
-                        style={{
-                            padding: '6px 14px', borderRadius: 999, border: 'none',
-                            background: '#fff', color: '#000',
-                            fontFamily: T.ui, fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                        }}
-                    >
-                        {globalize.translate('Save')}
-                    </button>
-                </span>
-            ) : anyFilterActive && (
-                <Chip dashed onClick={() => setNaming(true)}>
-                    + {globalize.translate('SaveCurrentView')}
-                </Chip>
-            )}
-        </ChipRow>
+                )}
+            </div>
+        </div>
     );
 }

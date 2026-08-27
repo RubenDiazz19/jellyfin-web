@@ -8,6 +8,7 @@ import { PageTitle } from '../components/layout/Title';
 import { CatalogPage } from './CatalogPage';
 import { genreVM } from '../../domain/viewModels/DiscoverViewModel';
 import { useViewModel } from '../../domain/bridge/useViewModel';
+import { translateGenre } from '../../domain/genres';
 import type { Navigate } from '../../app/router';
 
 type Props = { genre: string; navigate: Navigate };
@@ -24,6 +25,7 @@ export function GenrePage({ genre, navigate }: Props) {
 
     const shows = genreVM.shows.value;
     const movies = genreVM.movies.value;
+    const label = translateGenre(genre);
 
     return (
         <CatalogPage
@@ -35,19 +37,19 @@ export function GenrePage({ genre, navigate }: Props) {
             nav={
                 <Nav navigate={navigate} breadcrumb={[
                     { label: globalize.translate('Home'), to: { page: 'home' } },
-                    { label: `${globalize.translate('Genre')} · ${genre}` }
+                    { label: `${globalize.translate('Genre')} · ${label}` }
                 ]} />
             }
             header={
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, marginBottom: 44 }}>
-                    <PageTitle>{genre}</PageTitle>
+                    <PageTitle>{label}</PageTitle>
                     <span style={{ fontFamily: T.ui, fontSize: 13, color: T.dim }}>
                         {globalize.translate('TitleCount', shows.length + movies.length)}
                     </span>
                 </div>
             }
             empty={{
-                title: globalize.translate('MessageNoTitlesForGenre', genre),
+                title: globalize.translate('MessageNoTitlesForGenre', label),
                 hint: globalize.translate('MessageNoTitlesForGenreHelp')
             }}
         />
