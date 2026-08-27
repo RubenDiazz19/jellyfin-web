@@ -2,7 +2,8 @@ import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { formatRemaining } from '../theme/format';
+import { formatDateLong, formatRemaining, formatRuntime } from '../theme/format';
+import { translateStatus } from '../../domain/status';
 import { episodeKey, WATCHED } from '../../domain/stores';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
 import type { Show } from '../../domain/models';
@@ -158,15 +159,13 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                         }}>
                             {show.rating.age}
                         </span>
-                        <Ic.Dot />
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Ic.Imdb /> {show.rating.imdb}</span>
-                        {/* Sin nota de Rotten Tomatoes no se enseña el tomate:
-                            un «0%» no es una nota mala, es que no hay dato, y
-                            en móvil además se caía solo a una segunda línea. */}
-                        {show.rating.rt > 0 && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                <Ic.Tomato /> {show.rating.rt}%
-                            </span>
+                        {show.rating.imdb > 0 && (
+                            <>
+                                <Ic.Dot />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                    <Ic.Imdb /> {show.rating.imdb.toFixed(1)}
+                                </span>
+                            </>
                         )}
                     </div>
                 )}
@@ -234,18 +233,38 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                 <div>
                     <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
                     <DetailTable>
-                        <DetailRow label={globalize.translate('Creator')}>{show.creator}</DetailRow>
-                        <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
-                        <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
-                        <DetailRow label={globalize.translate('Country')}>{show.country}</DetailRow>
-                        <DetailRow label={globalize.translate('Genres')}>
-                            <GenreLinks genres={show.genres} navigate={navigate} />
-                        </DetailRow>
-                        <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>{show.runtime}</DetailRow>
-                        <DetailRow label={globalize.translate('OptionPremiereDate')}>{show.premiere}</DetailRow>
-                        <DetailRow label={globalize.translate('HeaderStatus')}>
-                            <span style={{ color: '#fff' }}>{show.status}</span>
-                        </DetailRow>
+                        {show.creator && (
+                            <DetailRow label={globalize.translate('Creator')}>{show.creator}</DetailRow>
+                        )}
+                        {show.directors && (
+                            <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
+                        )}
+                        {show.studio && (
+                            <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
+                        )}
+                        {show.country && (
+                            <DetailRow label={globalize.translate('Country')}>{show.country}</DetailRow>
+                        )}
+                        {show.genres?.length > 0 && (
+                            <DetailRow label={globalize.translate('Genres')}>
+                                <GenreLinks genres={show.genres} navigate={navigate} />
+                            </DetailRow>
+                        )}
+                        {show.runtime && show.runtime !== '—' && (
+                            <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>
+                                {formatRuntime(show.runtime)}
+                            </DetailRow>
+                        )}
+                        {show.premiere && (
+                            <DetailRow label={globalize.translate('OptionPremiereDate')}>
+                                {formatDateLong(show.premiere)}
+                            </DetailRow>
+                        )}
+                        {show.status && (
+                            <DetailRow label={globalize.translate('HeaderStatus')}>
+                                <span style={{ color: '#fff' }}>{translateStatus(show.status)}</span>
+                            </DetailRow>
+                        )}
                     </DetailTable>
                 </div>
             </DetailColumns>

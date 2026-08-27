@@ -22,10 +22,29 @@ import {
 // que traen series y películas mezcladas en la misma respuesta y necesitan
 // mapear cada una con el mismo criterio que su listado de origen.
 export function mapShow(item: JFItem): Show {
+    const people = item.People ?? [];
+    const creators = people
+        .filter((p) => p.Type === 'Creator')
+        .map((p) => p.Name);
+    const writers = people
+        .filter((p) => p.Type === 'Writer' || p.Role?.toLowerCase().includes('creator') || p.Role?.toLowerCase().includes('cread') || p.Role?.toLowerCase().includes('showrunner'))
+        .map((p) => p.Name);
+    const creatorList = creators.length > 0 ? creators : writers;
+    const creator = Array.from(new Set(creatorList)).filter(Boolean).join(', ');
+
+    const directors = Array.from(
+        new Set(
+            people
+                .filter((p) => p.Type === 'Director')
+                .map((p) => p.Name)
+                .filter(Boolean)
+        )
+    ).join(', ');
+
     return {
         ...mapCommonFields(item),
-        creator: '',
-        directors: '',
+        creator,
+        directors,
         status: item.Status ?? '',
         defaultSeason: 1,
         cont: { seasonN: 1, epN: 1, progress: 0, remaining: '' },
@@ -114,6 +133,11 @@ function mapEpisode(item: JFItem): Episode {
         ['Primary', item.Id, item.ImageTags?.Primary],
         ['Backdrop', item.ParentBackdropItemId, item.ParentBackdropImageTags?.[0]]
     ], { maxWidth });
+
+    const people = item.People ?? [];
+    const director = people.filter((p) => p.Type === 'Director').map((p) => p.Name).join(', ') || undefined;
+    const writer = people.filter((p) => p.Type === 'Writer' || p.Role?.toLowerCase().includes('writer') || p.Role?.toLowerCase().includes('guion')).map((p) => p.Name).join(', ') || undefined;
+
     return {
         n: item.IndexNumber ?? 0,
         title: item.Name,
@@ -124,6 +148,8 @@ function mapEpisode(item: JFItem): Episode {
         thumbHD: epImage(1920),
         watched,
         jfId: item.Id,
+        director,
+        writer,
         video: summarizeVideo(streams),
         audio: summarizeAudio(streams),
         subtitles: summarizeSubtitles(streams),
@@ -177,6 +203,17 @@ export async function getShow(id: string): Promise<Show> {
         const show = mapShow(item);
         show.seasons = await getSeasonsWithEpisodes(id);
         hydrateWatched(id, show.seasons);
+        if (!show.runtime || show.runtime === '—') {
+            const epRuntimes = show.seasons
+                .flatMap((s) => s.episodes)
+                .map((e) => e.runtime)
+                .filter((r): r is number => typeof r === 'number' && r > 0);
+            if (epRuntimes.length > 0) {
+                const min = Math.min(...epRuntimes);
+                const max = Math.max(...epRuntimes);
+                show.runtime = min === max ? `${min} min` : `${min}–${max} min`;
+            }
+        }
         const firstIncomplete = show.seasons
             .flatMap((s) => s.episodes.map((e) => ({ s, e })))
             .find(({ e }) => e.watched < 1);
@@ -210,7 +247,7 @@ async function getSeasonsWithEpisodes(showId: string): Promise<Season[]> {
             `/Shows/${showId}/Seasons?userId=${session.userId}&Fields=Overview,ImageTags`
         ),
         apiFetch<{ Items: JFItem[] }>(
-            `/Shows/${showId}/Episodes?userId=${session.userId}&Fields=Overview,ImageTags,RunTimeTicks,PremiereDate,MediaSources,MediaStreams`
+            `/Shows/${showId}/Episodes?userId=${session.userId}&Fields=Overview,ImageTags,RunTimeTicks,PremiereDate,MediaSources,MediaStreams,People`
         )
     ]);
 

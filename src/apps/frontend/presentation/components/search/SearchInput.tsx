@@ -46,7 +46,9 @@ export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
         if (!categoryMode) return globalize.translate('SearchPlaceholder');
         if (categoryMode === 'tipo') return `${globalize.translate('Search')} ${globalize.translate('LabelType').toLowerCase()}...`;
         if (categoryMode === 'estado') return `${globalize.translate('Search')} ${globalize.translate('LabelStatus').toLowerCase()}...`;
-        return `${globalize.translate('Search')} ${globalize.translate('Genres').toLowerCase()}...`;
+        if (categoryMode === 'generos') return `${globalize.translate('Search')} ${globalize.translate('Genres').toLowerCase()}...`;
+        if (categoryMode === 'valoracion') return `${globalize.translate('Search')} ${globalize.translate('Rating').toLowerCase()} (ej. 7.5)...`;
+        return globalize.translate('SearchPlaceholder');
     };
 
     const handleClear = () => {

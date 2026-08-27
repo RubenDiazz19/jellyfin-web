@@ -276,12 +276,26 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                         <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
                         <DetailTable>
                             <DetailRow label={globalize.translate('Episodes')}>{season.total}</DetailRow>
-                            <DetailRow label={globalize.translate('LabelYear')}>{season.year}</DetailRow>
-                            <DetailRow label={globalize.translate('Watched')}>
-                                {season.watched} · {Math.round((season.watched / season.total) * 100)}%
-                            </DetailRow>
-                            <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
-                            <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
+                            {season.year && (
+                                <DetailRow label={globalize.translate('LabelYear')}>{season.year}</DetailRow>
+                            )}
+                            {season.total > 0 && (
+                                <DetailRow label={globalize.translate('Watched')}>
+                                    {season.watched} · {Math.round((season.watched / season.total) * 100)}%
+                                </DetailRow>
+                            )}
+                            {show.creator && (
+                                <DetailRow label={globalize.translate('Creator')}>{show.creator}</DetailRow>
+                            )}
+                            {show.directors && (
+                                <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
+                            )}
+                            {show.studio && (
+                                <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
+                            )}
+                            {show.country && (
+                                <DetailRow label={globalize.translate('Country')}>{show.country}</DetailRow>
+                            )}
                         </DetailTable>
                     </div>
                 </DetailColumns>

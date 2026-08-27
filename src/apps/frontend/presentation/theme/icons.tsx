@@ -52,16 +52,6 @@ const Arrow = ({ size = 14, dir = 'left' }: { size?: number; dir?: 'left' | 'rig
     </svg>
 );
 
-const Tomato = ({ size = 14 }: { size?: number }) => (
-    <svg width={size} height={size} viewBox='0 0 24 24'>
-        <circle cx='12' cy='13' r='8' fill='#fa320a' />
-        <path
-            d='M9 6.5c1-1.5 3-2 4-2.5-.5 1.5-.5 3.5-2 4.5-1 .5-2.5.5-3.5-.5 0-.5.5-1 1.5-1.5z'
-            fill='#338a3e'
-        />
-    </svg>
-);
-
 const IMDB_STYLE: CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
@@ -155,7 +145,7 @@ const Dots = ({ size = 18 }: { size?: number }) => (
     </svg>
 );
 
-export const Ic = { Play, Plus, Check, Search, Arrow, Tomato, Imdb, Dot, Heart, Tick, Dots, Refresh };
+export const Ic = { Play, Plus, Check, Search, Arrow, Imdb, Dot, Heart, Tick, Dots, Refresh };
 
 // Silueta del logo de Jellyfin como SVG inline. No reproduce el PNG a color
 // (es un perfil blanco) sino que da un fallback estable cuando el asset falla

@@ -63,9 +63,11 @@ export type JFItem = {
     ImageTags?: Record<string, string>;
     BackdropImageTags?: string[];
     RunTimeTicks?: number;
+    CumulativeRunTimeTicks?: number;
     PremiereDate?: string;
     EndDate?: string;
     Status?: string;
+    ProductionLocations?: string[];
     Container?: string;
     MediaSources?: JFMediaSource[];
     UserData?: {
@@ -79,7 +81,7 @@ export type JFItem = {
 // defecto, y sin él las etiquetas se leerían siempre como lista vacía.
 export const FIELDS_LIST =
     'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate,Tags';
-export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status`;
+export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status,ProductionLocations`;
 
 /**
  * Campos del catálogo completo (series y películas de la biblioteca), que es

@@ -12,9 +12,18 @@ import { FIELDS_DETAIL, FIELDS_GRID, GRID_IMAGE_TYPES, type JFItem } from './typ
 
 // Exportado para las consultas de `discover`: ver la nota en shows.ts.
 export function mapMovie(item: JFItem): Movie {
+    const directors = Array.from(
+        new Set(
+            (item.People ?? [])
+                .filter((p) => p.Type === 'Director')
+                .map((p) => p.Name)
+                .filter(Boolean)
+        )
+    ).join(', ');
+
     return {
         ...mapCommonFields(item),
-        director: (item.People ?? []).find((p) => p.Type === 'Director')?.Name ?? '',
+        director: directors,
         watched: watchedFraction(item),
         remaining: ''
     };

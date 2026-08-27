@@ -2,7 +2,7 @@
 // Data lives in Jellyfin; PROTO_DATA is kept as an empty fallback singleton
 // so unauthenticated pages don't crash while accessing collections.
 
-export type Rating = { imdb: number; rt: number; age: string };
+export type Rating = { imdb: number; age: string };
 export type CastMember = { name: string; role: string; photo?: string | null };
 
 export type Episode = {
@@ -16,6 +16,8 @@ export type Episode = {
     watched: number;
     current?: boolean;
     jfId?: string;
+    director?: string;
+    writer?: string;
     video?: string;
     audio?: string;
     subtitles?: string;

@@ -25,7 +25,9 @@ import { translateGenre } from '../genres';
 
 export type TypeFilter = 'todo' | 'series' | 'peliculas';
 export type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
-export type FilterCategory = 'tipo' | 'estado' | 'generos';
+export type FilterCategory = 'tipo' | 'estado' | 'generos' | 'valoracion';
+export type RatingOperator = '>=' | '>' | '<=' | '<' | '=';
+export type RatingFilter = { operator: RatingOperator; value: number };
 
 const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas'];
 const STATE_FILTERS: readonly string[] = ['todo', 'favs', 'vistos', 'no-vistos'];
@@ -125,6 +127,8 @@ export class SearchViewModel {
      */
     categoryMode = signal<FilterCategory | null>(null);
     categoryQuery = signal<string>('');
+    ratingFilters = signal<RatingFilter[]>([]);
+    ratingFilter = computed<RatingFilter | null>(() => this.ratingFilters.value[0] ?? null);
     /**
      * Etiquetas elegidas en la fila de chips. Se acumulan en Y: pulsar
      * «Anime» y «Instituto» deja lo que tenga las dos, no la unión. Es lo que
@@ -245,6 +249,30 @@ export class SearchViewModel {
                 if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) return false;
                 if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) return false;
             }
+
+            const rFilters = this.ratingFilters.value;
+            if (rFilters.length > 0) {
+                const score = item.rating?.imdb ?? 0;
+                for (const rf of rFilters) {
+                    switch (rf.operator) {
+                        case '>=':
+                            if (score < rf.value) return false;
+                            break;
+                        case '>':
+                            if (score <= rf.value) return false;
+                            break;
+                        case '<=':
+                            if (score > rf.value) return false;
+                            break;
+                        case '<':
+                            if (score >= rf.value) return false;
+                            break;
+                        case '=':
+                            if (Math.abs(score - rf.value) >= 0.05) return false;
+                            break;
+                    }
+                }
+            }
             return true;
         };
 
@@ -298,6 +326,7 @@ export class SearchViewModel {
         this.typeFilters.value.length > 0
         || this.stateFilters.value.length > 0
         || this.tagFilters.value.length > 0
+        || this.ratingFilters.value.length > 0
         || !!this.query.value.trim()
     );
 
@@ -364,6 +393,36 @@ export class SearchViewModel {
 
     clearTagFilters = () => { this.tagFilters.value = []; };
 
+    setRatingFilter = (operator: RatingOperator, value: number, index = 0) => {
+        const current = [...this.ratingFilters.value];
+        if (index < current.length) {
+            current[index] = { operator, value };
+        } else {
+            current.push({ operator, value });
+        }
+        this.ratingFilters.value = current;
+    };
+
+    addRatingFilter = (operator: RatingOperator, value: number) => {
+        this.ratingFilters.value = [...this.ratingFilters.value, { operator, value }];
+    };
+
+    removeRatingFilter = (index: number) => {
+        const current = [...this.ratingFilters.value];
+        if (index >= 0 && index < current.length) {
+            current.splice(index, 1);
+            this.ratingFilters.value = current;
+        }
+    };
+
+    clearRatingFilter = () => {
+        this.ratingFilters.value = [];
+    };
+
+    clearRatingFilters = () => {
+        this.ratingFilters.value = [];
+    };
+
     openOverlay = () => {
         void this.load();
         this.overlayOpen.value = true;
@@ -385,17 +444,21 @@ export class SearchViewModel {
         this.typeFilters.value = [];
         this.stateFilters.value = [];
         this.tagFilters.value = [];
+        this.ratingFilters.value = [];
     };
 
     /** Los filtros actuales, listos para guardarlos como vista. */
     currentView(name: string): Omit<SavedView, 'id'> {
         const tags = this.tagFilters.value;
+        const rFilters = this.ratingFilters.value;
         return {
             name,
             typeFilter: this.typeFilters.value[0] ?? 'todo',
             stateFilter: this.stateFilters.value[0] ?? 'todo',
             tags: tags.length > 0 ? [...tags] : undefined,
-            query: this.query.value.trim() || undefined
+            query: this.query.value.trim() || undefined,
+            ratingFilter: rFilters[0] ?? undefined,
+            ratingFilters: rFilters.length > 0 ? rFilters : undefined
         };
     }
 
@@ -413,6 +476,19 @@ export class SearchViewModel {
         // filtrar por una: las vistas guardadas entonces siguen funcionando.
         this.tagFilters.value = view.tags ?? (view.tag ? [view.tag] : []);
         this.query.value = view.query ?? '';
+        if (view.ratingFilters && Array.isArray(view.ratingFilters) && view.ratingFilters.length > 0) {
+            this.ratingFilters.value = view.ratingFilters.map((rf) => ({
+                operator: rf.operator as RatingOperator,
+                value: rf.value
+            }));
+        } else if (view.ratingFilter) {
+            this.ratingFilters.value = [{
+                operator: view.ratingFilter.operator as RatingOperator,
+                value: view.ratingFilter.value
+            }];
+        } else {
+            this.ratingFilters.value = [];
+        }
     }
 
     /** Carga la biblioteca real para buscar sobre ella (si hay sesión). */

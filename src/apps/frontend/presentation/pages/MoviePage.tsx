@@ -2,7 +2,7 @@ import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { formatRuntime, formatRemaining } from '../theme/format';
+import { formatDateLong, formatRemaining, formatRuntime } from '../theme/format';
 import { useWatched } from '../../domain/bridge/useWatched';
 import type { Movie } from '../../domain/models';
 import {
@@ -146,13 +146,14 @@ function MovieHero({
                         }}>
                             {movie.rating.age}
                         </span>
-                        <Ic.Dot />
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <Ic.Imdb /> {movie.rating.imdb}
-                        </span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <Ic.Tomato /> {movie.rating.rt}%
-                        </span>
+                        {movie.rating.imdb > 0 && (
+                            <>
+                                <Ic.Dot />
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                    <Ic.Imdb /> {movie.rating.imdb.toFixed(1)}
+                                </span>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -212,16 +213,30 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                 <div>
                     <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
                     <DetailTable>
-                        <DetailRow label={globalize.translate('Director')}>{movie.director}</DetailRow>
-                        <DetailRow label={globalize.translate('Studio')}>{movie.studio}</DetailRow>
-                        <DetailRow label={globalize.translate('Country')}>{movie.country}</DetailRow>
-                        <DetailRow label={globalize.translate('Genres')}>
-                            <GenreLinks genres={movie.genres} navigate={navigate} />
-                        </DetailRow>
-                        <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>
-                            {formatRuntime(movie.runtime)}
-                        </DetailRow>
-                        <DetailRow label={globalize.translate('OptionPremiereDate')}>{movie.premiere}</DetailRow>
+                        {movie.director && (
+                            <DetailRow label={globalize.translate('Director')}>{movie.director}</DetailRow>
+                        )}
+                        {movie.studio && (
+                            <DetailRow label={globalize.translate('Studio')}>{movie.studio}</DetailRow>
+                        )}
+                        {movie.country && (
+                            <DetailRow label={globalize.translate('Country')}>{movie.country}</DetailRow>
+                        )}
+                        {movie.genres?.length > 0 && (
+                            <DetailRow label={globalize.translate('Genres')}>
+                                <GenreLinks genres={movie.genres} navigate={navigate} />
+                            </DetailRow>
+                        )}
+                        {movie.runtime && movie.runtime !== '—' && (
+                            <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>
+                                {formatRuntime(movie.runtime)}
+                            </DetailRow>
+                        )}
+                        {movie.premiere && (
+                            <DetailRow label={globalize.translate('OptionPremiereDate')}>
+                                {formatDateLong(movie.premiere)}
+                            </DetailRow>
+                        )}
                     </DetailTable>
                 </div>
             </DetailColumns>

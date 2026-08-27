@@ -1693,6 +1693,7 @@
     "QuickConnectNotAvailable": "Ask your server administrator to enable Quick Connect",
     "Raised": "Raised",
     "Rate": "Rate",
+    "Rating": "Rating",
     "ReadInputAtNativeFramerate": "Read input at native frame rate",
     "ReadInputAtNativeFramerateHelp": "Enabling this option may resolve some issues, e.g. live streams stopping prematurely.",
     "RecentlyWatched": "Recently watched",

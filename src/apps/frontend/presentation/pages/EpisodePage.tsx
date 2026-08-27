@@ -237,11 +237,15 @@ function EpisodeDetail({
                 <div>
                     <SectionLabel>{globalize.translate('HeaderTechnicalInfo')}</SectionLabel>
                     <DetailTable>
-                        {show.directors && (
-                            <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
+                        {(ep.director || show.directors) && (
+                            <DetailRow label={globalize.translate('Director')}>
+                                {ep.director || show.directors}
+                            </DetailRow>
                         )}
-                        {show.creator && (
-                            <DetailRow label={globalize.translate('Writer')}>{show.creator}</DetailRow>
+                        {(ep.writer || show.creator) && (
+                            <DetailRow label={globalize.translate('Writer')}>
+                                {ep.writer || show.creator}
+                            </DetailRow>
                         )}
                         {ep.date && (
                             <DetailRow label={globalize.translate('AirDate')}>

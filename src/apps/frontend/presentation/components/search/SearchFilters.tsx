@@ -8,14 +8,14 @@
 // superposición que abre la lupa— y son exactamente los mismos filtros sobre
 // el mismo ViewModel.
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { useToast } from '../toast/ToastProvider';
-import { searchVM } from '../../../domain/viewModels/SearchViewModel';
+import { searchVM, type RatingFilter, type RatingOperator } from '../../../domain/viewModels/SearchViewModel';
 import { VIEWS, type SavedView } from '../../../domain/stores';
 
 const TYPE_OPTIONS = [
@@ -37,6 +37,8 @@ export function SearchFilters() {
     const typeCount = searchVM.typeFilters.value.length;
     const stateCount = searchVM.stateFilters.value.length;
     const tagCount = searchVM.tagFilters.value.length;
+    const ratingFilters = searchVM.ratingFilters.value;
+    const ratingCount = ratingFilters.length;
     const allTags = searchVM.allTags.value;
 
     const filteredTypeOptions = TYPE_OPTIONS.filter((opt) =>
@@ -98,7 +100,7 @@ export function SearchFilters() {
                 WebkitOverflowScrolling: 'touch',
                 paddingBottom: 2
             }}>
-                {/* Caso A: Ninguna categoría abierta -> Mostrar las 3 píldoras principales */}
+                {/* Caso A: Ninguna categoría abierta -> Mostrar las 4 píldoras principales */}
                 {categoryMode === null && (
                     <div style={{
                         display: 'flex',
@@ -123,6 +125,12 @@ export function SearchFilters() {
                             count={tagCount}
                             isOpen={false}
                             onClick={() => searchVM.openCategory('generos')}
+                        />
+                        <MainPill
+                            label={globalize.translate('Rating')}
+                            count={ratingCount}
+                            isOpen={false}
+                            onClick={() => searchVM.openCategory('valoracion')}
                         />
                     </div>
                 )}
@@ -151,6 +159,14 @@ export function SearchFilters() {
                             <MainPill
                                 label={globalize.translate('Genres')}
                                 count={tagCount}
+                                isOpen={true}
+                                onClick={searchVM.closeCategory}
+                            />
+                        )}
+                        {categoryMode === 'valoracion' && (
+                            <MainPill
+                                label={globalize.translate('Rating')}
+                                count={ratingCount}
                                 isOpen={true}
                                 onClick={searchVM.closeCategory}
                             />
@@ -239,12 +255,255 @@ export function SearchFilters() {
                                     })
                                 )
                             )}
+
+                            {categoryMode === 'valoracion' && (
+                                <RatingFilterBar />
+                            )}
                         </div>
                     </>
                 )}
             </div>
 
             <SavedViewsRow />
+        </div>
+    );
+}
+
+const RATING_OPERATORS: { id: RatingOperator; symbol: string }[] = [
+    { id: '>=', symbol: '≥' },
+    { id: '>', symbol: '>' },
+    { id: '<=', symbol: '≤' },
+    { id: '<', symbol: '<' },
+    { id: '=', symbol: '=' }
+];
+
+const PRESETS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5];
+
+function RatingFilterBar() {
+    const filters = searchVM.ratingFilters.value;
+    const [isAdding, setIsAdding] = useState(false);
+    const totalCount = filters.length + (isAdding ? 1 : 0);
+
+    return (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'nowrap'
+        }}>
+            {filters.length === 0 ? (
+                <RatingFilterItem
+                    index={0}
+                    filter={null}
+                    totalFilters={1}
+                    onComplete={() => setIsAdding(false)}
+                />
+            ) : (
+                filters.map((f, i) => (
+                    <Fragment key={i}>
+                        {i > 0 && (
+                            <div style={{
+                                width: 1,
+                                height: 16,
+                                background: 'rgba(255,255,255,0.22)',
+                                flexShrink: 0,
+                                margin: '0 2px'
+                            }} />
+                        )}
+                        <RatingFilterItem
+                            index={i}
+                            filter={f}
+                            totalFilters={totalCount}
+                        />
+                    </Fragment>
+                ))
+            )}
+
+            {filters.length > 0 && isAdding && (
+                <>
+                    <div style={{
+                        width: 1,
+                        height: 16,
+                        background: 'rgba(255,255,255,0.22)',
+                        flexShrink: 0,
+                        margin: '0 2px'
+                    }} />
+                    <RatingFilterItem
+                        index={filters.length}
+                        filter={null}
+                        totalFilters={totalCount}
+                        onComplete={() => setIsAdding(false)}
+                    />
+                </>
+            )}
+
+            {filters.length > 0 && !isAdding && (
+                <button
+                    onClick={() => setIsAdding(true)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    title='Añadir otro filtro de valoración'
+                    style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 999,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px dashed rgba(255,255,255,0.35)',
+                        color: '#fff',
+                        padding: 0,
+                        cursor: 'pointer',
+                        transition: 'all .2s ease',
+                        flexShrink: 0,
+                        animation: 'jfpSubPillIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                        e.currentTarget.style.borderColor = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)';
+                    }}
+                >
+                    <svg width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round'>
+                        <line x1='5' y1='1.5' x2='5' y2='8.5' />
+                        <line x1='1.5' y1='5' x2='8.5' y2='5' />
+                    </svg>
+                </button>
+            )}
+        </div>
+    );
+}
+
+function RatingFilterItem({
+    index,
+    filter,
+    totalFilters,
+    onComplete
+}: {
+    index: number;
+    filter: RatingFilter | null;
+    totalFilters: number;
+    onComplete?: () => void;
+}) {
+    const [selectedOp, setSelectedOp] = useState<RatingOperator>(filter?.operator ?? '>=');
+    const [isOpExpanded, setIsOpExpanded] = useState(filter === null);
+    const [isPresetExpanded, setIsPresetExpanded] = useState(filter === null);
+
+    const currentOp = filter?.operator ?? selectedOp;
+    const opCollapsed = filter !== null && !isOpExpanded;
+    const presetCollapsed = filter !== null && !isPresetExpanded;
+    const showInternalDivider = filter === null || totalFilters === 1;
+
+    const handleOpClick = (op: RatingOperator) => {
+        if (opCollapsed) {
+            setIsOpExpanded(true);
+        } else {
+            setSelectedOp(op);
+            if (filter !== null) {
+                searchVM.setRatingFilter(op, filter.value, index);
+            }
+            setIsOpExpanded(false);
+        }
+    };
+
+    const handlePresetClick = (val: number) => {
+        if (presetCollapsed) {
+            setIsPresetExpanded(true);
+        } else if (filter !== null && filter.value === val) {
+            searchVM.removeRatingFilter(index);
+            setIsPresetExpanded(true);
+        } else {
+            searchVM.setRatingFilter(currentOp, val, index);
+            setIsPresetExpanded(false);
+            if (onComplete) {
+                onComplete();
+            }
+        }
+    };
+
+    return (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: showInternalDivider ? 8 : 4,
+            flexWrap: 'nowrap'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {RATING_OPERATORS.map((op) => {
+                    const selected = filter !== null ? filter.operator === op.id : selectedOp === op.id;
+                    return (
+                        <CollapsibleOptionPill
+                            key={op.id}
+                            label={op.symbol}
+                            selected={selected}
+                            collapsed={opCollapsed}
+                            onClick={() => handleOpClick(op.id)}
+                        />
+                    );
+                })}
+            </div>
+
+            {showInternalDivider && (
+                <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.18)', flexShrink: 0, margin: '0 2px' }} />
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {PRESETS.map((p) => {
+                    const selected = filter !== null && filter.value === p;
+                    return (
+                        <CollapsibleOptionPill
+                            key={p}
+                            label={`★ ${p}`}
+                            selected={selected}
+                            collapsed={presetCollapsed}
+                            onClick={() => handlePresetClick(p)}
+                        />
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Píldora que se pliega/colapsa con animación suave y orgánica dentro de la opción seleccionada.
+ */
+function CollapsibleOptionPill({
+    label,
+    selected,
+    collapsed,
+    onClick
+}: {
+    label: string;
+    selected: boolean;
+    collapsed: boolean;
+    onClick: () => void;
+}) {
+    const isHidden = collapsed && !selected;
+
+    return (
+        <div
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                overflow: 'hidden',
+                maxWidth: isHidden ? 0 : 120,
+                opacity: isHidden ? 0 : 1,
+                transform: isHidden ? 'scale(0.5)' : 'scale(1)',
+                transition: 'max-width 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                pointerEvents: isHidden ? 'none' : undefined,
+                flexShrink: 0
+            }}
+        >
+            <OptionPill
+                label={label}
+                selected={selected}
+                onClick={onClick}
+                animateIn={false}
+            />
         </div>
     );
 }
@@ -306,12 +565,14 @@ function OptionPill({
     label,
     selected,
     onClick,
-    index = 0
+    index = 0,
+    animateIn = true
 }: {
     label: string;
     selected: boolean;
     onClick: () => void;
     index?: number;
+    animateIn?: boolean;
 }) {
     return (
         <button
@@ -324,15 +585,15 @@ function OptionPill({
                 fontFamily: T.ui,
                 fontSize: 12,
                 fontWeight: selected ? 600 : 400,
-                transition: 'background .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease',
+                transition: 'background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease',
                 whiteSpace: 'nowrap',
                 background: selected ? '#fff' : 'rgba(255,255,255,0.06)',
                 color: selected ? '#000' : 'rgba(255,255,255,0.75)',
                 border: selected ? '1px solid #fff' : '1px solid rgba(255,255,255,0.14)',
                 boxShadow: selected ? '0 2px 8px rgba(255,255,255,0.18)' : 'none',
                 flexShrink: 0,
-                animation: 'jfpSubPillIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both',
-                animationDelay: `${Math.min(index * 25, 200)}ms`
+                animation: animateIn ? 'jfpSubPillIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both' : undefined,
+                animationDelay: animateIn ? `${Math.min(index * 25, 200)}ms` : undefined
             }}
         >
             {label}

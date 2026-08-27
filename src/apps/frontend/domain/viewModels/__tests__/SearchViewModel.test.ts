@@ -21,11 +21,11 @@ import type { ApiService } from '../../../data/api/ApiService';
 import type { Movie, Show } from '../../../data/models';
 import { MANUAL_TAGS } from '../../../data/stores/manualTagsStore';
 
-function show(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = []): Show {
-    return { id, title, tags, autoTags, genres, seasons: [] } as unknown as Show;
+function show(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = [], rating?: { imdb: number; age: string }): Show {
+    return { id, title, tags, autoTags, genres, rating: rating ?? { imdb: 0, age: 'N/A' }, seasons: [] } as unknown as Show;
 }
-function movie(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = []): Movie {
-    return { id, title, tags, autoTags, genres } as unknown as Movie;
+function movie(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = [], rating?: { imdb: number; age: string }): Movie {
+    return { id, title, tags, autoTags, genres, rating: rating ?? { imdb: 0, age: 'N/A' } } as unknown as Movie;
 }
 
 /** VM con la biblioteca ya cargada; sin sesión para que `load()` no dispare. */
@@ -581,3 +581,88 @@ describe('filtros múltiples de tipo y estado', () => {
         expect(v.categoryMode.value).toBeNull();
     });
 });
+
+describe('filtro de valoración', () => {
+    const vm = () => makeVm(
+        [
+            show('s1', 'Serie Regular', [], [], [], { imdb: 5.5, age: '12' }),
+            show('s2', 'Serie Buena', [], [], [], { imdb: 8.2, age: '16' })
+        ],
+        [
+            movie('m1', 'Peli Mala', [], [], [], { imdb: 4.0, age: 'TP' }),
+            movie('m2', 'Peli Obra Maestra', [], [], [], { imdb: 9.0, age: '18' })
+        ]
+    );
+
+    test('filtra por >= (mayor o igual que)', () => {
+        const v = vm();
+        expect(ids(v)).toEqual(['s1', 's2', 'm1', 'm2']);
+
+        v.setRatingFilter('>=', 8.0);
+        expect(ids(v)).toEqual(['s2', 'm2']);
+    });
+
+    test('filtra por > (mayor que)', () => {
+        const v = vm();
+        v.setRatingFilter('>', 8.2);
+        expect(ids(v)).toEqual(['m2']);
+    });
+
+    test('filtra por <= (menor o igual que)', () => {
+        const v = vm();
+        v.setRatingFilter('<=', 5.5);
+        expect(ids(v)).toEqual(['s1', 'm1']);
+    });
+
+    test('filtra por < (menor que)', () => {
+        const v = vm();
+        v.setRatingFilter('<', 5.5);
+        expect(ids(v)).toEqual(['m1']);
+    });
+
+    test('filtra por = (igual que)', () => {
+        const v = vm();
+        v.setRatingFilter('=', 8.2);
+        expect(ids(v)).toEqual(['s2']);
+    });
+
+    test('clearRatingFilter limpia el filtro', () => {
+        const v = vm();
+        v.setRatingFilter('>=', 8.0);
+        expect(v.anyFilterActive.value).toBe(true);
+        expect(ids(v)).toEqual(['s2', 'm2']);
+
+        v.clearRatingFilter();
+        expect(v.ratingFilter.value).toBeNull();
+        expect(ids(v)).toEqual(['s1', 's2', 'm1', 'm2']);
+    });
+
+    test('las vistas guardadas guardan y restauran ratingFilter', () => {
+        const v = vm();
+        v.setRatingFilter('>=', 8.5);
+
+        const view = v.currentView('Vistas top');
+        expect(view.ratingFilter).toEqual({ operator: '>=', value: 8.5 });
+
+        const v2 = vm();
+        expect(v2.ratingFilter.value).toBeNull();
+
+        v2.applyView({ id: 'v1', ...view });
+        expect(v2.ratingFilter.value).toEqual({ operator: '>=', value: 8.5 });
+        expect(ids(v2)).toEqual(['m2']);
+    });
+
+    test('soporta múltiples filtros de valoración conjuntos (ej. >= 5.5 y < 9.0)', () => {
+        const v = vm();
+        v.setRatingFilter('>=', 5.5, 0);
+        v.setRatingFilter('<', 9.0, 1);
+        expect(v.ratingFilters.value).toHaveLength(2);
+        expect(ids(v)).toEqual(['s1', 's2']);
+
+        // Eliminar el segundo filtro
+        v.removeRatingFilter(1);
+        expect(v.ratingFilters.value).toHaveLength(1);
+        expect(ids(v)).toEqual(['s1', 's2', 'm2']);
+    });
+});
+

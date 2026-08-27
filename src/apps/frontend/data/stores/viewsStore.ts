@@ -23,6 +23,9 @@ export type SavedView = {
     tags?: string[];
     /** Texto de búsqueda; ausente = vacío. */
     query?: string;
+    /** Filtro de valoración numérica; ausente = sin filtro. */
+    ratingFilter?: { operator: string; value: number };
+    ratingFilters?: { operator: string; value: number }[];
 };
 
 function isView(v: unknown): v is SavedView {

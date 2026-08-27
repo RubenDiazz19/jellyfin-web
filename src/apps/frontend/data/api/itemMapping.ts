@@ -86,8 +86,6 @@ export function firstImageUrl(
 export function ratingOf(item: JFItem): Rating {
     return {
         imdb: item.CommunityRating ?? 0,
-        // El servidor no expone Rotten Tomatoes; el modelo lo reserva.
-        rt: 0,
         age: item.OfficialRating ?? 'N/A'
     };
 }
@@ -131,9 +129,8 @@ export function mapCommonFields(item: JFItem): CommonItemFields {
         genres: item.Genres ?? [],
         tags: item.Tags ?? [],
         autoTags: autoTagsFor(item.Id),
-        studio: item.Studios?.[0]?.Name ?? '',
-        // El servidor no lo expone en el listado; el modelo lo reserva.
-        country: '',
+        studio: (item.Studios ?? []).map((s) => s.Name).filter(Boolean).join(', '),
+        country: (item.ProductionLocations ?? []).filter(Boolean).join(', '),
         premiere: item.PremiereDate ?? '',
         cast: mapCast(item),
         synopsis: item.Overview ?? '',

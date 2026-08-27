@@ -61,8 +61,8 @@ describe('orden de la biblioteca', () => {
 
     test('por puntuación, la mejor primero', () => {
         const vm = makeVm([
-            movie('1', 'Mala', { rating: { imdb: 3, rt: 0, age: '' } }),
-            movie('2', 'Buena', { rating: { imdb: 9, rt: 0, age: '' } })
+            movie('1', 'Mala', { rating: { imdb: 3, age: '' } }),
+            movie('2', 'Buena', { rating: { imdb: 9, age: '' } })
         ]);
         vm.setSort('rating');
         expect(titles(vm)).toEqual(['Buena', 'Mala']);
