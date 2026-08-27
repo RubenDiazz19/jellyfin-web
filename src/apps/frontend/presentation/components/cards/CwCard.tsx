@@ -4,7 +4,8 @@ import { Ic } from '../../theme/icons';
 import { WatchedButton } from '../controls/WatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { PlayBtn } from '../controls/PlayBtn';
-import { Progress } from '../controls/Progress';
+import { CardProgress } from './CardProgress';
+import { CardOverlay } from './CardOverlay';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
 import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
@@ -45,16 +46,16 @@ export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props)
                 }}
             >
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 55%)' }} />
-                <div style={{ position: 'absolute', top: 10, left: 12 }}>
-                    <WatchedButton
-                        id={episodeKey(slide.id, slide.season as number, slide.episode as number)}
-                        serverId={slide.jfEpisodeId}
-                        size={16} badge
-                    />
-                </div>
-                <div style={{ position: 'absolute', top: 10, right: 12 }}>
-                    <FavButton id={slide.id} size={16} />
-                </div>
+                <CardOverlay
+                    topLeft={
+                        <WatchedButton
+                            id={episodeKey(slide.id, slide.season as number, slide.episode as number)}
+                            serverId={slide.jfEpisodeId}
+                            size={16} badge
+                        />
+                    }
+                    topRight={<FavButton id={slide.id} size={16} />}
+                />
                 <div
                     style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     className='jfp-playover'
@@ -72,11 +73,10 @@ export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props)
                         }}
                     />
                 </div>
-                <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
-                    <Progress value={slide.progress ?? 0} height={3} />
-                </div>
+                <CardProgress value={slide.progress ?? 0} />
             </div>
             <div style={{ marginTop: 14 }}>
+
                 <div style={{ fontFamily: T.display, fontSize: 22, lineHeight: 1.1 }}>{slide.title}</div>
                 <div style={{
                     marginTop: 4, fontFamily: T.ui, fontSize: 12, color: T.dim,

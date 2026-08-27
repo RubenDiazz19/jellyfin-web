@@ -14,8 +14,11 @@ export type MediaStreamInfo = {
     displayTitle: string;
     isDefault: boolean;
     isForced?: boolean;
+    isHearingImpaired?: boolean;
+    isExternal?: boolean;
     isText: boolean;
     codec?: string;
+    path?: string;
 };
 
 export type PlaybackDecision = {
@@ -101,8 +104,11 @@ export function mapMediaStream(s: JFMediaStream): MediaStreamInfo {
         displayTitle: s.DisplayTitle ?? s.Title ?? s.Language ?? `#${s.Index}`,
         isDefault: !!s.IsDefault,
         isForced: !!s.IsForced,
+        isHearingImpaired: !!s.IsHearingImpaired,
+        isExternal: !!s.IsExternal,
         isText: s.Type === 'Subtitle' && isTextSubtitle(s.Codec),
-        codec: s.Codec
+        codec: s.Codec,
+        path: s.Path
     };
 }
 

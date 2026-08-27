@@ -1,13 +1,12 @@
-import { useEffect } from 'react';
-
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
+
 import { Nav } from '../components/layout/Nav';
 import { PageTitle } from '../components/layout/Title';
 import { CatalogPage } from './CatalogPage';
 import { genreVM } from '../../domain/viewModels/DiscoverViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useViewModelLoad } from '../../domain/bridge/useViewModel';
 import { translateGenre } from '../../domain/genres';
 import type { Navigate } from '../../app/router';
 
@@ -18,12 +17,10 @@ type Props = { genre: string; navigate: Navigate };
 // haberse cargado —se llega aquí desde el chip de género de una ficha, sin
 // pasar por la biblioteca— y porque así se ve la biblioteca entera.
 export function GenrePage({ genre, navigate }: Props) {
-    useViewModel(genreVM);
-    useEffect(() => {
-        void genreVM.load(genre);
-    }, [genre]);
+    useViewModelLoad(genreVM, (vm) => vm.load(genre), [genre]);
 
     const shows = genreVM.shows.value;
+
     const movies = genreVM.movies.value;
     const label = translateGenre(genre);
 

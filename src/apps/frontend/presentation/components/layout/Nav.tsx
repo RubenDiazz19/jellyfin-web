@@ -9,21 +9,14 @@ import jellyfinLogo from '../../../../../assets/img/jellyfin-white.png';
 import { T } from '../../theme/tokens';
 import { Ic, JellyfinLogo } from '../../theme/icons';
 import { useScrollY } from '../../../domain/bridge/useScrollY';
-import { FavButton } from '../controls/FavButton';
-import { WatchedButton } from '../controls/WatchedButton';
-import { MovieWatchedButton } from '../controls/MovieWatchedButton';
-import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
+import { NavActions, type NavActionData } from './NavActions';
 import { UserAvatar } from './UserAvatar';
 import { useResponsive } from '../../theme/responsive';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
-import type { Movie } from '../../../domain/models';
 import type { Route } from '../../../app/router';
 
 type Crumb = { label: string; to?: Route };
-type ActionData =
-  | { type: 'show'; id: string }
-  | { type: 'movie'; movie: Movie }
-  | { type: 'episode'; id: string };
+export type ActionData = NavActionData;
 
 type NavProps = {
     navigate: (r: Route) => void;
@@ -34,6 +27,7 @@ type NavProps = {
 };
 
 const NAV_LINKS = [
+
     { id: 'home', key: 'Home' },
     { id: 'series', key: 'Shows' },
     { id: 'movies', key: 'Movies' },
@@ -109,22 +103,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                     color: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.55))',
                     marginLeft: 'auto'
                 }}>
-                    {actionId && (
-                        <>
-                            <FavButton id={actionId} size={18} />
-                            {actionData?.type === 'show' ? (
-                                <ShowNavWatchedButton showId={actionData.id} size={18} />
-                            ) : actionData?.type === 'movie' ? (
-                                <MovieWatchedButton movie={actionData.movie} size={18} />
-                            ) : (
-                                <WatchedButton
-                                    id={actionId}
-                                    serverId={actionData?.type === 'episode' ? actionData.id : undefined}
-                                    size={18}
-                                />
-                            )}
-                        </>
-                    )}
+                    {actionId && <NavActions actionId={actionId} actionData={actionData} />}
                     {/* Sin lupa aquí: en táctil la búsqueda es el segmento
                         central de la píldora de abajo (MobileNav), donde llega
                         el pulgar. Arriba quedan el logo, las acciones del item
@@ -208,23 +187,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, color: T.dim, marginLeft: 'auto' }}>
-                {actionId && (
-                    <>
-                        <FavButton id={actionId} size={18} />
-                        {actionData?.type === 'show' ? (
-                            <ShowNavWatchedButton showId={actionData.id} size={18} />
-                        ) : actionData?.type === 'movie' ? (
-                            <MovieWatchedButton movie={actionData.movie} size={18} />
-                        ) : (
-                            <WatchedButton
-                                id={actionId}
-                                serverId={actionData?.type === 'episode' ? actionData.id : undefined}
-                                size={18}
-                            />
-                        )}
-                        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.18)' }} />
-                    </>
-                )}
+                {actionId && <NavActions actionId={actionId} actionData={actionData} withDivider />}
                 <button
                     // Abre la capa encima de la página en vez de navegar: se
                     // busca sin perder dónde estaba uno, y volver es cerrarla.
@@ -241,6 +204,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                 </button>
                 <UserAvatar navigate={navigate} />
             </div>
+
         </div>
     );
 }

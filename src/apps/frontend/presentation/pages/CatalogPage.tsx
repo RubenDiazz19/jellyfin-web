@@ -8,9 +8,9 @@ import type { CSSProperties, ReactNode } from 'react';
 import { T } from '../theme/tokens';
 import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
-import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { PageSection } from '../components/layout/PageSection';
 import { SectionTitle } from '../components/layout/Title';
+import { LoadState } from '../components/controls/LoadState';
 import type { Movie, Show } from '../../domain/models';
 import type { Navigate } from '../../app/router';
 
@@ -44,6 +44,8 @@ type Props = {
 export function CatalogPage({
     nav, header, shows, movies, empty, loading, error, navigate
 }: Props) {
+    const totalCount = shows.length + movies.length;
+
     return (
         <>
             {nav}
@@ -69,15 +71,17 @@ export function CatalogPage({
                     </>
                 )}
 
-                {shows.length === 0 && movies.length === 0 && (
-                    loading ? (
-                        <SkeletonRow />
-                    ) : (
-                        <EmptyState
-                            title={error ? globalize.translate('MessageCatalogQueryFailed') : empty.title}
-                            hint={error ?? empty.hint}
-                        />
-                    )
+                {totalCount === 0 && (
+                    <LoadState
+                        variant='page'
+                        loading={loading}
+                        error={error}
+                        count={0}
+                        emptyTitle={error ? globalize.translate('MessageCatalogQueryFailed') : empty.title}
+                        emptyHint={error ?? empty.hint}
+                    >
+                        <div />
+                    </LoadState>
                 )}
             </PageSection>
         </>
@@ -86,6 +90,7 @@ export function CatalogPage({
 
 function SectionHead({ label, count }: { label: string; count: number }) {
     return (
+
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
             <SectionTitle size={28} margin={0}>{label}</SectionTitle>
             <span style={{ fontSize: 12, color: T.dim }}>{count}</span>

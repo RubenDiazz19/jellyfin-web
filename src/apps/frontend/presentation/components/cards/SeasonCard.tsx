@@ -4,7 +4,9 @@ import React from 'react';
 import { T } from '../../theme/tokens';
 import { SeasonWatchedButton } from '../controls/SeasonWatchedButton';
 import { FavButton } from '../controls/FavButton';
-import { Progress } from '../controls/Progress';
+import { CardProgress } from './CardProgress';
+import { CardOverlay } from './CardOverlay';
+import { PosterFrame } from './PosterFrame';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
 import type { Show, Season } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
@@ -35,8 +37,7 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
             {/* Una temporada sin póster propio (el proveedor no siempre lo
                 tiene) se queda con el de la serie: es lo que Jellyfin enseña
                 en su sitio, y mejor eso que un rectángulo gris. */}
-            <div className='jfp-card-m3' style={{
-                aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden', position: 'relative',
+            <PosterFrame style={{
                 backgroundImage: `url(${season.backdrop ?? show.poster})`,
                 backgroundSize: 'cover', backgroundPosition: 'center'
             }}>
@@ -45,21 +46,25 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
                     background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.94) 100%)'
                 }} />
 
-                <div style={{
-                    position: 'absolute', top: 14, left: 14, right: 14,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
-                }}>
-                    <div style={{
-                        fontFamily: T.ui, fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase',
-                        color: 'rgba(255,255,255,0.78)', fontWeight: 500
-                    }}>
-                        Temporada
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <SeasonWatchedButton show={show} season={season} size={15} />
-                        <FavButton id={seasonKey(show.id, season.n)} size={15} />
-                    </div>
-                </div>
+                <CardOverlay
+                    top={14}
+                    left={14}
+                    right={14}
+                    topLeft={
+                        <div style={{
+                            fontFamily: T.ui, fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase',
+                            color: 'rgba(255,255,255,0.78)', fontWeight: 500
+                        }}>
+                            Temporada
+                        </div>
+                    }
+                    topRight={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <SeasonWatchedButton show={show} season={season} size={15} />
+                            <FavButton id={seasonKey(show.id, season.n)} size={15} />
+                        </div>
+                    }
+                />
 
                 <div style={{
                     position: 'absolute', left: 14, right: 14, bottom: 0, padding: '0 0 18px 0'
@@ -83,13 +88,10 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
                     </div>
                 </div>
 
-                {pct > 0 && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
-                        <Progress value={pct} height={3} />
-                    </div>
-                )}
-            </div>
+                <CardProgress value={pct} />
+            </PosterFrame>
             {ctx.menu}
         </div>
     );
 });
+

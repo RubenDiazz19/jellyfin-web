@@ -8,7 +8,8 @@ import {
     type ListEntry
 } from '../../../domain/api';
 import { Dialog, DialogFooter, DialogHeader, DialogInputRow, DialogRow } from './Dialog';
-import { ErrText, Muted, PillButton, TextField } from './fields';
+import { PillButton, TextField } from './fields';
+import { LoadState } from './LoadState';
 
 type Props = {
     kind: 'playlist' | 'collection';
@@ -75,15 +76,14 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
         <Dialog label={labels.title} maxHeight='70vh' onClose={onClose}>
             <DialogHeader title={labels.title} onClose={onClose} />
 
-            {error ? (
-                <ErrText>{error}</ErrText>
-            ) : !entries ? (
-                <Muted>{globalize.translate('Loading')}</Muted>
-            ) : entries.length === 0 ? (
-                <div style={{ marginBottom: 8 }}><Muted>{labels.empty}</Muted></div>
-            ) : (
+            <LoadState
+                loading={!entries && !error}
+                error={error}
+                count={entries ? entries.length : undefined}
+                emptyText={labels.empty}
+            >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 14 }}>
-                    {entries.map((e) => (
+                    {entries?.map((e) => (
                         <DialogRow
                             key={e.id}
                             image={e.image}
@@ -94,9 +94,10 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
                         />
                     ))}
                 </div>
-            )}
+            </LoadState>
 
             <DialogFooter>
+
                 <DialogInputRow
                     field={
                         <TextField

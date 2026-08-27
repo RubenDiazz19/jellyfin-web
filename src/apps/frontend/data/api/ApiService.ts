@@ -70,7 +70,7 @@ import {
     uploadImageFile,
     getRemoteImages
 } from './remote-images';
-import { searchSubtitles, downloadSubtitle } from './subtitles';
+import { searchSubtitles, downloadSubtitle, uploadSubtitle, deleteSubtitle, getItemSubtitles } from './subtitles';
 import { getSystemInfo, refreshLibrary } from './admin';
 import { getRunningTasks, watchScheduledTasks, watchItemRefresh, watchLibraryChanged } from './tasks';
 import {
@@ -164,7 +164,7 @@ const remoteImageService = {
     getRemoteImages
 };
 
-const subtitleService = { searchSubtitles, downloadSubtitle };
+const subtitleService = { searchSubtitles, downloadSubtitle, uploadSubtitle, deleteSubtitle, getItemSubtitles };
 
 const adminService = { getSystemInfo, refreshLibrary };
 

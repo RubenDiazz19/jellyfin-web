@@ -95,7 +95,17 @@ export {
     imageUrl,
     type JFRemoteImage
 } from '../data/api';
-export { searchSubtitles, downloadSubtitle, type RemoteSubtitle } from '../data/api';
+export {
+    searchSubtitles,
+    downloadSubtitle,
+    uploadSubtitle,
+    deleteSubtitle,
+    getItemSubtitles,
+    fileToBase64,
+    type RemoteSubtitle,
+    type UploadSubtitleOptions,
+    type MediaStreamInfo
+} from '../data/api';
 
 // ── Listas de reproducción y colecciones ────────────────────────────────────
 // El estado de las listas lo lleva el store (domain/stores); esto es lo que

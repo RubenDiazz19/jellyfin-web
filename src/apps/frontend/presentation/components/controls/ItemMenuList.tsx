@@ -8,7 +8,7 @@
 // salen los colores: la hoja los toma de los tokens M3, que siguen al tema.
 
 import { type ReactNode } from 'react';
-import { T } from '../../theme/tokens';
+import { MenuEntry } from './MenuEntry';
 
 export type MenuItem =
   | { isDivider: true }
@@ -43,51 +43,18 @@ export function ItemMenuList({
                 }
                 if ('isCustom' in it) return <div key={i}>{it.component}</div>;
                 return (
-                    <button
+                    <MenuEntry
                         key={i}
-                        data-ripple={sheet ? '' : undefined}
-                        onClick={(e) => { e.stopPropagation(); it.fn(); onPick(); }}
+                        sheet={sheet}
                         disabled={it.disabled}
-                        style={{
-                            display: 'block', width: '100%', textAlign: 'left',
-                            background: 'none', border: 'none',
-                            color: entryColor(it.disabled, it.danger, sheet),
-                            cursor: it.disabled ? 'not-allowed' : 'pointer',
-                            fontFamily: T.ui,
-                            ...(sheet ? {
-                                minHeight: 48, padding: '12px 16px', fontSize: 15,
-                                borderRadius: 'var(--md-sys-shape-corner-large, 16px)'
-                            } : {
-                                padding: '11px 12px', fontSize: 14, borderRadius: 8,
-                                letterSpacing: 0.1, transition: 'background .15s'
-                            })
-                        }}
-                        // El realce del desplegable se hace a mano porque no hay
-                        // hoja de estilos para estos botones; en táctil no hay
-                        // puntero y lo que da respuesta es el ripple.
-                        onMouseEnter={sheet ? undefined : (e) => {
-                            if (it.disabled) return;
-                            e.currentTarget.style.background = it.danger ?
-                                'rgba(255,80,80,0.12)' : 'rgba(255,255,255,0.08)';
-                        }}
-                        onMouseLeave={sheet ? undefined : (e) => {
-                            e.currentTarget.style.background = 'transparent';
-                        }}
+                        danger={it.danger}
+                        onClick={() => { it.fn(); onPick(); }}
                     >
                         {it.label}
-                    </button>
+                    </MenuEntry>
                 );
             })}
         </>
     );
 }
 
-function entryColor(disabled?: boolean, danger?: boolean, sheet?: boolean) {
-    if (disabled) {
-        return sheet ?
-            'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.35))' :
-            'rgba(255,255,255,0.35)';
-    }
-    if (danger) return sheet ? 'var(--md-sys-color-error, #ff6b6b)' : '#ff6b6b';
-    return sheet ? 'var(--md-sys-color-on-surface, #fff)' : '#fff';
-}

@@ -114,7 +114,7 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: P
                 userSelect: 'none'
             }}
         >
-            <Backdrop src={image} itemId={slide.id} vignette={0.3} sharp />
+            <Backdrop src={image} vignette={0.3} sharp />
 
             {/* Velo inferior: el texto se lee sin apagar la mitad de arriba. */}
             <div style={{

@@ -790,6 +790,8 @@
     "MessageSignedOutSwitchUser": "Sesión cerrada — inicia con otro usuario",
     "MessageSignInFailed": "No se pudo iniciar sesión",
     "MessageSubtitleDownloaded": "Subtítulo descargado y aplicado",
+    "MessageSubtitleUploaded": "Subtítulo subido y aplicado",
+    "MessageSubtitleDeleted": "Subtítulo eliminado",
     "MessageSubtitleSearchHelp": "Busca subtítulos en los proveedores conectados en Jellyfin (OpenSubtitles, etc.). Se descargan y añaden como pista adicional al fichero.",
     "MessageTheFollowingLocationWillBeRemovedFromLibrary": "Se eliminarán las siguientes ubicaciones de medios de tu biblioteca",
     "MessageUnableToConnectToServer": "No podemos conectar con el servidor seleccionado ahora mismo. Por favor, asegúrate de que esta funcionando e inténtalo otra vez.",

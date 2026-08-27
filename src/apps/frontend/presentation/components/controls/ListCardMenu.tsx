@@ -1,11 +1,12 @@
 import globalize from 'lib/globalize';
 
 import { useEffect, useImperativeHandle, useRef, useState, type RefObject } from 'react';
-import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useToast } from '../toast/ToastProvider';
 import { LISTS, type ListKind } from '../../../domain/stores';
+import { PopupPanel } from './PopupPanel';
+import { MenuEntry } from './MenuEntry';
 
 // Los tres puntos de una lista: en la esquina de su tarjeta del índice y en el
 // hero de la propia lista. De momento solo llevan el fondo: subir una imagen,
@@ -46,7 +47,7 @@ export function ListCardMenu({
     const [url, setUrl] = useState('');
     const custom = LISTS.hasCustomCover(kind, listId);
 
-    // Cerrar al pulsar fuera o al hacer scroll: el menú va en posición fija y
+    // Cerrar al hacer scroll o resize: el menú va en posición fija y
     // se quedaría flotando lejos de su tarjeta.
     useEffect(() => {
         if (!open) return;
@@ -167,115 +168,69 @@ export function ListCardMenu({
                 </button>
             )}
 
-            {open && pos && ReactDOM.createPortal(
-                <>
-                    {/* Capa que caza el clic fuera. Transparente y a pantalla
-                        completa: más fiable que escuchar en `document`, que se
-                        pelea con el `stopPropagation` del botón. */}
-                    <div
-                        onClick={() => setOpen(false)}
-                        style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
-                    />
-                    <div
-                        role='menu'
-                        // Enfocable porque el rol lo pide: sin esto un usuario
-                        // de teclado no puede entrar en el menú.
-                        tabIndex={-1}
-                        onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
-                        style={{
-                            position: 'fixed', top: pos.top, left: pos.left,
-                            width: MENU_W, zIndex: 9999,
-                            background: 'rgba(18,18,20,0.96)', backdropFilter: 'blur(14px)',
-                            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12,
-                            padding: 6, boxShadow: '0 18px 50px rgba(0,0,0,0.6)',
-                            fontFamily: T.ui
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={{
-                            fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
-                            color: T.dim, padding: '6px 10px 8px'
-                        }}>
-                            {globalize.translate('LabelCoverImage')}
-                        </div>
-                        {askingUrl ? (
-                            <div style={{ padding: '0 6px 6px' }}>
-                                <input
-                                    autoFocus
-                                    value={url}
-                                    onChange={(e) => setUrl(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') setFromUrl();
-                                        if (e.key === 'Escape') setAskingUrl(false);
-                                    }}
-                                    placeholder='https://…'
-                                    style={{
-                                        width: '100%', boxSizing: 'border-box',
-                                        background: 'rgba(255,255,255,0.06)', color: '#fff',
-                                        border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
-                                        padding: '8px 10px', fontFamily: T.ui, fontSize: 12,
-                                        outline: 'none', marginBottom: 6
-                                    }}
-                                />
-                                <button
-                                    disabled={busy || !url.trim()}
-                                    onClick={setFromUrl}
-                                    style={{
-                                        width: '100%', padding: '8px 12px', borderRadius: 8,
-                                        border: 'none',
-                                        background: url.trim() ? '#fff' : 'rgba(255,255,255,0.15)',
-                                        color: url.trim() ? '#000' : T.dim,
-                                        fontFamily: T.ui, fontSize: 12, fontWeight: 600,
-                                        cursor: busy || !url.trim() ? 'default' : 'pointer'
-                                    }}
-                                >
-                                    {globalize.translate('Save')}
-                                </button>
-                            </div>
-                        ) : (
-                            <>
-                                <Row disabled={busy} onClick={() => fileRef.current?.click()}>
-                                    {globalize.translate('HeaderUploadImage')}
-                                </Row>
-                                <Row disabled={busy} onClick={() => setAskingUrl(true)}>
-                                    {globalize.translate('LabelImageUrl')}
-                                </Row>
-                                {custom && (
-                                    <Row disabled={busy} onClick={clear}>
-                                        {globalize.translate('MessageCoverCleared')}
-                                    </Row>
-                                )}
-                            </>
-                        )}
+            <PopupPanel
+                open={open}
+                onClose={() => setOpen(false)}
+                position={pos}
+                width={MENU_W}
+            >
+                <div style={{
+                    fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+                    color: T.dim, padding: '6px 10px 8px'
+                }}>
+                    {globalize.translate('LabelCoverImage')}
+                </div>
+                {askingUrl ? (
+                    <div style={{ padding: '0 6px 6px' }}>
+                        <input
+                            autoFocus
+                            value={url}
+                            onChange={(e) => setUrl(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') setFromUrl();
+                                if (e.key === 'Escape') setAskingUrl(false);
+                            }}
+                            placeholder='https://…'
+                            style={{
+                                width: '100%', boxSizing: 'border-box',
+                                background: 'rgba(255,255,255,0.06)', color: '#fff',
+                                border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
+                                padding: '8px 10px', fontFamily: T.ui, fontSize: 12,
+                                outline: 'none', marginBottom: 6
+                            }}
+                        />
+                        <button
+                            disabled={busy || !url.trim()}
+                            onClick={setFromUrl}
+                            style={{
+                                width: '100%', padding: '8px 12px', borderRadius: 8,
+                                border: 'none',
+                                background: url.trim() ? '#fff' : 'rgba(255,255,255,0.15)',
+                                color: url.trim() ? '#000' : T.dim,
+                                fontFamily: T.ui, fontSize: 12, fontWeight: 600,
+                                cursor: busy || !url.trim() ? 'default' : 'pointer'
+                            }}
+                        >
+                            {globalize.translate('Save')}
+                        </button>
                     </div>
-                </>,
-                document.body
-            )}
+                ) : (
+                    <>
+                        <MenuEntry disabled={busy} onClick={() => fileRef.current?.click()}>
+                            {globalize.translate('HeaderUploadImage')}
+                        </MenuEntry>
+                        <MenuEntry disabled={busy} onClick={() => setAskingUrl(true)}>
+                            {globalize.translate('LabelImageUrl')}
+                        </MenuEntry>
+                        {custom && (
+                            <MenuEntry disabled={busy} onClick={clear}>
+                                {globalize.translate('MessageCoverCleared')}
+                            </MenuEntry>
+                        )}
+                    </>
+                )}
+            </PopupPanel>
         </>
     );
 }
 
-function Row({ disabled, onClick, children }: {
-    disabled: boolean; onClick: () => void; children: React.ReactNode;
-}) {
-    return (
-        <button
-            disabled={disabled}
-            onClick={onClick}
-            style={{
-                display: 'block', width: '100%', textAlign: 'left',
-                background: 'none', border: 'none',
-                color: disabled ? 'rgba(255,255,255,0.35)' : '#fff',
-                cursor: disabled ? 'wait' : 'pointer',
-                padding: '10px 10px', fontSize: 13, borderRadius: 8,
-                fontFamily: T.ui, transition: 'background .15s'
-            }}
-            onMouseEnter={(e) => {
-                if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-            }}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-        >
-            {children}
-        </button>
-    );
-}

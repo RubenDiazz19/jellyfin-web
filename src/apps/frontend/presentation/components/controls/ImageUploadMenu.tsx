@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
-
-import { T } from '../../theme/tokens';
+import { useRef } from 'react';
+import { MenuEntry } from './MenuEntry';
 
 type Props = {
     id: string;
@@ -11,6 +11,8 @@ type Props = {
 // Entrada de menú que abre el selector de archivos y persiste la imagen
 // elegida en localStorage a través del callback onUpload.
 export function ImageUploadMenu({ id, type, onUpload }: Props) {
+    const fileRef = useRef<HTMLInputElement>(null);
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -23,28 +25,18 @@ export function ImageUploadMenu({ id, type, onUpload }: Props) {
     };
 
     return (
-        <label
-            style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                cursor: 'pointer',
-                padding: '11px 12px',
-                fontSize: 14,
-                borderRadius: 8,
-                fontFamily: T.ui,
-                letterSpacing: 0.1,
-                transition: 'background .15s',
-                margin: 0
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-        >
-            <input type='file' accept='image/*' onChange={handleFileChange} style={{ display: 'none' }} />
-            {globalize.translate(type === 'backdrop' ? 'ChangeBackdrop' : 'ChangePoster')}
-        </label>
+        <>
+            <input
+                ref={fileRef}
+                type='file'
+                accept='image/*'
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+            />
+            <MenuEntry onClick={() => fileRef.current?.click()}>
+                {globalize.translate(type === 'backdrop' ? 'ChangeBackdrop' : 'ChangePoster')}
+            </MenuEntry>
+        </>
     );
 }
+

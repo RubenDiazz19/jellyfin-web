@@ -41,10 +41,284 @@ pantalla completa con todas las opciones a la vista:
 
 ---
 
+## Fase 1 — Componentes duplicados en `presentation/` (COMPLETADA)
+
+
+### 1.1 Unificar los 4 WatchedButton en un componente genérico
+
+**Archivos afectados:**
+`WatchedButton.tsx`, `MovieWatchedButton.tsx`, `ShowNavWatchedButton.tsx`,
+`SeasonWatchedButton.tsx` (todos en `controls/`).
+
+Los 4 siguen el mismo patrón: computar `active` → `useWatchedToggle` →
+`WatchedToggleIcon`. La única diferencia es la fuente del estado (showVM,
+movieVM o un id directo).
+
+**Plan:** Crear `WatchedToggle` genérico que acepte
+`{ active, applyLocal, serverId, message }` directamente (los mismos args
+de `useWatchedToggle`). Los 4 actuales se vuelven wrappers de 3-5 líneas
+o se eliminan si el caller puede computar los args.
+
+### 1.2 Extraer `<NavActions>` del Nav duplicado
+
+**Archivo:** `layout/Nav.tsx` (líneas 112-126 y 211-226).
+
+El bloque FavButton + WatchedButton está copiado idénticamente para mobile
+y desktop.
+
+**Plan:** Extraer `<NavActions actionId actionData />` y usarlo en ambos
+branches.
+
+### 1.3 Unificar estilos de esquina de tarjetas (fav + watched)
+
+**Archivos:** `PosterShell.tsx`, `CwCard.tsx`, `SeasonCard.tsx`, `EpCard.tsx`.
+
+Los 4 implementan independientemente posicionamiento absolute para botones
+de esquina (top-left watched, top-right fav).
+
+**Plan:** Crear `<CardOverlay>` con slots `topLeft` y `topRight`.
+
+### 1.4 Extraer `<CardProgress>` para la barra de progreso
+
+**Archivos:** `PosterShell.tsx`, `CwCard.tsx`, `SeasonCard.tsx`, `EpCard.tsx`.
+
+Los 4 usan exactamente:
+```tsx
+<div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+    <Progress value={...} height={3} />
+</div>
+```
+
+**Plan:** Un componente `<CardProgress>` o agregar modo
+`position: 'absolute'` a `Progress`.
+
+### 1.5 Unificar el frame de poster
+
+**Archivos:** `PosterShell.tsx`, `PosterTile.tsx`, `SeasonCard.tsx`.
+
+Los 3 repiten `aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden',
+position: 'relative'` + `containerType: 'inline-size'` + `background` +
+`contentVisibility`.
+
+**Plan:** Un componente `<PosterFrame>` o una clase CSS `.jfp-poster-frame`.
+
+### 1.6 Unificar el overlay de logo/título
+
+**Archivos:** `PosterShell.tsx` (128-180), `PosterTile.tsx` (88-146).
+
+Ambos implementan la misma lógica: logo → img con objectPosition left
+bottom, sin logo → título con line-clamp. Diferencias menores en font-size.
+
+**Plan:** `<PosterOverlay logo title progress />` compartido.
+
+### 1.7 PosterShell debe usar `<SelectionMark>` en vez de reimplementarlo
+
+**Archivo:** `PosterShell.tsx` (105-114) vs `SelectionMark.tsx` (8-16).
+
+PosterShell reimplementa inline el mismo markup que `SelectionMark`.
+
+**Plan:** Reemplazar el inline por `<SelectionMark selected={selected} />`.
+
+### 1.8 Extraer `<LoadState>` para diálogos y páginas
+
+**Archivos:** `AddToDialog.tsx`, `TagsDialog.tsx`, `MyListButton.tsx`,
+`LibraryPage.tsx`, `FavoritesPage.tsx`, `CatalogPage.tsx`, `ListsPage.tsx`,
+`ListPage.tsx`.
+
+8+ archivos repiten
+`{error ? <ErrText/> : !data ? <Loading/> : data.length===0 ? <Empty/> : <Content/>}`.
+
+**Plan:** `<LoadState loading error count emptyTitle emptyText>` que maneje
+los 3 estados.
+
+### 1.9 Extraer `<PopupPanel>` para menús flotantes
+
+**Archivos:** `MoreButton.tsx`, `ListCardMenu.tsx`, `UserAvatar.tsx`.
+
+Los 3 repiten los mismos estilos de popup (blur, borderRadius, boxShadow,
+position fixed).
+
+**Plan:** `<PopupPanel>` con estilos unificados + portal + click-outside.
+
+### 1.10 Unificar estilos de fila de menú
+
+**Archivos:** `ItemMenuList.tsx`, `ListCardMenu.tsx`, `ImageUploadMenu.tsx`,
+`UserAvatar.tsx`.
+
+Los 4 reimplementan el mismo patrón de botón de menú (display block,
+width 100%, hover con rgba).
+
+**Plan:** `ItemMenuList` es la versión canónica. Los otros 3 deben usarlo
+o un `<MenuEntry>` extraído.
+
+### 1.11 Extraer `useListsSync()` para el patrón de evento LISTS
+
+**Archivos:** `ListsPage.tsx` (33-39), `ListPage.tsx` (52-57),
+`MyListButton.tsx` (91-98).
+
+Los 3 implementan el mismo listener de `LISTS.event` + `refresh()`.
+
+**Plan:** Hook `useListsSync()` que retorne las listas actuales y maneje
+la suscripción.
+
+### 1.12 Extraer `useViewModelLoad()` para el patrón de carga
+
+**Archivos:** 7 páginas (Library, Favorites, Genre, Person, Search,
+Login, HomePage).
+
+Todas hacen `useViewModel(vm)` +
+`useEffect(() => void vm.load(...), [deps])`.
+
+**Plan:** Hook combinado `useViewModelLoad(vm, loadFn, deps)`.
+
+---
+
+## Fase 2 — ViewModels y domain layer (COMPLETADA)
+
+### 2.1 Crear `DetailViewModel` base para Show/Movie
+
+**Archivos:** `ShowViewModel.ts` (93 líneas), `MovieViewModel.ts` (88 líneas).
+
+Ambos tienen la misma estructura: `item` signal, `loading`, `error`, `gone`,
+`LoadGuard`, `ItemMutationSubscription`, `load(id)`, `showFor(id)` /
+`movieFor(id)`, `subscribeToMutations()`.
+
+**Plan:** Un `DetailViewModel<T>` base con la lógica compartida. Los dos
+se vuelven subclases de ~20 líneas cada una.
+
+### 2.2 Unificar la suscripción a mutaciones
+
+**Archivos:** `HomeViewModel.ts`, `LibraryViewModel.ts`, `ShowViewModel.ts`,
+`MovieViewModel.ts`.
+
+Los 4 tienen el mismo `subscribeToMutations()` con
+`this.mutations.ensure(callback, MUTATION_DEBOUNCE_MS)`.
+
+**Plan:** Helper `subscribeToMutations(vm, debounce, callback)` en
+`itemMutations.ts`.
+
+### 2.3 Decomponer `VideoPlayerViewModel` (964 líneas)
+
+**Archivo:** `domain/viewModels/VideoPlayerViewModel.ts`.
+
+Ya tiene `SegmentTracker`, `TitlePreferences`, `AutoNextTracker`. El VM
+principal sigue siendo grande.
+
+**Plan:** Extraer `SubtitlesBinding` y `CastBinding` como colaboradores
+adicionales si el VM crece.
+
+---
+
+## Fase 3 — Reorganización de código compartido
+
+### 3.1 Mover `globalize` de `src/legacy/lib/` a `src/lib/`
+
+`globalize` es el sistema i18n del proyecto (219 importadores) pero vive
+en `legacy/`, lo que implica que es legacy cuando no lo es.
+
+**Plan:** Mover a `src/lib/globalize/`, actualizar path aliases en
+`tsconfig.json` y `vite.config.ts`.
+
+### 3.2 Mover `queryClient` a `src/lib/query/`
+
+El propio archivo tiene un `TODO: Move this file to lib/query`. Es
+infraestructura compartida, no una utilidad.
+
+**Plan:** Mover a `src/lib/query/`, actualizar imports.
+
+### 3.3 Consolidar generación de URLs de imagen (3 sistemas paralelos)
+
+Tres implementaciones:
+- `utils/sdk/imageUrls.ts` (SDK-based, usado por legacy)
+- `apps/frontend/data/api/images.ts` (fetch-based, usado por frontend)
+- `legacy/components/playback/utils/image.ts` (wrapper con lógica de episode)
+
+**Plan:** Unificar en `utils/sdk/imageUrls.ts` con opción de
+episode-awareness.
+
+### 3.4 Deprecar `utils/dashboard.js` (módulo Dios)
+
+256 líneas, 15+ funciones, mezcla navegación, auth, UI helpers, y plugin
+config. Se adjunta a `window.Dashboard`.
+
+**Plan:** Extraer funciones de navegación a un módulo compartido, mantener
+UI helpers, deprecar `window.Dashboard` incrementalmente.
+
+### 3.5 Sincronizar breakpoints TS ↔ SCSS
+
+`utils/breakpoints.ts` y `styles/_breakpoints.scss` definen la misma escala
+en dos lugares.
+
+**Plan:** Documentar la relación en un comentario o generar ambos desde un
+único JSON.
+
+---
+
+## Fase 4 — Limpieza de legacy
+
+### 4.1 Eliminar código muerto confirmado
+
+| Módulo | Evidencia |
+|---|---|
+| `legacy/scripts/touchHelper.js` | 0 imports |
+| `legacy/scripts/screensavermanager.scss` | Solo SCSS, nadie lo importa |
+| `legacy/components/playmenu.js` | 0 imports |
+| `legacy/components/maintabsmanager.js` | 0 imports |
+
+### 4.2 Eliminar código probablemente muerto
+
+| Módulo | Evidencia |
+|---|---|
+| `legacy/components/alphaPicker/` | Solo importado internamente |
+| `legacy/components/notifications/` | No importado por frontend ni dashboard |
+| `legacy/components/groupedcards.js` | Solo importado por legacy cardbuilder |
+| `legacy/elements/emby-collapse/` | Verificar uso externo |
+| `legacy/elements/emby-scrollbuttons/` | Verificar uso externo |
+| `legacy/elements/emby-ratingbutton/` | Verificar uso externo |
+
+### 4.3 Eliminar React wrappers con `dangerouslySetInnerHTML`
+
+**Archivos:** `CheckBoxElement.tsx`, `IconButtonElement.tsx`,
+`SelectElement.tsx`.
+
+Usan `dangerouslySetInnerHTML` para renderizar web components legacy. Ya
+existen equivalentes React puros (`Button.tsx`, `Input.tsx`).
+
+**Plan:** Verificar que el dashboard puede usar los equivalentes React y
+eliminar los wrappers.
+
+---
+
+## Fase 5 — Estilos y tokens
+
+### 5.1 Centralizar constantes de color de error
+
+`fields.tsx` define `DANGER` y `ERROR_FG`, pero `ErrorBoundary.tsx` y
+otros usan `'#ff6b6b'` directamente.
+
+**Plan:** Importar siempre desde `fields.tsx` o un módulo `tokens.ts`.
+
+### 5.2 Unificar padding responsive
+
+`PageSection.tsx`, `DetailSections.tsx`, `Row.tsx`, `SearchPage.tsx`
+computan el mismo ternario `r.touch ? ... : ...` para padding.
+
+**Plan:** Definir `pagePad`, `sectionPad`, `rowPad` como valores
+responsive en `responsive.ts`.
+
+### 5.3 Centralizar el fix de Chrome scroll
+
+8+ componentes con
+`onMouseDown={(e) => e.preventDefault()}` y el mismo comentario.
+
+**Plan:** Documentar una vez en un comentario compartido o crear una
+directiva.
+
+---
+
 # Completado (histórico, ir a git log)
 
-El trabajo anterior (spec 2025, paleta única, hero completo, navegación
-píldora, selección de seed manual, caché LRU) quedó registrado en el historial.
+## Selector de avatar a pantalla completa — Pendiente
 
 ## Ronda de avatares — Plan A (2026-08-14)
 

@@ -6,8 +6,11 @@ import { computed, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/librarySortStore';
-import { ItemMutationSubscription, MUTATION_DEBOUNCE_MS } from './itemMutations';
+import {
+    ItemMutationSubscription, MUTATION_DEBOUNCE_MS, subscribeToMutations
+} from './itemMutations';
 import { registerTagSource } from './knownTags';
+
 import { CatalogViewModel } from './CatalogViewModel';
 
 export type LibraryKind = 'series' | 'movies';
@@ -134,7 +137,7 @@ export class LibraryViewModel extends CatalogViewModel {
     // seguidas (ver MUTATION_DEBOUNCE_MS): la biblioteca entera se recarga una
     // vez por lote, no una vez por episodio.
     private subscribeToMutations() {
-        this.mutations.ensure(() => {
+        subscribeToMutations(this.mutations, () => {
             // Solo refetcheamos si la lista ya se pintó (no en montaje inicial
             // sin datos, para no forzar cargas concurrentes).
             const hasData = this.shows.value.length > 0 || this.movies.value.length > 0;
@@ -145,3 +148,4 @@ export class LibraryViewModel extends CatalogViewModel {
 }
 
 export const libraryVM = new LibraryViewModel(apiService);
+

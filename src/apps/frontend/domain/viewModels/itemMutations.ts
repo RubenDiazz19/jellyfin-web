@@ -51,3 +51,13 @@ export class ItemMutationSubscription {
         window.addEventListener(ITEM_MUTATED_EVENT, this.handler);
     }
 }
+
+/** Helper para suscribir un ViewModel a mutaciones de items con o sin debounce. */
+export function subscribeToMutations(
+    subscription: ItemMutationSubscription,
+    onMutated: (detail: ItemMutatedDetail) => void,
+    debounceMs = 0
+): void {
+    subscription.ensure(onMutated, debounceMs);
+}
+

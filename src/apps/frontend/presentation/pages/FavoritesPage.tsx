@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -7,13 +7,13 @@ import { PosterCard } from '../components/cards/PosterCard';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { EpCard } from '../components/cards/EpCard';
 import { MovieCard } from '../components/cards/MovieCard';
-import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
 import { PageTitle, SectionTitle } from '../components/layout/Title';
 import { ListBackLink } from './ListsPage';
+import { LoadState } from '../components/controls/LoadState';
 import { favoritesVM } from '../../domain/viewModels/FavoritesViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useViewModelLoad } from '../../domain/bridge/useViewModel';
 import { useFavListener } from '../../domain/bridge/useFav';
 import type { Navigate } from '../../app/router';
 import { episodeKey, seasonKey } from '../../domain/stores';
@@ -21,16 +21,11 @@ import { episodeKey, seasonKey } from '../../domain/stores';
 type Props = { navigate: Navigate };
 
 export function FavoritesPage({ navigate }: Props) {
-    useViewModel(favoritesVM);
-
-    useEffect(() => {
-        void favoritesVM.load();
-    }, []);
+    useViewModelLoad(favoritesVM, (vm) => vm.load(), []);
     useFavListener(() => favoritesVM.syncWithStore());
 
     const { shows, movies, seasons, episodes, loading, error } = favoritesVM;
-    const isEmpty = shows.value.length === 0 && movies.value.length === 0
-        && seasons.value.length === 0 && episodes.value.length === 0;
+    const totalCount = shows.value.length + movies.value.length + seasons.value.length + episodes.value.length;
 
     return (
         <>
@@ -39,17 +34,15 @@ export function FavoritesPage({ navigate }: Props) {
                 <ListBackLink navigate={navigate} />
                 <PageTitle margin='0 0 44px'>{globalize.translate('Favorites')}</PageTitle>
 
-                {loading.value ? (
-                    <SkeletonRow title='' />
-                ) : error.value ? (
-                    <EmptyState title={globalize.translate('FavoritesLoadError')} hint={error.value} />
-                ) : isEmpty ? (
-                    <EmptyState
-                        title={globalize.translate('MessageNoFavoritesYet')}
-                        hint={globalize.translate('MessageNoFavoritesYetHelp')}
-                        icon='♡'
-                    />
-                ) : (
+                <LoadState
+                    variant='page'
+                    loading={loading.value}
+                    error={error.value}
+                    count={totalCount}
+                    emptyTitle={globalize.translate('MessageNoFavoritesYet')}
+                    emptyHint={globalize.translate('MessageNoFavoritesYetHelp')}
+                    emptyIcon='♡'
+                >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 56 }}>
                         {shows.value.length > 0 && (
                             <FavSection title={globalize.translate('Shows')}>
@@ -83,13 +76,14 @@ export function FavoritesPage({ navigate }: Props) {
                             </FavSection>
                         )}
                     </div>
-                )}
+                </LoadState>
             </PageSection>
         </>
     );
 }
 
 function FavSection({
+
     title, minWidth = 200, children
 }: {
     title: string; minWidth?: number; children: ReactNode;

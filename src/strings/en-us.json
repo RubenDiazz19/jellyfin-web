@@ -321,6 +321,8 @@
     "MessageSignedOutSwitchUser": "Signed out — sign in with another user",
     "MessageSignInFailed": "Could not sign in",
     "MessageSubtitleDownloaded": "Subtitle downloaded and applied",
+    "MessageSubtitleUploaded": "Subtitle uploaded and applied",
+    "MessageSubtitleDeleted": "Subtitle deleted",
     "MessageSubtitleSearchHelp": "Searches the subtitle providers connected in Jellyfin (OpenSubtitles, etc.). They are downloaded and added as an extra track on the file.",
     "MessageUnexpectedRenderError": "Unexpected error while rendering this page",
     "MessageUploadFailed": "Upload failed: {0}",

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useImageStorage } from '../../../domain/bridge/useImageStorage';
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
 
 type Props = {
@@ -8,7 +7,6 @@ type Props = {
     intervalMs?: number; // Tiempo entre cambios (default 8s).
     fadeMs?: number; // Duración del crossfade (default 1500ms).
     vignette?: number;
-    itemId?: string;
     sharp?: boolean;
     /**
      * Fondo prestado (la ficha de temporada enseña el de la serie): se
@@ -27,21 +25,18 @@ type Props = {
 // precarga con `new Image()` para que el crossfade no parpadee.
 export function Backdrop({
     src, srcs, intervalMs = 8000, fadeMs = 1500,
-    vignette = 0.38, itemId, sharp = false, blurred = false
+    vignette = 0.38, sharp = false, blurred = false
 }: Props) {
-    const { getImage } = useImageStorage();
-    const customBackdrop = itemId ? getImage(`${itemId}_backdrop`) : null;
-
     const pool = (srcs && srcs.length > 0 ? srcs : [src]).filter(Boolean);
     const [idx, setIdx] = useState(0);
-    useEffect(() => { setIdx(0); }, [pool.length, customBackdrop]);
+    useEffect(() => { setIdx(0); }, [pool.length]);
     useEffect(() => {
-        if (customBackdrop || pool.length <= 1) return;
+        if (pool.length <= 1) return;
         const t = setInterval(() => setIdx((n) => (n + 1) % pool.length), intervalMs);
         return () => clearInterval(t);
-    }, [pool.length, intervalMs, customBackdrop]);
+    }, [pool.length, intervalMs]);
 
-    const current = customBackdrop || pool[Math.min(idx, pool.length - 1)] || src;
+    const current = pool[Math.min(idx, pool.length - 1)] || src;
 
     // Dynamic color M3: la seed del tema sigue al backdrop visible. En
     // desktop applyImageSeed es un no-op (el provider queda inerte).
@@ -66,13 +61,13 @@ export function Backdrop({
     // Precarga la siguiente del ciclo para que el crossfade entre a imagen
     // ya descargada.
     useEffect(() => {
-        if (customBackdrop || pool.length <= 1) return;
+        if (pool.length <= 1) return;
         const next = pool[(idx + 1) % pool.length];
         if (next) {
             const img = new Image();
             img.src = next;
         }
-    }, [idx, pool, customBackdrop]);
+    }, [idx, pool]);
 
     const filter = blurred ? 'blur(8px) brightness(0.5)' :
         sharp ? 'saturate(1)' : 'saturate(0.9) blur(1px)';

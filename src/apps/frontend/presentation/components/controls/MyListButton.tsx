@@ -1,15 +1,17 @@
 import globalize from 'lib/globalize';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useToast } from '../toast/ToastProvider';
-import { useInLists } from '../../../domain/bridge/useLists';
+import { useInLists, useListsSync } from '../../../domain/bridge/useLists';
 import { LISTS, type ListKind, type ListRef } from '../../../domain/stores';
 import { Dialog, DialogFooter, DialogHeader, DialogInputRow, DialogRow } from './Dialog';
-import { ErrText, Muted, PillButton, TextField } from './fields';
+import { PillButton, TextField } from './fields';
+import { LoadState } from './LoadState';
 
 // «Mi lista» de las fichas de película y serie. Abre un diálogo con TODAS las
+
 // listas —de reproducción y colecciones— marcables a la vez: el título puede
 // estar en varias, y obligar a abrir el diálogo una vez por lista sería
 // absurdo. Sustituye a las dos entradas que había en el menú de más opciones.
@@ -81,24 +83,14 @@ function MyListDialog({ itemId, itemTitle, onClose }: {
     const toast = useToast();
     // Se lee del hook para que las marcas sigan al store tras cada cambio.
     useInLists(itemId);
-    const [lists, setLists] = useState<ListRef[]>(() => LISTS.all());
-    const [loading, setLoading] = useState(() => LISTS.all().length === 0);
-    const [error, setError] = useState<string | null>(null);
+    const { lists, loading, error } = useListsSync();
     const [busy, setBusy] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
     const [newKind, setNewKind] = useState<ListKind>('playlist');
 
-    useEffect(() => {
-        const sync = () => setLists(LISTS.all());
-        window.addEventListener(LISTS.event, sync);
-        LISTS.refresh()
-            .catch((e) => setError((e as Error).message))
-            .finally(() => setLoading(false));
-        return () => window.removeEventListener(LISTS.event, sync);
-    }, []);
-
     const toggle = async (list: ListRef) => {
         const wasIn = LISTS.contains(list.kind, list.id, itemId);
+
         setBusy(`${list.kind}:${list.id}`);
         try {
             await LISTS.toggle(list.kind, list.id, itemId);
@@ -147,33 +139,31 @@ function MyListDialog({ itemId, itemTitle, onClose }: {
             />
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: 14 }}>
-                {error ? (
-                    <ErrText>{error}</ErrText>
-                ) : loading ? (
-                    <Muted>{globalize.translate('Loading')}</Muted>
-                ) : lists.length === 0 ? (
-                    <Muted>{globalize.translate('MessageNoPlaylistsYet')}</Muted>
-                ) : (
-                    <>
-                        <ListGroup
-                            title={globalize.translate('Playlists')}
-                            lists={playlists}
-                            itemId={itemId}
-                            busy={busy}
-                            onToggle={toggle}
-                        />
-                        <ListGroup
-                            title={globalize.translate('Collections')}
-                            lists={collections}
-                            itemId={itemId}
-                            busy={busy}
-                            onToggle={toggle}
-                        />
-                    </>
-                )}
+                <LoadState
+                    loading={loading}
+                    error={error}
+                    count={lists.length}
+                    emptyText={globalize.translate('MessageNoPlaylistsYet')}
+                >
+                    <ListGroup
+                        title={globalize.translate('Playlists')}
+                        lists={playlists}
+                        itemId={itemId}
+                        busy={busy}
+                        onToggle={toggle}
+                    />
+                    <ListGroup
+                        title={globalize.translate('Collections')}
+                        lists={collections}
+                        itemId={itemId}
+                        busy={busy}
+                        onToggle={toggle}
+                    />
+                </LoadState>
             </div>
 
             <DialogFooter>
+
                 {/* Qué se crea se elige aquí: lista de reproducción o
                     colección. Las dos aceptan lo mismo, pero la colección
                     guarda las series enteras y la lista las desmenuza en

@@ -329,13 +329,9 @@ const HeroSlide = React.memo(function HeroSlideBase({
             style={{ width, height: '100%', position: 'relative', flexShrink: 0 }}
             onContextMenu={ctx.onContextMenu}
         >
-            {/* itemId: aplica el fondo personalizado guardado en local para
-                ese item (el mismo que usa la ficha) — sin él, cambiar la
-                imagen se veía en la ficha pero no aquí.
-                srcs: rota entre todos los fondos que tenga el item. */}
             <Backdrop
                 src={slide.backdrop} srcs={slide.backdrops}
-                itemId={slide.id} sharp
+                sharp
             />
 
             <div style={{

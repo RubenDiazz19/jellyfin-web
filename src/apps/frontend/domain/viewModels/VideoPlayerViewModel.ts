@@ -21,10 +21,13 @@ import { TICKS_PER_SECOND, type AspectRatio } from '../player/format';
 import { attachHlsSource, playsHlsNatively } from '../player/hlsSource';
 import { MediaSessionBinding } from '../player/mediaSession';
 import { AutoNextTracker } from '../player/autoNext';
+import { CastBinding } from '../player/castBinding';
 import { SegmentTracker } from '../player/segmentTracker';
+import { SubtitlesBinding } from '../player/subtitlesBinding';
 import { TitlePreferences } from '../player/titlePreferences';
 
 const PROGRESS_REPORT_MS = 10_000;
+
 const VOLUME_KEY = 'jfp-volume';
 /** Margen antes de reintentar una fuente que ha fallado al arrancar. */
 const RETRY_SOURCE_MS = 1200;
@@ -65,6 +68,8 @@ export class VideoPlayerViewModel {
     private readonly autoNext = new AutoNextTracker(
         (duration, tail) => this.segments.outroStart(duration, tail)
     );
+    private readonly cast = new CastBinding();
+    private readonly subtitles = new SubtitlesBinding();
 
     // Estado observable que la View pinta. `currentTime` va redondeado al
     // segundo: ver TIME_STEP_SECONDS.
@@ -87,13 +92,13 @@ export class VideoPlayerViewModel {
     error = signal<string | null>(null);
     title = signal('');
     audioTracks = signal<MediaStreamInfo[]>([]);
-    subtitleTracks = signal<MediaStreamInfo[]>([]);
+    subtitleTracks = this.subtitles.subtitleTracks;
     /** Índice del stream de audio activo (índice Jellyfin, no posición). */
     selectedAudio = signal<number | null>(null);
     /** Índice del subtítulo activo, o null = desactivados. */
-    selectedSubtitle = signal<number | null>(null);
+    selectedSubtitle = this.subtitles.selectedSubtitle;
     /** URL del VTT activo (solo subtítulos de texto). La View pinta <track>. */
-    subtitleUrl = signal<string | null>(null);
+    subtitleUrl = this.subtitles.subtitleUrl;
     /** Velocidad de reproducción actual (1 = normal). */
     playbackRate = signal(1);
     /** Relación de aspecto elegida para el <video>. La View la traduce a CSS. */
@@ -112,8 +117,9 @@ export class VideoPlayerViewModel {
      * Safari) alcanzables para la fuente actual. Con transcode HLS (MSE)
      * Chrome no permite remoting y esto queda en false.
      */
-    castAvailable = signal(false);
-    castState = signal<RemotePlaybackState>('disconnected');
+    castAvailable = this.cast.castAvailable;
+    castState = this.cast.castState;
+
     /**
      * Segmento (intro, créditos, resumen…) que contiene la posición actual, o
      * null, y la lista completa para la barra de progreso. Los mantiene
@@ -145,6 +151,10 @@ export class VideoPlayerViewModel {
     titlePref = this.prefs.pref;
     titleIsSeries = this.prefs.isSeries;
 
+    get currentItemId(): string {
+        return this.itemId;
+    }
+
     private video: HTMLVideoElement | null = null;
     private container: HTMLElement | null = null;
     private hls: Hls | null = null;
@@ -160,10 +170,13 @@ export class VideoPlayerViewModel {
      */
     private detachOnMeta: (() => void) | null = null;
     private closed = false;
-    /** Subtítulo no-texto quemado en el transcode actual (índice Jellyfin). */
-    private burnedSubtitle: number | null = null;
-    /** VTT a la espera de que arranque la reproducción (ver publishSubtitle). */
-    private pendingSubtitleUrl: string | null = null;
+    get burnedSubtitle(): number | null {
+        return this.subtitles.burnedSubtitle;
+    }
+    set burnedSubtitle(value: number | null) {
+        this.subtitles.burnedSubtitle = value;
+    }
+
     /** La reproducción ha llegado a arrancar al menos una vez en este item. */
     private hasStarted = false;
     /** Opciones de la última carga, para poder reintentarla igual. */
@@ -307,9 +320,10 @@ export class VideoPlayerViewModel {
         on('enterpictureinpicture', () => { this.pipActive.value = true; });
         on('leavepictureinpicture', () => { this.pipActive.value = false; });
 
-        this.watchRemotePlayback(video);
+        this.detachFns.push(this.cast.watch(video));
         on('error', () => {
             if (this.closed) return;
+
             // Un <video> SIN fuente no es un fallo de reproducción: es el
             // 'error' que dispara load() al limpiar el src (cierre o cambio
             // de item). Ese evento se despacha en un tick posterior, así que
@@ -585,18 +599,16 @@ export class VideoPlayerViewModel {
      * es él quien reporta progreso al servidor a partir de ahora.
      */
     pauseForCast = () => {
-        this.video?.pause();
-        this.stopProgressTimer();
+        this.cast.pauseForCast(this.video, () => this.stopProgressTimer());
     };
 
     /** Abre el selector de receptores del navegador (Cast/AirPlay). */
     promptCast = () => {
-        const remote = this.video?.remote;
-        if (!remote) return;
-        void remote.prompt().catch(() => {});
+        this.cast.prompt(this.video);
     };
 
     /**
+
      * Cambia la pista de audio: nuevo PlaybackInfo conservando la posición.
      * El idioma elegido queda recordado para el título (o para la serie
      * entera), que es la preferencia de máxima prioridad.
@@ -637,6 +649,30 @@ export class VideoPlayerViewModel {
         this.publishSubtitle(stream && this.decision ?
             this.api.playback.subtitleVttUrl(this.itemId, this.decision.mediaSourceId, stream.index) :
             null);
+    };
+
+    /**
+     * Refresca las pistas de subtítulos consultando de nuevo al servidor
+     * (útil tras subir o descargar un subtítulo nuevo durante la reproducción).
+     */
+    refreshSubtitleTracks = async (selectNewest = true) => {
+        if (!this.itemId || this.closed) return;
+        const previousIndexes = new Set(this.subtitleTracks.value.map((s) => s.index));
+        const video = this.video;
+        if (!video) return;
+        this.startSeconds = video.currentTime;
+        await this.loadSource({
+            audioStreamIndex: this.selectedAudio.value ?? undefined,
+            subtitleStreamIndex: this.selectedSubtitle.value ?? -1,
+            mediaSourceId: this.decision?.mediaSourceId
+        }, { fresh: true });
+
+        if (selectNewest) {
+            const newStream = this.subtitleTracks.value.find((s) => !previousIndexes.has(s.index));
+            if (newStream) {
+                this.setSubtitleTrack(newStream.index);
+            }
+        }
     };
 
     /** Para la reproducción y reporta el stop. Idempotente. */
@@ -681,32 +717,6 @@ export class VideoPlayerViewModel {
 
     // ── Interno ─────────────────────────────────────────────────────────────
 
-    /** Sigue la disponibilidad de receptores remotos mientras dure el attach. */
-    private watchRemotePlayback(video: HTMLVideoElement) {
-        const remote = video.remote;
-        if (!remote || typeof remote.watchAvailability !== 'function') return;
-
-        this.castState.value = remote.state;
-        const onConnecting = () => { this.castState.value = 'connecting'; };
-        const onConnect = () => { this.castState.value = 'connected'; };
-        const onDisconnect = () => { this.castState.value = 'disconnected'; };
-        remote.addEventListener('connecting', onConnecting);
-        remote.addEventListener('connect', onConnect);
-        remote.addEventListener('disconnect', onDisconnect);
-
-        let watchId: number | null = null;
-        remote.watchAvailability((available) => { this.castAvailable.value = available; })
-            .then((id) => { watchId = id; })
-            .catch(() => { this.castAvailable.value = false; });
-
-        this.detachFns.push(() => {
-            remote.removeEventListener('connecting', onConnecting);
-            remote.removeEventListener('connect', onConnect);
-            remote.removeEventListener('disconnect', onDisconnect);
-            if (watchId != null) void remote.cancelWatchAvailability(watchId).catch(() => {});
-        });
-    }
-
     private reset() {
         this.currentTime.value = 0;
         this.duration.value = 0;
@@ -715,11 +725,7 @@ export class VideoPlayerViewModel {
         this.loading.value = true;
         this.error.value = null;
         this.audioTracks.value = [];
-        this.subtitleTracks.value = [];
         this.selectedAudio.value = null;
-        this.selectedSubtitle.value = null;
-        this.subtitleUrl.value = null;
-        this.pendingSubtitleUrl = null;
         this.lastSourceOpts = {};
         this.resumeSeconds = 0;
         this.retriedSource = false;
@@ -727,9 +733,8 @@ export class VideoPlayerViewModel {
         this.playbackRate.value = 1;
         this.brightness.value = 1;
         this.pipActive.value = false;
-        this.castAvailable.value = false;
-        this.castState.value = 'disconnected';
-        this.burnedSubtitle = null;
+        this.subtitles.reset();
+        this.cast.reset();
         this.segments.reset();
         this.chapters.value = [];
         this.autoNext.reset();
@@ -740,6 +745,7 @@ export class VideoPlayerViewModel {
     }
 
     /**
+
      * Pide PlaybackInfo y engancha la fuente (direct o HLS) al <video>.
      *
      * `fresh` fuerza a renegociar en vez de aceptar lo que haya cacheado (ver
@@ -846,27 +852,16 @@ export class VideoPlayerViewModel {
      * y la extracción solo retrasa unos segundos la aparición del subtítulo.
      */
     private publishSubtitle(url: string | null) {
-        // El criterio es "ya ha llegado a reproducir alguna vez", no "está
-        // reproduciendo ahora": cambiar de subtítulo en pausa debe aplicarse
-        // al momento.
-        if (url == null || this.hasStarted) {
-            this.pendingSubtitleUrl = null;
-            this.subtitleUrl.value = url;
-            return;
-        }
-        this.pendingSubtitleUrl = url;
-        this.subtitleUrl.value = null;
+        this.subtitles.publishSubtitle(url, this.hasStarted);
     }
 
     /** Suelta el subtítulo que esperaba a que arrancara la reproducción. */
     private flushPendingSubtitle() {
-        const url = this.pendingSubtitleUrl;
-        if (!url) return;
-        this.pendingSubtitleUrl = null;
-        this.subtitleUrl.value = url;
+        this.subtitles.flushPendingSubtitle();
     }
 
     /**
+
      * Un fallo en el arranque merece un segundo intento antes de rendirse: la
      * causa típica es que el servidor estaba ocupado extrayendo subtítulos y
      * no le dio tiempo a levantar el transcode. En el reintento ese trabajo ya

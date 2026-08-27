@@ -51,8 +51,6 @@ type FrameProps = {
     /** Imagen principal y rotación de fondos. */
     backdrop: string;
     backdrops?: string[];
-    /** Con él, un fondo puesto a mano para ese item manda sobre el del server. */
-    itemId?: string;
     /** La barra de navegación va dentro del hero, sobre el backdrop. */
     nav: ReactNode;
     children: ReactNode;
@@ -90,7 +88,7 @@ type FrameProps = {
 
 /** Marco del hero: alto de pantalla, backdrop, degradado y colocación. */
 export function HeroFrame({
-    hero, backdrop, backdrops, itemId, nav, children, footer, pos, pad, scrim, blurred,
+    hero, backdrop, backdrops, nav, children, footer, pos, pad, scrim, blurred,
     onContextMenu
 }: FrameProps) {
     const layout = useHeroLayout(hero);
@@ -112,7 +110,7 @@ export function HeroFrame({
             overflow: 'hidden', background: '#000'
         }}>
             {nav}
-            <Backdrop src={backdrop} srcs={backdrops} itemId={itemId} sharp blurred={blurred} />
+            <Backdrop src={backdrop} srcs={backdrops} sharp blurred={blurred} />
             {scrimAlpha > 0 && (
                 <div style={{
                     position: 'absolute', inset: 0, pointerEvents: 'none',

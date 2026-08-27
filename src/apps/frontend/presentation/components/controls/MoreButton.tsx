@@ -1,11 +1,9 @@
 import {
-    useEffect, useImperativeHandle, useRef, useState, type RefObject
+    useImperativeHandle, useRef, useState, type RefObject
 } from 'react';
-import ReactDOM from 'react-dom';
 
 import globalize from 'lib/globalize';
 
-import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { IconButton } from './IconButton';
 import { useToast } from '../toast/ToastProvider';
@@ -21,6 +19,7 @@ import { AddToDialog } from './AddToDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { TagsDialog } from './TagsDialog';
 import { ItemMenuList, type MenuItem } from './ItemMenuList';
+import { PopupPanel } from './PopupPanel';
 import { knownTags } from '../../../domain/viewModels/knownTags';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
@@ -29,6 +28,7 @@ import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
 
 /** Permite abrir el menú desde fuera, en un punto: el clic derecho. */
+
 export type ItemMenuHandle = { openAt: (x: number, y: number) => void };
 
 type ItemKind = 'movie' | 'show' | 'season' | 'episode';
@@ -116,15 +116,6 @@ export function MoreButton({
             position === 'next' ? 'MessageAddedToQueueNext' : 'MessageAddedToQueue'
         ), 'success');
     };
-
-    useEffect(() => {
-        if (!open) return;
-        const onDoc = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener('mousedown', onDoc);
-        return () => document.removeEventListener('mousedown', onDoc);
-    }, [open]);
 
     const openMenu = () => {
         if (open) { setOpen(false); return; }
@@ -299,25 +290,19 @@ export function MoreButton({
                     <ItemMenuList items={menu} sheet onPick={close} />
                 </BottomSheet>
             )}
-            {open && !r.touch && menuPos && ReactDOM.createPortal(
-                <div
-                    style={{
-                        position: 'fixed',
-                        top: menuPos.top, bottom: menuPos.bottom,
-                        left: menuPos.left, right: menuPos.right,
-                        maxHeight: menuPos.maxHeight, overflowY: 'auto', zIndex: 9999,
-                        minWidth: MENU_W,
-                        background: 'rgba(18,18,20,0.96)', backdropFilter: 'blur(14px)',
-                        border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: 6,
-                        boxShadow: '0 18px 50px rgba(0,0,0,0.6)', fontFamily: T.ui
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
+            {open && !r.touch && menuPos && (
+                <PopupPanel
+                    open={open}
+                    onClose={close}
+                    position={menuPos}
+                    minWidth={MENU_W}
                 >
                     <ItemMenuList items={menu} onPick={close} />
-                </div>,
-                document.body
+                </PopupPanel>
             )}
+
             {editor && (
+
                 <MetadataEditor
                     itemId={id}
                     kind={type as EditorKind}

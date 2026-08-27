@@ -1,6 +1,10 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { T } from '../../theme/tokens';
-import { Progress } from '../controls/Progress';
+import { CardProgress } from './CardProgress';
+import { CardOverlay } from './CardOverlay';
+import { PosterFrame } from './PosterFrame';
+import { PosterOverlay } from './PosterOverlay';
+import { SelectionMark } from './SelectionMark';
 
 // Carcasa del póster vertical 2:3. La comparten la card de serie, la de
 // película en fila y la de película en grid: las tres pintaban exactamente
@@ -58,29 +62,7 @@ export function PosterShell({
                 { width, flex: `0 0 ${width}px`, cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
-            <div
-                className='jfp-card-m3'
-                style={{
-                    aspectRatio: '2/3', borderRadius: 4, overflow: 'hidden', position: 'relative',
-                    containerType: 'inline-size',
-                    // Reserva del hueco mientras la carátula llega —y fondo
-                    // definitivo si el item no tiene ninguna—, para que la
-                    // rejilla no parpadee en blanco al ir apareciendo.
-                    background: 'rgba(255,255,255,0.05)',
-                    // Fuera del viewport el navegador se salta el estilo, el
-                    // layout y el pintado de todo lo de dentro: carátula,
-                    // degradado, botones y título, o sea casi toda la tarjeta.
-                    // No hace falta `contain-intrinsic-size` porque el alto sale
-                    // del `aspect-ratio` y no del contenido. Va en el marco y no
-                    // en la raíz justamente por eso: el alto de la raíz sí
-                    // depende de lo que tenga dentro (el pie), y ahí habría que
-                    // adivinarlo.
-                    contentVisibility: 'auto',
-                    // El marcado se ve de un vistazo aunque la carátula sea clara.
-                    outline: selected ? '3px solid #fff' : undefined,
-                    outlineOffset: selected ? -3 : undefined
-                }}
-            >
+            <PosterFrame selected={selected}>
                 {/* `<img>` y no `background-image`: un fondo CSS no admite
                     `loading='lazy'`, así que el navegador se descargaba de
                     golpe las carátulas de toda la rejilla —cientos— aunque no
@@ -102,88 +84,22 @@ export function PosterShell({
                     // En modo selección los botones estorban: pulsar «visto» o
                     // «favorito» dentro de una tarjeta que se está marcando es
                     // ambiguo. Se sustituyen por la marca de seleccionado.
-                    <div style={{
-                        position: 'absolute', top: 10, left: 12,
-                        width: 22, height: 22, borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        background: selected ? '#fff' : 'rgba(0,0,0,0.45)',
-                        border: selected ? 'none' : '2px solid rgba(255,255,255,0.7)',
-                        color: '#000', fontSize: 13, lineHeight: 1
-                    }}>
-                        {selected ? '✓' : ''}
-                    </div>
+                    <CardOverlay topLeft={<SelectionMark selected={selected} />} />
                 ) : (
-                    <>
-                        <div style={{ position: 'absolute', top: 10, left: 12 }}>{watchedButton}</div>
-                        <div style={{ position: 'absolute', top: 10, right: 12 }}>{favButton}</div>
-                    </>
+                    <CardOverlay
+                        topLeft={watchedButton}
+                        topRight={favButton}
+                    />
                 )}
-                {/* Con barra de progreso el título sube para no quedar debajo.
-                    El logo va acotado a una caja con alto proporcional fijo
-                    (11.9% del alto del póster) y ancho disponible de hasta el
-                    86% de la tarjeta: así todos los logos tienen la misma altura
-                    visual máxima (evitando que logos verticales o cuadrados como
-                    Demon Slayer se hagan gigantes) y escalan fluidamente en
-                    responsive. */}
-                {logo ? (
-                    <div style={{
-                        position: 'absolute',
-                        left: '6%',
-                        right: '8%',
-                        bottom: inProgress ? '8%' : '5%',
-                        height: '11.9%',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'flex-start',
-                        pointerEvents: 'none'
-                    }}>
-                        <img
-                            src={logo}
-                            alt={title}
-                            loading='lazy'
-                            decoding='async'
-                            style={{
-                                maxWidth: '100%',
-                                maxHeight: '100%',
-                                width: 'auto',
-                                height: 'auto',
-                                objectFit: 'contain',
-                                objectPosition: 'left bottom',
-                                filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))'
-                            }}
-                        />
-                    </div>
-                ) : (
-                    <div style={{
-                        position: 'absolute',
-                        left: '6%',
-                        right: '6%',
-                        bottom: inProgress ? '8%' : '5%',
-                        maxHeight: '24%',
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        pointerEvents: 'none'
-                    }}>
-                        <div style={{
-                            fontFamily: T.display,
-                            fontSize: 'clamp(12px, 8.5cqi, 20px)',
-                            lineHeight: 1.05,
-                            textShadow: '0 2px 20px rgba(0,0,0,0.5)',
-                            overflow: 'hidden',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical'
-                        }}>
-                            {title}
-                        </div>
-                    </div>
-                )}
+                <PosterOverlay
+                    logo={logo}
+                    title={title}
+                    inProgress={inProgress}
+                />
                 {inProgress && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 3 }}>
-                        <Progress value={progress} height={3} />
-                    </div>
+                    <CardProgress value={progress} bottom={3} />
                 )}
-            </div>
+            </PosterFrame>
             <div style={{
                 marginTop: 10, fontFamily: T.ui, fontSize: 11, color: T.dim,
                 letterSpacing: 1, textTransform: 'uppercase'
@@ -194,3 +110,4 @@ export function PosterShell({
         </div>
     );
 }
+

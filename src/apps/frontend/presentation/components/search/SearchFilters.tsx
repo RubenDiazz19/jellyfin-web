@@ -428,10 +428,9 @@ function RatingFilterItem({
         <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: showInternalDivider ? 8 : 4,
             flexWrap: 'nowrap'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
                 {RATING_OPERATORS.map((op) => {
                     const selected = filter !== null ? filter.operator === op.id : selectedOp === op.id;
                     return (
@@ -447,10 +446,10 @@ function RatingFilterItem({
             </div>
 
             {showInternalDivider && (
-                <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.18)', flexShrink: 0, margin: '0 2px' }} />
+                <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.18)', flexShrink: 0, margin: '0 5px' }} />
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
                 {PRESETS.map((p) => {
                     const selected = filter !== null && filter.value === p;
                     return (
@@ -493,7 +492,8 @@ function CollapsibleOptionPill({
                 maxWidth: isHidden ? 0 : 120,
                 opacity: isHidden ? 0 : 1,
                 transform: isHidden ? 'scale(0.5)' : 'scale(1)',
-                transition: 'max-width 0.6s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                marginRight: isHidden ? 0 : (collapsed ? 0 : 4),
+                transition: 'max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), margin-right 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                 pointerEvents: isHidden ? 'none' : undefined,
                 flexShrink: 0
             }}

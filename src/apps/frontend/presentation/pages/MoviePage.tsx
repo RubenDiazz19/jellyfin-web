@@ -85,7 +85,6 @@ function MovieHero({
             hero={hero}
             backdrop={heroImage}
             backdrops={portraitPhone ? undefined : movie.backdrops}
-            itemId={movie.id}
             onContextMenu={ctx.onContextMenu}
             nav={
                 <Nav

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -10,7 +10,8 @@ import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCa
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
 import { PageTitle, SectionTitle } from '../components/layout/Title';
-import { LISTS, type ListKind, type ListRef } from '../../domain/stores';
+import { type ListKind, type ListRef } from '../../domain/stores';
+import { useListsSync } from '../../domain/bridge/useLists';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate, Route } from '../../app/router';
 
@@ -26,27 +27,13 @@ type Props = { navigate: Navigate };
 
 export function ListsPage({ navigate }: Props) {
     const r = useResponsive();
-    const [lists, setLists] = useState<ListRef[]>(() => LISTS.all());
-    const [loading, setLoading] = useState(() => LISTS.all().length === 0);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const sync = () => setLists(LISTS.all());
-        window.addEventListener(LISTS.event, sync);
-        LISTS.refresh()
-            .catch((e) => setError((e as Error).message))
-            .finally(() => setLoading(false));
-        return () => window.removeEventListener(LISTS.event, sync);
-    }, []);
-
-    // Tras cambiar un fondo el store ya emite su evento, pero la marca de
-    // «fondo propio» vive en localStorage y no lo dispara: se re-lee a mano.
-    const refresh = () => setLists(LISTS.all());
+    const { lists, loading, error, refresh } = useListsSync();
 
     const playlists = lists.filter((l) => l.kind === 'playlist');
     const collections = lists.filter((l) => l.kind === 'collection');
 
     return (
+
         <>
             <Nav navigate={navigate} active='lists' />
             <PageSection>

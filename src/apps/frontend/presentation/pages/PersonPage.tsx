@@ -1,12 +1,11 @@
-import { useEffect } from 'react';
-
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
+
 import { Nav } from '../components/layout/Nav';
 import { CatalogPage } from './CatalogPage';
 import { personVM } from '../../domain/viewModels/DiscoverViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useViewModelLoad } from '../../domain/bridge/useViewModel';
 import type { CastMember } from '../../domain/models';
 import type { Navigate } from '../../app/router';
 
@@ -20,12 +19,10 @@ const ROLES_SHOWN = 4;
 // —cada uno trae su ficha de esta persona—, así que solo aparecen para quien
 // figure como intérprete; de un director se lista su obra sin foto.
 export function PersonPage({ name, navigate }: Props) {
-    useViewModel(personVM);
-    useEffect(() => {
-        void personVM.load(name);
-    }, [name]);
+    useViewModelLoad(personVM, (vm) => vm.load(name), [name]);
 
     const shows = personVM.shows.value;
+
     const movies = personVM.movies.value;
 
     const credits = [...shows, ...movies]

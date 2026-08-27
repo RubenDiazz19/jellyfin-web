@@ -4,11 +4,14 @@
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import type { CarouselSlide, Movie, Show } from '../../data/models';
-import { ItemMutationSubscription, MUTATION_DEBOUNCE_MS } from './itemMutations';
+import {
+    ItemMutationSubscription, MUTATION_DEBOUNCE_MS, subscribeToMutations
+} from './itemMutations';
 import { LoadGuard } from './loadGuard';
 
 export class HomeViewModel {
     slides = signal<CarouselSlide[]>([]);
+
     shows = signal<Show[]>([]);
     movies = signal<Movie[]>([]);
     heroLoading = signal(false);
@@ -80,7 +83,7 @@ export class HomeViewModel {
     // lote de mutaciones (marcar una temporada entera) es una recarga, no una
     // por episodio. Ver MUTATION_DEBOUNCE_MS.
     private subscribeToMutations() {
-        this.mutations.ensure(() => {
+        subscribeToMutations(this.mutations, () => {
             if (!this.showsReady.value) return;
             void this.load();
         }, MUTATION_DEBOUNCE_MS);
@@ -88,3 +91,4 @@ export class HomeViewModel {
 }
 
 export const homeVM = new HomeViewModel(apiService);
+

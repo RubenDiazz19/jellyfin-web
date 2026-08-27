@@ -56,7 +56,16 @@ export {
     getRemoteImages,
     type JFRemoteImage
 } from './remote-images';
-export { searchSubtitles, downloadSubtitle, type RemoteSubtitle } from './subtitles';
+export {
+    searchSubtitles,
+    downloadSubtitle,
+    uploadSubtitle,
+    deleteSubtitle,
+    getItemSubtitles,
+    fileToBase64,
+    type RemoteSubtitle,
+    type UploadSubtitleOptions
+} from './subtitles';
 // Idiomas recordados por película/serie: mandan sobre la preferencia del
 // usuario, y desde Ajustes se pueden borrar todos de golpe.
 export {

@@ -3,7 +3,8 @@ import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useWatched } from '../../../domain/bridge/useWatched';
 import { FavButton } from '../controls/FavButton';
-import { Progress } from '../controls/Progress';
+import { CardProgress } from './CardProgress';
+import { CardOverlay } from './CardOverlay';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
 import type { Show, Season, Episode } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
@@ -47,17 +48,20 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
                 }} />
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.9))' }} />
 
-                <div style={{
-                    position: 'absolute', top: 10, left: 12,
-                    fontFamily: T.display, fontSize: 30, lineHeight: 1, fontStyle: 'italic',
-                    textShadow: '0 2px 14px rgba(0,0,0,0.6)'
-                }}>
-                    {String(ep.n).padStart(2, '0')}
-                </div>
-
-                <div style={{ position: 'absolute', top: 8, right: 8 }}>
-                    <FavButton id={episodeKey(show.id, season.n, ep.n)} size={15} />
-                </div>
+                <CardOverlay
+                    top={8}
+                    right={8}
+                    topLeft={
+                        <div style={{
+                            fontFamily: T.display, fontSize: 30, lineHeight: 1, fontStyle: 'italic',
+                            textShadow: '0 2px 14px rgba(0,0,0,0.6)',
+                            marginTop: 2, marginLeft: 4
+                        }}>
+                            {String(ep.n).padStart(2, '0')}
+                        </div>
+                    }
+                    topRight={<FavButton id={episodeKey(show.id, season.n, ep.n)} size={15} />}
+                />
 
                 {watched && (
                     <div style={{
@@ -71,12 +75,11 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
                 )}
 
                 {inProgress && (
-                    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
-                        <Progress value={ep.watched} height={3} />
-                    </div>
+                    <CardProgress value={ep.watched} />
                 )}
             </div>
             {ctx.menu}
         </div>
     );
 });
+

@@ -24,6 +24,9 @@ export type JFMediaStream = {
     DisplayTitle?: string;
     IsDefault?: boolean;
     IsForced?: boolean;
+    IsExternal?: boolean;
+    IsHearingImpaired?: boolean;
+    Path?: string;
 };
 
 export type JFMediaSource = {

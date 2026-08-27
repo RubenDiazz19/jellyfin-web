@@ -101,7 +101,6 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             hero={hero}
             backdrop={heroImage}
             backdrops={portraitPhone ? undefined : show.backdrops}
-            itemId={show.id}
             onContextMenu={ctx.onContextMenu}
             nav={
                 <Nav

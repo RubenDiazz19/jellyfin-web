@@ -1,13 +1,14 @@
 import globalize from 'lib/globalize';
 
 import { useEffect, useRef, useState } from 'react';
-import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { avatarUrl } from '../../../domain/api';
 import { useSession } from '../../../domain/bridge/useSession';
 import { useToast } from '../toast/ToastProvider';
 import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
+import { PopupPanel } from '../controls/PopupPanel';
+import { MenuEntry } from '../controls/MenuEntry';
 import type { Navigate } from '../../../app/router';
 
 // Avatar circular con menú desplegable (perfil, ajustes, logout).
@@ -33,15 +34,6 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
     useEffect(() => { setPhotoFailed(false); }, [photo]);
     const showPhoto = !!photo && !photoFailed;
 
-    useEffect(() => {
-        if (!open || r.touch) return;
-        const onDoc = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener('mousedown', onDoc);
-        return () => document.removeEventListener('mousedown', onDoc);
-    }, [open, r.touch]);
-
     const openMenu = () => {
         if (open) { setOpen(false); return; }
         // En táctil el menú es un bottom sheet (no hace falta anclar).
@@ -52,45 +44,31 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
         setOpen(true);
     };
 
-    const item = (label: string, onClick: () => void, danger = false) => (
-        <button
-            data-ripple={r.touch ? '' : undefined}
-            onClick={() => { setOpen(false); onClick(); }}
-            style={r.touch ? {
-                display: 'block', width: '100%', textAlign: 'left',
-                background: 'none', border: 'none',
-                color: danger ? 'var(--md-sys-color-error, #ff6b6b)' : 'var(--md-sys-color-on-surface, #fff)',
-                cursor: 'pointer', minHeight: 48, padding: '12px 16px',
-                fontSize: 15, borderRadius: 'var(--md-sys-shape-corner-large, 16px)',
-                fontFamily: T.ui
-            } : {
-                display: 'block', width: '100%', textAlign: 'left',
-                background: 'none', border: 'none',
-                color: danger ? '#ff6b6b' : '#fff',
-                cursor: 'pointer', padding: '11px 14px',
-                fontSize: 14, borderRadius: 8, fontFamily: T.ui, letterSpacing: 0.1,
-                transition: 'background .15s'
-            }}
-            onMouseEnter={(e) => { if (!r.touch) e.currentTarget.style.background = danger ? 'rgba(255,80,80,0.12)' : 'rgba(255,255,255,0.08)'; }}
-            onMouseLeave={(e) => { if (!r.touch) e.currentTarget.style.background = 'transparent'; }}
-        >
-            {label}
-        </button>
-    );
-
     const menuItems = (
         <>
-            {item(globalize.translate('HeaderPlayQueue'), () => navigate({ page: 'queue' }))}
-            {item(globalize.translate('Profile'), () => navigate({ page: 'profile' }))}
-            {item(globalize.translate('Settings'), () => navigate({ page: 'settings' }))}
-            {item(globalize.translate('ButtonSwitchUser'), () => {
+            <MenuEntry sheet={r.touch} onClick={() => { setOpen(false); navigate({ page: 'queue' }); }}>
+                {globalize.translate('HeaderPlayQueue')}
+            </MenuEntry>
+            <MenuEntry sheet={r.touch} onClick={() => { setOpen(false); navigate({ page: 'profile' }); }}>
+                {globalize.translate('Profile')}
+            </MenuEntry>
+            <MenuEntry sheet={r.touch} onClick={() => { setOpen(false); navigate({ page: 'settings' }); }}>
+                {globalize.translate('Settings')}
+            </MenuEntry>
+            <MenuEntry sheet={r.touch} onClick={() => {
+                setOpen(false);
                 toast(globalize.translate('MessageSignedOutSwitchUser'), 'info');
                 logout();
-            })}
-            {item(globalize.translate('ButtonSignOut'), () => {
+            }}>
+                {globalize.translate('ButtonSwitchUser')}
+            </MenuEntry>
+            <MenuEntry sheet={r.touch} danger onClick={() => {
+                setOpen(false);
                 toast(globalize.translate('MessageSignedOut'), 'info');
                 logout();
-            }, true)}
+            }}>
+                {globalize.translate('ButtonSignOut')}
+            </MenuEntry>
         </>
     );
 
@@ -131,16 +109,12 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                     {menuItems}
                 </BottomSheet>
             )}
-            {open && !r.touch && pos && ReactDOM.createPortal(
-                <div
-                    style={{
-                        position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999,
-                        minWidth: 240,
-                        background: 'rgba(18,18,20,0.96)', backdropFilter: 'blur(14px)',
-                        border: '1px solid rgba(255,255,255,0.12)', borderRadius: 12, padding: 6,
-                        boxShadow: '0 18px 50px rgba(0,0,0,0.6)'
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
+            {open && !r.touch && pos && (
+                <PopupPanel
+                    open={open}
+                    onClose={() => setOpen(false)}
+                    position={pos}
+                    minWidth={240}
                 >
                     <div style={{
                         padding: '10px 14px 8px',
@@ -152,21 +126,33 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                         {session?.serverUrl}
                     </div>
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 6px' }} />
-                    {item(globalize.translate('HeaderPlayQueue'), () => navigate({ page: 'queue' }))}
-                    {item(globalize.translate('Profile'), () => navigate({ page: 'profile' }))}
-                    {item(globalize.translate('Settings'), () => navigate({ page: 'settings' }))}
-                    {item(globalize.translate('ButtonSwitchUser'), () => {
+                    <MenuEntry onClick={() => { setOpen(false); navigate({ page: 'queue' }); }}>
+                        {globalize.translate('HeaderPlayQueue')}
+                    </MenuEntry>
+                    <MenuEntry onClick={() => { setOpen(false); navigate({ page: 'profile' }); }}>
+                        {globalize.translate('Profile')}
+                    </MenuEntry>
+                    <MenuEntry onClick={() => { setOpen(false); navigate({ page: 'settings' }); }}>
+                        {globalize.translate('Settings')}
+                    </MenuEntry>
+                    <MenuEntry onClick={() => {
+                        setOpen(false);
                         toast(globalize.translate('MessageSignedOutSwitchUser'), 'info');
                         logout();
-                    })}
+                    }}>
+                        {globalize.translate('ButtonSwitchUser')}
+                    </MenuEntry>
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 0' }} />
-                    {item(globalize.translate('ButtonSignOut'), () => {
+                    <MenuEntry danger onClick={() => {
+                        setOpen(false);
                         toast(globalize.translate('MessageSignedOut'), 'info');
                         logout();
-                    }, true)}
-                </div>,
-                document.body
+                    }}>
+                        {globalize.translate('ButtonSignOut')}
+                    </MenuEntry>
+                </PopupPanel>
             )}
         </div>
     );
 }
+

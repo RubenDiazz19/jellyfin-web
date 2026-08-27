@@ -3,8 +3,7 @@ import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { showVM } from '../../../domain/viewModels/ShowViewModel';
 import { PROTO_DATA } from '../../../domain/models';
-import { useWatchedToggle } from './useWatchedToggle';
-import { WatchedToggleIcon } from './WatchedToggleIcon';
+import { WatchedToggle } from './WatchedToggle';
 
 // "Visto" para series. El servidor propaga `markPlayed(showId)` a los
 // episodios; en local hay que mantener a mano las DOS caras del mismo hecho:
@@ -37,23 +36,21 @@ export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props
         allEpIds.every((id) => WATCHED.has(id)) :
         WATCHED.has(showId);
 
-    const toggle = useWatchedToggle({
-        active: allWatched,
-        applyLocal: (next) => {
-            if (allEpIds.length > 0) WATCHED.setMany(allEpIds, next);
-            WATCHED.setMany([showId], next);
-        },
-        serverId: showId,
-        message: (next) =>
-            `Serie marcada como ${next ? 'vista' : 'no vista'} · ${show?.title ?? ''}`
-    });
     return (
-        <WatchedToggleIcon
+        <WatchedToggle
             active={allWatched}
-            onClick={toggle}
+            applyLocal={(next) => {
+                if (allEpIds.length > 0) WATCHED.setMany(allEpIds, next);
+                WATCHED.setMany([showId], next);
+            }}
+            serverId={showId}
+            message={(next) =>
+                `Serie marcada como ${next ? 'vista' : 'no vista'} · ${show?.title ?? ''}`
+            }
             size={size}
             badge={badge}
             ariaLabel={allWatched ? 'Marcar serie como no vista' : 'Marcar serie como vista'}
         />
     );
 }
+

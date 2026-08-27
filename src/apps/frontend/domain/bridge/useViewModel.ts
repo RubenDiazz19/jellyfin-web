@@ -21,11 +21,14 @@
 // llamada provoca un bucle infinito de re-renders, así que aquí se usa un
 // contador de versión que solo avanza cuando algún signal notifica.
 
-import { useCallback, useRef, useSyncExternalStore } from 'react';
+import {
+    useCallback, useEffect, useRef, useSyncExternalStore, type DependencyList
+} from 'react';
 import type { ReadonlySignal, Signal } from '@preact/signals-core';
 
 function isSignal(value: unknown): value is Signal<unknown> {
     return !!value
+
         && typeof value === 'object'
         && typeof (value as Signal<unknown>).subscribe === 'function'
         && typeof (value as Signal<unknown>).peek === 'function';
@@ -110,4 +113,20 @@ export function useSignalSelector<T, S>(
     // añadiría al signal a un scope de tracking que aquí no existe.
     const snapshot = () => pick(signal.peek());
     return useSyncExternalStore(subscribe, snapshot, snapshot);
+}
+
+/**
+ * Suscribe el componente a los signals del ViewModel y ejecuta una función de carga
+ * dentro de un `useEffect` cuando cambian sus dependencias.
+ */
+export function useViewModelLoad<T extends object>(
+    vm: T,
+    loadFn: (vm: T) => void | Promise<void>,
+    deps: DependencyList = []
+): T {
+    useViewModel(vm);
+    useEffect(() => {
+        void loadFn(vm);
+    }, deps);
+    return vm;
 }

@@ -14,6 +14,7 @@ import {
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
+import { SubtitlePickerModal } from './SubtitlePickerModal';
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -68,6 +69,7 @@ export function VideoSettingsMenu() {
     ]);
     const [open, setOpen] = useState(false);
     const [section, setSection] = useState<SectionId | null>(null);
+    const [subModalOpen, setSubModalOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
 
     // Cierra el panel al hacer click fuera.
@@ -88,6 +90,7 @@ export function VideoSettingsMenu() {
     const isSeries = videoPlayerVM.titleIsSeries.value;
     const selectedSubtitle = videoPlayerVM.selectedSubtitle.value;
     const selectedAudio = videoPlayerVM.selectedAudio.value;
+    const itemId = videoPlayerVM.currentItemId;
 
     // Saltos disponibles: capítulos del fichero + tramos detectados (intro,
     // créditos) que no caigan ya sobre un capítulo.
@@ -146,13 +149,11 @@ export function VideoSettingsMenu() {
                             {marks.length > 0 && (
                                 <ChaptersRow marks={marks} onOpen={() => setSection('chapters')} />
                             )}
-                            {subs.length > 0 && (
-                                <SectionRow
-                                    label={globalize.translate('Subtitles')}
-                                    value={subLabel}
-                                    onOpen={() => setSection('subs')}
-                                />
-                            )}
+                            <SectionRow
+                                label={globalize.translate('Subtitles')}
+                                value={subLabel || globalize.translate('Off')}
+                                onOpen={() => setSection('subs')}
+                            />
                             {audio.length > 0 && (
                                 <SectionRow
                                     label={globalize.translate('Audio')}
@@ -207,6 +208,22 @@ export function VideoSettingsMenu() {
                                         />
                                     ))}
                                     {prefNote}
+                                    {itemId && (
+                                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 4, paddingTop: 4 }}>
+                                            <button
+                                                type='button'
+                                                className='jfp-video-settings-option'
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => {
+                                                    close();
+                                                    setSubModalOpen(true);
+                                                }}
+                                            >
+                                                <span className='jfp-video-settings-dot' aria-hidden />
+                                                + {globalize.translate('SearchForSubtitles')} / {globalize.translate('HeaderUploadSubtitle')}
+                                            </button>
+                                        </div>
+                                    )}
                                 </>
                             )}
 
@@ -244,6 +261,13 @@ export function VideoSettingsMenu() {
                         </section>
                     )}
                 </div>
+            )}
+
+            {subModalOpen && itemId && (
+                <SubtitlePickerModal
+                    itemId={itemId}
+                    onClose={() => setSubModalOpen(false)}
+                />
             )}
         </div>
     );

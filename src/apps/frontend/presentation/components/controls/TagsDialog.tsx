@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useToast } from '../toast/ToastProvider';
 import { getItemRaw, setItemTags } from '../../../domain/api';
 import { Dialog, DialogFooter, DialogHeader, DialogInputRow } from './Dialog';
-import { ErrText, Muted, PillButton, TextField } from './fields';
+import { PillButton, TextField } from './fields';
+import { LoadState } from './LoadState';
 import { TagChips, TagSuggestions, useTagDraft } from './TagEditor';
 
 type Props = {
@@ -63,44 +64,48 @@ export function TagsDialog({ itemId, itemTitle, suggestions = [], onClose }: Pro
         <Dialog label={globalize.translate('EditTags')} maxHeight='70vh' onClose={onClose}>
             <DialogHeader title={globalize.translate('EditTags')} onClose={onClose} />
 
-            {error ? (
-                <ErrText>{error}</ErrText>
-            ) : !tags ? (
-                <Muted>{globalize.translate('Loading')}</Muted>
-            ) : (
-                <>
-                    {tags.length === 0 ? (
-                        <div style={{ marginBottom: 14 }}>
-                            <Muted>{globalize.translate('MessageNoTagsYet')}</Muted>
-                        </div>
-                    ) : (
-                        <TagChips
-                            tags={tags}
-                            onRemove={(tag) => setTags(tags.filter((t) => t !== tag))}
-                        />
-                    )}
+            <LoadState
+                loading={!tags && !error}
+                error={error}
+            >
+                {tags && (
+                    <>
+                        {tags.length === 0 ? (
+                            <div style={{ marginBottom: 14 }}>
+                                <LoadState count={0} emptyText={globalize.translate('MessageNoTagsYet')}>
+                                    <div />
+                                </LoadState>
+                            </div>
+                        ) : (
+                            <TagChips
+                                tags={tags}
+                                onRemove={(tag) => setTags(tags.filter((t) => t !== tag))}
+                            />
+                        )}
 
-                    <TagSuggestions suggestions={matches} onAdd={add} />
+                        <TagSuggestions suggestions={matches} onAdd={add} />
 
-                    <DialogFooter>
-                        <DialogInputRow
-                            field={
-                                <TextField
-                                    value={draft}
-                                    onChange={setDraft}
-                                    onEnter={() => add(draft)}
-                                    placeholder={globalize.translate('LabelNewTag')}
-                                />
-                            }
-                            action={
-                                <PillButton onClick={save} size='sm' busy={busy}>
-                                    {globalize.translate('Save')}
-                                </PillButton>
-                            }
-                        />
-                    </DialogFooter>
-                </>
-            )}
+                        <DialogFooter>
+                            <DialogInputRow
+                                field={
+                                    <TextField
+                                        value={draft}
+                                        onChange={setDraft}
+                                        onEnter={() => add(draft)}
+                                        placeholder={globalize.translate('LabelNewTag')}
+                                    />
+                                }
+                                action={
+                                    <PillButton onClick={save} size='sm' busy={busy}>
+                                        {globalize.translate('Save')}
+                                    </PillButton>
+                                }
+                            />
+                        </DialogFooter>
+                    </>
+                )}
+            </LoadState>
         </Dialog>
     );
 }
+

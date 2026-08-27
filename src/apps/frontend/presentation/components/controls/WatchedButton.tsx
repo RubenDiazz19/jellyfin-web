@@ -1,6 +1,5 @@
 import { useWatched } from '../../../domain/bridge/useWatched';
-import { useWatchedToggle } from './useWatchedToggle';
-import { WatchedToggleIcon } from './WatchedToggleIcon';
+import { WatchedToggle } from './WatchedToggle';
 
 type Props = {
     id: string;
@@ -16,19 +15,16 @@ type Props = {
 export function WatchedButton({ id, size = 18, badge = false, label, serverId }: Props) {
     const [w, toggle] = useWatched(id);
     const suffix = label ? ` · ${label}` : '';
-    const onClick = useWatchedToggle({
-        active: w,
-        applyLocal: () => toggle(),
-        serverId,
-        message: (next) => (next ? `Marcado como visto${suffix}` : `Marcado como no visto${suffix}`)
-    });
     return (
-        <WatchedToggleIcon
+        <WatchedToggle
             active={w}
-            onClick={onClick}
+            applyLocal={() => toggle()}
+            serverId={serverId}
+            message={(next) => (next ? `Marcado como visto${suffix}` : `Marcado como no visto${suffix}`)}
             size={size}
             badge={badge}
             ariaLabel={w ? 'Marcar como no visto' : 'Marcar como visto'}
         />
     );
 }
+

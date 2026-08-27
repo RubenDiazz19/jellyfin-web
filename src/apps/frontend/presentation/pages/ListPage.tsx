@@ -7,15 +7,19 @@ import { Nav } from '../components/layout/Nav';
 import { HeroFrame } from '../components/layout/DetailHero';
 import { DetailBody } from '../components/layout/DetailSections';
 import { ScrollHint } from '../components/layout/ScrollHint';
-import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
+
 import { ListBackLink } from './ListsPage';
 import { EditableTitle } from '../components/controls/EditableTitle';
 import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { PosterTile } from '../components/cards/PosterTile';
 import { CardGrid } from '../components/layout/CardGrid';
+import { LoadState } from '../components/controls/LoadState';
 import { getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
 import { displayItems, LISTS, type ListKind, type ListRef } from '../../domain/stores';
+
+import { useListSync } from '../../domain/bridge/useLists';
+
 import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
@@ -36,7 +40,7 @@ type Props = { kind: ListKind; listId: string; navigate: Navigate };
 export function ListPage({ kind, listId, navigate }: Props) {
     const [items, setItems] = useState<PlaylistItem[] | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [list, setList] = useState<ListRef | undefined>(() => LISTS.find(kind, listId));
+    const { list, refresh } = useListSync(kind, listId);
 
     useEffect(() => {
         setItems(null);
@@ -47,22 +51,10 @@ export function ListPage({ kind, listId, navigate }: Props) {
             .catch((e) => setError((e as Error).message));
     }, [kind, listId]);
 
-    // El nombre y la imagen salen del store, que se recarga al renombrar o al
-    // cambiar el fondo: se sigue su evento en vez de copiarlos a estado.
-    useEffect(() => {
-        const sync = () => setList(LISTS.find(kind, listId));
-        window.addEventListener(LISTS.event, sync);
-        void LISTS.ensure().then(sync);
-        return () => window.removeEventListener(LISTS.event, sync);
-    }, [kind, listId]);
-
-    // Cambiar el fondo se anota en localStorage y eso no dispara el evento del
-    // store: se re-lee a mano.
-    const refresh = () => setList(LISTS.find(kind, listId));
-
     const kindLabel = globalize.translate(kind === 'playlist' ? 'Playlists' : 'Collections');
 
     return (
+
         <>
             <ListHero
                 kind={kind}
@@ -205,33 +197,31 @@ function ListGrid({ items, error, navigate }: {
 }) {
     const r = useResponsive();
 
-    if (error) {
-        return <EmptyState title={globalize.translate('MessageNoPlaylistsYet')} hint={error} />;
-    }
-    if (!items) return <SkeletonRow title='' />;
-    if (items.length === 0) {
-        return (
-            <EmptyState
-                title={globalize.translate('MessageNoItemsFound')}
-                hint={globalize.translate('ListsEmpty')}
-                icon='☰'
-            />
-        );
-    }
     return (
-        <CardGrid
-            minWidth={r.touch ? (r.mobile ? 110 : 140) : 160}
-            gap={r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'}
+        <LoadState
+            variant='page'
+            loading={!items && !error}
+            error={error}
+            count={items ? items.length : undefined}
+            emptyTitle={globalize.translate('MessageNoItemsFound')}
+            emptyHint={globalize.translate('ListsEmpty')}
+            emptyIcon='☰'
         >
-            {items.map((item) => (
-                <ListItemCard key={item.id} item={item} navigate={navigate} />
-            ))}
-        </CardGrid>
+            <CardGrid
+                minWidth={r.touch ? (r.mobile ? 110 : 140) : 160}
+                gap={r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'}
+            >
+                {items?.map((item) => (
+                    <ListItemCard key={item.id} item={item} navigate={navigate} />
+                ))}
+            </CardGrid>
+        </LoadState>
     );
 }
 
 /**
  * Un título de la lista.
+
  *
  * No entra en el modo selección, a diferencia de la búsqueda: en una lista lo
  * que se hace con varios títulos a la vez es quitarlos de ella, y eso vive en

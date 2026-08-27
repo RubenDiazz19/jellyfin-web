@@ -8,8 +8,8 @@ import { PosterCard } from '../components/cards/PosterCard';
 import { MovieCard } from '../components/cards/MovieCard';
 import { EAGER_CARDS, LazyCard } from '../components/cards/LazyCard';
 import { POSTER_W } from '../components/cards/PosterShell';
-import { EmptyState, SkeletonRow } from '../components/skeleton/Skeleton';
 import { ScrollTopFab } from '../components/m3/ScrollTopFab';
+
 import { libraryVM, type SortKey } from '../../domain/viewModels/LibraryViewModel';
 import {
     selectionVM, type SelectableItem
@@ -19,7 +19,8 @@ import { SelectToggle } from '../components/controls/SelectToggle';
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
 import { PageTitle } from '../components/layout/Title';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { LoadState } from '../components/controls/LoadState';
+import { useViewModelLoad } from '../../domain/bridge/useViewModel';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
@@ -27,12 +28,10 @@ type Props = { kind: 'series' | 'movies'; navigate: Navigate };
 
 export function LibraryPage({ kind, navigate }: Props) {
     const r = useResponsive();
-    useViewModel(libraryVM);
-    useEffect(() => {
-        void libraryVM.load(kind);
-    }, [kind]);
+    useViewModelLoad(libraryVM, (vm) => vm.load(kind), [kind]);
 
     const isSeries = kind === 'series';
+
     const items = isSeries ? libraryVM.sortedShows.value : libraryVM.sortedMovies.value;
     const title = globalize.translate(isSeries ? 'Shows' : 'Movies');
     const loading = libraryVM.loading.value || libraryVM.kind.value !== kind;
@@ -77,16 +76,14 @@ export function LibraryPage({ kind, navigate }: Props) {
                         </>
                     )}
                 </div>
-                {loading ? (
-                    <SkeletonRow title='' />
-                ) : error ? (
-                    <EmptyState title={globalize.translate('LibrariesLoadError')} hint={error} />
-                ) : items.length === 0 ? (
-                    <EmptyState
-                        title={globalize.translate(isSeries ? 'MessageNoShowsYet' : 'MessageNoMoviesYet')}
-                        hint={globalize.translate('MessageAddContentAndRescan')}
-                    />
-                ) : (
+                <LoadState
+                    variant='page'
+                    loading={loading}
+                    error={error}
+                    count={items.length}
+                    emptyTitle={globalize.translate(isSeries ? 'MessageNoShowsYet' : 'MessageNoMoviesYet')}
+                    emptyHint={globalize.translate('MessageAddContentAndRescan')}
+                >
                     <CardGrid minWidth={r.touch ? r.cardW : 200} gap={r.touch ? r.gap : 28}>
                         {isSeries ?
                             libraryVM.sortedShows.value.map((s, i) => (
@@ -100,7 +97,7 @@ export function LibraryPage({ kind, navigate }: Props) {
                                 </LazyCard>
                             ))}
                     </CardGrid>
-                )}
+                </LoadState>
             </PageSection>
             <SelectionBar items={selectable} />
             <ScrollTopFab />
@@ -109,6 +106,7 @@ export function LibraryPage({ kind, navigate }: Props) {
 }
 
 // Etiqueta de cada criterio. Se traducen con claves que ya existían salvo
+
 // «Ordenar por», que es la del propio control.
 const SORT_LABELS: { id: SortKey; key: string }[] = [
     { id: 'title', key: 'Name' },
