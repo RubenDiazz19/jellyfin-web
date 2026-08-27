@@ -59,8 +59,20 @@ export function TaskProgress() {
     );
 }
 
+// Color verde para el estado completado. Se usa en la barra y en el tick.
+const GREEN = '#4ade80';
+
 function TaskRow({ task }: { task: BackgroundTask }) {
     const pct = task.progress;
+    const done = !!task.completed;
+
+    // La barra es verde y llena al completar; indeterminada o determinada mientras avanza.
+    const barBg = done ? GREEN : '#fff';
+    const barWidth = done ? '100%' :
+        pct === null ? '35%' :
+            `${Math.max(2, Math.min(100, pct))}%`;
+    const barClass = (!done && pct === null) ? 'jfp-task-indeterminate' : undefined;
+
     return (
         <div>
             <div style={{
@@ -71,8 +83,11 @@ function TaskRow({ task }: { task: BackgroundTask }) {
                 }}>
                     {task.name || globalize.translate('MessageRefreshQueued')}
                 </span>
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: T.dim }}>
-                    {pct === null ? '' : `${Math.round(pct)}%`}
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: done ? GREEN : T.dim, flexShrink: 0 }}>
+                    {done ?
+                        `✓ ${globalize.translate('LabelCompleted')}` :
+                        (pct === null || pct === 0) ? '' : `${Math.round(pct)}%`
+                    }
                 </span>
             </div>
             <div style={{
@@ -83,13 +98,15 @@ function TaskRow({ task }: { task: BackgroundTask }) {
                     Sin porcentaje se pinta una barra que va y viene: el
                     servidor aún no ha dicho cuánto queda, y una barra vacía
                     parecería que no ha arrancado.
+                    Al completar la barra se pone verde y llena durante ~2s
+                    antes de desaparecer, para que el usuario sepa que terminó.
                 */}
                 <div
-                    className={pct === null ? 'jfp-task-indeterminate' : undefined}
+                    className={barClass}
                     style={{
-                        height: '100%', borderRadius: 999, background: '#fff',
-                        width: pct === null ? '35%' : `${Math.max(2, Math.min(100, pct))}%`,
-                        transition: pct === null ? undefined : 'width .4s ease'
+                        height: '100%', borderRadius: 999, background: barBg,
+                        width: barWidth,
+                        transition: (barClass || done) ? undefined : 'width .4s ease'
                     }}
                 />
             </div>

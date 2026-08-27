@@ -61,8 +61,11 @@ export function LibrariesSection({ isAdmin, goDashboard }: { isAdmin: boolean; g
                 await refreshLibrary();
             } else {
                 for (const v of views ?? []) {
-                    await refreshItemMetadata(v.id, options);
+                    // expect() antes del await: la barra aparece en cuanto el
+                    // usuario confirma, no al terminar el HTTP (que puede
+                    // tardar segundos si hay muchas bibliotecas en el loop).
                     tasksVM.expect(v.id, v.name);
+                    await refreshItemMetadata(v.id, options);
                 }
             }
             toast(globalize.translate('MessageLibraryScanStarted'), 'success');

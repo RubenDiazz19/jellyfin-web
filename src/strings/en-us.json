@@ -721,6 +721,7 @@
     "HeaderRemoveMediaLocation": "Remove Media Location",
     "HeaderRevisionHistory": "Revision History",
     "HeaderRunningTasks": "Running Tasks",
+    "LabelCompleted": "Completed",
     "HeaderScenes": "Scenes",
     "HeaderSeasons": "Seasons",
     "HeaderSecondsValue": "{0} Seconds",

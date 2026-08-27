@@ -24,11 +24,13 @@ import type { BackgroundTask } from '../../../data/api/tasks';
 function makeVm(initial: BackgroundTask[] = []) {
     let pushTasks: (t: BackgroundTask[]) => void = () => {};
     let pushProgress: (itemId: string, percent: number) => void = () => {};
+    let pushLibraryChanged: () => void = () => {};
     const api = {
         tasks: {
             getRunningTasks: vi.fn(() => Promise.resolve(initial)),
             watchScheduledTasks: (cb: typeof pushTasks) => { pushTasks = cb; return () => {}; },
-            watchItemRefresh: (cb: typeof pushProgress) => { pushProgress = cb; return () => {}; }
+            watchItemRefresh: (cb: typeof pushProgress) => { pushProgress = cb; return () => {}; },
+            watchLibraryChanged: (cb: () => void) => { pushLibraryChanged = cb; return () => {}; }
         }
     } as unknown as ApiService;
     const vm = new TasksViewModel(api);
@@ -36,7 +38,8 @@ function makeVm(initial: BackgroundTask[] = []) {
     return {
         vm,
         pushTasks: (t: BackgroundTask[]) => pushTasks(t),
-        pushProgress: (id: string, pct: number) => pushProgress(id, pct)
+        pushProgress: (id: string, pct: number) => pushProgress(id, pct),
+        pushLibraryChanged: () => pushLibraryChanged()
     };
 }
 
@@ -84,11 +87,24 @@ describe('refresco de un item', () => {
         expect(vm.active.value).toEqual([{ id: 'lib1', name: 'Películas', progress: 42 }]);
     });
 
-    test('al llegar al 100 % desaparece', () => {
+    test('expect() posterior no resetea el progreso si ya llegó un RefreshProgress', () => {
+        // Race: el WebSocket fue más rápido que el HTTP. expect() llega con el
+        // item ya creado en progress: 30 — no debe volver a null.
+        const { vm, pushProgress } = makeVm();
+        pushProgress('lib1', 30);
+        vm.expect('lib1', 'Películas');
+        expect(vm.active.value).toEqual([{ id: 'lib1', name: 'Películas', progress: 30 }]);
+    });
+
+    test('al llegar al 100 % entra en estado completado y desaparece tras el delay', () => {
         const { vm, pushProgress } = makeVm();
         vm.expect('lib1', 'Películas');
         pushProgress('lib1', 80);
         pushProgress('lib1', 100);
+        // Inmediatamente: completed: true, progress: 100
+        expect(vm.active.value).toEqual([{ id: 'lib1', name: 'Películas', progress: 100, completed: true }]);
+        // Tras el delay visual desaparece
+        vi.advanceTimersByTime(2500 + 1);
         expect(vm.active.value).toEqual([]);
     });
 
@@ -146,6 +162,36 @@ describe('las dos fuentes juntas', () => {
         expect(names(vm)).toEqual(['Películas']);
 
         pushProgress('lib1', 100);
+        // completed: true durante el delay, no desaparecido aún
+        expect(vm.active.value[0]).toMatchObject({ id: 'lib1', completed: true });
+        vi.advanceTimersByTime(2500 + 1);
         expect(vm.active.value).toEqual([]);
+    });
+});
+
+describe('LibraryChanged — señal de completado', () => {
+    test('al llegar LibraryChanged los items pendientes entran en estado completado', () => {
+        const { vm, pushLibraryChanged } = makeVm();
+        vm.expect('lib1', 'Series');
+        pushLibraryChanged();
+        expect(vm.active.value).toEqual([{ id: 'lib1', name: 'Series', progress: 100, completed: true }]);
+    });
+
+    test('tras el delay visual el item desaparece', () => {
+        const { vm, pushLibraryChanged } = makeVm();
+        vm.expect('lib1', 'Series');
+        pushLibraryChanged();
+        vi.advanceTimersByTime(2500 + 1);
+        expect(vm.active.value).toEqual([]);
+    });
+
+    test('LibraryChanged no afecta a las tareas programadas', () => {
+        const { vm, pushTasks, pushLibraryChanged } = makeVm();
+        pushTasks([{ id: 't1', name: 'Escanear todo', progress: 5 }]);
+        vm.expect('lib1', 'Series');
+        pushLibraryChanged();
+        // scheduled no se toca, items entra en completed
+        expect(vm.active.value.find((t) => t.id === 't1')?.completed).toBeUndefined();
+        expect(vm.active.value.find((t) => t.id === 'lib1')?.completed).toBe(true);
     });
 });

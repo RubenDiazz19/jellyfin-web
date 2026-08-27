@@ -43,7 +43,7 @@ export function DetailBody({ children }: { children: ReactNode }) {
     const r = useResponsive();
     return (
         <section style={{
-            background: r.touch ? MC.bg : '#000',
+            background: r.touch ? `linear-gradient(to bottom, #000 0%, ${MC.bg} 500px)` : '#000',
             color: r.touch ? MC.fg : '#fff',
             padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px',
             fontFamily: T.ui

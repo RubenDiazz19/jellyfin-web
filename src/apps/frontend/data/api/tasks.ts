@@ -25,6 +25,12 @@ export type BackgroundTask = {
     name: string;
     /** 0..100, o null cuando aún no se sabe cuánto va a tardar. */
     progress: number | null;
+    /**
+     * true durante los ~2 segundos antes de eliminarse de la lista, para
+     * mostrar el estado «completado» (barra llena verde + ✓) en lugar de
+     * desaparecer de golpe sin ningún feedback.
+     */
+    completed?: boolean;
 };
 
 type JFTaskInfo = {
@@ -40,7 +46,11 @@ function mapRunning(tasks: JFTaskInfo[]): BackgroundTask[] {
         .map((t) => ({
             id: t.Id as string,
             name: t.Name ?? '',
-            progress: typeof t.CurrentProgressPercentage === 'number' ?
+            // Solo se muestra progreso determinado cuando el servidor manda un
+            // porcentaje mayor que cero. Durante el escaneo de disco Jellyfin
+            // devuelve 0 constantemente —no tiene granularidad por archivo—,
+            // y una barra fija al 0 % parece un proceso colgado, no uno activo.
+            progress: (typeof t.CurrentProgressPercentage === 'number' && t.CurrentProgressPercentage > 0) ?
                 t.CurrentProgressPercentage :
                 null
         }));
@@ -88,5 +98,19 @@ export function watchItemRefresh(
             if (!itemId) return;
             onProgress(itemId, Number.parseFloat(Data?.Progress ?? '0') || 0);
         }
+    ) ?? (() => undefined);
+}
+
+/**
+ * Escucha el evento que indica que una biblioteca ha cambiado. Es la señal
+ * fiable de que un refresco de biblioteca terminó: `RefreshProgress` no
+ * siempre llega al 100 % para el item padre, pero `LibraryChanged` sí.
+ */
+export function watchLibraryChanged(onChanged: () => void): () => void {
+    const api = ServerConnections.getApi();
+    if (!api) return () => undefined;
+    return api.subscribe(
+        [OutboundWebSocketMessageType.LibraryChanged],
+        () => onChanged()
     ) ?? (() => undefined);
 }

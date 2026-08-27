@@ -72,7 +72,7 @@ import {
 } from './remote-images';
 import { searchSubtitles, downloadSubtitle } from './subtitles';
 import { getSystemInfo, refreshLibrary } from './admin';
-import { getRunningTasks, watchScheduledTasks, watchItemRefresh } from './tasks';
+import { getRunningTasks, watchScheduledTasks, watchItemRefresh, watchLibraryChanged } from './tasks';
 import {
     getLibraryCharacters,
     searchLibraryCharacters,
@@ -168,7 +168,7 @@ const subtitleService = { searchSubtitles, downloadSubtitle };
 
 const adminService = { getSystemInfo, refreshLibrary };
 
-const taskService = { getRunningTasks, watchScheduledTasks, watchItemRefresh };
+const taskService = { getRunningTasks, watchScheduledTasks, watchItemRefresh, watchLibraryChanged };
 
 // Las fuentes del selector de avatares y la composición de la imagen final.
 const avatarService = {
