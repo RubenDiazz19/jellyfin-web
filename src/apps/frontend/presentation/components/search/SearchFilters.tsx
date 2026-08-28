@@ -33,6 +33,7 @@ export function SearchFilters() {
     const r = useResponsive();
     const categoryMode = searchVM.categoryMode.value;
     const categoryQuery = searchVM.categoryQuery.value.trim().toLowerCase();
+    const [isPickingCategory, setIsPickingCategory] = useState(false);
 
     const typeCount = searchVM.typeFilters.value.length;
     const stateCount = searchVM.stateFilters.value.length;
@@ -112,30 +113,42 @@ export function SearchFilters() {
                             label={globalize.translate('LabelType')}
                             count={typeCount}
                             isOpen={false}
-                            onClick={() => searchVM.openCategory('tipo')}
+                            onClick={() => {
+                                setIsPickingCategory(false);
+                                searchVM.openCategory('tipo');
+                            }}
                         />
                         <MainPill
                             label={globalize.translate('LabelStatus')}
                             count={stateCount}
                             isOpen={false}
-                            onClick={() => searchVM.openCategory('estado')}
+                            onClick={() => {
+                                setIsPickingCategory(false);
+                                searchVM.openCategory('estado');
+                            }}
                         />
                         <MainPill
                             label={globalize.translate('Genres')}
                             count={tagCount}
                             isOpen={false}
-                            onClick={() => searchVM.openCategory('generos')}
+                            onClick={() => {
+                                setIsPickingCategory(false);
+                                searchVM.openCategory('generos');
+                            }}
                         />
                         <MainPill
                             label={globalize.translate('Rating')}
                             count={ratingCount}
                             isOpen={false}
-                            onClick={() => searchVM.openCategory('valoracion')}
+                            onClick={() => {
+                                setIsPickingCategory(false);
+                                searchVM.openCategory('valoracion');
+                            }}
                         />
                     </div>
                 )}
 
-                {/* Caso B: Una categoría seleccionada -> Mostrarla como única a la izquierda y sus hijos a la derecha */}
+                {/* Caso B: Una categoría seleccionada -> Mostrarla a la izquierda con sus hijos, y el botón + para anidar otras categorías */}
                 {categoryMode !== null && (
                     <>
                         {/* Píldora padre seleccionada */}
@@ -144,7 +157,10 @@ export function SearchFilters() {
                                 label={globalize.translate('LabelType')}
                                 count={typeCount}
                                 isOpen={true}
-                                onClick={searchVM.closeCategory}
+                                onClick={() => {
+                                    setIsPickingCategory(false);
+                                    searchVM.closeCategory();
+                                }}
                             />
                         )}
                         {categoryMode === 'estado' && (
@@ -152,7 +168,10 @@ export function SearchFilters() {
                                 label={globalize.translate('LabelStatus')}
                                 count={stateCount}
                                 isOpen={true}
-                                onClick={searchVM.closeCategory}
+                                onClick={() => {
+                                    setIsPickingCategory(false);
+                                    searchVM.closeCategory();
+                                }}
                             />
                         )}
                         {categoryMode === 'generos' && (
@@ -160,7 +179,10 @@ export function SearchFilters() {
                                 label={globalize.translate('Genres')}
                                 count={tagCount}
                                 isOpen={true}
-                                onClick={searchVM.closeCategory}
+                                onClick={() => {
+                                    setIsPickingCategory(false);
+                                    searchVM.closeCategory();
+                                }}
                             />
                         )}
                         {categoryMode === 'valoracion' && (
@@ -168,7 +190,10 @@ export function SearchFilters() {
                                 label={globalize.translate('Rating')}
                                 count={ratingCount}
                                 isOpen={true}
-                                onClick={searchVM.closeCategory}
+                                onClick={() => {
+                                    setIsPickingCategory(false);
+                                    searchVM.closeCategory();
+                                }}
                             />
                         )}
 
@@ -187,10 +212,7 @@ export function SearchFilters() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 8,
-                                flex: 1,
-                                overflowX: 'auto',
-                                scrollbarWidth: 'none',
-                                WebkitOverflowScrolling: 'touch'
+                                flexShrink: 0
                             }}
                         >
                             {categoryMode === 'tipo' && (
@@ -260,12 +282,136 @@ export function SearchFilters() {
                                 <RatingFilterBar />
                             )}
                         </div>
+
+                        {/* Divisor hacia el botón de añadir/mezclar otras categorías */}
+                        <div style={{
+                            width: 1,
+                            height: 16,
+                            background: 'rgba(255,255,255,0.18)',
+                            flexShrink: 0,
+                            margin: '0 4px'
+                        }} />
+
+                        {/* Botón de añadir otra categoría (+) */}
+                        <AddFilterButton
+                            onClick={() => setIsPickingCategory((prev) => !prev)}
+                            isOpen={isPickingCategory}
+                            title='Añadir o cambiar de categoría de filtro'
+                        />
+
+                        {/* Selector desplegado de categorías disponibles para anidar */}
+                        {isPickingCategory && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                flexShrink: 0,
+                                animation: 'jfpSubPillIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both'
+                            }}>
+                                {categoryMode !== 'tipo' && (
+                                    <MainPill
+                                        label={globalize.translate('LabelType')}
+                                        count={typeCount}
+                                        isOpen={false}
+                                        onClick={() => {
+                                            searchVM.openCategory('tipo');
+                                            setIsPickingCategory(false);
+                                        }}
+                                    />
+                                )}
+                                {categoryMode !== 'estado' && (
+                                    <MainPill
+                                        label={globalize.translate('LabelStatus')}
+                                        count={stateCount}
+                                        isOpen={false}
+                                        onClick={() => {
+                                            searchVM.openCategory('estado');
+                                            setIsPickingCategory(false);
+                                        }}
+                                    />
+                                )}
+                                {categoryMode !== 'generos' && (
+                                    <MainPill
+                                        label={globalize.translate('Genres')}
+                                        count={tagCount}
+                                        isOpen={false}
+                                        onClick={() => {
+                                            searchVM.openCategory('generos');
+                                            setIsPickingCategory(false);
+                                        }}
+                                    />
+                                )}
+                                {categoryMode !== 'valoracion' && (
+                                    <MainPill
+                                        label={globalize.translate('Rating')}
+                                        count={ratingCount}
+                                        isOpen={false}
+                                        onClick={() => {
+                                            searchVM.openCategory('valoracion');
+                                            setIsPickingCategory(false);
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        )}
                     </>
                 )}
             </div>
 
             <SavedViewsRow />
         </div>
+    );
+}
+
+/**
+ * Botón circular discontinuo con icono + para añadir filtros o conmutar categorías.
+ */
+function AddFilterButton({
+    onClick,
+    isOpen = false,
+    title = 'Añadir filtro'
+}: {
+    onClick: () => void;
+    isOpen?: boolean;
+    title?: string;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            onMouseDown={(e) => e.preventDefault()}
+            title={title}
+            aria-expanded={isOpen}
+            style={{
+                width: 26,
+                height: 26,
+                borderRadius: 999,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: isOpen ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)',
+                border: isOpen ? '1px solid #fff' : '1px dashed rgba(255,255,255,0.35)',
+                color: '#fff',
+                padding: 0,
+                cursor: 'pointer',
+                transition: 'all .2s ease',
+                flexShrink: 0,
+                transform: isOpen ? 'rotate(45deg)' : 'none',
+                animation: 'jfpSubPillIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both'
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+                e.currentTarget.style.borderColor = '#fff';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.background = isOpen ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.borderColor = isOpen ? '#fff' : 'rgba(255,255,255,0.35)';
+            }}
+        >
+            <svg width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round'>
+                <line x1='5' y1='1.5' x2='5' y2='8.5' />
+                <line x1='1.5' y1='5' x2='8.5' y2='5' />
+            </svg>
+        </button>
     );
 }
 
@@ -307,7 +453,7 @@ function RatingFilterBar() {
                                 height: 16,
                                 background: 'rgba(255,255,255,0.22)',
                                 flexShrink: 0,
-                                margin: '0 2px'
+                                margin: '0 6px'
                             }} />
                         )}
                         <RatingFilterItem
@@ -326,7 +472,7 @@ function RatingFilterBar() {
                         height: 16,
                         background: 'rgba(255,255,255,0.22)',
                         flexShrink: 0,
-                        margin: '0 2px'
+                        margin: '0 6px'
                     }} />
                     <RatingFilterItem
                         index={filters.length}
@@ -338,40 +484,10 @@ function RatingFilterBar() {
             )}
 
             {filters.length > 0 && !isAdding && (
-                <button
+                <AddFilterButton
                     onClick={() => setIsAdding(true)}
-                    onMouseDown={(e) => e.preventDefault()}
                     title='Añadir otro filtro de valoración'
-                    style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 999,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(255,255,255,0.08)',
-                        border: '1px dashed rgba(255,255,255,0.35)',
-                        color: '#fff',
-                        padding: 0,
-                        cursor: 'pointer',
-                        transition: 'all .2s ease',
-                        flexShrink: 0,
-                        animation: 'jfpSubPillIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-                        e.currentTarget.style.borderColor = '#fff';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)';
-                    }}
-                >
-                    <svg width='10' height='10' viewBox='0 0 10 10' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round'>
-                        <line x1='5' y1='1.5' x2='5' y2='8.5' />
-                        <line x1='1.5' y1='5' x2='8.5' y2='5' />
-                    </svg>
-                </button>
+                />
             )}
         </div>
     );
@@ -428,6 +544,7 @@ function RatingFilterItem({
         <div style={{
             display: 'flex',
             alignItems: 'center',
+            gap: showInternalDivider ? 0 : 4,
             flexWrap: 'nowrap'
         }}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -446,7 +563,7 @@ function RatingFilterItem({
             </div>
 
             {showInternalDivider && (
-                <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.18)', flexShrink: 0, margin: '0 5px' }} />
+                <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.18)', flexShrink: 0, margin: '0 6px' }} />
             )}
 
             <div style={{ display: 'flex', alignItems: 'center' }}>

@@ -17,10 +17,8 @@ import { MetadataEditor, type EditorKind } from '../admin/editor';
 import { RefreshDialog } from '../admin/RefreshDialog';
 import { AddToDialog } from './AddToDialog';
 import { ConfirmDialog } from './ConfirmDialog';
-import { TagsDialog } from './TagsDialog';
 import { ItemMenuList, type MenuItem } from './ItemMenuList';
 import { PopupPanel } from './PopupPanel';
-import { knownTags } from '../../../domain/viewModels/knownTags';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
 import { usePlayer } from '../player/PlayerProvider';
@@ -74,7 +72,6 @@ export function MoreButton({
     const [open, setOpen] = useState(false);
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
     const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
-    const [tagsOpen, setTagsOpen] = useState(false);
     const [refreshOpen, setRefreshOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
@@ -221,7 +218,6 @@ export function MoreButton({
         ...(has.identify ? [{ label: t('Identify'), fn: () => setEditor('identify') }] : []),
         { label: t('RefreshMetadata'), fn: () => setRefreshOpen(true) },
         { label: t('EditMetadata'), fn: () => setEditor('metadata') },
-        { label: t('EditTags'), fn: () => setTagsOpen(true) },
         ...(has.images ? [{ label: t('EditImages'), fn: () => setEditor('images') }] : []),
         ...(has.subtitles ? [{ label: t('EditSubtitles'), fn: () => setEditor('subtitles') }] : []),
         { isDivider: true },
@@ -316,14 +312,6 @@ export function MoreButton({
                     itemId={id}
                     itemTitle={itemTitle}
                     onClose={() => setAddTo(null)}
-                />
-            )}
-            {tagsOpen && (
-                <TagsDialog
-                    itemId={id}
-                    itemTitle={itemTitle}
-                    suggestions={knownTags()}
-                    onClose={() => setTagsOpen(false)}
                 />
             )}
             {refreshOpen && (

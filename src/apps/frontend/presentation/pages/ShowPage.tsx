@@ -7,6 +7,7 @@ import { translateStatus } from '../../domain/status';
 import { episodeKey, WATCHED } from '../../domain/stores';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
 import type { Show } from '../../domain/models';
+import { getHeroCategories, getItemCategories } from '../../domain/genres';
 import {
     HeroFrame, HeroGenres, HeroTitle, useHeroLayout, type HeroTweaks
 } from '../components/layout/DetailHero';
@@ -107,7 +108,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                     navigate={navigate}
                     breadcrumb={[
                         { label: globalize.translate('Shows'), to: { page: 'home' } },
-                        { label: 'Drama' },
+                        { label: getItemCategories(show)[0] ?? 'Drama' },
                         { label: show.title }
                     ]}
                     actionId={show.id}
@@ -119,7 +120,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             <>
                 {!minimal && (
                     <HeroGenres
-                        genres={show.genres}
+                        genres={getHeroCategories(show)}
                         navigate={navigate}
                         fontSize={10}
                         marginBottom={short ? 8 : 18}
@@ -244,9 +245,9 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                         {show.country && (
                             <DetailRow label={globalize.translate('Country')}>{show.country}</DetailRow>
                         )}
-                        {show.genres?.length > 0 && (
+                        {getItemCategories(show).length > 0 && (
                             <DetailRow label={globalize.translate('Genres')}>
-                                <GenreLinks genres={show.genres} navigate={navigate} />
+                                <GenreLinks genres={getItemCategories(show)} navigate={navigate} />
                             </DetailRow>
                         )}
                         {show.runtime && show.runtime !== '—' && (

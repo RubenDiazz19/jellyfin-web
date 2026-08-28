@@ -1,14 +1,15 @@
-// Mapeo y traducción de géneros oficiales de Jellyfin / TMDB al castellano.
+// Mapeo y traducción de géneros y temáticas de Jellyfin / TMDB / AniList al castellano.
 //
-// Los scrapers de metadatos de Jellyfin (TMDB, TVDB) a menudo guardan géneros
-// en inglés como «Action & Adventure» o «Sci-Fi & Fantasy». Esta utilidad
-// asegura que en la interfaz siempre se visualicen en español consistente.
+// Asegura que en la interfaz todos los géneros, temáticas y etiquetas
+// se visualicen en español consistente y con formato limpio.
 
 const GENRE_TRANSLATIONS = new Map<string, string>([
+    // Géneros principales TMDB / TVDB / IMDb
     ['action & adventure', 'Acción y Aventura'],
     ['action', 'Acción'],
     ['adventure', 'Aventura'],
     ['animation', 'Animación'],
+    ['anime', 'Anime'],
     ['comedy', 'Comedia'],
     ['crime', 'Crimen'],
     ['documentary', 'Documental'],
@@ -32,15 +33,193 @@ const GENRE_TRANSLATIONS = new Map<string, string>([
     ['tv movie', 'Película de TV'],
     ['war & politics', 'Bélico y Política'],
     ['war', 'Bélico'],
-    ['western', 'Western']
+    ['western', 'Western'],
+
+    // Temáticas, tropos y etiquetas frecuentes (AniList, TVDB, TMDB keywords)
+    ['magic', 'Magia'],
+    ['magical girls', 'Magical Girls'],
+    ['mahou shoujo', 'Magical Girls'],
+    ['slice of life', 'Recuentos de la vida'],
+    ['school', 'Escolar'],
+    ['high school', 'Escolar'],
+    ['school life', 'Vida escolar'],
+    ['university', 'Universidad'],
+    ['college', 'Universidad'],
+    ['coming of age', 'Mayoría de edad'],
+    ['adolescence', 'Adolescencia'],
+    ['psychological', 'Psicológico'],
+    ['supernatural', 'Sobrenatural'],
+    ['historical', 'Histórico'],
+    ['sports', 'Deportes'],
+    ['sport', 'Deportes'],
+    ['mecha', 'Mecha'],
+    ['military', 'Militar'],
+    ['space', 'Espacio'],
+    ['vampire', 'Vampiros'],
+    ['vampires', 'Vampiros'],
+    ['zombie', 'Zombis'],
+    ['zombies', 'Zombis'],
+    ['time travel', 'Viajes en el tiempo'],
+    ['time loop', 'Bucle temporal'],
+    ['post-apocalyptic', 'Postapocalíptico'],
+    ['post apocalyptic', 'Postapocalíptico'],
+    ['dystopia', 'Distopía'],
+    ['dystopian', 'Distopía'],
+    ['cyberpunk', 'Ciberpunk'],
+    ['steampunk', 'Steampunk'],
+    ['isekai', 'Isekai'],
+    ['parody', 'Parodia'],
+    ['super power', 'Superpoderes'],
+    ['super powers', 'Superpoderes'],
+    ['superpowers', 'Superpoderes'],
+    ['superhero', 'Superhéroes'],
+    ['superheroes', 'Superhéroes'],
+    ['monster', 'Monstruos'],
+    ['monsters', 'Monstruos'],
+    ['demon', 'Demonios'],
+    ['demons', 'Demonios'],
+    ['martial arts', 'Artes marciales'],
+    ['ecchi', 'Ecchi'],
+    ['harem', 'Harén'],
+    ['reverse harem', 'Harén inverso'],
+    ['survival', 'Supervivencia'],
+    ['revenge', 'Venganza'],
+    ['police', 'Policial'],
+    ['detective', 'Detectives'],
+    ['investigation', 'Investigación'],
+    ['mythology', 'Mitología'],
+    ['alien', 'Extraterrestres'],
+    ['aliens', 'Extraterrestres'],
+    ['artificial intelligence', 'Inteligencia artificial'],
+    ['ai', 'Inteligencia artificial'],
+    ['friendship', 'Amistad'],
+    ['tragedy', 'Tragedia'],
+    ['dark fantasy', 'Fantasía oscura'],
+    ['urban fantasy', 'Fantasía urbana'],
+    ['based on manga', 'Basado en manga'],
+    ['based on light novel', 'Basado en novela ligera'],
+    ['based on visual novel', 'Basado en novela visual'],
+    ['based on novel', 'Basado en novela'],
+    ['based on video game', 'Basado en videojuego'],
+    ['based on game', 'Basado en videojuego'],
+    ['based on webcomic or webtoon', 'Basado en webcomic'],
+    ['based on webcomic', 'Basado en webcomic'],
+    ['based on webtoon', 'Basado en webcomic'],
+    ['amnesia', 'Amnesia'],
+    ['arranged marriage', 'Matrimonio concertado'],
+    ['brother sister relationship', 'Relación de hermanos'],
+    ['love triangle', 'Triángulo amoroso'],
+    ['cohabitation', 'Convivencia'],
+    ['reincarnation', 'Reencarnación'],
+    ['body swap', 'Intercambio de cuerpos'],
+    ['workplace', 'Laboral'],
+    ['work', 'Laboral'],
+    ['gourmet', 'Cocina'],
+    ['food', 'Cocina'],
+    ['cooking', 'Cocina'],
+    ['shounen', 'Shounen'],
+    ['shonen', 'Shounen'],
+    ['shoujo', 'Shoujo'],
+    ['shojo', 'Shoujo'],
+    ['seinen', 'Seinen'],
+    ['josei', 'Josei'],
+    ['iyashikei', 'Iyashikei'],
+    ['short episodes', 'Episodios cortos']
 ]);
 
 /**
- * Traduce un género de Jellyfin / TMDB al castellano si existe equivalencia.
- * Si ya está en español o no tiene traducción conocida, devuelve el texto original.
+ * Traduce un género o etiqueta al castellano si existe equivalencia.
+ * Si ya está en español o no tiene traducción conocida, devuelve el texto con mayúscula inicial.
  */
 export function translateGenre(genre: string | undefined | null): string {
     if (!genre) return '';
     const trimmed = genre.trim();
-    return GENRE_TRANSLATIONS.get(trimmed.toLowerCase()) ?? trimmed;
+    const translation = GENRE_TRANSLATIONS.get(trimmed.toLowerCase());
+    if (translation) return translation;
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+// Mapa inverso (español -> inglés) para resolver consultas en el servidor.
+const REVERSE_TRANSLATIONS = new Map<string, string>();
+for (const [en, es] of GENRE_TRANSLATIONS.entries()) {
+    REVERSE_TRANSLATIONS.set(es.toLowerCase(), en);
+}
+
+/**
+ * Devuelve todas las variantes posibles de un término (español e inglés) para
+ * que las búsquedas en el servidor casen tanto con metadatos en inglés como en español.
+ */
+export function getGenreVariants(subject: string | undefined | null): string[] {
+    if (!subject) return [];
+    const trimmed = subject.trim();
+    const lower = trimmed.toLowerCase();
+    const variants = new Set<string>([trimmed]);
+
+    const direct = GENRE_TRANSLATIONS.get(lower);
+    if (direct) {
+        variants.add(direct);
+        variants.add(direct.toLowerCase());
+    }
+
+    const reverse = REVERSE_TRANSLATIONS.get(lower);
+    if (reverse) {
+        variants.add(reverse);
+        const capitalized = reverse.replace(/\b\w/g, (c) => c.toUpperCase());
+        variants.add(capitalized);
+    }
+
+    return [...variants];
+}
+
+/** Item con campos categorizables (géneros, etiquetas y autotags). */
+export type CategorizableItem = {
+    genres?: string[];
+    tags?: string[];
+    autoTags?: string[];
+};
+
+/**
+ * Devuelve la lista unificada de categorías de un item (géneros traducidos + etiquetas traducidas + autotags),
+ * deduplicando de forma insensible a mayúsculas y conservando el orden de relevancia.
+ */
+export function getItemCategories(item: CategorizableItem | null | undefined): string[] {
+    if (!item) return [];
+    const seen = new Map<string, string>();
+
+    // Primero los géneros oficiales (traducidos al español)
+    for (const g of item.genres ?? []) {
+        const clean = translateGenre(g);
+        if (clean) {
+            const key = clean.toLowerCase();
+            if (!seen.has(key)) seen.set(key, clean);
+        }
+    }
+
+    // Luego las etiquetas del servidor (también traducidas al español si tienen equivalencia)
+    for (const t of item.tags ?? []) {
+        const clean = translateGenre(t);
+        if (clean) {
+            const key = clean.toLowerCase();
+            if (!seen.has(key)) seen.set(key, clean);
+        }
+    }
+
+    // Finalmente las etiquetas automáticas del vocabulario local
+    for (const at of item.autoTags ?? []) {
+        const clean = translateGenre(at);
+        if (clean) {
+            const key = clean.toLowerCase();
+            if (!seen.has(key)) seen.set(key, clean);
+        }
+    }
+
+    return [...seen.values()];
+}
+
+/**
+ * Devuelve las primeras N categorías principales (por defecto 3) para enseñar en el Hero
+ * sin saturar el banner superior.
+ */
+export function getHeroCategories(item: CategorizableItem | null | undefined, limit = 3): string[] {
+    return getItemCategories(item).slice(0, limit);
 }

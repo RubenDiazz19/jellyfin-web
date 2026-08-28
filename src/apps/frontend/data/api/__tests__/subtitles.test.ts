@@ -61,8 +61,7 @@ describe('downloadSubtitle', () => {
 
         expect(mocks.apiSend).toHaveBeenCalledWith(
             '/Items/item-123/RemoteSearch/Subtitles/sub-remote-999',
-            'POST',
-            {}
+            'POST'
         );
         expect(mocks.clearShowCache).toHaveBeenCalled();
         expect(mocks.emitItemMutated).toHaveBeenCalledWith('item-123');

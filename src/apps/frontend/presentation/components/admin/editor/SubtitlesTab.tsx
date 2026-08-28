@@ -68,20 +68,35 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
         void loadInstalled();
     }, [loadInstalled]);
 
-    const doSearch = async () => {
-        if (!lang) return;
+    const [searchError, setSearchError] = useState<string | null>(null);
+
+    const doSearch = async (searchLang = lang, perfectMatch = isPerfectMatch) => {
+        if (!searchLang.trim()) return;
         setSearching(true);
+        setSearchError(null);
         try {
-            const rs = await searchSubtitles(itemId, lang.trim(), isPerfectMatch);
+            const rs = await searchSubtitles(itemId, searchLang.trim(), perfectMatch || undefined);
             setResults(rs);
             if (rs.length === 0) {
                 toast(globalize.translate('NoSubtitleSearchResultsFound'), 'info');
             }
         } catch (e) {
-            toast((e as Error).message, 'warn');
+            const msg = (e as Error).message;
+            setSearchError(msg);
+            toast(msg, 'warn');
         } finally {
             setSearching(false);
         }
+    };
+
+    const handleSelectLanguage = (code: string) => {
+        setLang(code);
+        void doSearch(code, isPerfectMatch);
+    };
+
+    const handleTogglePerfectMatch = (checked: boolean) => {
+        setIsPerfectMatch(checked);
+        void doSearch(lang, checked);
     };
 
     const doDownload = async (id: string) => {
@@ -243,12 +258,13 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
                             <button
                                 key={item.code}
                                 type='button'
-                                onClick={() => setLang(item.code)}
+                                onClick={() => handleSelectLanguage(item.code)}
                                 style={{
                                     padding: '4px 10px', borderRadius: 999, fontSize: 12,
                                     background: lang === item.code ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)',
                                     border: `1px solid ${lang === item.code ? '#fff' : 'rgba(255,255,255,0.1)'}`,
-                                    color: '#fff', cursor: 'pointer'
+                                    color: '#fff', cursor: 'pointer',
+                                    transition: 'background .15s, border-color .15s'
                                 }}
                             >
                                 {item.label}
@@ -256,14 +272,24 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
                         ))}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'flex-end' }}>
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            void doSearch(lang, isPerfectMatch);
+                        }}
+                        style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'flex-end' }}
+                    >
                         <Field label={globalize.translate('LabelSubtitleLanguageCode')}>
                             <TextField size='md' value={lang} onChange={setLang} />
                         </Field>
-                        <PillButton onClick={doSearch} busy={searching} disabled={!lang}>
+                        <PillButton
+                            onClick={() => { void doSearch(lang, isPerfectMatch); }}
+                            busy={searching}
+                            disabled={!lang.trim()}
+                        >
                             {globalize.translate(searching ? 'Searching' : 'Search')}
                         </PillButton>
-                    </div>
+                    </form>
 
                     <label style={{
                         display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
@@ -272,46 +298,86 @@ export function SubtitlesTab({ itemId }: { itemId: string }) {
                         <input
                             type='checkbox'
                             checked={isPerfectMatch}
-                            onChange={(e) => setIsPerfectMatch(e.target.checked)}
+                            onChange={(e) => handleTogglePerfectMatch(e.target.checked)}
                             style={{ accentColor: '#fff', cursor: 'pointer' }}
                         />
                         {globalize.translate('OptionRequirePerfectSubtitleMatch')}
                     </label>
 
-                    {results && (
+                    {searchError && (
+                        <div style={{
+                            padding: '10px 14px', borderRadius: 8,
+                            background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+                            color: '#fca5a5', fontSize: 13
+                        }}>
+                            {searchError}
+                        </div>
+                    )}
+
+                    {searching && !results && (
+                        <div style={{ textAlign: 'center', padding: '24px 0', color: T.dim, fontSize: 13 }}>
+                            {globalize.translate('Searching')}...
+                        </div>
+                    )}
+
+                    {results && results.length === 0 && !searching && (
+                        <div style={{
+                            textAlign: 'center', padding: '24px 16px', borderRadius: 10,
+                            background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
+                            color: T.dim, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6
+                        }}>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>
+                                {globalize.translate('NoSubtitleSearchResultsFound')}
+                            </div>
+                            <div>
+                                Prueba buscando en otro idioma o desmarcando la coincidencia exacta.
+                            </div>
+                        </div>
+                    )}
+
+                    {results && results.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
                             <div style={{ fontSize: 12, color: T.dim }}>
                                 {globalize.translate('SearchResultsCount', results.length)}
                             </div>
-                            {results.map((r) => (
-                                <div key={r.Id} style={{
-                                    display: 'flex', alignItems: 'center', gap: 12, padding: 10,
-                                    background: 'rgba(255,255,255,0.04)', borderRadius: 8,
-                                    border: '1px solid rgba(255,255,255,0.06)'
-                                }}>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 13, fontWeight: 500 }}>{r.Name}</div>
-                                        <div style={{
-                                            display: 'flex', gap: 8, alignItems: 'center',
-                                            fontSize: 11, color: T.dim, marginTop: 4, flexWrap: 'wrap'
-                                        }}>
-                                            <span>{r.ProviderName || 'OpenSubtitles'}</span>
-                                            {r.Language && <span>· {r.Language}</span>}
-                                            {r.Format && <span>· {r.Format.toUpperCase()}</span>}
-                                            {r.DownloadCount != null && <span>· ⬇ {r.DownloadCount}</span>}
-                                            {r.IsForced && <Badge label='Forzado' />}
-                                            {r.IsHearingImpaired && <Badge label='SDH' />}
+                            {results.map((r) => {
+                                const subLang = r.ThreeLetterISOLanguageName || r.Language || lang;
+                                const isForcedSub = Boolean(r.Forced ?? r.IsForced);
+                                const isHImpaired = Boolean(r.HearingImpaired ?? r.IsHearingImpaired);
+
+                                return (
+                                    <div key={r.Id} style={{
+                                        display: 'flex', alignItems: 'center', gap: 12, padding: 10,
+                                        background: 'rgba(255,255,255,0.04)', borderRadius: 8,
+                                        border: '1px solid rgba(255,255,255,0.06)'
+                                    }}>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-word' }}>
+                                                {r.Name}
+                                            </div>
+                                            <div style={{
+                                                display: 'flex', gap: 8, alignItems: 'center',
+                                                fontSize: 11, color: T.dim, marginTop: 4, flexWrap: 'wrap'
+                                            }}>
+                                                <span>{r.ProviderName || 'OpenSubtitles'}</span>
+                                                {subLang && <span>· {subLang}</span>}
+                                                {r.Format && <span>· {r.Format.toUpperCase()}</span>}
+                                                {r.DownloadCount != null && <span>· ⬇ {r.DownloadCount}</span>}
+                                                {r.CommunityRating != null && <span>· ★ {r.CommunityRating.toFixed(1)}</span>}
+                                                {isForcedSub && <Badge label='Forzado' />}
+                                                {isHImpaired && <Badge label='SDH' />}
+                                            </div>
                                         </div>
+                                        <PillButton
+                                            onClick={() => doDownload(r.Id)}
+                                            variant='ghost'
+                                            busy={downloading === r.Id}
+                                        >
+                                            {globalize.translate(downloading === r.Id ? 'Downloading' : 'Download')}
+                                        </PillButton>
                                     </div>
-                                    <PillButton
-                                        onClick={() => doDownload(r.Id)}
-                                        variant='ghost'
-                                        busy={downloading === r.Id}
-                                    >
-                                        {globalize.translate(downloading === r.Id ? 'Downloading' : 'Download')}
-                                    </PillButton>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

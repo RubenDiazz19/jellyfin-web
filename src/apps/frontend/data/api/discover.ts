@@ -34,11 +34,30 @@ function splitByType(items: JFTypedItem[]): CatalogSlice {
     };
 }
 
-/** Series y películas de un género. */
-export async function getByGenre(genre: string): Promise<CatalogSlice> {
-    return splitByType(await fetchUserItems<JFTypedItem>(
-        `${CATALOG_QUERY}&Genres=${encodeURIComponent(genre)}`
-    ));
+/** Series y películas de un género o etiqueta unificada. */
+export async function getByGenre(genre: string, variants?: string[]): Promise<CatalogSlice> {
+    const queryTerms = Array.from(new Set([genre, ...(variants ?? [])].filter(Boolean)));
+    const requests = queryTerms.flatMap((term) => {
+        const encoded = encodeURIComponent(term);
+        return [
+            fetchUserItems<JFTypedItem>(`${CATALOG_QUERY}&Genres=${encoded}`),
+            fetchUserItems<JFTypedItem>(`${CATALOG_QUERY}&Tags=${encoded}`)
+        ];
+    });
+
+    const results = await Promise.all(requests);
+    const seen = new Set<string>();
+    const merged: JFTypedItem[] = [];
+    for (const list of results) {
+        for (const item of list) {
+            if (item.Id && !seen.has(item.Id)) {
+                seen.add(item.Id);
+                merged.push(item);
+            }
+        }
+    }
+    merged.sort((a, b) => (a.Name ?? '').localeCompare(b.Name ?? ''));
+    return splitByType(merged);
 }
 
 /**

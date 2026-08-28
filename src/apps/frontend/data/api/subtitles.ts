@@ -19,6 +19,8 @@ export type RemoteSubtitle = {
     CommunityRating?: number;
     IsForced?: boolean;
     IsHearingImpaired?: boolean;
+    Forced?: boolean;
+    HearingImpaired?: boolean;
     ThreeLetterISOLanguageName?: string;
 };
 
@@ -57,8 +59,7 @@ export async function searchSubtitles(
 export async function downloadSubtitle(itemId: string, subtitleId: string): Promise<void> {
     await apiSend(
         `/Items/${itemId}/RemoteSearch/Subtitles/${encodeURIComponent(subtitleId)}`,
-        'POST',
-        {}
+        'POST'
     );
     clearShowCache();
     emitItemMutated(itemId);

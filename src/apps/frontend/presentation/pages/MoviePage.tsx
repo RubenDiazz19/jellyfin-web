@@ -22,7 +22,7 @@ import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
-import { translateGenre } from '../../domain/genres';
+import { getHeroCategories, getItemCategories } from '../../domain/genres';
 import { useMovieEntity } from './useDetailEntity';
 import { movieKey } from '../../domain/stores';
 import { ticksFromProgress } from '../../domain/player/format';
@@ -91,7 +91,7 @@ function MovieHero({
                     navigate={navigate}
                     breadcrumb={[
                         { label: globalize.translate('Movies'), to: { page: 'home' } },
-                        { label: translateGenre(movie.genres[0]) },
+                        { label: getItemCategories(movie)[0] ?? 'Película' },
                         { label: movie.title }
                     ]}
                     actionId={movieKey(movie.id)}
@@ -108,7 +108,7 @@ function MovieHero({
             }}>
                 {!minimal && (
                     <HeroGenres
-                        genres={movie.genres}
+                        genres={getHeroCategories(movie)}
                         navigate={navigate}
                         fontSize={r.touch ? 10 : 12}
                         marginBottom={short ? 8 : r.touch ? 16 : 26}
@@ -221,9 +221,9 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                         {movie.country && (
                             <DetailRow label={globalize.translate('Country')}>{movie.country}</DetailRow>
                         )}
-                        {movie.genres?.length > 0 && (
+                        {getItemCategories(movie).length > 0 && (
                             <DetailRow label={globalize.translate('Genres')}>
-                                <GenreLinks genres={movie.genres} navigate={navigate} />
+                                <GenreLinks genres={getItemCategories(movie)} navigate={navigate} />
                             </DetailRow>
                         )}
                         {movie.runtime && movie.runtime !== '—' && (
