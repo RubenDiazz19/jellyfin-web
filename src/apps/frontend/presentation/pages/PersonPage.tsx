@@ -75,7 +75,7 @@ export function PersonPage({ name, navigate }: Props) {
                             {globalize.translate('People')}
                         </div>
                         <h1 style={{
-                            fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
+                            fontFamily: T.display, fontWeight: 300,
                             fontSize: 62, margin: 0, letterSpacing: -1
                         }}>
                             {name}
@@ -83,7 +83,7 @@ export function PersonPage({ name, navigate }: Props) {
                         {uniqueRoles.length > 0 && (
                             <div style={{
                                 fontSize: 15, color: T.dim, marginTop: 12,
-                                fontStyle: 'italic', fontFamily: T.display
+                                fontFamily: T.display
                             }}>
                                 {uniqueRoles.join(' · ')}
                             </div>

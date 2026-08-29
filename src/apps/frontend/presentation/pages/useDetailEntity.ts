@@ -59,7 +59,7 @@ export function useShowEntity(showId: string, navigate: Navigate): Entity<Show> 
 
 /** La película que pide la URL. */
 export function useMovieEntity(movieId: string, navigate: Navigate): Entity<Movie> {
-    useVmSignals(movieVM, (vm) => [vm.movie, vm.error, vm.gone]);
+    useVmSignals(movieVM, (vm) => [vm.movie, vm.error, vm.gone, vm.saga]);
     useEffect(() => {
         void movieVM.load(movieId);
     }, [movieId]);

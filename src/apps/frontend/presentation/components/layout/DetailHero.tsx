@@ -6,11 +6,13 @@
 
 import type { MouseEvent, ReactNode } from 'react';
 import { T, HERO_POS, HERO_SCRIM, type HeroPosKey, type HeroScrimKey } from '../../theme/tokens';
+import { Ic } from '../../theme/icons';
 import { useResponsive, useShortViewport } from '../../theme/responsive';
 import { Backdrop } from './Backdrop';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
 import { translateGenre } from '../../../domain/genres';
+import { MediaBadges } from '../media/MediaBadges';
 
 /**
  * Alto del hero de ficha: la pantalla entera, igual que el de la portada. Lo
@@ -228,3 +230,102 @@ export function HeroTitle({
         </h1>
     );
 }
+
+type HeroMetaProps = {
+    /** Elementos principales como año, duración o recuento de temporadas */
+    items: (ReactNode | undefined | null | false)[];
+    /** Clasificación por edad (ej. '16', 'TP') */
+    ageRating?: string;
+    /** Puntuación IMDb */
+    imdbRating?: number;
+    /** Badges técnicos en línea */
+    badges?: string[];
+    /** Tamaño de los badges técnicos */
+    badgeSize?: 'sm' | 'md';
+    /** Alineación del bloque */
+    align?: 'center' | 'left';
+    marginTop?: number | string;
+    color?: string;
+};
+
+/** Metadatos del hero: año, duración/temporadas, edad, IMDb y badges técnicos. */
+export function HeroMeta({
+    items, ageRating, imdbRating, badges, badgeSize = 'md', align = 'center', marginTop, color
+}: HeroMetaProps) {
+    const r = useResponsive();
+    const short = useShortViewport();
+    const isCenter = align === 'center';
+
+    const renderedItems: ReactNode[] = [];
+    items.filter((it): it is ReactNode => it !== undefined && it !== null && it !== false && it !== '').forEach((item, idx) => {
+        if (idx > 0) {
+            renderedItems.push(<Ic.Dot key={`dot-${idx}`} />);
+        }
+        renderedItems.push(<span key={`item-${idx}`}>{item}</span>);
+    });
+
+    if (ageRating) {
+        if (renderedItems.length > 0) {
+            renderedItems.push(<Ic.Dot key='dot-age' />);
+        }
+        renderedItems.push(
+            <span
+                key='age'
+                style={{
+                    border: '1px solid rgba(255,255,255,0.35)',
+                    padding: r.touch ? '2px 6px' : '3px 8px',
+                    fontSize: r.touch ? 10 : 11,
+                    letterSpacing: 1
+                }}
+            >
+                {ageRating}
+            </span>
+        );
+    }
+
+    if (imdbRating && imdbRating > 0) {
+        if (renderedItems.length > 0) {
+            renderedItems.push(<Ic.Dot key='dot-imdb' />);
+        }
+        renderedItems.push(
+            <span
+                key='imdb'
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+                <Ic.Imdb /> {imdbRating.toFixed(1)}
+            </span>
+        );
+    }
+
+    const defaultMarginTop = short ? 8 : r.touch ? 12 : 18;
+
+    return (
+        <>
+            <div
+                style={{
+                    marginTop: marginTop ?? defaultMarginTop,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: r.touch ? 8 : 14,
+                    flexWrap: 'wrap',
+                    justifyContent: isCenter ? 'center' : 'flex-start',
+                    fontFamily: T.ui,
+                    fontSize: r.touch ? 12 : 13,
+                    color: color ?? 'rgba(255,255,255,0.78)'
+                }}
+            >
+                {renderedItems}
+            </div>
+
+            {badges && badges.length > 0 && (
+                <MediaBadges
+                    badges={badges}
+                    size={badgeSize}
+                    align={align}
+                    style={{ marginTop: short ? 8 : r.touch ? 10 : 14 }}
+                />
+            )}
+        </>
+    );
+}
+

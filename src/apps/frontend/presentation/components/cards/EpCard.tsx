@@ -53,7 +53,7 @@ export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigat
                     right={8}
                     topLeft={
                         <div style={{
-                            fontFamily: T.display, fontSize: 30, lineHeight: 1, fontStyle: 'italic',
+                            fontFamily: T.display, fontSize: 30, lineHeight: 1,
                             textShadow: '0 2px 14px rgba(0,0,0,0.6)',
                             marginTop: 2, marginLeft: 4
                         }}>

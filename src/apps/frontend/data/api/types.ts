@@ -16,12 +16,16 @@ export type JFMediaStream = {
     Codec?: string;
     Width?: number;
     Height?: number;
+    VideoRange?: string;
     VideoRangeType?: string;
+    VideoDoViTitle?: string;
     ChannelLayout?: string;
     Channels?: number;
     Language?: string;
     Title?: string;
     DisplayTitle?: string;
+    Profile?: string;
+    AudioSpatialFormat?: string;
     IsDefault?: boolean;
     IsForced?: boolean;
     IsExternal?: boolean;
@@ -84,7 +88,7 @@ export type JFItem = {
 // defecto, y sin él las etiquetas se leerían siempre como lista vacía.
 export const FIELDS_LIST =
     'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate,Tags';
-export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status,ProductionLocations`;
+export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status,ProductionLocations,MediaSources,MediaStreams`;
 
 /**
  * Campos del catálogo completo (series y películas de la biblioteca), que es

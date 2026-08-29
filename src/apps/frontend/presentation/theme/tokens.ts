@@ -7,8 +7,8 @@ export const T = {
     fg: '#fff',
     dim: 'rgba(255,255,255,0.55)',
     hairline: 'rgba(255,255,255,0.12)',
-    display: '"Noto Sans", system-ui, sans-serif',
-    ui: '"Noto Sans", system-ui, sans-serif'
+    display: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    ui: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 } as const;
 
 // Tipado con las propiedades CSS reales para que las páginas no necesiten

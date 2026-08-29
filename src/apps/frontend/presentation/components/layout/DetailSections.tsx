@@ -86,22 +86,46 @@ export function SectionLabel({ children }: { children: ReactNode }) {
     );
 }
 
-/** Cabecera de una sección grande de la ficha (temporadas, episodios). */
+/** Cabecera de una sección grande de la ficha (temporadas, episodios, sagas). */
 export function DetailHeading({
-    title, marginBottom, children
+    title, marginBottom, onTitleClick, children
 }: {
     title: string;
     marginBottom: number;
+    /** Acción opcional al pulsar el título (ej: enlace a la colección). */
+    onTitleClick?: () => void;
     /** Lo que va a la derecha del título: un recuento, un selector… */
     children?: ReactNode;
 }) {
+    const titleNode = onTitleClick ? (
+        <button
+            type='button'
+            onClick={onTitleClick}
+            style={{
+                all: 'unset',
+                cursor: 'pointer',
+                fontFamily: T.display,
+                fontSize: 30,
+                fontWeight: 300,
+                margin: 0,
+                transition: 'opacity .2s ease'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.75')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+        >
+            {title}
+        </button>
+    ) : (
+        <h3 style={{
+            fontFamily: T.display, fontSize: 30, fontWeight: 300, margin: 0
+        }}>
+            {title}
+        </h3>
+    );
+
     return (
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom }}>
-            <h3 style={{
-                fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
-            }}>
-                {title}
-            </h3>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom, flexWrap: 'wrap' }}>
+            {titleNode}
             {children}
         </div>
     );

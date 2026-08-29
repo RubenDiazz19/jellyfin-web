@@ -25,7 +25,7 @@ export function SkeletonRow({ count = 6, title }: { count?: number; title?: stri
             {title && (
                 <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: r.touch ? 12 : 24 }}>
                     <h3 style={{
-                        fontFamily: T.display, fontStyle: 'italic',
+                        fontFamily: T.display,
                         fontSize: r.touch ? 21 : 30, fontWeight: 300,
                         margin: 0, letterSpacing: -0.3, color: T.dim
                     }}>

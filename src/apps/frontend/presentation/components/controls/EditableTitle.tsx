@@ -55,7 +55,7 @@ export function EditableTitle({ value, onSave, fontSize }: Props) {
     };
 
     const shared: React.CSSProperties = {
-        fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
+        fontFamily: T.display, fontWeight: 300,
         fontSize, letterSpacing: -0.5, lineHeight: 1.15,
         color: '#fff', background: 'none', padding: 0, margin: 0
     };

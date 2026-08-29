@@ -82,4 +82,16 @@ describe('MovieViewModel', () => {
         expect(vm.error.value).toBeNull();
         expect(vm.movie.value).toEqual(other);
     });
+
+    test('load() carga la saga de la película si pertenece a una franquicia', async () => {
+        const saga = { id: 'box-1', name: 'Saga Dandelion', items: [movie] };
+        const getMovie = vi.fn(() => Promise.resolve(movie));
+        const getMovieSaga = vi.fn(() => Promise.resolve(saga));
+        const api = { catalog: { getMovie, getMovieSaga } } as unknown as ApiService;
+
+        const vm = new MovieViewModel(api);
+        await vm.load('m1');
+
+        expect(vm.saga.value).toEqual(saga);
+    });
 });

@@ -59,7 +59,7 @@ export function LoginPage() {
         >
             <div style={{ width: '100%', maxWidth: 380 }}>
                 <div style={{
-                    fontFamily: T.display, fontStyle: 'italic',
+                    fontFamily: T.display,
                     fontSize: 42, letterSpacing: 0.5, marginBottom: 40, textAlign: 'center'
                 }}>
                     jellyfin

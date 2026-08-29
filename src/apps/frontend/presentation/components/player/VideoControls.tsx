@@ -52,6 +52,7 @@ export function VideoControls({ onToggleQueue }: Props) {
     const segments = useSignalValue(videoPlayerVM.segmentList);
     const skip = useSignalValue(videoPlayerVM.skip);
     const showRemaining = useSignalValue(videoPlayerVM.showRemainingTime);
+    useSignalValue(videoPlayerVM.trickplay);
     // Se recalcula solo al cambiar de item o al llegar los segmentos, no en
     // cada timeupdate.
     const dividers = useMemo(
@@ -71,6 +72,16 @@ export function VideoControls({ onToggleQueue }: Props) {
     const previewChapter = previewChapterIndex >= 0 ?
         chapterDisplayName(chapters[previewChapterIndex]?.name, previewChapterIndex) :
         null;
+    const thumbnail = previewPct != null ? videoPlayerVM.getThumbnail(previewTime) : null;
+    const thumbBoxWidth = 200;
+    const thumbScale = thumbnail && !thumbnail.isSingleImage && thumbnail.width > 0 ?
+        thumbBoxWidth / thumbnail.width :
+        1;
+    const thumbBoxHeight = thumbnail ?
+        (thumbnail.isSingleImage ?
+            Math.round((thumbnail.height / thumbnail.width) * thumbBoxWidth) :
+            Math.round(thumbnail.height * thumbScale)) :
+        112;
 
     const pctFromEvent = (e: React.PointerEvent): number => {
         const rect = barRef.current?.getBoundingClientRect();
@@ -126,15 +137,33 @@ export function VideoControls({ onToggleQueue }: Props) {
                 </div>
                 {previewPct != null && duration > 0 && (
                     <div
-                        className='jfp-video-progress-tip'
+                        className={`jfp-video-progress-tip${thumbnail ? ' has-thumbnail' : ''}`}
                         style={{ left: `${previewPct}%` }}
                     >
-                        {previewChapter && (
-                            <span className='jfp-video-progress-tip-name'>
-                                {previewChapter}
-                            </span>
+                        {thumbnail && (
+                            <div
+                                className='jfp-video-progress-thumb-frame'
+                                style={{
+                                    width: `${thumbBoxWidth}px`,
+                                    height: `${thumbBoxHeight}px`,
+                                    backgroundImage: `url("${thumbnail.url}")`,
+                                    backgroundPosition: thumbnail.isSingleImage ?
+                                        'center' :
+                                        `-${Math.round(thumbnail.x * thumbScale)}px -${Math.round(thumbnail.y * thumbScale)}px`,
+                                    backgroundSize: thumbnail.isSingleImage ?
+                                        'cover' :
+                                        `${Math.round(thumbnail.sheetWidth * thumbScale)}px ${Math.round(thumbnail.sheetHeight * thumbScale)}px`
+                                }}
+                            />
                         )}
-                        {formatTime(previewTime)}
+                        <div className='jfp-video-progress-tip-text'>
+                            {previewChapter && (
+                                <span className='jfp-video-progress-tip-name'>
+                                    {previewChapter}
+                                </span>
+                            )}
+                            <span className='jfp-video-progress-tip-time'>{formatTime(previewTime)}</span>
+                        </div>
                     </div>
                 )}
             </div>

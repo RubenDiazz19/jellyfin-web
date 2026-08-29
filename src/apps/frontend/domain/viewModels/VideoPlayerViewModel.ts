@@ -12,7 +12,9 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import type {
     MediaStreamInfo, PlaybackDecision, PlaybackOptions
 } from '../../data/api/playback';
-import type { ItemChapter, PlaybackContext } from '../../data/api/playbackContext';
+import type {
+    ItemChapter, PlaybackContext, TrickplayData, TrickplayThumbnail
+} from '../../data/api/playbackContext';
 import { segmentsFromChapters } from '../../data/api/chapterSegments';
 import type { MediaSegment } from '../../data/api/segments';
 import type { TitleLanguagePref } from '../../data/preferences/languagePrefs';
@@ -25,6 +27,7 @@ import { CastBinding } from '../player/castBinding';
 import { SegmentTracker } from '../player/segmentTracker';
 import { SubtitlesBinding } from '../player/subtitlesBinding';
 import { TitlePreferences } from '../player/titlePreferences';
+import { SleepTimerTracker, type SleepTimerMode } from '../player/sleepTimer';
 
 const PROGRESS_REPORT_MS = 10_000;
 
@@ -60,7 +63,7 @@ let nextInstanceId = 0;
 const TIME_STEP_SECONDS = 1;
 
 export class VideoPlayerViewModel {
-    // Los tres colaboradores con estado propio. Se declaran ANTES que los
+    // Los colaboradores con estado propio. Se declaran ANTES que los
     // signals públicos porque estos delegan en ellos, y los inicializadores de
     // campo corren en orden de declaración.
     private readonly segments = new SegmentTracker();
@@ -70,6 +73,7 @@ export class VideoPlayerViewModel {
     );
     private readonly cast = new CastBinding();
     private readonly subtitles = new SubtitlesBinding();
+    private readonly sleepTimer = new SleepTimerTracker(() => this.onSleepTimerExpire());
 
     // Estado observable que la View pinta. `currentTime` va redondeado al
     // segundo: ver TIME_STEP_SECONDS.
@@ -99,6 +103,13 @@ export class VideoPlayerViewModel {
     selectedSubtitle = this.subtitles.selectedSubtitle;
     /** URL del VTT activo (solo subtítulos de texto). La View pinta <track>. */
     subtitleUrl = this.subtitles.subtitleUrl;
+    /** Desfase manual de subtítulos en segundos (ej. +0.5s o -0.5s). */
+    subtitleOffset = this.subtitles.subtitleOffset;
+    /** Modo y tiempo restante del temporizador de apagado. */
+    sleepTimerMode = this.sleepTimer.mode;
+    sleepTimerRemaining = this.sleepTimer.remainingSeconds;
+    /** Datos de Trickplay para previsualización de fotogramas al arrastrar la barra. */
+    trickplay = signal<TrickplayData | null>(null);
     /** Velocidad de reproducción actual (1 = normal). */
     playbackRate = signal(1);
     /** Relación de aspecto elegida para el <video>. La View la traduce a CSS. */
@@ -299,6 +310,9 @@ export class VideoPlayerViewModel {
             // Nada más que reportar de este item: el stop lo manda close().
             this.stopProgressTimer();
             void this.reportProgress();
+            if (this.sleepTimer.handleEpisodeEnd()) {
+                return;
+            }
             this.ended.value = true;
         });
         on('ratechange', () => { this.playbackRate.value = video.playbackRate; });
@@ -395,6 +409,7 @@ export class VideoPlayerViewModel {
             if (this.closed || this.itemId !== itemId) return;
             this.context = context;
             this.chapters.value = context.chapters;
+            this.trickplay.value = context.trickplay ?? null;
             this.prefs.adopt(context);
             // El siguiente episodio no bloquea el arranque: solo hace falta
             // cuando el capítulo se acerca al final.
@@ -470,6 +485,78 @@ export class VideoPlayerViewModel {
         if (!v) return;
         if (v.paused) void v.play().catch(() => {});
         else v.pause();
+    };
+
+    play = () => {
+        const v = this.video;
+        if (!v) return;
+        if (v.paused) void v.play().catch(() => {});
+    };
+
+    pause = () => {
+        const v = this.video;
+        if (!v) return;
+        if (!v.paused) v.pause();
+    };
+
+    setSleepTimer = (mode: SleepTimerMode) => {
+        this.sleepTimer.setMode(mode);
+    };
+
+    setSubtitleOffset = (seconds: number) => {
+        this.subtitles.setSubtitleOffset(seconds);
+    };
+
+    adjustSubtitleOffset = (delta: number) => {
+        this.subtitles.adjustSubtitleOffset(delta);
+    };
+
+    resetSubtitleOffset = () => {
+        this.subtitles.resetSubtitleOffset();
+    };
+
+    cycleSubtitles = () => {
+        const tracks = this.subtitleTracks.value;
+        if (tracks.length === 0) return;
+        const current = this.selectedSubtitle.value;
+        if (current == null) {
+            this.setSubtitleTrack(tracks[0].index);
+        } else {
+            const idx = tracks.findIndex((t) => t.index === current);
+            if (idx >= 0 && idx < tracks.length - 1) {
+                this.setSubtitleTrack(tracks[idx + 1].index);
+            } else {
+                this.setSubtitleTrack(null);
+            }
+        }
+    };
+
+    toggleSubtitles = () => {
+        const tracks = this.subtitleTracks.value;
+        if (tracks.length === 0) return;
+        if (this.selectedSubtitle.value == null) {
+            const defaultTrack = tracks.find((t) => t.isDefault) ?? tracks[0];
+            this.setSubtitleTrack(defaultTrack.index);
+        } else {
+            this.setSubtitleTrack(null);
+        }
+    };
+
+    getThumbnail = (seconds: number): TrickplayThumbnail | null => {
+        const trickplay = this.trickplay.value;
+        const serverUrl = this.api.session.load()?.serverUrl ?? '';
+        if (trickplay) {
+            const thumb = this.api.playback.getTrickplayThumbnail(trickplay, seconds, serverUrl);
+            if (thumb) return thumb;
+        }
+        return null;
+    };
+
+    private onSleepTimerExpire = () => {
+        this.pause();
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('jfp-sleep-timer-expired'));
+        }
     };
 
     /**
@@ -693,6 +780,7 @@ export class VideoPlayerViewModel {
         // Los listeners se quitan ANTES de tocar el <video>: pause() y load()
         // emiten eventos que ya no son de nadie.
         this.mediaSession.stop();
+        this.sleepTimer.dispose();
         this.detachOnMeta?.();
         this.detachFns.forEach((fn) => { fn(); });
         this.detachFns = [];
@@ -736,6 +824,8 @@ export class VideoPlayerViewModel {
         this.subtitles.reset();
         this.cast.reset();
         this.segments.reset();
+        this.sleepTimer.reset();
+        this.trickplay.value = null;
         this.chapters.value = [];
         this.autoNext.reset();
         this.ended.value = false;
@@ -765,6 +855,9 @@ export class VideoPlayerViewModel {
             );
             if (this.closed) return;
             this.decision = decision;
+            if (decision.trickplay && !this.trickplay.value) {
+                this.trickplay.value = decision.trickplay;
+            }
             this.audioTracks.value = decision.audioStreams;
             this.subtitleTracks.value = decision.subtitleStreams;
             this.selectedAudio.value = opts.audioStreamIndex

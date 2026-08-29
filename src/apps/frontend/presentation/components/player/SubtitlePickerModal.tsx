@@ -1,33 +1,13 @@
-// Modal para buscar en OpenSubtitles o subir archivos de subtítulos directamente
-// desde el reproductor de vídeo durante la reproducción.
-
 import globalize from 'lib/globalize';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import {
-    downloadSubtitle,
-    fileToBase64,
-    searchSubtitles,
-    uploadSubtitle,
-    type RemoteSubtitle
-} from '../../../domain/api';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { T } from '../../theme/tokens';
-import { ToastProvider, useToast } from '../toast/ToastProvider';
+import { ToastProvider } from '../toast/ToastProvider';
 import { Muted, PillButton, TextField } from '../controls/fields';
 import { Field } from '../admin/editor/primitives';
-
-const POPULAR_LANGS = [
-    { code: 'spa', label: 'Español (spa)' },
-    { code: 'eng', label: 'English (eng)' },
-    { code: 'fre', label: 'Français (fre)' },
-    { code: 'ger', label: 'Deutsch (ger)' },
-    { code: 'ita', label: 'Italiano (ita)' },
-    { code: 'por', label: 'Português (por)' },
-    { code: 'jpn', label: 'Japanese (jpn)' },
-    { code: 'kor', label: 'Korean (kor)' }
-];
+import { POPULAR_LANGS, useSubtitleSearch } from '../admin/editor/useSubtitleSearch';
 
 type Props = {
     itemId: string;
@@ -50,24 +30,18 @@ export function SubtitlePickerModal({ itemId, onClose }: Props) {
 function SubtitlePickerInner({ itemId, onClose }: Props) {
     const [tab, setTab] = useState<'search' | 'upload'>('search');
 
-    // Búsqueda
-    const [lang, setLang] = useState('spa');
-    const [isPerfectMatch, setIsPerfectMatch] = useState(false);
-    const [results, setResults] = useState<RemoteSubtitle[] | null>(null);
-    const [searching, setSearching] = useState(false);
-    const [downloading, setDownloading] = useState<string | null>(null);
-    const [searchError, setSearchError] = useState<string | null>(null);
-
-    // Subida
-    const [file, setFile] = useState<File | null>(null);
-    const [uploadLang, setUploadLang] = useState('spa');
-    const [isForced, setIsForced] = useState(false);
-    const [isHearingImpaired, setIsHearingImpaired] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const [dragOver, setDragOver] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const toast = useToast();
+    const {
+        lang, setLang, isPerfectMatch, results, searching, downloading, searchError,
+        doSearch, handleSelectLanguage, handleTogglePerfectMatch, doDownload,
+        file, setFile, uploadLang, setUploadLang, isForced, setIsForced, isHearingImpaired, setIsHearingImpaired,
+        uploading, dragOver, setDragOver, fileInputRef, handleFileDrop, doUpload
+    } = useSubtitleSearch({
+        itemId,
+        onSubtitleUpdated: async () => {
+            await videoPlayerVM.refreshSubtitleTracks(true);
+            onClose();
+        }
+    });
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -76,88 +50,6 @@ function SubtitlePickerInner({ itemId, onClose }: Props) {
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
     }, [onClose]);
-
-    const doSearch = async (searchLang = lang, perfectMatch = isPerfectMatch) => {
-        if (!searchLang.trim()) return;
-        setSearching(true);
-        setSearchError(null);
-        try {
-            const rs = await searchSubtitles(itemId, searchLang.trim(), perfectMatch || undefined);
-            setResults(rs);
-            if (rs.length === 0) {
-                toast(globalize.translate('NoSubtitleSearchResultsFound'), 'info');
-            }
-        } catch (e) {
-            const msg = (e as Error).message;
-            setSearchError(msg);
-            toast(msg, 'warn');
-        } finally {
-            setSearching(false);
-        }
-    };
-
-    // Búsqueda automática inicial al abrir el modal
-    useEffect(() => {
-        if (itemId) {
-            void doSearch('spa', isPerfectMatch);
-        }
-    }, [itemId]);
-
-    const handleSelectLanguage = (code: string) => {
-        setLang(code);
-        void doSearch(code, isPerfectMatch);
-    };
-
-    const handleTogglePerfectMatch = (checked: boolean) => {
-        setIsPerfectMatch(checked);
-        void doSearch(lang, checked);
-    };
-
-    const doDownload = async (id: string) => {
-        setDownloading(id);
-        try {
-            await downloadSubtitle(itemId, id);
-            toast(globalize.translate('MessageSubtitleDownloaded'), 'success');
-            await new Promise((resolve) => setTimeout(resolve, 400));
-            await videoPlayerVM.refreshSubtitleTracks(true);
-            onClose();
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-        } finally {
-            setDownloading(null);
-        }
-    };
-
-    const doUpload = async () => {
-        if (!file) return;
-        setUploading(true);
-        try {
-            const data = await fileToBase64(file);
-            const format = file.name.split('.').pop()?.toLowerCase() || 'srt';
-            await uploadSubtitle(itemId, {
-                language: uploadLang.trim() || 'spa',
-                format,
-                isForced,
-                isHearingImpaired,
-                data
-            });
-            toast(globalize.translate('MessageSubtitleUploaded'), 'success');
-            await new Promise((resolve) => setTimeout(resolve, 400));
-            await videoPlayerVM.refreshSubtitleTracks(true);
-            onClose();
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleFileDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setDragOver(false);
-        const dropped = e.dataTransfer.files?.[0];
-        if (dropped) setFile(dropped);
-    };
 
     return (
         <div

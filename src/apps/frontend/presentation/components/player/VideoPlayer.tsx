@@ -15,15 +15,16 @@ import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
 import { haptic } from '../../../shared/haptics';
-import { PlayerIc } from './playerIcons';
-import { CastButton } from './CastButton';
+import { PlayerIc } from './playerIcons';import { CastButton } from './CastButton';
 import { VideoControls } from './VideoControls';
 import { VideoGestures } from './VideoGestures';
+import { ShortcutsModal } from './ShortcutsModal';
 // El OSD entero se pinta desde aquí, así que sus estilos entran con él: solo
 // se descargan al abrir el reproductor, que es una ruta cargada bajo demanda.
 import '../../styles/player.css';
 
 const HIDE_CONTROLS_MS = 3000;
+const SKIP_VISIBLE_MS = 3000;
 /** Actividad del usuario que saca el OSD. Ver el efecto que los engancha. */
 const WAKE_EVENTS = [
     'pointermove', 'mousemove', 'pointerdown', 'touchstart', 'wheel', 'keydown'
@@ -87,12 +88,13 @@ export function VideoPlayer({
     // Suscripción selectiva, no `useViewModel`: este componente no pinta ni
     // currentTime ni duration, y suscribirse a TODOS los signals del VM
     // significaba re-renderizar el reproductor entero ~4 veces por segundo
-    // durante la reproducción — anulando de paso la suscripción fina que ya
+    // durante toda la reproducción — anulando de paso la suscripción fina que ya
     // hace VideoControls. La lista es exactamente lo que se lee más abajo.
     useVmSignals(videoPlayerVM, (vm) => [
         vm.activeSegment, vm.aspectRatio, vm.autoNextProgress, vm.brightness,
         vm.buffering, vm.ended, vm.error, vm.fullscreen, vm.loading,
-        vm.nextEpisode, vm.playing, vm.subtitleUrl, vm.title
+        vm.nextEpisode, vm.playing, vm.subtitleUrl, vm.title, vm.subtitleOffset,
+        vm.sleepTimerMode
     ]);
     // La cola cambia desde fuera del reproductor (menú de un item, otra
     // pestaña): sin suscripción, el aviso de "a continuación" se quedaría
@@ -101,6 +103,21 @@ export function VideoPlayer({
     const containerRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const subtitleTrackRef = useRef<HTMLTrackElement | null>(null);
+    const cueOriginalTimes = useRef(new WeakMap<VTTCue, { start: number; end: number }>());
+
+    const [osdNotice, setOsdNotice] = useState<string | null>(null);
+    const osdNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+    const showNotice = useCallback((text: string) => {
+        setOsdNotice(text);
+        if (osdNoticeTimer.current) clearTimeout(osdNoticeTimer.current);
+        osdNoticeTimer.current = setTimeout(() => {
+            setOsdNotice(null);
+            osdNoticeTimer.current = null;
+        }, 2200);
+    }, []);
+
     // Callback ref en vez de onLoad: 'load' no está en la lista de eventos
     // que el linter admite en <track>, y de paso evita el listener JSX que
     // React tendría que reatachar en cada render.
@@ -110,24 +127,35 @@ export function VideoPlayer({
         el.addEventListener('load', () => {
             // El conversor del servidor a veces deja override tags ASS sin
             // depurar en el VTT; se limpian aquí antes de que se pinten.
-            //
-            // El `includes` no es paranoia: una película trae miles de cues y
-            // casi ninguna necesita limpieza, así que se descartan con una
-            // búsqueda de un carácter en vez de con una regex y una
-            // reescritura de `cue.text` (que además invalida el cue pintado).
             for (const cue of Array.from(el.track.cues ?? [])) {
                 if (cue instanceof VTTCue && cue.text.includes('{')) {
                     cue.text = sanitizeVttCueText(cue.text);
                 }
             }
-            // La altura solo se puede fijar cue a cue, y las cues no existen
-            // hasta que el VTT termina de cargar: este es el único momento en
-            // que se puede hacer para una pista recién elegida.
             applyCueLine(el.track.cues, getSubtitleAppearance().verticalPosition);
+            const offset = videoPlayerVM.subtitleOffset.peek();
+            if (offset !== 0 && el.track.cues) {
+                for (const cue of Array.from(el.track.cues)) {
+                    if (!(cue instanceof VTTCue)) continue;
+                    let orig = cueOriginalTimes.current.get(cue);
+                    if (!orig) {
+                        orig = { start: cue.startTime, end: cue.endTime };
+                        cueOriginalTimes.current.set(cue, orig);
+                    }
+                    cue.startTime = Math.max(0, orig.start + offset);
+                    cue.endTime = Math.max(0, orig.end + offset);
+                }
+            }
         });
     }, []);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [controlsVisible, setControlsVisible] = useState(true);
+    // Auto-ocultado del botón de saltar intro/resumen: aparece al entrar en
+    // el tramo y desaparece solo tras SKIP_VISIBLE_MS sin tocar. Mismo
+    // comportamiento que el botón de ending (nextup), que tampoco requiere
+    // acción del usuario para seguir siendo útil.
+    const [skipVisible, setSkipVisible] = useState(false);
+    const skipHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const { touch, portrait } = useTouchPlayback();
     // Controles bloqueados (solo táctil): oculta OSD e ignora gestos hasta
     // desbloquear. Overlay de hints de primer uso.
@@ -213,6 +241,41 @@ export function VideoPlayer({
         arm();
     }, [canHide]);
 
+    // Al entrar en un nuevo tramo saltable el botón se muestra 3 s. Al salir
+    // del tramo (activeSegment → null) se cancela el timer y se oculta.
+    // Cualquier actividad del usuario (ratón, teclado, táctil) rearma el
+    // timer mientras siga en el tramo, igual que hace el OSD con su propio
+    // temporizador.
+    const activeSegment = videoPlayerVM.activeSegment.value;
+    // Ref para leer el segmento actual sin closures rancias en el wake handler.
+    const activeSegmentRef = useRef(activeSegment);
+    activeSegmentRef.current = activeSegment;
+
+    const showSkip = useCallback(() => {
+        if (!activeSegmentRef.current) return;
+        setSkipVisible(true);
+        if (skipHideTimer.current) clearTimeout(skipHideTimer.current);
+        skipHideTimer.current = setTimeout(() => {
+            skipHideTimer.current = null;
+            setSkipVisible(false);
+        }, SKIP_VISIBLE_MS);
+    }, []);
+
+    useEffect(() => {
+        if (skipHideTimer.current) clearTimeout(skipHideTimer.current);
+        if (!activeSegment) {
+            setSkipVisible(false);
+            return;
+        }
+        // Nuevo segmento: mostrar y armar el timer inicial.
+        showSkip();
+        return () => {
+            if (skipHideTimer.current) clearTimeout(skipHideTimer.current);
+        };
+    // Solo reaccionar al cambio de segmento (kind+start como clave estable).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeSegment?.kind, activeSegment?.start]);
+
     // Fin de la reproducción → la ruta encadena con la cola. El VM no navega
     // (regla MVVM), así que la señal se traduce aquí en una llamada.
     const ended = videoPlayerVM.ended.value;
@@ -248,6 +311,9 @@ export function VideoPlayer({
         const wake = (e: Event) => {
             trackPointer(e);
             showControls();
+            // Si hay un tramo saltable activo, el movimiento del usuario
+            // rearma el botón de skip para que vuelva a ser visible 5 s más.
+            showSkip();
         };
         const opts = { passive: true } as const;
         for (const type of WAKE_EVENTS) document.addEventListener(type, wake, opts);
@@ -256,7 +322,7 @@ export function VideoPlayer({
             for (const type of WAKE_EVENTS) document.removeEventListener(type, wake);
             document.removeEventListener('fullscreenchange', wake);
         };
-    }, [showControls, trackPointer]);
+    }, [showControls, showSkip, trackPointer]);
 
     useEffect(() => () => {
         if (hideTimer.current) clearTimeout(hideTimer.current);
@@ -298,16 +364,20 @@ export function VideoPlayer({
             switch (e.key) {
                 case ' ':
                 case 'k':
+                case 'K':
                     e.preventDefault();
                     videoPlayerVM.togglePlay();
                     break;
                 case 'm':
+                case 'M':
                     videoPlayerVM.toggleMute();
                     break;
                 case 'f':
+                case 'F':
                     videoPlayerVM.toggleFullscreen();
                     break;
                 case 'p':
+                case 'P':
                     videoPlayerVM.togglePip();
                     break;
                 case 'ArrowLeft':
@@ -318,6 +388,16 @@ export function VideoPlayer({
                     e.preventDefault();
                     videoPlayerVM.skipForward();
                     break;
+                case 'j':
+                case 'J':
+                    e.preventDefault();
+                    videoPlayerVM.seekBy(-10);
+                    break;
+                case 'l':
+                case 'L':
+                    e.preventDefault();
+                    videoPlayerVM.seekBy(10);
+                    break;
                 case 'ArrowUp':
                     e.preventDefault();
                     videoPlayerVM.setVolume(videoPlayerVM.volume.peek() + 0.05);
@@ -326,7 +406,76 @@ export function VideoPlayer({
                     e.preventDefault();
                     videoPlayerVM.setVolume(videoPlayerVM.volume.peek() - 0.05);
                     break;
+                case 'c':
+                case 'C':
+                    videoPlayerVM.toggleSubtitles();
+                    break;
+                case 'g':
+                case 'G': {
+                    videoPlayerVM.adjustSubtitleOffset(-0.1);
+                    const off = videoPlayerVM.subtitleOffset.peek();
+                    showNotice(`${globalize.translate('SubtitleOffset')}: ${off > 0 ? '+' : ''}${off.toFixed(1)}s`);
+                    break;
+                }
+                case 'h':
+                case 'H': {
+                    videoPlayerVM.adjustSubtitleOffset(0.1);
+                    const off = videoPlayerVM.subtitleOffset.peek();
+                    showNotice(`${globalize.translate('SubtitleOffset')}: ${off > 0 ? '+' : ''}${off.toFixed(1)}s`);
+                    break;
+                }
+                case '[': {
+                    const r = Math.max(0.25, Math.round((videoPlayerVM.playbackRate.peek() - 0.25) * 100) / 100);
+                    videoPlayerVM.setPlaybackRate(r);
+                    showNotice(`${globalize.translate('LabelPlaybackSpeed')}: ${r}×`);
+                    break;
+                }
+                case ']': {
+                    const r = Math.min(3, Math.round((videoPlayerVM.playbackRate.peek() + 0.25) * 100) / 100);
+                    videoPlayerVM.setPlaybackRate(r);
+                    showNotice(`${globalize.translate('LabelPlaybackSpeed')}: ${r}×`);
+                    break;
+                }
+                case 's':
+                case 'S':
+                    if (videoPlayerVM.activeSegment.peek()) {
+                        videoPlayerVM.skipActiveSegment();
+                    }
+                    break;
+                case 'n':
+                case 'N': {
+                    const qNext = queueItems[0];
+                    if (qNext) {
+                        onPlayQueued({ itemId: qNext.itemId, title: qNext.title });
+                    } else if (videoPlayerVM.nextEpisode.peek()) {
+                        const next = videoPlayerVM.nextEpisode.peek()!;
+                        onPlayQueued({ itemId: next.id, title: next.title });
+                    }
+                    break;
+                }
+                case '?':
+                    setShortcutsOpen((o) => !o);
+                    break;
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9': {
+                    const pct = Number(e.key) / 10;
+                    const dur = videoPlayerVM.duration.peek();
+                    if (dur > 0) videoPlayerVM.seek(pct * dur);
+                    break;
+                }
                 case 'Escape':
+                    if (shortcutsOpen) {
+                        setShortcutsOpen(false);
+                        break;
+                    }
                     // Con fullscreen activo, Escape ya lo cierra el navegador.
                     if (!document.fullscreenElement) onClose();
                     break;
@@ -337,7 +486,16 @@ export function VideoPlayer({
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [onClose, showControls]);
+    }, [onClose, showControls, showNotice, onPlayQueued, queueItems, shortcutsOpen]);
+
+    // Aviso de temporizador de apagado completado.
+    useEffect(() => {
+        const onSleepExpired = () => {
+            showNotice(globalize.translate('SleepTimerExpired'));
+        };
+        window.addEventListener('jfp-sleep-timer-expired', onSleepExpired);
+        return () => window.removeEventListener('jfp-sleep-timer-expired', onSleepExpired);
+    }, [showNotice]);
 
     // Aplica el modo de los text tracks cuando cambia el subtítulo activo:
     // solo se muestra la pista de la selección actual. El <track> anterior
@@ -345,6 +503,7 @@ export function VideoPlayer({
     // sin esto sus cues quedan "showing" y se pintan superpuestas a las
     // nuevas.
     const subtitleUrl = videoPlayerVM.subtitleUrl.value;
+    const subtitleOffset = videoPlayerVM.subtitleOffset.value;
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
@@ -353,6 +512,27 @@ export function VideoPlayer({
             track.mode = subtitleTrackMode(subtitleUrl, active, track);
         }
     }, [subtitleUrl]);
+
+    // Aplica el desfase en vivo a los cues de la pista VTT activa.
+    useEffect(() => {
+        const track = subtitleTrackRef.current?.track;
+        if (!track) return;
+        const applyOffset = () => {
+            const cues = track.cues;
+            if (!cues) return;
+            for (const cue of Array.from(cues)) {
+                if (!(cue instanceof VTTCue)) continue;
+                let orig = cueOriginalTimes.current.get(cue);
+                if (!orig) {
+                    orig = { start: cue.startTime, end: cue.endTime };
+                    cueOriginalTimes.current.set(cue, orig);
+                }
+                cue.startTime = Math.max(0, orig.start + subtitleOffset);
+                cue.endTime = Math.max(0, orig.end + subtitleOffset);
+            }
+        };
+        applyOffset();
+    }, [subtitleUrl, subtitleOffset]);
 
     // Cómo se ven los subtítulos (tamaño, tipografía, color, altura).
     //
@@ -413,7 +593,6 @@ export function VideoPlayer({
     const loading = videoPlayerVM.loading.value;
     const buffering = videoPlayerVM.buffering.value;
     const error = videoPlayerVM.error.value;
-    const activeSegment = videoPlayerVM.activeSegment.value;
     const autoNext = videoPlayerVM.autoNextProgress.value;
     // Lo que se anuncia tiene que ser lo que va a sonar: al terminar manda la
     // cola (si el usuario ha encolado algo a propósito) y si no el siguiente
@@ -580,13 +759,13 @@ export function VideoPlayer({
                 </button>
             )}
 
-            {/* Saltar intro/resumen: solo mientras la posición cae dentro de
-                un segmento saltable. Los créditos no llevan botón: ahí manda
-                el aviso de siguiente episodio. */}
+            {/* Saltar intro/resumen: aparece al entrar en el tramo y
+                desaparece suavemente a los 3 s si no se toca. Los créditos
+                no llevan botón: usa el nextup. */}
             {activeSegment && !locked && (
                 <button
                     type='button'
-                    className='jfp-video-skip'
+                    className={`jfp-video-skip ${skipVisible ? 'is-visible' : ''}`}
                     onClick={(e) => {
                         e.stopPropagation();
                         haptic('select');
@@ -656,6 +835,16 @@ export function VideoPlayer({
                         }}
                     />
                 </div>
+            )}
+
+            {osdNotice && (
+                <div className='jfp-video-osd-badge' role='status' aria-live='polite'>
+                    {osdNotice}
+                </div>
+            )}
+
+            {shortcutsOpen && (
+                <ShortcutsModal onClose={() => setShortcutsOpen(false)} />
             )}
 
             <VideoControls onToggleQueue={() => setQueueOpen((v) => !v)} />

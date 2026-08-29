@@ -9,6 +9,7 @@ export {
     type CatalogItem,
     type Episode,
     type Movie,
+    type MovieSaga,
     type ProtoData,
     type Rating,
     type Season,

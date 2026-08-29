@@ -106,7 +106,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                 </div>
 
                 <div style={{
-                    fontFamily: T.display, fontStyle: 'italic',
+                    fontFamily: T.display,
                     fontSize: short ? 20 : r.touch ? 26 : 36, fontWeight: 300,
                     color: 'rgba(255,255,255,0.72)', marginBottom: 6
                 }}>

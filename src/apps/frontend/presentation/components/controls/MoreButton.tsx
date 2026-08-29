@@ -51,6 +51,8 @@ type Props = {
     // Para series: id del episodio con el que arrancar "Reproducir siguiente
     // episodio" / "Reproducir todo". Si no viene, esas opciones se ocultan.
     nextEpisodeId?: string;
+    // Callback personalizado de reproducción aleatoria (para reproducir con el player propio)
+    onShuffle?: () => void;
 };
 
 // Botón "más opciones" (tres puntos) con menú flotante y editor de metadata
@@ -67,7 +69,7 @@ type MenuPos = {
 
 export function MoreButton({
     id, size = 18, items, type = 'show', itemTitle, nextEpisodeId,
-    queueSubtitle, queuePoster, handle, hideTrigger
+    queueSubtitle, queuePoster, handle, hideTrigger, onShuffle
 }: Props) {
     const [open, setOpen] = useState(false);
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
@@ -244,7 +246,9 @@ export function MoreButton({
         ],
         show: [
             ...continueEntries,
-            { label: t('Shuffle'), fn: () => openNative(undefined, '&shuffle=true') },
+            ...(onShuffle ?
+                [{ label: t('ShufflePlay') || t('Shuffle'), fn: onShuffle }] :
+                [{ label: t('Shuffle'), fn: () => openNative(undefined, '&shuffle=true') }]),
             { isDivider: true },
             ...queueing,
             { isDivider: true },

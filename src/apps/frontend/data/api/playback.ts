@@ -21,6 +21,8 @@ export type MediaStreamInfo = {
     path?: string;
 };
 
+import { extractTrickplay, type TrickplayData } from './playbackContext';
+
 export type PlaybackDecision = {
     kind: 'direct' | 'hls';
     url: string;
@@ -31,6 +33,7 @@ export type PlaybackDecision = {
     subtitleStreams: MediaStreamInfo[];
     activeAudioIndex?: number;
     activeSubtitleIndex?: number;
+    trickplay?: TrickplayData;
 };
 
 // Calidad máxima de streaming, configurable desde Ajustes → Reproducción.
@@ -172,13 +175,20 @@ async function negotiatePlayback(
     const activeAudioIndex = src.DefaultAudioStreamIndex ?? opts.audioStreamIndex;
     const activeSubtitleIndex = src.DefaultSubtitleStreamIndex ?? opts.subtitleStreamIndex;
 
+    const trickplayRaw = src.Trickplay
+        ?? (src as unknown as Record<string, unknown>).trickplay
+        ?? data.Trickplay
+        ?? (data as unknown as Record<string, unknown>).trickplay;
+    const trickplay = extractTrickplay(itemId, src.Id, trickplayRaw);
+
     const common = {
         playSessionId: data.PlaySessionId,
         mediaSourceId: src.Id,
         audioStreams,
         subtitleStreams,
         activeAudioIndex,
-        activeSubtitleIndex
+        activeSubtitleIndex,
+        trickplay
     };
     // Fuera del closure: dentro, TS pierde el estrechamiento del guard.
     const accessToken = session.accessToken;

@@ -30,7 +30,7 @@ import { normalizeServerUrl } from './http';
 import { clearShowCache } from './cache';
 import { invalidateLists } from './listCache';
 import { getShows, getShow } from './shows';
-import { getMovie, getMovies } from './movies';
+import { getMovie, getMovies, getMovieSaga } from './movies';
 import { getByGenre, getByPerson, getSimilar, searchCatalog } from './discover';
 import { getHomeCarousel } from './home';
 import { imageUrl } from './images';
@@ -52,7 +52,7 @@ import {
     getDeviceId,
     getMaxStreamingBitrate
 } from './playback';
-import { getNextEpisode, getPlaybackContext } from './playbackContext';
+import { getNextEpisode, getPlaybackContext, getTrickplayThumbnail } from './playbackContext';
 import { prewarmPlayback } from './playbackPrewarm';
 import { getMediaSegments } from './segments';
 import {
@@ -115,7 +115,7 @@ const authService = {
 };
 
 const catalogService = {
-    getShows, getShow, getMovie, getMovies, getHomeCarousel, clearShowCache, invalidateLists
+    getShows, getShow, getMovie, getMovies, getMovieSaga, getHomeCarousel, clearShowCache, invalidateLists
 };
 
 const discoverService = { getByGenre, getByPerson, getSimilar, searchCatalog };
@@ -142,6 +142,7 @@ const playbackService = {
     reportPlaybackStop,
     getMediaSegments,
     getPlaybackContext,
+    getTrickplayThumbnail,
     getNextEpisode,
     getDeviceId,
     getMaxStreamingBitrate

@@ -28,10 +28,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import globalize from 'lib/globalize';
 
-import CollectionsBookmarkRounded from '@mui/icons-material/CollectionsBookmarkRounded';
-import HomeRounded from '@mui/icons-material/HomeRounded';
-import SearchRounded from '@mui/icons-material/SearchRounded';
-
 import {
     fromAppPath,
     pathToRoute,
@@ -55,24 +51,47 @@ import {
     navSpace
 } from './navMetrics';
 
+function HomeNavIcon() {
+    return (
+        <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor'>
+            <path d='M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z' />
+        </svg>
+    );
+}
+
+function SearchNavIcon() {
+    return (
+        <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.2' strokeLinecap='round' strokeLinejoin='round'>
+            <circle cx='11' cy='11' r='7' />
+            <line x1='21' y1='21' x2='16.65' y2='16.65' />
+        </svg>
+    );
+}
+
+function ListsNavIcon() {
+    return (
+        <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor'>
+            <path d='M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 10l-2.5-1.5L15 12V4h5v8z' />
+        </svg>
+    );
+}
+
 export const NAV_CLASS = 'jfp-has-nav';
 
 /** Un segmento lleva a una página, o —la búsqueda— abre su capa encima. */
 type Tab = { id: string; key: string; icon: ReactNode; route?: Route };
-
-const ICON_STYLE = { fontSize: 22 } as const;
 
 // Portada, búsqueda y listas. La búsqueda está aquí y no arriba a la derecha
 // porque en un móvil el pulgar llega abajo y no al canto superior; en
 // escritorio la lupa sigue donde estaba (Nav.tsx), que allí manda el ratón.
 // Ajustes sigue dentro del menú del avatar: no es un sitio donde uno «esté».
 const TABS: Tab[] = [
-    { id: 'home', key: 'Home', icon: <HomeRounded style={ICON_STYLE} />, route: { page: 'home' } },
-    { id: 'search', key: 'Search', icon: <SearchRounded style={ICON_STYLE} /> },
+    { id: 'home', key: 'Home', icon: <HomeNavIcon />, route: { page: 'home' } },
+    { id: 'search', key: 'Search', icon: <SearchNavIcon /> },
     {
         id: 'lists',
         key: 'Lists',
-        icon: <CollectionsBookmarkRounded style={ICON_STYLE} />,
+        icon: <ListsNavIcon />,
         route: { page: 'lists' }
     }
 ];

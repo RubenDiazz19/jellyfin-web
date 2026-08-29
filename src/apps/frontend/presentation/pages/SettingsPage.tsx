@@ -156,7 +156,7 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
                     {mobileOpen === null ? (
                         <>
                             <h1 style={{
-                                fontFamily: T.display, fontStyle: 'italic', fontWeight: 300,
+                                fontFamily: T.display, fontWeight: 300,
                                 fontSize: 32, margin: '0 0 18px', letterSpacing: -0.5
                             }}>
                                 {globalize.translate('Settings')}
@@ -218,6 +218,7 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
                             <button
                                 key={item.id}
                                 onClick={() => setSection(item.id)}
+                                aria-current={section === item.id ? 'true' : undefined}
                                 style={{
                                     textAlign: 'left', padding: '10px 14px',
                                     background: section === item.id ? 'rgba(255,255,255,0.08)' : 'transparent',

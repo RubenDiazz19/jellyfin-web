@@ -83,12 +83,14 @@ type RowProps = {
      * sheet del menú de opciones, que ahí es donde hay sitio.
      */
     myList?: ReactNode;
+    /** Acciones secundarias como Shuffle. */
+    extra?: ReactNode;
     more: ReactNode;
     /** La ficha de película centra la fila; la de serie la deja a la izquierda. */
     center?: boolean;
 };
 
-export function HeroActionsRow({ children, myList, more, center }: RowProps) {
+export function HeroActionsRow({ children, myList, extra, more, center }: RowProps) {
     const r = useResponsive();
     return (
         <div style={{
@@ -98,6 +100,7 @@ export function HeroActionsRow({ children, myList, more, center }: RowProps) {
             justifyContent: center ? 'center' : undefined
         }}>
             {children}
+            {extra}
             {!r.touch && myList && (
                 <>
                     {myList}

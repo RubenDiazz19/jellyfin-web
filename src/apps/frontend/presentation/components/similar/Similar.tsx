@@ -32,7 +32,7 @@ export function Similar({ currentId, navigate }: Props) {
         <div style={{ marginTop: 88 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 24 }}>
                 <h3 style={{
-                    fontFamily: T.display, fontStyle: 'italic', fontSize: 30, fontWeight: 300, margin: 0
+                    fontFamily: T.display, fontSize: 30, fontWeight: 300, margin: 0
                 }}>
                     {globalize.translate('HeaderMoreLikeThis')}
                 </h3>

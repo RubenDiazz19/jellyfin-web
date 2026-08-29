@@ -10,7 +10,8 @@ import { persister, queryClient, PERSIST_MAX_AGE, shouldDehydrateQuery } from 'u
 
 import RootAppRouter from 'RootAppRouter';
 
-const useReactQueryDevtools = window.Proxy // '@tanstack/query-devtools' requires 'Proxy', which cannot be polyfilled for legacy browsers
+const useReactQueryDevtools = process.env.NODE_ENV !== 'production'
+    && window.Proxy // '@tanstack/query-devtools' requires 'Proxy', which cannot be polyfilled for legacy browsers
     && !browser.tv; // Don't use devtools on the TV as the navigation is weird
 
 const RootApp = () => (

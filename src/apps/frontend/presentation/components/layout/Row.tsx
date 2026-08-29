@@ -21,7 +21,7 @@ export function Row({ title, children, onTitleClick }: Props) {
     const r = useResponsive();
     const heading = (
         <h3 style={{
-            fontFamily: T.display, fontStyle: 'italic',
+            fontFamily: T.display,
             fontSize: r.touch ? 21 : 30, fontWeight: 300,
             margin: 0, letterSpacing: -0.3
         }}>

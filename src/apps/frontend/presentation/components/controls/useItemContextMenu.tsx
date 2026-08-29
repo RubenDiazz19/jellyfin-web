@@ -19,6 +19,7 @@ type Options = {
     queueSubtitle?: string;
     queuePoster?: string;
     nextEpisodeId?: string;
+    onShuffle?: () => void;
 };
 
 export function useItemContextMenu(opts: Options) {
@@ -59,6 +60,7 @@ export function useItemContextMenu(opts: Options) {
                 queueSubtitle={opts.queueSubtitle}
                 queuePoster={opts.queuePoster}
                 nextEpisodeId={opts.nextEpisodeId}
+                onShuffle={opts.onShuffle}
             />
         ) : null
     };

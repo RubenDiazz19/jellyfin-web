@@ -1,10 +1,17 @@
-import type { Movie } from '../models';
+import type { Movie, MovieSaga } from '../models';
 import { loadSession } from '../session/session';
 import { movieKey } from '../stores/itemKeys';
 import { WATCHED } from '../stores/watchedStore';
 import { isDeleted, itemGoneError } from './deleted';
 import { apiFetch, fetchUserItems, noSessionError } from './http';
-import { mapCommonFields, watchedFraction } from './itemMapping';
+import {
+    extractMediaBadges,
+    mapCommonFields,
+    summarizeAudio,
+    summarizeSubtitles,
+    summarizeVideo,
+    watchedFraction
+} from './itemMapping';
 import { cachedList } from './listCache';
 import { emitListsRefreshed } from './mutations';
 import { settlePlaybackReports } from './playback';
@@ -21,11 +28,19 @@ export function mapMovie(item: JFItem): Movie {
         )
     ).join(', ');
 
+    const source = item.MediaSources?.[0];
+    const streams = source?.MediaStreams ?? [];
+
     return {
         ...mapCommonFields(item),
         director: directors,
         watched: watchedFraction(item),
-        remaining: ''
+        remaining: '',
+        mediaBadges: extractMediaBadges(streams),
+        video: summarizeVideo(streams),
+        audio: summarizeAudio(streams),
+        subtitles: summarizeSubtitles(streams),
+        container: source?.Container ?? item.Container
     };
 }
 
@@ -63,4 +78,32 @@ export async function getMovie(id: string): Promise<Movie> {
     // Sincroniza el store local con lo que dice el server.
     WATCHED.sync([movieKey(movie.id)], (movie.watched ?? 0) >= 1 ? [movieKey(movie.id)] : []);
     return movie;
+}
+
+/** Obtiene la saga / colección a la que pertenece una película y sus títulos ordenados cronológicamente. */
+export async function getMovieSaga(movieId: string): Promise<MovieSaga | null> {
+    const session = loadSession();
+    if (!session?.userId) return null;
+    try {
+        const ancestors = await apiFetch<Array<{ Id: string; Name: string; Type?: string }>>(
+            `/Items/${movieId}/Ancestors?userId=${session.userId}`
+        );
+        const boxSet = (ancestors ?? []).find((a) => a.Type === 'BoxSet');
+        if (!boxSet?.Id) return null;
+
+        const items = await fetchUserItems<JFItem>(
+            `ParentId=${boxSet.Id}&SortBy=PremiereDate,ProductionYear,SortName&SortOrder=Ascending`
+            + `&Fields=${FIELDS_GRID}&EnableImageTypes=${GRID_IMAGE_TYPES}`
+        );
+        const movies = items.map(mapMovie);
+        if (movies.length === 0) return null;
+
+        return {
+            id: boxSet.Id,
+            name: boxSet.Name,
+            items: movies
+        };
+    } catch {
+        return null;
+    }
 }

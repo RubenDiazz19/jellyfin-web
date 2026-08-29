@@ -12,7 +12,6 @@ import { T } from '../../theme/tokens';
 
 const display: CSSProperties = {
     fontFamily: T.display,
-    fontStyle: 'italic',
     fontWeight: 300
 };
 

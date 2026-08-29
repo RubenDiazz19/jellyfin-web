@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { formatRemainingCompact } from '../theme/format';
@@ -403,7 +403,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                             <>
                                                 <Ic.Dot />
                                                 <span style={{
-                                                    fontStyle: 'italic', fontFamily: T.display, fontSize: 18
+                                                    fontFamily: T.display, fontSize: 18
                                                 }}>
                                                     {slide.episodeTitle}
                                                 </span>
@@ -517,13 +517,16 @@ function HomeLibraryProto({
     data: typeof PROTO_DATA; navigate: Navigate;
 }) {
     const r = useResponsive();
-    const cw = data.carousel.filter((s) => s.type === 'continue');
-    const movies = Object.values(data.movies);
-    const series = Object.values(data.shows);
-    const recent = [...movies, ...series]
-        .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
-        .slice(0, 8);
-    const hydrated = [...series, ...movies].some((x) => x.poster || x.backdrop);
+    const cw = useMemo(() => data.carousel.filter((s) => s.type === 'continue'), [data.carousel]);
+    const { movies, series, recent, hydrated } = useMemo(() => {
+        const m = Object.values(data.movies);
+        const s = Object.values(data.shows);
+        const rec = [...m, ...s]
+            .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
+            .slice(0, 8);
+        const hyd = [...s, ...m].some((x) => x.poster || x.backdrop);
+        return { movies: m, series: s, recent: rec, hydrated: hyd };
+    }, [data.movies, data.shows]);
     if (!hydrated) {
         return (
             <section style={{

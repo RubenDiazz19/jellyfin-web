@@ -1,7 +1,6 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { Ic } from '../theme/icons';
 import { formatDateLong, formatRemaining, formatRuntime } from '../theme/format';
 import { translateStatus } from '../../domain/status';
 import { episodeKey, WATCHED } from '../../domain/stores';
@@ -9,7 +8,7 @@ import { useWatchedVersion } from '../../domain/bridge/useWatched';
 import type { Show } from '../../domain/models';
 import { getHeroCategories, getItemCategories } from '../../domain/genres';
 import {
-    HeroFrame, HeroGenres, HeroTitle, useHeroLayout, type HeroTweaks
+    HeroFrame, HeroGenres, HeroMeta, HeroTitle, useHeroLayout, type HeroTweaks
 } from '../components/layout/DetailHero';
 import { HeroActionsRow, HeroPlayButton } from '../components/layout/HeroActions';
 import {
@@ -83,6 +82,26 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             navigate({ page: 'episode', showId: show.id, seasonN: target.seasonN, epN: target.epN });
         }
     };
+
+    const handleShuffle = () => {
+        const allEpisodes = (show.seasons || [])
+            .filter((s) => s.n >= 0)
+            .flatMap((s) => s.episodes.map((ep) => ({ season: s, episode: ep })))
+            .filter((item) => !!item.episode.jfId);
+
+        if (allEpisodes.length === 0) return;
+        const randomArr = new Uint32Array(1);
+        crypto.getRandomValues(randomArr);
+        const choice = allEpisodes[randomArr[0] % allEpisodes.length];
+        play({
+            itemId: choice.episode.jfId!,
+            title: `${show.title} · T${choice.season.n} E${String(choice.episode.n).padStart(2, '0')} — ${choice.episode.title ?? ''}`,
+            startTicks: 0
+        });
+    };
+
+    const showBadges = targetEp?.mediaBadges ?? show.mediaBadges;
+
     // Menú contextual sobre el hero: el mismo que el MoreButton visible, pero
     // se invoca con clic derecho sin tocar el botón.
     const ctx = useItemContextMenu({
@@ -90,6 +109,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
         type: 'show',
         itemTitle: show.title,
         nextEpisodeId: targetEp?.jfId,
+        onShuffle: handleShuffle,
         queueSubtitle: globalize.translate(
             'ValueSeasonEpisode',
             show.cont?.seasonN ?? show.defaultSeason,
@@ -144,30 +164,14 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                 />
 
                 {!minimal && (
-                    <div style={{
-                        marginTop: short ? 8 : r.touch ? 12 : 18,
-                        display: 'flex', alignItems: 'center', gap: r.touch ? 8 : 14,
-                        flexWrap: 'wrap',
-                        justifyContent: inlineJustify,
-                        fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.78)'
-                    }}>
-                        <span>{show.year}</span><Ic.Dot />
-                        <span>{show.seasons.length} temporadas</span><Ic.Dot />
-                        <span style={{
-                            border: '1px solid rgba(255,255,255,0.35)', padding: '3px 8px',
-                            fontSize: 11, letterSpacing: 1
-                        }}>
-                            {show.rating.age}
-                        </span>
-                        {show.rating.imdb > 0 && (
-                            <>
-                                <Ic.Dot />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                    <Ic.Imdb /> {show.rating.imdb.toFixed(1)}
-                                </span>
-                            </>
-                        )}
-                    </div>
+                    <HeroMeta
+                        items={[show.year, `${show.seasons.length} temporadas`]}
+                        ageRating={show.rating.age}
+                        imdbRating={show.rating.imdb}
+                        badges={showBadges}
+                        align={inlineJustify === 'center' ? 'center' : 'left'}
+                        marginTop={short ? 8 : r.touch ? 12 : 18}
+                    />
                 )}
 
                 <HeroActionsRow
@@ -180,6 +184,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                                     .find((s) => s.n === (show.cont?.seasonN ?? show.defaultSeason))
                                     ?.episodes.find((e) => e.n === (show.cont?.epN ?? 1))?.jfId
                             }
+                            onShuffle={handleShuffle}
                             queueSubtitle={globalize.translate(
                                 'ValueSeasonEpisode',
                                 show.cont?.seasonN ?? show.defaultSeason,

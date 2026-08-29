@@ -5,7 +5,7 @@
 import globalize from 'lib/globalize';
 
 import {
-    useEffect, useMemo, useRef, useState, type ReactNode
+    Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode
 } from 'react';
 import {
     chapterDisplayName, playerMarks, segmentDisplayName,
@@ -14,7 +14,10 @@ import {
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { PlayerIc } from './playerIcons';
-import { SubtitlePickerModal } from './SubtitlePickerModal';
+
+const SubtitlePickerModal = lazy(() =>
+    import('./SubtitlePickerModal').then((m) => ({ default: m.SubtitlePickerModal }))
+);
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -50,8 +53,19 @@ function rateLabel(rate: number): string {
     return rate === 1 ? globalize.translate('Normal') : `${rate}×`;
 }
 
+function sleepTimerLabel(mode: string, remaining: number | null): string {
+    if (mode === 'off') return globalize.translate('SleepTimerOff');
+    if (mode === 'episode') return globalize.translate('SleepTimerEndOfEpisode');
+    if (remaining != null && remaining > 0) {
+        const mins = Math.floor(remaining / 60);
+        const secs = Math.floor(remaining % 60);
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+    }
+    return globalize.translate('SleepTimerMinutes', Number(mode) || 0);
+}
+
 /** Secciones del panel. `null` = la lista de secciones (primer nivel). */
-type SectionId = 'chapters' | 'subs' | 'audio' | 'speed' | 'aspect';
+type SectionId = 'chapters' | 'subs' | 'audio' | 'speed' | 'aspect' | 'sleep';
 
 export function VideoSettingsMenu() {
     // Este botón vive montado todo el rato dentro de la barra de controles.
@@ -65,7 +79,8 @@ export function VideoSettingsMenu() {
     useVmSignals(videoPlayerVM, (vm) => [
         vm.audioTracks, vm.subtitleTracks, vm.playbackRate, vm.aspectRatio,
         vm.titlePref, vm.titleIsSeries, vm.selectedSubtitle, vm.selectedAudio,
-        vm.chapters, vm.segmentList
+        vm.chapters, vm.segmentList, vm.subtitleOffset, vm.sleepTimerMode,
+        vm.sleepTimerRemaining
     ]);
     const [open, setOpen] = useState(false);
     const [section, setSection] = useState<SectionId | null>(null);
@@ -90,6 +105,9 @@ export function VideoSettingsMenu() {
     const isSeries = videoPlayerVM.titleIsSeries.value;
     const selectedSubtitle = videoPlayerVM.selectedSubtitle.value;
     const selectedAudio = videoPlayerVM.selectedAudio.value;
+    const subOffset = videoPlayerVM.subtitleOffset.value;
+    const sleepMode = videoPlayerVM.sleepTimerMode.value;
+    const sleepRemaining = videoPlayerVM.sleepTimerRemaining.value;
     const itemId = videoPlayerVM.currentItemId;
 
     // Saltos disponibles: capítulos del fichero + tramos detectados (intro,
@@ -171,6 +189,11 @@ export function VideoSettingsMenu() {
                                 value={aspectLabel}
                                 onOpen={() => setSection('aspect')}
                             />
+                            <SectionRow
+                                label={globalize.translate('SleepTimer')}
+                                value={sleepTimerLabel(sleepMode, sleepRemaining)}
+                                onOpen={() => setSection('sleep')}
+                            />
                         </section>
                     ) : (
                         <section>
@@ -180,6 +203,7 @@ export function VideoSettingsMenu() {
                                 {section === 'audio' && globalize.translate('Audio')}
                                 {section === 'speed' && globalize.translate('LabelPlaybackSpeed')}
                                 {section === 'aspect' && globalize.translate('AspectRatio')}
+                                {section === 'sleep' && globalize.translate('SleepTimer')}
                             </SectionHeader>
 
                             {section === 'chapters' && (
@@ -207,6 +231,46 @@ export function VideoSettingsMenu() {
                                             onSelect={() => videoPlayerVM.setSubtitleTrack(s.index)}
                                         />
                                     ))}
+                                    {selectedSubtitle != null && (
+                                        <div className='jfp-video-settings-offset'>
+                                            <span className='jfp-video-settings-offset-title'>
+                                                {globalize.translate('SubtitleOffset')}
+                                            </span>
+                                            <div className='jfp-video-settings-offset-controls'>
+                                                <button
+                                                    type='button'
+                                                    className='jfp-video-settings-offset-btn'
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => videoPlayerVM.adjustSubtitleOffset(-0.1)}
+                                                    aria-label='-100ms'
+                                                >
+                                                    -0.1s
+                                                </button>
+                                                <span className='jfp-video-settings-offset-val'>
+                                                    {subOffset > 0 ? `+${subOffset.toFixed(1)}s` : `${subOffset.toFixed(1)}s`}
+                                                </span>
+                                                <button
+                                                    type='button'
+                                                    className='jfp-video-settings-offset-btn'
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => videoPlayerVM.adjustSubtitleOffset(0.1)}
+                                                    aria-label='+100ms'
+                                                >
+                                                    +0.1s
+                                                </button>
+                                                {subOffset !== 0 && (
+                                                    <button
+                                                        type='button'
+                                                        className='jfp-video-settings-offset-reset'
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                        onClick={() => videoPlayerVM.resetSubtitleOffset()}
+                                                    >
+                                                        {globalize.translate('SubtitleOffsetReset')}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                     {prefNote}
                                     {itemId && (
                                         <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 4, paddingTop: 4 }}>
@@ -258,16 +322,41 @@ export function VideoSettingsMenu() {
                                     onSelect={() => videoPlayerVM.setAspectRatio(a.id)}
                                 />
                             ))}
+
+                            {section === 'sleep' && (
+                                <>
+                                    <MenuOption
+                                        label={globalize.translate('SleepTimerOff')}
+                                        active={sleepMode === 'off'}
+                                        onSelect={() => videoPlayerVM.setSleepTimer('off')}
+                                    />
+                                    <MenuOption
+                                        label={globalize.translate('SleepTimerEndOfEpisode')}
+                                        active={sleepMode === 'episode'}
+                                        onSelect={() => videoPlayerVM.setSleepTimer('episode')}
+                                    />
+                                    {(['15', '30', '45', '60'] as const).map((m) => (
+                                        <MenuOption
+                                            key={m}
+                                            label={globalize.translate('SleepTimerMinutes', Number(m))}
+                                            active={sleepMode === m}
+                                            onSelect={() => videoPlayerVM.setSleepTimer(m)}
+                                        />
+                                    ))}
+                                </>
+                            )}
                         </section>
                     )}
                 </div>
             )}
 
             {subModalOpen && itemId && (
-                <SubtitlePickerModal
-                    itemId={itemId}
-                    onClose={() => setSubModalOpen(false)}
-                />
+                <Suspense fallback={null}>
+                    <SubtitlePickerModal
+                        itemId={itemId}
+                        onClose={() => setSubModalOpen(false)}
+                    />
+                </Suspense>
             )}
         </div>
     );

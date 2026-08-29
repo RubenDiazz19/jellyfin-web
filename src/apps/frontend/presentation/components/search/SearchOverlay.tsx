@@ -19,11 +19,11 @@ import { SelectionBar } from '../controls/SelectionBar';
 import { NAV_BOTTOM_VAR } from '../nav/navMetrics';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
-import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 
 export function SearchOverlay({ navigate }: { navigate: Navigate }) {
-    useViewModel(searchVM);
+    useVmSignals(searchVM, (vm) => [vm.overlayOpen, vm.results]);
     const r = useResponsive();
     const open = searchVM.overlayOpen.value;
 

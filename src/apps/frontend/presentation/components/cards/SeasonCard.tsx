@@ -70,7 +70,7 @@ export const SeasonCard = React.memo(function SeasonCardBase({ show, season, nav
                     position: 'absolute', left: 14, right: 14, bottom: 0, padding: '0 0 18px 0'
                 }}>
                     <div style={{
-                        fontFamily: T.display, fontStyle: 'italic', fontSize: 40, lineHeight: 0.9,
+                        fontFamily: T.display, fontSize: 40, lineHeight: 0.9,
                         margin: 0, fontWeight: 300, letterSpacing: -0.5,
                         textShadow: '0 2px 16px rgba(0,0,0,0.5)',
                         color: 'rgba(255,255,255,0.92)'

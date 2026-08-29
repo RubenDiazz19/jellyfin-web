@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { mapCommonFields } from '../itemMapping';
+import { extractMediaBadges, mapCommonFields } from '../itemMapping';
 import { mapMovie } from '../movies';
 import { mapShow } from '../shows';
 import type { JFItem } from '../types';
@@ -62,5 +62,60 @@ describe('itemMapping and detail fields', () => {
         expect(movie.director).toBe('Anthony Russo, Joe Russo');
         expect(movie.studio).toBe('FX Productions, DNA Films');
         expect(movie.country).toBe('United States, Japan');
+    });
+
+    test('extractMediaBadges extrae correctamente 4K UHD, Dolby Vision, Atmos, 5.1 y HEVC', () => {
+        const badges = extractMediaBadges([
+            {
+                Index: 0,
+                Type: 'Video',
+                Width: 3840,
+                Height: 2160,
+                Codec: 'hevc',
+                VideoRangeType: 'DOVIWithHDR10'
+            },
+            {
+                Index: 1,
+                Type: 'Audio',
+                Codec: 'truehd',
+                Channels: 6,
+                ChannelLayout: '5.1',
+                AudioSpatialFormat: 'DolbyAtmos',
+                IsDefault: true
+            }
+        ]);
+
+        expect(badges).toContain('4K UHD');
+        expect(badges).toContain('Dolby Vision');
+        expect(badges).toContain('HEVC');
+        expect(badges).toContain('Dolby Atmos');
+        expect(badges).toContain('5.1');
+    });
+
+    test('extractMediaBadges extrae HDR10+, DTS-HD y 7.1', () => {
+        const badges = extractMediaBadges([
+            {
+                Index: 0,
+                Type: 'Video',
+                Width: 1920,
+                Height: 1080,
+                Codec: 'h264',
+                VideoRangeType: 'HDR10+'
+            },
+            {
+                Index: 1,
+                Type: 'Audio',
+                Codec: 'dts-hd',
+                Channels: 8,
+                ChannelLayout: '7.1',
+                IsDefault: true
+            }
+        ]);
+
+        expect(badges).toContain('1080p');
+        expect(badges).toContain('HDR10+');
+        expect(badges).toContain('H.264');
+        expect(badges).toContain('DTS-HD');
+        expect(badges).toContain('7.1');
     });
 });

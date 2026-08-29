@@ -1,15 +1,13 @@
-// Modal item editor. Each tab is a self-contained subcomponent so state stays
-// isolated per tab.
-
 import globalize from 'lib/globalize';
 
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../../theme/tokens';
-import { IdentifyTab } from './IdentifyTab';
-import { ImagesTab } from './ImagesTab';
 import { MetadataTab } from './MetadataTab';
-import { SubtitlesTab } from './SubtitlesTab';
+
+const IdentifyTab = lazy(() => import('./IdentifyTab').then((m) => ({ default: m.IdentifyTab })));
+const ImagesTab = lazy(() => import('./ImagesTab').then((m) => ({ default: m.ImagesTab })));
+const SubtitlesTab = lazy(() => import('./SubtitlesTab').then((m) => ({ default: m.SubtitlesTab })));
 
 export type EditorKind = 'movie' | 'show' | 'season' | 'episode';
 
@@ -93,10 +91,12 @@ export function MetadataEditor({ itemId, kind, initialTab = 'metadata', onClose 
                 </div>
 
                 <div style={{ overflowY: 'auto', padding: 22, flex: 1 }}>
-                    {tab === 'metadata' && <MetadataTab itemId={itemId} onClose={onClose} />}
-                    {tab === 'identify' && canIdentify && <IdentifyTab itemId={itemId} kind={kind} onClose={onClose} />}
-                    {tab === 'images' && <ImagesTab itemId={itemId} />}
-                    {tab === 'subtitles' && canSubs && <SubtitlesTab itemId={itemId} />}
+                    <Suspense fallback={<div style={{ padding: '32px 0', textAlign: 'center', color: T.dim }}>{globalize.translate('Loading')}</div>}>
+                        {tab === 'metadata' && <MetadataTab itemId={itemId} onClose={onClose} />}
+                        {tab === 'identify' && canIdentify && <IdentifyTab itemId={itemId} kind={kind} onClose={onClose} />}
+                        {tab === 'images' && <ImagesTab itemId={itemId} />}
+                        {tab === 'subtitles' && canSubs && <SubtitlesTab itemId={itemId} />}
+                    </Suspense>
                 </div>
             </div>
         </div>,

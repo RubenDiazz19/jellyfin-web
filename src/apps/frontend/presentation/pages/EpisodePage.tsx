@@ -1,11 +1,10 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { Ic } from '../theme/icons';
 import { formatDateLong, formatRemainingCompact } from '../theme/format';
 import { findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { useWatched } from '../../domain/bridge/useWatched';
-import { HeroFrame } from '../components/layout/DetailHero';
+import { HeroFrame, HeroMeta } from '../components/layout/DetailHero';
 import {
     DetailBody, DetailColumns, DetailRow, DetailStatus, DetailTable, SectionLabel
 } from '../components/layout/DetailSections';
@@ -182,22 +181,18 @@ function EpisodeHero({
                         </span>
                     </div>
 
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: r.touch ? 8 : 12,
-                        flexWrap: 'wrap', justifyContent: 'center',
-                        fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.6)'
-                    }}>
-                        {ep.runtime != null && <><span>{ep.runtime} min</span><Ic.Dot /></>}
-                        {ep.date && (
-                            <>
-                                <span>
-                                    {formatDateLong(ep.date)}
-                                </span>
-                                <Ic.Dot />
-                            </>
-                        )}
-                        {ep.video && <span>{ep.video}</span>}
-                    </div>
+                    <HeroMeta
+                        items={[
+                            ep.runtime != null ? `${ep.runtime} min` : null,
+                            ep.date ? formatDateLong(ep.date) : null,
+                            ep.video
+                        ]}
+                        badges={ep.mediaBadges}
+                        badgeSize='sm'
+                        align='center'
+                        color='rgba(255,255,255,0.6)'
+                        marginTop={short ? 8 : 12}
+                    />
                 </div>
             </>
             {ctx.menu}
@@ -318,7 +313,7 @@ function EpisodeDetail({
                                     </div>
                                     <div style={{
                                         position: 'absolute', left: 16, bottom: 12,
-                                        fontFamily: T.display, fontSize: 22, fontStyle: 'italic'
+                                        fontFamily: T.display, fontSize: 22
                                     }}>
                                         {String(nextEp.n).padStart(2, '0')} · {nextEp.title}
                                     </div>

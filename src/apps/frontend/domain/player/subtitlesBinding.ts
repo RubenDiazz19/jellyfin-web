@@ -13,6 +13,9 @@ export class SubtitlesBinding {
     /** URL del VTT activo (solo subtítulos de texto). La View pinta <track>. */
     subtitleUrl = signal<string | null>(null);
 
+    /** Desfase manual de sincronización en segundos (ej. +0.5s o -0.5s). */
+    subtitleOffset = signal<number>(0);
+
     /**
      * Subtítulo que el servidor está quemando en el flujo de vídeo (subtítulo
      * gráfico: PGS, VOBSUB). Si está puesto, cambiar de subtítulo exige
@@ -43,11 +46,27 @@ export class SubtitlesBinding {
         this.subtitleUrl.value = url;
     }
 
+    /** Ajusta el desfase de subtítulos absoluto en segundos (acotado entre -30s y +30s). */
+    setSubtitleOffset(seconds: number): void {
+        const clamped = Math.round(Math.min(Math.max(seconds, -30), 30) * 10) / 10;
+        this.subtitleOffset.value = clamped;
+    }
+
+    /** Incrementa o decrementa el desfase de subtítulos (ej. ±0.1s). */
+    adjustSubtitleOffset(delta: number): void {
+        this.setSubtitleOffset(this.subtitleOffset.value + delta);
+    }
+
+    resetSubtitleOffset(): void {
+        this.subtitleOffset.value = 0;
+    }
+
     reset(): void {
         this.subtitleTracks.value = [];
         this.selectedSubtitle.value = null;
         this.subtitleUrl.value = null;
         this.pendingSubtitleUrl = null;
         this.burnedSubtitle = null;
+        this.subtitleOffset.value = 0;
     }
 }

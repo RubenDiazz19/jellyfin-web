@@ -1,12 +1,11 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { Ic } from '../theme/icons';
 import { formatDateLong, formatRemaining, formatRuntime } from '../theme/format';
 import { useWatched } from '../../domain/bridge/useWatched';
 import type { Movie } from '../../domain/models';
 import {
-    HeroFrame, HeroGenres, HeroTitle, useHeroLayout, type HeroTweaks
+    HeroFrame, HeroGenres, HeroMeta, HeroTitle, useHeroLayout, type HeroTweaks
 } from '../components/layout/DetailHero';
 import { HeroActionsRow, HeroPlayButton } from '../components/layout/HeroActions';
 import {
@@ -25,7 +24,9 @@ import type { Navigate } from '../../app/router';
 import { getHeroCategories, getItemCategories } from '../../domain/genres';
 import { useMovieEntity } from './useDetailEntity';
 import { movieKey } from '../../domain/stores';
+import { movieVM } from '../../domain/viewModels/MovieViewModel';
 import { ticksFromProgress } from '../../domain/player/format';
+import { SagaSection } from '../components/collection/SagaSection';
 
 type PageProps = { movieId: string; navigate: Navigate; hero?: HeroTweaks };
 
@@ -131,29 +132,14 @@ function MovieHero({
                 />
 
                 {!minimal && (
-                    <div style={{
-                        marginTop: short ? 8 : r.touch ? 14 : 22,
-                        display: 'flex', alignItems: 'center', gap: r.touch ? 10 : 18,
-                        flexWrap: 'wrap', justifyContent: 'center',
-                        fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.78)'
-                    }}>
-                        <span>{movie.year}</span><Ic.Dot />
-                        <span>{formatRuntime(movie.runtime)}</span><Ic.Dot />
-                        <span style={{
-                            border: '1px solid rgba(255,255,255,0.35)', padding: '2px 6px',
-                            fontSize: 10, letterSpacing: 1
-                        }}>
-                            {movie.rating.age}
-                        </span>
-                        {movie.rating.imdb > 0 && (
-                            <>
-                                <Ic.Dot />
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                    <Ic.Imdb /> {movie.rating.imdb.toFixed(1)}
-                                </span>
-                            </>
-                        )}
-                    </div>
+                    <HeroMeta
+                        items={[movie.year, formatRuntime(movie.runtime)]}
+                        ageRating={movie.rating.age}
+                        imdbRating={movie.rating.imdb}
+                        badges={movie.mediaBadges}
+                        align='center'
+                        marginTop={short ? 8 : r.touch ? 14 : 22}
+                    />
                 )}
 
                 <HeroActionsRow
@@ -192,6 +178,8 @@ function MovieHero({
 }
 
 function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) {
+    const saga = movieVM.saga.value;
+
     return (
         <DetailBody>
             <DetailColumns>
@@ -236,9 +224,25 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                                 {formatDateLong(movie.premiere)}
                             </DetailRow>
                         )}
+                        {movie.video && (
+                            <DetailRow label={globalize.translate('Video')}>{movie.video}</DetailRow>
+                        )}
+                        {movie.audio && (
+                            <DetailRow label={globalize.translate('Audio')}>{movie.audio}</DetailRow>
+                        )}
+                        {movie.subtitles && (
+                            <DetailRow label={globalize.translate('Subtitles')}>{movie.subtitles}</DetailRow>
+                        )}
+                        {movie.container && (
+                            <DetailRow label={globalize.translate('MediaInfoContainer')}>
+                                {movie.container.toUpperCase()}
+                            </DetailRow>
+                        )}
                     </DetailTable>
                 </div>
             </DetailColumns>
+
+            {saga && <SagaSection saga={saga} currentMovieId={movie.id} navigate={navigate} />}
 
             <Similar currentId={movie.id} navigate={navigate} />
         </DetailBody>

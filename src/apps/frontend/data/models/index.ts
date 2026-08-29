@@ -22,6 +22,7 @@ export type Episode = {
     audio?: string;
     subtitles?: string;
     container?: string;
+    mediaBadges?: string[];
 };
 
 export type Season = {
@@ -72,6 +73,7 @@ export type Show = {
     backdrops?: string[];
     poster?: string;
     logo?: string | null;
+    mediaBadges?: string[];
 };
 
 export type Movie = {
@@ -101,6 +103,17 @@ export type Movie = {
     backdrops?: string[];
     poster?: string;
     logo?: string | null;
+    mediaBadges?: string[];
+    video?: string;
+    audio?: string;
+    subtitles?: string;
+    container?: string;
+};
+
+export type MovieSaga = {
+    id: string;
+    name: string;
+    items: Movie[];
 };
 
 /**

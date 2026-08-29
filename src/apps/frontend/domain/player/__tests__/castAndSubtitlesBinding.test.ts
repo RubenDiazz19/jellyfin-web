@@ -95,17 +95,36 @@ describe('SubtitlesBinding', () => {
         expect(sub.subtitleUrl.value).toBe('http://vtt/2');
     });
 
+    test('control de desfase de subtítulos y redondeo', () => {
+        const sub = new SubtitlesBinding();
+        expect(sub.subtitleOffset.value).toBe(0);
+
+        sub.setSubtitleOffset(1.5);
+        expect(sub.subtitleOffset.value).toBe(1.5);
+
+        sub.adjustSubtitleOffset(0.1);
+        expect(sub.subtitleOffset.value).toBe(1.6);
+
+        sub.adjustSubtitleOffset(-0.3);
+        expect(sub.subtitleOffset.value).toBe(1.3);
+
+        sub.resetSubtitleOffset();
+        expect(sub.subtitleOffset.value).toBe(0);
+    });
+
     test('reset limpia todos los signals y propiedades', () => {
         const sub = new SubtitlesBinding();
         sub.subtitleTracks.value = [{ index: 1, displayTitle: 'ES', isDefault: true, isText: true }];
         sub.selectedSubtitle.value = 1;
         sub.subtitleUrl.value = 'http://vtt/1';
+        sub.subtitleOffset.value = 2.5;
         sub.burnedSubtitle = 2;
 
         sub.reset();
         expect(sub.subtitleTracks.value).toEqual([]);
         expect(sub.selectedSubtitle.value).toBeNull();
         expect(sub.subtitleUrl.value).toBeNull();
+        expect(sub.subtitleOffset.value).toBe(0);
         expect(sub.burnedSubtitle).toBeNull();
     });
 });

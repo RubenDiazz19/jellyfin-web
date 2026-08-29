@@ -131,6 +131,25 @@ const Refresh = ({ size = 16, stroke = 'currentColor', sw = 1.7 }: IconProps) =>
     </svg>
 );
 
+const Shuffle = ({ size = 18, stroke = 'currentColor', sw = 1.6 }: IconProps) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox='0 0 24 24'
+        fill='none'
+        stroke={stroke}
+        strokeWidth={sw}
+        strokeLinecap='round'
+        strokeLinejoin='round'
+    >
+        <polyline points='16 3 21 3 21 8' />
+        <line x1='4' y1='20' x2='21' y2='3' />
+        <polyline points='21 16 21 21 16 21' />
+        <line x1='15' y1='15' x2='21' y2='21' />
+        <line x1='4' y1='4' x2='9' y2='9' />
+    </svg>
+);
+
 const Dots = ({ size = 18 }: { size?: number }) => (
     <svg
         width={size}
@@ -145,7 +164,7 @@ const Dots = ({ size = 18 }: { size?: number }) => (
     </svg>
 );
 
-export const Ic = { Play, Plus, Check, Search, Arrow, Imdb, Dot, Heart, Tick, Dots, Refresh };
+export const Ic = { Play, Plus, Check, Search, Arrow, Imdb, Dot, Heart, Tick, Dots, Refresh, Shuffle };
 
 // Silueta del logo de Jellyfin como SVG inline. No reproduce el PNG a color
 // (es un perfil blanco) sino que da un fallback estable cuando el asset falla
