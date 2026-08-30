@@ -325,7 +325,7 @@ describe('capa de conexión', () => {
 
             expect(manager.getSavedServers().map((s: ServerRecord) => s.Id))
                 .toEqual(['nuevo', 'medio', 'viejo']);
-            expect(manager.getLastUsedServer().Id).toBe('nuevo');
+            expect(manager.getLastUsedServer()?.Id).toBe('nuevo');
         });
 
         it('sin servidores guardados no hay último servidor', () => {

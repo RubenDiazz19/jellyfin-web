@@ -9,3 +9,6 @@ declare module '*.scss' {
     const value: string;
     export default value;
 }
+
+declare module 'material-design-icons-iconfont';
+

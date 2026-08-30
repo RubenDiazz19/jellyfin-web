@@ -24,6 +24,8 @@
 // final de la lista de configs, y borrar de eslint/style.mjs las reglas
 // @stylistic puramente tipográficas.
 
+import './ts6-compat.mjs';
+
 // eslint-disable-next-line import/no-unresolved
 import tseslint from 'typescript-eslint';
 

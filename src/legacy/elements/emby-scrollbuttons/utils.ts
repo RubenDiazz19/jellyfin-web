@@ -95,7 +95,7 @@ function scrollToWindow({
     }
 
     if (scroller.slideTo) {
-        scroller.slideTo(scrollToPosition, false, undefined);
+        scroller.slideTo(scrollToPosition, false);
     } else {
         // @ts-expect-error Legacy support passes in a `scroller` that isn't a ScrollFactory
         scroller.scrollToPosition(scrollToPosition);

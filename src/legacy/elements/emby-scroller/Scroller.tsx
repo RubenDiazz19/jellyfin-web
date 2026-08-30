@@ -99,16 +99,18 @@ const Scroller: FC<PropsWithChildren<ScrollerProps>> = ({
         }
 
         const slider = getScrollSlider();
-        style = window.getComputedStyle(slider, null);
+        if (slider) {
+            style = window.getComputedStyle(slider, null);
 
-        paddingLeft = getStyleValue(style, 'padding-left');
-        if (paddingLeft) {
-            scrollSize -= paddingLeft;
-        }
+            paddingLeft = getStyleValue(style, 'padding-left');
+            if (paddingLeft) {
+                scrollSize -= paddingLeft;
+            }
 
-        paddingRight = getStyleValue(style, 'padding-right');
-        if (paddingRight) {
-            scrollSize -= paddingRight;
+            paddingRight = getStyleValue(style, 'padding-right');
+            if (paddingRight) {
+                scrollSize -= paddingRight;
+            }
         }
 
         return scrollSize;
