@@ -209,13 +209,16 @@ function AuthedApp() {
                 key={location.pathname}
                 ref={pageRef}
                 tabIndex={-1}
+                onAnimationEnd={(e) => {
+                    e.currentTarget.style.animation = 'none';
+                }}
                 // Mobile/tablet: slide corto M3. El transform solo existe
                 // durante los ~280 ms de animación (termina en `none`), así
                 // que la ventana de riesgo del containing-block para menús
                 // fixed (ver global.css) queda acotada. Desktop: fade actual.
                 style={{
                     animation: mobileLayout ?
-                        'jfp-slide-in var(--md-sys-motion-duration-medium1, 0.28s) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1)) both' :
+                        'jfp-slide-in var(--md-sys-motion-duration-medium1, 0.28s) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1))' :
                         'jfp-fade-in 0.65s ease',
                     outline: 'none'
                 }}

@@ -39,15 +39,18 @@ export function DetailStatus({ error }: { error?: string | null }) {
     );
 }
 
-/** Todo lo que va bajo el hero de una ficha. */
+/** Todo lo que va bajo el hero de una ficha: se desliza suavemente sobre el hero fijo. */
 export function DetailBody({ children }: { children: ReactNode }) {
     const r = useResponsive();
     return (
         <section style={{
-            background: r.touch ? `linear-gradient(to bottom, #000 0%, ${MC.bg} 500px)` : '#000',
+            position: 'relative',
+            zIndex: 2,
+            background: 'transparent',
             color: r.touch ? MC.fg : '#fff',
             padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px',
-            fontFamily: T.ui
+            fontFamily: T.ui,
+            minHeight: '100vh'
         }}>
             {children}
         </section>

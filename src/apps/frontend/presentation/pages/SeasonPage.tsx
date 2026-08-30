@@ -36,10 +36,10 @@ export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
         return null;
     }
     return (
-        <>
+        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
             <SeasonHero show={show} season={season} navigate={navigate} />
             <SeasonDetail show={show} season={season} navigate={navigate} />
-        </>
+        </div>
     );
 }
 

@@ -13,6 +13,8 @@ type Props = {
      * desenfoca fuerte y se oscurece para que se lea como textura.
      */
     blurred?: boolean;
+    /** Si incluye el degradado inferior a negro. Por defecto true. */
+    bottomFade?: boolean;
 };
 
 // Fondo de hero: imagen a pantalla completa con veladura + vignette + fade
@@ -25,7 +27,7 @@ type Props = {
 // precarga con `new Image()` para que el crossfade no parpadee.
 export function Backdrop({
     src, srcs, intervalMs = 8000, fadeMs = 1500,
-    vignette = 0.38, sharp = false, blurred = false
+    vignette = 0.38, sharp = false, blurred = false, bottomFade = true
 }: Props) {
     const pool = (srcs && srcs.length > 0 ? srcs : [src]).filter(Boolean);
     const [idx, setIdx] = useState(0);
@@ -89,12 +91,14 @@ export function Backdrop({
                 position: 'absolute', inset: 0,
                 background: `radial-gradient(ellipse at center, transparent 28%, rgba(0,0,0,${vignette}) 100%)`
             }} />
-            {/* El remate inferior funde a negro puro para enlazar suavemente con el
-                inicio de la sección inferior, eliminando cualquier costura. */}
-            <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to bottom, transparent 72%, rgba(0,0,0,0.25) 86%, rgba(0,0,0,0.65) 95%, #000 100%)'
-            }} />
+            {/* El remate inferior funde a negro para enlazar suavemente con el
+                inicio de la sección inferior, manteniendo la imagen del hero visible. */}
+            {bottomFade && (
+                <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to bottom, transparent 80%, rgba(0,0,0,0.18) 90%, rgba(0,0,0,0.55) 97%, #000 100%)'
+                }} />
+            )}
             <div style={{
                 position: 'absolute', top: 0, left: 0, right: 0, height: 160,
                 background: 'linear-gradient(to bottom, rgba(0,0,0,0.30), transparent)'

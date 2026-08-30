@@ -41,10 +41,10 @@ export function EpisodePage({ showId, seasonN, epN, navigate }: PageProps) {
     }
     const nextEp = season.episodes.find((e) => e.n === epN + 1);
     return (
-        <>
+        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
             <EpisodeHero show={show} season={season} ep={ep} navigate={navigate} />
             <EpisodeDetail show={show} season={season} ep={ep} nextEp={nextEp} navigate={navigate} />
-        </>
+        </div>
     );
 }
 

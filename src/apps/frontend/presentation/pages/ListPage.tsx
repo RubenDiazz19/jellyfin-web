@@ -54,8 +54,7 @@ export function ListPage({ kind, listId, navigate }: Props) {
     const kindLabel = globalize.translate(kind === 'playlist' ? 'Playlists' : 'Collections');
 
     return (
-
-        <>
+        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
             <ListHero
                 kind={kind}
                 listId={listId}
@@ -76,7 +75,7 @@ export function ListPage({ kind, listId, navigate }: Props) {
                 />
                 <ListGrid items={items} error={error} navigate={navigate} />
             </DetailBody>
-        </>
+        </div>
     );
 }
 

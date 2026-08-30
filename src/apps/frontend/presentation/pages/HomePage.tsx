@@ -22,6 +22,7 @@ import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { SkeletonRow } from '../components/skeleton/Skeleton';
 import { MobileHero } from '../components/home/MobileHero';
 import { MC, useResponsive } from '../theme/responsive';
+import { useHomeScrollTransition } from './useHomeScrollTransition';
 import type { Navigate } from '../../app/router';
 
 export function HomePage({ navigate }: { navigate: Navigate }) {
@@ -51,12 +52,15 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     const wheelLockRef = useRef(false);
 
     const slideCount = slides.length;
+    const trans = useHomeScrollTransition();
 
+    // Pausa el carrusel durante arrastre, pausa manual o cuando el hero queda
+    // fuera de pantalla al hacer scroll, ahorrando ciclos de CPU/batería.
     useEffect(() => {
-        if (paused || dragging || slideCount <= 1) return;
+        if (paused || dragging || slideCount <= 1 || trans.isHeroOffscreen) return;
         const t = setTimeout(() => setIdx((n) => (n + 1) % slideCount), 8000);
         return () => clearTimeout(t);
-    }, [idx, paused, dragging, slideCount]);
+    }, [idx, paused, dragging, slideCount, trans.isHeroOffscreen]);
 
     const goSlide = useCallback(
         (n: number) => {
@@ -170,7 +174,8 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     // biblioteca no "salte" cuando lleguen los slides.
     if (heroLoading) {
         return (
-            <>
+            <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
+                <Nav navigate={navigate} active='home' />
                 <section style={{
                     position: 'relative',
                     // El hero táctil también es a pantalla completa y a
@@ -179,12 +184,10 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                     height: r.touch ? 'var(--jfp-viewport-h, 100vh)' : '100vh',
                     marginLeft: r.touch ? 'calc(-1 * var(--jfp-nav-left, 0px))' : undefined,
                     width: r.touch ? 'calc(100% + var(--jfp-nav-left, 0px))' : '100%',
-                    overflow: 'hidden', background: r.touch ? MC.surface : '#000'
-                }}>
-                    <Nav navigate={navigate} active='home' />
-                </section>
+                    overflow: 'hidden', background: '#000'
+                }} />
                 <HomeLibrary navigate={navigate} />
-            </>
+            </div>
         );
     }
 
@@ -200,43 +203,70 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         );
     }
 
-    // Mobile/tablet: hero compacto propio (40vh/55vh). El estado del
-    // carrusel (idx, autoplay, goSlide) es el mismo que usa el de desktop.
+    // Mobile/tablet: hero táctil con transición suave y fijo al deslizar.
     if (r.touch) {
         return (
-            <>
+            <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
                 <Nav navigate={navigate} active='home' />
-                <MobileHero
-                    slides={slides}
-                    idx={idx}
-                    tablet={r.tablet}
-                    goSlide={goSlide}
-                    onPlay={onPlay}
-                    navigate={navigate}
-                />
-                <HomeLibrary navigate={navigate} />
-            </>
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1,
+                    height: 'var(--jfp-viewport-h, 100vh)',
+                    overflow: 'hidden',
+                    touchAction: 'pan-y',
+                    opacity: trans.heroBackdropOpacity,
+                    pointerEvents: trans.heroInteractive ? 'auto' : 'none',
+                    willChange: 'opacity'
+                }}>
+                    <MobileHero
+                        slides={slides}
+                        idx={idx}
+                        tablet={r.tablet}
+                        goSlide={goSlide}
+                        onPlay={onPlay}
+                        navigate={navigate}
+                        contentOpacity={trans.heroContentOpacity}
+                        scrollHintOpacity={trans.scrollHintOpacity}
+                    />
+                </div>
+                <div style={{ height: 'var(--jfp-viewport-h, 100vh)', pointerEvents: 'none' }} />
+                <div style={{
+                    position: 'relative', zIndex: 2,
+                    background: 'transparent',
+                    minHeight: '100vh'
+                }}>
+                    <HomeLibrary
+                        navigate={navigate}
+                        titleOpacity={trans.titleOpacity}
+                        titleTranslateY={trans.titleTranslateY}
+                    />
+                </div>
+            </div>
         );
     }
 
     return (
-        <>
+        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
+            <Nav navigate={navigate} active='home' />
+
+            {/* Contenedor fixed del Hero: permanece 100% estático en su sitio sin desplazarse */}
             <section
                 ref={heroRef}
-                onPointerDown={onPointerDown}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUp}
-                onPointerCancel={onPointerUp}
+                onPointerDown={trans.heroInteractive ? onPointerDown : undefined}
+                onPointerMove={trans.heroInteractive ? onPointerMove : undefined}
+                onPointerUp={trans.heroInteractive ? onPointerUp : undefined}
+                onPointerCancel={trans.heroInteractive ? onPointerUp : undefined}
                 style={{
-                    position: 'relative', height: '100vh', width: '100%', overflow: 'hidden',
+                    position: 'fixed', top: 0, left: 0, height: '100vh', width: '100%', overflow: 'hidden',
                     background: '#000',
-                    cursor: dragging ? 'grabbing' : 'grab',
+                    cursor: dragging ? 'grabbing' : (trans.heroInteractive ? 'grab' : 'default'),
                     touchAction: 'pan-y',
-                    userSelect: 'none'
+                    userSelect: 'none',
+                    zIndex: 1,
+                    opacity: trans.heroBackdropOpacity,
+                    pointerEvents: trans.heroInteractive ? 'auto' : 'none',
+                    willChange: 'opacity'
                 }}
             >
-                <Nav navigate={navigate} active='home' />
-
                 <div
                     style={{
                         position: 'absolute', top: 0, left: 0, height: '100%',
@@ -251,13 +281,18 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                         <HeroSlide
                             key={s.id} slide={s} width={`${100 / slideCount}%`}
                             navigate={navigate} onPlay={onPlay}
+                            contentOpacity={trans.heroContentOpacity}
+                            interactive={trans.heroInteractive}
                         />
                     ))}
                 </div>
 
                 <div style={{
-                    position: 'absolute', left: '50%', bottom: 92, transform: 'translateX(-50%)',
-                    display: 'flex', gap: 8, alignItems: 'center', zIndex: 5
+                    position: 'absolute', left: '50%', bottom: 84, transform: 'translateX(-50%)',
+                    display: 'flex', gap: 8, alignItems: 'center', zIndex: 5,
+                    opacity: trans.heroContentOpacity,
+                    pointerEvents: trans.heroInteractive ? 'auto' : 'none',
+                    willChange: 'opacity'
                 }}>
                     {slides.map((s, i) => (
                         <button
@@ -273,12 +308,31 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                         />
                     ))}
                 </div>
-
-                <ScrollHint label={globalize.translate('HeaderMyLibrary')} />
             </section>
 
-            <HomeLibrary navigate={navigate} />
-        </>
+            {/* Espaciador en el flujo del documento para reservar los 100vh del Hero */}
+            <div style={{ height: '100vh', pointerEvents: 'none' }} />
+
+            {/* Capa de la biblioteca: sube suavemente sobre el Hero fijo al hacer scroll */}
+            <div style={{
+                position: 'relative', zIndex: 2,
+                background: 'transparent',
+                minHeight: '100vh'
+            }}>
+                <HomeLibrary
+                    navigate={navigate}
+                    titleOpacity={trans.titleOpacity}
+                    titleTranslateY={trans.titleTranslateY}
+                />
+            </div>
+
+            {/* Indicador de scroll en la base del hero */}
+            <ScrollHint
+                label={globalize.translate('HeaderMyLibrary')}
+                opacity={trans.scrollHintOpacity}
+                style={{ position: 'fixed', bottom: 32, zIndex: 10 }}
+            />
+        </div>
     );
 }
 
@@ -286,12 +340,18 @@ const HeroSlide = React.memo(function HeroSlideBase({
     slide,
     width,
     navigate,
-    onPlay
+    onPlay,
+    contentOpacity = 1,
+    contentTranslateY = 0,
+    interactive = true
 }: {
     slide: CarouselSlide;
     width: string;
     navigate: Navigate;
     onPlay: () => void;
+    contentOpacity?: number;
+    contentTranslateY?: number;
+    interactive?: boolean;
 }) {
     const isContinue = slide.type === 'continue';
     // Propio y no heredado del padre: el hero rota, y quien sabe qué item toca
@@ -332,12 +392,18 @@ const HeroSlide = React.memo(function HeroSlideBase({
             <Backdrop
                 src={slide.backdrop} srcs={slide.backdrops}
                 sharp
+                bottomFade={false}
+                vignette={0.2}
             />
 
             <div style={{
                 position: 'absolute', inset: 0, padding: '0 48px 110px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
-                textAlign: 'center'
+                textAlign: 'center',
+                opacity: contentOpacity,
+                transform: `translateY(${contentTranslateY}px)`,
+                pointerEvents: interactive ? 'auto' : 'none',
+                willChange: 'opacity, transform'
             }}>
                 <TextButton
                     onClick={goDetail}
@@ -441,23 +507,60 @@ const HeroSlide = React.memo(function HeroSlideBase({
     );
 });
 
-const HomeLibrary = React.memo(function HomeLibraryBase({ navigate }: { navigate: Navigate }) {
+const HomeLibrary = React.memo(function HomeLibraryBase({
+    navigate,
+    titleOpacity,
+    titleTranslateY
+}: {
+    navigate: Navigate;
+    titleOpacity?: number;
+    titleTranslateY?: number;
+}) {
     const { session } = useSession();
     const jellyfinMode = !!session?.accessToken;
     if (jellyfinMode) {
-        return <HomeLibraryJellyfin navigate={navigate} />;
+        return (
+            <HomeLibraryJellyfin
+                navigate={navigate}
+                titleOpacity={titleOpacity}
+                titleTranslateY={titleTranslateY}
+            />
+        );
     }
-    return <HomeLibraryProto data={PROTO_DATA} navigate={navigate} />;
+    return (
+        <HomeLibraryProto
+            data={PROTO_DATA}
+            navigate={navigate}
+            titleOpacity={titleOpacity}
+            titleTranslateY={titleTranslateY}
+        />
+    );
 });
 
-function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
+function HomeLibraryJellyfin({
+    navigate,
+    titleOpacity,
+    titleTranslateY
+}: {
+    navigate: Navigate;
+    titleOpacity?: number;
+    titleTranslateY?: number;
+}) {
     const r = useResponsive();
     const sectionStyle = {
-        background: r.touch ? MC.bg : '#000',
+        background: 'transparent',
         color: r.touch ? MC.fg : '#fff',
-        paddingBottom: r.touch ? 48 : 96,
+        paddingTop: 0,
+        paddingBottom: r.touch ? 'calc(var(--jfp-viewport-h, 100vh) - 180px)' : 'calc(100vh - 240px)',
         fontFamily: T.ui
     } as const;
+
+    const headingStyle = titleOpacity !== undefined ? {
+        opacity: titleOpacity,
+        transform: titleTranslateY ? `translateY(${titleTranslateY}px)` : undefined,
+        willChange: 'opacity, transform'
+    } : undefined;
+
     // homeVM.load() lo dispara HomePage al montar; aquí solo se leen signals.
     useVmSignals(homeVM, (vm) => [
         vm.shows, vm.movies, vm.showsLoading, vm.showsReady, vm.showsError
@@ -489,7 +592,7 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
     const goMovies = r.touch ? () => navigate({ page: 'movies' }) : undefined;
     return (
         <section style={sectionStyle}>
-            <Row title={globalize.translate('Shows')} onTitleClick={goSeries}>
+            <Row title={globalize.translate('Shows')} onTitleClick={goSeries} headingStyle={headingStyle}>
                 {series.length === 0 ? (
                     <div style={{ padding: r.touch ? `0 ${r.pagePad}px` : '0 56px', color: T.dim, fontSize: 14 }}>
                         {globalize.translate('MessageNoShowsInLibrary')}
@@ -501,7 +604,7 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
                 )}
             </Row>
             {movies.length > 0 && (
-                <Row title={globalize.translate('Movies')} onTitleClick={goMovies}>
+                <Row title={globalize.translate('Movies')} onTitleClick={goMovies} headingStyle={headingStyle}>
                     <RowScroller>
                         {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
                     </RowScroller>
@@ -512,11 +615,31 @@ function HomeLibraryJellyfin({ navigate }: { navigate: Navigate }) {
 }
 
 function HomeLibraryProto({
-    data, navigate
+    data,
+    navigate,
+    titleOpacity,
+    titleTranslateY
 }: {
-    data: typeof PROTO_DATA; navigate: Navigate;
+    data: typeof PROTO_DATA;
+    navigate: Navigate;
+    titleOpacity?: number;
+    titleTranslateY?: number;
 }) {
     const r = useResponsive();
+    const sectionStyle = {
+        background: 'transparent',
+        color: r.touch ? MC.fg : '#fff',
+        paddingTop: 0,
+        paddingBottom: r.touch ? 'calc(var(--jfp-viewport-h, 100vh) - 180px)' : 'calc(100vh - 240px)',
+        fontFamily: T.ui
+    } as const;
+
+    const headingStyle = titleOpacity !== undefined ? {
+        opacity: titleOpacity,
+        transform: titleTranslateY ? `translateY(${titleTranslateY}px)` : undefined,
+        willChange: 'opacity, transform'
+    } : undefined;
+
     const cw = useMemo(() => data.carousel.filter((s) => s.type === 'continue'), [data.carousel]);
     const { movies, series, recent, hydrated } = useMemo(() => {
         const m = Object.values(data.movies);
@@ -529,10 +652,7 @@ function HomeLibraryProto({
     }, [data.movies, data.shows]);
     if (!hydrated) {
         return (
-            <section style={{
-                background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
-                paddingBottom: r.touch ? 48 : 96, fontFamily: T.ui
-            }}>
+            <section style={sectionStyle}>
                 <SkeletonRow title={globalize.translate('ContinueWatching')} />
                 <SkeletonRow title={globalize.translate('TabLatest')} />
                 <SkeletonRow title={globalize.translate('Movies')} />
@@ -541,16 +661,13 @@ function HomeLibraryProto({
         );
     }
     return (
-        <section style={{
-            background: r.touch ? MC.bg : '#000', color: r.touch ? MC.fg : '#fff',
-            paddingBottom: r.touch ? 48 : 96, fontFamily: T.ui
-        }}>
-            <Row title={globalize.translate('ContinueWatching')}>
+        <section style={sectionStyle}>
+            <Row title={globalize.translate('ContinueWatching')} headingStyle={headingStyle}>
                 <RowScroller>
                     {cw.map((s) => <CwCard key={s.id} slide={s} navigate={navigate} />)}
                 </RowScroller>
             </Row>
-            <Row title={globalize.translate('TabLatest')}>
+            <Row title={globalize.translate('TabLatest')} headingStyle={headingStyle}>
                 <RowScroller>
                     {recent.map((item) =>
                         'seasons' in item ?
@@ -559,12 +676,12 @@ function HomeLibraryProto({
                     )}
                 </RowScroller>
             </Row>
-            <Row title={globalize.translate('Movies')}>
+            <Row title={globalize.translate('Movies')} headingStyle={headingStyle}>
                 <RowScroller>
                     {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
                 </RowScroller>
             </Row>
-            <Row title={globalize.translate('Shows')}>
+            <Row title={globalize.translate('Shows')} headingStyle={headingStyle}>
                 <RowScroller>
                     {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
                 </RowScroller>

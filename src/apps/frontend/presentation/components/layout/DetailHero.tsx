@@ -14,6 +14,8 @@ import type { Navigate } from '../../../app/router';
 import { translateGenre } from '../../../domain/genres';
 import { MediaBadges } from '../media/MediaBadges';
 
+import { useHomeScrollTransition } from '../../pages/useHomeScrollTransition';
+
 /**
  * Alto del hero de ficha: la pantalla entera, igual que el de la portada. Lo
  * de debajo (sinopsis, reparto, datos) aparece al desplazar.
@@ -88,7 +90,10 @@ type FrameProps = {
     onContextMenu?: (e: MouseEvent) => void;
 };
 
-/** Marco del hero: alto de pantalla, backdrop, degradado y colocación. */
+/**
+ * Marco del hero: fijo en el fondo a pantalla completa con transición fluida
+ * de opacidad y desvanecimiento progresivo hacia el contenido inferior.
+ */
 export function HeroFrame({
     hero, backdrop, backdrops, nav, children, footer, pos, pad, scrim, blurred,
     onContextMenu
@@ -98,55 +103,84 @@ export function HeroFrame({
     const scrimAlpha = scrim ?? layout.scrim;
     const r = useResponsive();
     const short = useShortViewport();
+    const trans = useHomeScrollTransition();
+
     return (
-        <section onContextMenu={onContextMenu} style={{
-            position: 'relative',
-            height: heroHeight(r.touch),
-            // A sangre en táctil: el body reserva el hueco del rail (tablet) y
-            // del safe-area, y aquí se devuelve para que el fondo del hero
-            // llegue al borde; la IMAGEN se recorta al área útil desde
-            // Backdrop, alineada con el contenido. El lado derecho no se toca:
-            // nada desborda.
-            marginLeft: r.touch ? `calc(-1 * var(${NAV_LEFT_VAR}, 0px))` : undefined,
-            width: r.touch ? `calc(100% + var(${NAV_LEFT_VAR}, 0px))` : '100%',
-            overflow: 'hidden', background: '#000'
-        }}>
+        <>
             {nav}
-            <Backdrop src={backdrop} srcs={backdrops} sharp blurred={blurred} />
-            {scrimAlpha > 0 && (
-                <div style={{
-                    position: 'absolute', inset: 0, pointerEvents: 'none',
-                    background: `linear-gradient(to top, rgba(0,0,0,${scrimAlpha}) 0%, rgba(0,0,0,${(scrimAlpha * 0.45).toFixed(2)}) 24%, transparent 56%)`
-                }} />
-            )}
-            {/* jfp-hero-content: en táctil impide que los hijos encojan. Un
-                flex en columna reparte el recorte entre todos cuando no cabe
-                el bloque, y encoger la CAJA de un texto no encoge el texto:
-                se salía y se pintaba encima del vecino (título sobre título en
-                la ficha de episodio). Prefiere desbordar por arriba, que el
-                degradado disimula. */}
-            <div
-                className='jfp-hero-content'
+            <section
+                onContextMenu={onContextMenu}
                 style={{
-                    position: 'absolute', inset: 0,
-                    // Ahora el hero ocupa la pantalla entera, así que la
-                    // píldora de navegación flota sobre su parte de abajo: el
-                    // bloque de texto le deja su hueco.
-                    padding: r.touch ?
-                        'calc(56px + env(safe-area-inset-top, 0px))'
-                            + ` calc(${r.pagePad + 4}px + env(safe-area-inset-right, 0px))`
-                            + ` calc(var(${NAV_BOTTOM_VAR}, 24px) + ${short ? 8 : 20}px)`
-                            + ` calc(${r.pagePad + 4}px + var(${NAV_LEFT_VAR}, 0px))` :
-                        pad ?? place.pad,
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: place.align, justifyContent: place.justify,
-                    textAlign: place.text
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: heroHeight(r.touch),
+                    // A sangre en táctil: el body reserva el hueco del rail (tablet) y
+                    // del safe-area, y aquí se devuelve para que el fondo del hero
+                    // llegue al borde; la IMAGEN se recorta al área útil desde
+                    // Backdrop, alineada con el contenido. El lado derecho no se toca:
+                    // nada desborda.
+                    marginLeft: r.touch ? `calc(-1 * var(${NAV_LEFT_VAR}, 0px))` : undefined,
+                    width: r.touch ? `calc(100% + var(${NAV_LEFT_VAR}, 0px))` : '100%',
+                    overflow: 'hidden',
+                    background: '#000',
+                    zIndex: 1,
+                    opacity: trans.heroBackdropOpacity,
+                    pointerEvents: trans.heroInteractive ? 'auto' : 'none',
+                    willChange: 'opacity'
                 }}
             >
-                {children}
-            </div>
-            {footer}
-        </section>
+                <Backdrop src={backdrop} srcs={backdrops} sharp blurred={blurred} bottomFade={false} />
+                {scrimAlpha > 0 && (
+                    <div style={{
+                        position: 'absolute', inset: 0, pointerEvents: 'none',
+                        background: `linear-gradient(to top, rgba(0,0,0,${scrimAlpha}) 0%, rgba(0,0,0,${(scrimAlpha * 0.45).toFixed(2)}) 24%, transparent 56%)`
+                    }} />
+                )}
+                {/* jfp-hero-content: en táctil impide que los hijos encojan. Un
+                    flex en columna reparte el recorte entre todos cuando no cabe
+                    el bloque, y encoger la CAJA de un texto no encoge el texto:
+                    se salía y se pintaba encima del vecino (título sobre título en
+                    la ficha de episodio). Prefiere desbordar por arriba, que el
+                    degradado disimula. */}
+                <div
+                    className='jfp-hero-content'
+                    style={{
+                        position: 'absolute', inset: 0,
+                        // Ahora el hero ocupa la pantalla entera, así que la
+                        // píldora de navegación flota sobre su parte de abajo: el
+                        // bloque de texto le deja su hueco.
+                        padding: r.touch ?
+                            'calc(56px + env(safe-area-inset-top, 0px))'
+                                + ` calc(${r.pagePad + 4}px + env(safe-area-inset-right, 0px))`
+                                + ` calc(var(${NAV_BOTTOM_VAR}, 24px) + ${short ? 8 : 20}px)`
+                                + ` calc(${r.pagePad + 4}px + var(${NAV_LEFT_VAR}, 0px))` :
+                            pad ?? place.pad,
+                        display: 'flex', flexDirection: 'column',
+                        alignItems: place.align, justifyContent: place.justify,
+                        textAlign: place.text,
+                        opacity: trans.heroContentOpacity,
+                        transform: trans.heroContentTranslateY ? `translateY(${trans.heroContentTranslateY}px)` : undefined,
+                        pointerEvents: trans.heroInteractive ? 'auto' : 'none',
+                        willChange: 'opacity, transform'
+                    }}
+                >
+                    {children}
+                </div>
+                {footer && (
+                    <div style={{
+                        opacity: trans.scrollHintOpacity,
+                        pointerEvents: trans.scrollHintOpacity > 0.05 ? 'auto' : 'none',
+                        willChange: 'opacity'
+                    }}>
+                        {footer}
+                    </div>
+                )}
+            </section>
+            {/* Espaciador en el flujo del documento para reservar el alto de pantalla del hero */}
+            <div style={{ height: heroHeight(r.touch), pointerEvents: 'none' }} />
+        </>
     );
 }
 

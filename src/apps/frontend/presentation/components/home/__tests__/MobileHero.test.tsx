@@ -166,4 +166,41 @@ describe('MobileHero', () => {
         // carga el diccionario en-US, así que es 'Play' (no 'Reproducir').
         expect(labels).toEqual(['The Batman', 'Play']);
     });
+
+    it('aplica opacidad y traslación de contenido durante la transición de scroll', () => {
+        act(() => { root?.unmount(); });
+        host?.remove();
+        host = document.createElement('div');
+        document.body.appendChild(host);
+        root = createRoot(host);
+        act(() => {
+            root?.render(
+                <MobileThemeProvider>
+                    <MobileHero
+                        slides={SLIDES} idx={0} tablet={false}
+                        goSlide={() => undefined} onPlay={() => undefined}
+                        navigate={() => undefined}
+                        contentOpacity={0.4}
+                        contentTranslateY={-20}
+                    />
+                </MobileThemeProvider>
+            );
+        });
+        const content = host?.querySelector('section > div:last-of-type') as HTMLElement;
+        expect(content.style.opacity).toBe('0.4');
+        expect(content.style.transform).toBe('translateY(-20px)');
+    });
+
+    it('renderiza el indicador de scroll en flujo sin solapamiento', () => {
+        render(false);
+        const play = host?.querySelector('button[aria-label="Play"]');
+        const dot = host?.querySelector('button[aria-label="Slide 2"]');
+        const hint = host?.querySelector('div[style*="text-transform: uppercase"]');
+        expect(hint).not.toBeNull();
+        expect(play).not.toBeNull();
+        expect(dot).not.toBeNull();
+        expect(precede(dot as Element, hint as Element)).toBe(true);
+        expect((hint as HTMLElement).style.position).toBe('relative');
+    });
 });
+

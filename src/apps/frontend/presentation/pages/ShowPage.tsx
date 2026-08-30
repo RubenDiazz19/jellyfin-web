@@ -35,10 +35,10 @@ export function ShowPage({ showId, navigate, hero }: PageProps) {
     const { item: show, error } = useShowEntity(showId, navigate);
     if (!show) return <DetailStatus error={error} />;
     return (
-        <>
+        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
             <ShowHero show={show} navigate={navigate} hero={hero} />
             <ShowDetail show={show} navigate={navigate} />
-        </>
+        </div>
     );
 }
 

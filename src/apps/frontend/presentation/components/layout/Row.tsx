@@ -12,12 +12,20 @@ type Props = {
      * clicable sin marca ninguna no lo prueba nadie.
      */
     onTitleClick?: () => void;
+    /**
+     * Estilos o animación para la cabecera del título (transición suave en Home).
+     */
+    headingStyle?: CSSProperties;
+    /**
+     * Estilos para el contenedor de la fila.
+     */
+    style?: CSSProperties;
 };
 
 // Cabecera de fila horizontal (título en cursiva) usada por las filas de la
 // home y de la librería. En mobile/tablet compacta márgenes y tipografía;
 // en desktop conserva los valores de siempre.
-export function Row({ title, children, onTitleClick }: Props) {
+export function Row({ title, children, onTitleClick, headingStyle, style }: Props) {
     const r = useResponsive();
     const heading = (
         <h3 style={{
@@ -30,10 +38,14 @@ export function Row({ title, children, onTitleClick }: Props) {
     );
     return (
         <div style={{
-            marginTop: r.touch ? 28 : 64,
-            padding: r.touch ? `0 ${r.pagePad}px` : '0 56px'
+            marginTop: r.touch ? 24 : 48,
+            padding: r.touch ? `0 ${r.pagePad}px` : '0 56px',
+            ...style
         }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: r.touch ? 12 : 24 }}>
+            <div style={{
+                display: 'flex', alignItems: 'baseline', marginBottom: r.touch ? 12 : 20,
+                ...headingStyle
+            }}>
                 {onTitleClick ? (
                     <TextButton
                         onClick={onTitleClick}

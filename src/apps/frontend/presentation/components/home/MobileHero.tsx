@@ -25,6 +25,7 @@ import { formatRemainingCompact } from '../../theme/format';
 import { Backdrop } from '../layout/Backdrop';
 import { PlayBtn } from '../controls/PlayBtn';
 import { TextButton, TEXT_BTN_TAP } from '../controls/TextButton';
+import { ScrollHint } from '../layout/ScrollHint';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
 
@@ -35,9 +36,18 @@ type Props = {
     goSlide: (n: number) => void;
     onPlay: () => void;
     navigate: Navigate;
+    /** Opacidad durante la transición de scroll (Home). */
+    contentOpacity?: number;
+    /** Desplazamiento vertical durante la transición de scroll (Home). */
+    contentTranslateY?: number;
+    /** Opacidad del indicador de scroll. */
+    scrollHintOpacity?: number;
 };
 
-export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: Props) {
+export function MobileHero({
+    slides, idx, tablet, goSlide, onPlay, navigate,
+    contentOpacity, contentTranslateY, scrollHintOpacity
+}: Props) {
     const slide = slides[Math.min(idx, slides.length - 1)];
     const short = useShortViewport();
 
@@ -108,26 +118,16 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: P
                 marginLeft: 'calc(-1 * var(--jfp-nav-left, 0px))',
                 width: 'calc(100% + var(--jfp-nav-left, 0px))',
                 overflow: 'hidden',
-                background: 'var(--md-sys-color-surface, #000)',
+                background: '#000',
                 color: 'var(--md-sys-color-on-surface, #fff)',
                 fontFamily: T.ui,
+                touchAction: 'pan-y',
                 userSelect: 'none'
             }}
         >
-            <Backdrop src={image} vignette={0.3} sharp />
+            <Backdrop src={image} srcs={tablet ? slide.backdrops : undefined} vignette={0.2} sharp bottomFade={false} />
 
-            {/* Velo inferior: el texto se lee sin apagar la mitad de arriba. */}
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                pointerEvents: 'none',
-                background: 'linear-gradient(to top,'
-                    + ' var(--md-sys-color-surface, #000) 0%,'
-                    + ' rgba(0, 0, 0, 0.74) 22%,'
-                    + ' rgba(0, 0, 0, 0.28) 46%,'
-                    + ' transparent 68%)'
-            }}
-            />
+            {/* Velo inferior suave para lectura de textos */}
 
             <div style={{
                 position: 'absolute',
@@ -138,6 +138,10 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: P
                 justifyContent: 'flex-end',
                 textAlign: 'center',
                 gap,
+                opacity: contentOpacity,
+                transform: contentTranslateY ? `translateY(${contentTranslateY}px)` : undefined,
+                pointerEvents: (contentOpacity !== undefined && contentOpacity < 0.2) ? 'none' : 'auto',
+                willChange: 'opacity, transform',
                 // El contenido se queda dentro de lo que la navegación deja
                 // libre: arriba la barra superior (logo + avatar), abajo la
                 // píldora y a la izquierda el rail en tablet.
@@ -287,6 +291,20 @@ export function MobileHero({ slides, idx, tablet, goSlide, onPlay, navigate }: P
                         ))}
                     </div>
                 )}
+
+                {/* Indicador de scroll adaptado al flujo del hero táctil */}
+                <ScrollHint
+                    label={globalize.translate('HeaderMyLibrary')}
+                    opacity={scrollHintOpacity ?? contentOpacity ?? 1}
+                    style={{
+                        position: 'relative',
+                        left: 'auto',
+                        bottom: 'auto',
+                        transform: 'none',
+                        marginTop: short ? 0 : 4,
+                        marginBottom: 0
+                    }}
+                />
             </div>
         </section>
     );

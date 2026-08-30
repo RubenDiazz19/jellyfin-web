@@ -34,10 +34,10 @@ export function MoviePage({ movieId, navigate, hero }: PageProps) {
     const { item: movie, error } = useMovieEntity(movieId, navigate);
     if (!movie) return <DetailStatus error={error} />;
     return (
-        <>
+        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
             <MovieHero movie={movie} navigate={navigate} hero={hero} />
             <MovieDetail movie={movie} navigate={navigate} />
-        </>
+        </div>
     );
 }
 

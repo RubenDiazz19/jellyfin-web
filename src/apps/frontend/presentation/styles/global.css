@@ -334,7 +334,7 @@ html.layout-tablet body.jf-frontend-active {
     }
 
     50% {
-        transform: translateY(4px);
+        transform: translateY(2.5px);
         opacity: 0.55;
     }
 }
