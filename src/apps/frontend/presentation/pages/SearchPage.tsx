@@ -15,13 +15,11 @@ import { SearchResults } from '../components/search/SearchResults';
 import { SelectionBar } from '../components/controls/SelectionBar';
 import { searchVM } from '../../domain/viewModels/SearchViewModel';
 import { selectionVM, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 export function SearchPage({ navigate }: { navigate: Navigate }) {
-    // Todo el filtrado vive en SearchViewModel; la página solo pinta signals.
-    useViewModel(searchVM);
     const r = useResponsive();
 
     useEffect(() => {
@@ -35,10 +33,6 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
             selectionVM.stop();
         };
     }, []);
-
-    const selectable: SelectableItem[] = searchVM.results.value.map((i) => ({
-        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
-    }));
 
     return (
         <div style={{
@@ -64,7 +58,17 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
                 <SearchResults navigate={navigate} />
             </div>
 
-            <SelectionBar items={selectable} />
+            <SearchSelectionBar />
         </div>
     );
+}
+
+function SearchSelectionBar() {
+    useVmSignals(selectionVM, (vm) => (vm?.selecting ? [vm.selecting] : []));
+    useVmSignals(searchVM, (vm) => (vm?.results ? [vm.results] : []));
+    if (!selectionVM.selecting?.value) return null;
+    const selectable: SelectableItem[] = (searchVM.results?.value ?? []).map((i) => ({
+        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
+    }));
+    return <SelectionBar items={selectable} />;
 }

@@ -6,6 +6,7 @@ import {
     type RatingFilter,
     type RatingOperator
 } from '../../../domain/viewModels/SearchViewModel';
+import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { AddFilterButton, CollapsibleOptionPill } from './SearchPills';
 
 export const RATING_OPERATORS: { id: RatingOperator; symbol: string }[] = [
@@ -19,6 +20,7 @@ export const RATING_OPERATORS: { id: RatingOperator; symbol: string }[] = [
 export const PRESETS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5];
 
 export function RatingFilterBar() {
+    useVmSignals(searchVM, (vm) => [vm.ratingFilters]);
     const filters = searchVM.ratingFilters.value;
     const [isAdding, setIsAdding] = useState(false);
     const totalCount = filters.length + (isAdding ? 1 : 0);

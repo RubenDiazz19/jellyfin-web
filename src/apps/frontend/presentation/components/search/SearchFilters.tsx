@@ -16,6 +16,7 @@ import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { useToast } from '../toast/ToastProvider';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
+import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { VIEWS, type SavedView } from '../../../domain/stores';
 import { AddFilterButton, MainPill, OptionPill } from './SearchPills';
 import { RatingFilterBar } from './RatingFilterBar';
@@ -32,6 +33,16 @@ const STATE_OPTIONS = [
 ];
 
 export function SearchFilters() {
+    useVmSignals(searchVM, (vm) => [
+        vm.categoryMode,
+        vm.categoryQuery,
+        vm.typeFilters,
+        vm.stateFilters,
+        vm.tagFilters,
+        vm.ratingFilters,
+        vm.allTags,
+        vm.anyFilterActive
+    ]);
     const r = useResponsive();
     const categoryMode = searchVM.categoryMode.value;
     const categoryQuery = searchVM.categoryQuery.value.trim().toLowerCase();
@@ -338,6 +349,7 @@ export function SearchFilters() {
  * ocupar sitio en la pantalla de búsqueda recién abierta.
  */
 function SavedViewsRow() {
+    useVmSignals(searchVM, (vm) => [vm.anyFilterActive]);
     const [views, setViews] = useState<SavedView[]>(() => VIEWS.all());
     const [naming, setNaming] = useState(false);
     const [name, setName] = useState('');

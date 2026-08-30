@@ -23,7 +23,7 @@ import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 
 export function SearchOverlay({ navigate }: { navigate: Navigate }) {
-    useVmSignals(searchVM, (vm) => [vm.overlayOpen, vm.results]);
+    useVmSignals(searchVM, (vm) => [vm.overlayOpen]);
     const r = useResponsive();
     const open = searchVM.overlayOpen.value;
 
@@ -67,10 +67,6 @@ export function SearchOverlay({ navigate }: { navigate: Navigate }) {
     }, [open]);
 
     if (!open) return null;
-
-    const selectable: SelectableItem[] = searchVM.results.value.map((i) => ({
-        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
-    }));
 
     /** Navega y cierra: el destino es una página, no cabe bajo la capa. */
     const navigateAndClose: Navigate = (route) => {
@@ -136,7 +132,17 @@ export function SearchOverlay({ navigate }: { navigate: Navigate }) {
                 <SearchResults navigate={navigateAndClose} />
             </div>
 
-            <SelectionBar items={selectable} />
+            <SearchSelectionBar />
         </div>
     );
+}
+
+function SearchSelectionBar() {
+    useVmSignals(selectionVM, (vm) => (vm?.selecting ? [vm.selecting] : []));
+    useVmSignals(searchVM, (vm) => (vm?.results ? [vm.results] : []));
+    if (!selectionVM.selecting?.value) return null;
+    const selectable: SelectableItem[] = (searchVM.results?.value ?? []).map((i) => ({
+        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
+    }));
+    return <SelectionBar items={selectable} />;
 }

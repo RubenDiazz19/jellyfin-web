@@ -1,5 +1,3 @@
-// Caja de búsqueda. Compartida por la página /search y la superposición.
-
 import { useEffect, useRef } from 'react';
 
 import globalize from 'lib/globalize';
@@ -8,6 +6,7 @@ import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useResponsive } from '../../theme/responsive';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
+import { useVmSignals } from '../../../domain/bridge/useViewModel';
 
 type Props = {
     /** Enfoca al montar. La superposición lo quiere; la página, también. */
@@ -18,6 +17,7 @@ type Props = {
 };
 
 export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
+    useVmSignals(searchVM, (vm) => [vm.categoryMode, vm.categoryQuery, vm.query]);
     const r = useResponsive();
     const inputRef = useRef<HTMLInputElement>(null);
     const categoryMode = searchVM.categoryMode.value;

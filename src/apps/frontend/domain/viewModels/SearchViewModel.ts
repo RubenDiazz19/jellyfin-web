@@ -115,7 +115,20 @@ const MIN_REMOTE_QUERY = 2;
  * Espera antes de salir a la red. Se teclea letra a letra: sin esto, escribir
  * «expediente» son diez búsquedas y solo importa la última.
  */
-const REMOTE_DEBOUNCE_MS = 250;
+const REMOTE_DEBOUNCE_MS = 400;
+
+type IndexedItem = {
+    item: SearchResult;
+    id: string;
+    kind: 'show' | 'movie';
+    lowerTitle: string;
+    lowerSynopsis: string;
+    genres: string[];
+    cast: string[];
+    tags: string[];
+    imdb: number;
+    seriesEpisodeKeys?: string[];
+};
 
 export class SearchViewModel {
     query = signal('');
@@ -193,14 +206,12 @@ export class SearchViewModel {
         registerTagSource(() => [...this.shows.peek(), ...this.movies.peek()]);
     }
 
-    results = computed<SearchResult[]>(() => {
-        // Lecturas intencionadas: registran los contadores como dependencias
-        // del computed para re-filtrar cuando cambian favoritos/vistos.
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        this.favsVersion.value;
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        this.watchedVersion.value;
-
+    /**
+     * Índice pre-calculado del catálogo local.
+     * Solo se recalcula cuando cambian `shows` o `movies`, de modo que teclear
+     * o filtrar por etiquetas no genera ninguna asignación ni recorridos pesados.
+     */
+    private catalog = computed<IndexedItem[]>(() => {
         const jf = this.shows.value.map((s) => ({ ...s, kind: 'show' as const }));
         const jfIds = new Set(jf.map((s) => s.id));
         const protoShows = Object.values(PROTO_DATA.shows)
@@ -213,31 +224,147 @@ export class SearchViewModel {
             .map((m) => ({ ...m, kind: 'movie' as const }));
         const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies];
 
+        return all.map((item) => {
+            const rawGenres = item.genres ?? [];
+            const translatedGenres = rawGenres.map((g) => {
+                const tr = translateGenre(g);
+                return (tr || g).toLowerCase();
+            });
+            const ownTags = [
+                ...(item.tags ?? []).map((t) => t.toLowerCase()),
+                ...(item.autoTags ?? []).map((t) => t.toLowerCase()),
+                ...translatedGenres
+            ];
+            const seriesEpisodeKeys = item.kind === 'show' ?
+                (item.seasons || []).flatMap((s) => (s.episodes || []).map((e) => episodeKey(item.id, s.n, e.n))) :
+                undefined;
+
+            return {
+                item,
+                id: item.id,
+                kind: item.kind,
+                lowerTitle: (item.title ?? '').toLowerCase(),
+                lowerSynopsis: (item.synopsis ?? '').toLowerCase(),
+                genres: translatedGenres,
+                cast: (item.cast ?? []).map((c) => (c.name ?? '').toLowerCase()),
+                tags: ownTags,
+                imdb: item.rating?.imdb ?? 0,
+                seriesEpisodeKeys
+            };
+        });
+    });
+
+    results = computed<SearchResult[]>(() => {
+        // Lecturas intencionadas: registran los contadores como dependencias
+        // del computed para re-filtrar cuando cambian favoritos/vistos.
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        this.favsVersion.value;
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        this.watchedVersion.value;
+
+        const indexedCatalog = this.catalog.value;
         const types = this.typeFilters.value;
         const states = this.stateFilters.value;
         const { text: q, tags: queryTags } = parseQuery(this.query.value);
-        // Los chips y las etiquetas escritas con `#` se acumulan todos: hay
-        // que cumplirlos todos para aparecer en los resultados.
         const requiredTags = [
             ...queryTags,
             ...this.tagFilters.value.map((t) => t.toLowerCase())
         ];
+        const rFilters = this.ratingFilters.value;
+        const hasTypes = types.length > 0;
+        const hasTags = requiredTags.length > 0;
+        const hasStates = states.length > 0;
+        const hasRatings = rFilters.length > 0;
 
-        // Los chips y el tipo se aplican igual vengan de donde vengan los
-        // resultados; el texto solo a los de casa (ver `remote`).
-        const passesFilters = (item: SearchResult) => {
-            if (types.length > 0) {
+        const local: SearchResult[] = [];
+        for (let i = 0; i < indexedCatalog.length; i++) {
+            const entry = indexedCatalog[i]!;
+
+            if (hasTypes) {
+                const matchesType = (types.includes('series') && entry.kind === 'show')
+                    || (types.includes('peliculas') && entry.kind === 'movie');
+                if (!matchesType) continue;
+            }
+
+            if (hasTags) {
+                let allMatch = true;
+                for (let j = 0; j < requiredTags.length; j++) {
+                    if (!entry.tags.includes(requiredTags[j]!)) {
+                        allMatch = false;
+                        break;
+                    }
+                }
+                if (!allMatch) continue;
+            }
+
+            if (hasStates) {
+                const isFav = entry.kind === 'show' ?
+                    FAVS.has(entry.id) :
+                    FAVS.has(movieKey(entry.id));
+
+                let isWatched: boolean;
+                if (entry.kind === 'show') {
+                    const keys = entry.seriesEpisodeKeys;
+                    isWatched = !!keys && keys.length > 0 && keys.every((k) => WATCHED.has(k));
+                } else {
+                    isWatched = (entry.item.watched ?? 0) >= 1 || WATCHED.has(movieKey(entry.id));
+                }
+
+                if (states.includes('favs') && !isFav) continue;
+                if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) continue;
+                if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) continue;
+            }
+
+            if (hasRatings) {
+                let ratingPass = true;
+                for (let j = 0; j < rFilters.length; j++) {
+                    const rf = rFilters[j]!;
+                    switch (rf.operator) {
+                        case '>=': if (entry.imdb < rf.value) ratingPass = false; break;
+                        case '>': if (entry.imdb <= rf.value) ratingPass = false; break;
+                        case '<=': if (entry.imdb > rf.value) ratingPass = false; break;
+                        case '<': if (entry.imdb >= rf.value) ratingPass = false; break;
+                        case '=': if (Math.abs(entry.imdb - rf.value) >= 0.05) ratingPass = false; break;
+                    }
+                    if (!ratingPass) break;
+                }
+                if (!ratingPass) continue;
+            }
+
+            if (q) {
+                const textMatch = entry.lowerTitle.includes(q)
+                    || entry.lowerSynopsis.includes(q)
+                    || entry.genres.some((g) => g.includes(q))
+                    || entry.cast.some((c) => c.includes(q));
+                if (!textMatch) continue;
+            }
+
+            local.push(entry.item);
+        }
+
+        // Lo del servidor que no estuviera ya cargado, al final: son los
+        // títulos que la búsqueda local no podía encontrar.
+        const remoteItems = this.remote.value;
+        if (remoteItems.length === 0) return local;
+
+        const known = new Set(indexedCatalog.map((i) => i.id));
+        const extra: SearchResult[] = [];
+        for (let i = 0; i < remoteItems.length; i++) {
+            const item = remoteItems[i]!;
+            if (known.has(item.id)) continue;
+
+            if (hasTypes) {
                 const matchesType = (types.includes('series') && item.kind === 'show')
                     || (types.includes('peliculas') && item.kind === 'movie');
-                if (!matchesType) return false;
+                if (!matchesType) continue;
             }
 
-            if (requiredTags.length > 0) {
-                const own = tagsOf(item).map((t) => t.toLowerCase());
-                if (!requiredTags.every((t) => own.includes(t))) return false;
+            if (hasTags) {
+                const itemTags = tagsOf(item).map((t) => t.toLowerCase());
+                if (!requiredTags.every((t) => itemTags.includes(t))) continue;
             }
 
-            if (states.length > 0) {
+            if (hasStates) {
                 const isFav = item.kind === 'show' ?
                     FAVS.has(item.id) :
                     FAVS.has(movieKey(item.id));
@@ -245,43 +372,30 @@ export class SearchViewModel {
                     isSeriesWatched(item) :
                     isMovieWatched(item);
 
-                if (states.includes('favs') && !isFav) return false;
-                if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) return false;
-                if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) return false;
+                if (states.includes('favs') && !isFav) continue;
+                if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) continue;
+                if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) continue;
             }
 
-            const rFilters = this.ratingFilters.value;
-            if (rFilters.length > 0) {
+            if (hasRatings) {
                 const score = item.rating?.imdb ?? 0;
-                for (const rf of rFilters) {
+                let ratingPass = true;
+                for (let j = 0; j < rFilters.length; j++) {
+                    const rf = rFilters[j]!;
                     switch (rf.operator) {
-                        case '>=':
-                            if (score < rf.value) return false;
-                            break;
-                        case '>':
-                            if (score <= rf.value) return false;
-                            break;
-                        case '<=':
-                            if (score > rf.value) return false;
-                            break;
-                        case '<':
-                            if (score >= rf.value) return false;
-                            break;
-                        case '=':
-                            if (Math.abs(score - rf.value) >= 0.05) return false;
-                            break;
+                        case '>=': if (score < rf.value) ratingPass = false; break;
+                        case '>': if (score <= rf.value) ratingPass = false; break;
+                        case '<=': if (score > rf.value) ratingPass = false; break;
+                        case '<': if (score >= rf.value) ratingPass = false; break;
+                        case '=': if (Math.abs(score - rf.value) >= 0.05) ratingPass = false; break;
                     }
+                    if (!ratingPass) break;
                 }
+                if (!ratingPass) continue;
             }
-            return true;
-        };
 
-        const local = all.filter((item) => passesFilters(item) && (!q || matchesText(item, q)));
-
-        // Lo del servidor que no estuviera ya cargado, al final: son los
-        // títulos que la búsqueda local no podía encontrar.
-        const known = new Set(all.map((i) => i.id));
-        const extra = this.remote.value.filter((i) => !known.has(i.id) && passesFilters(i));
+            extra.push(item);
+        }
 
         return [...local, ...extra];
     });
