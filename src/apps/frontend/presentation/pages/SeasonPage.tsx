@@ -79,7 +79,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
             blurred
             scrim={0}
             pos='Centro'
-            pad='0 48px 110px'
+            pad='0 48px'
             backdrop={show.backdrop || ''}
             onContextMenu={ctx.onContextMenu}
             nav={
@@ -96,24 +96,28 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
         >
             <>
                 <div style={{
-                    fontFamily: T.ui, fontSize: 11, letterSpacing: r.touch ? 2.5 : 4,
+                    fontFamily: T.ui, fontSize: short ? 11 : r.touch ? 12 : 13,
+                    letterSpacing: r.touch ? 2.5 : 4,
                     textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.7)', marginBottom: short ? 6 : 18,
+                    color: 'rgba(255,255,255,0.72)', marginBottom: short ? 6 : 18,
                     maxWidth: '100%', overflow: 'hidden',
-                    whiteSpace: 'nowrap', textOverflow: 'ellipsis'
+                    whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                    textAlign: 'center'
                 }}>
                     {show.title} · {season.year}
                 </div>
 
                 <div style={{
                     fontFamily: T.display,
-                    fontSize: short ? 20 : r.touch ? 26 : 36, fontWeight: 300,
-                    color: 'rgba(255,255,255,0.72)', marginBottom: 6
+                    fontSize: short ? 22 : r.touch ? 28 : 38, fontWeight: 300,
+                    color: 'rgba(255,255,255,0.75)', marginBottom: 6,
+                    textAlign: 'center'
                 }}>
                     {globalize.translate('Season')}
                 </div>
                 <h1 style={{
                     fontFamily: T.display,
+                    fontVariantNumeric: 'tabular-nums',
                     // El número gigante es el protagonista, pero en táctil se
                     // mide contra el alto disponible: con `clamp(160px…)` no
                     // dejaba sitio ni al dato ni al botón.
@@ -121,18 +125,20 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                         r.touch ? 'clamp(88px, 24vh, 172px)' : 'clamp(145px, 16vw, 235px)',
                     lineHeight: 0.85,
                     margin: 0, fontWeight: 200, letterSpacing: r.touch ? -3 : -6,
-                    textShadow: '0 6px 60px rgba(0,0,0,0.6)'
+                    textShadow: '0 6px 60px rgba(0,0,0,0.6)',
+                    textAlign: 'center'
                 }}>
                     {String(season.n).padStart(2, '0')}
                 </h1>
 
                 <div style={{
-                    marginTop: short ? 8 : r.touch ? 12 : 18,
+                    marginTop: short ? 10 : r.touch ? 14 : 20,
                     display: 'flex', alignItems: 'center', gap: r.touch ? 10 : 16,
                     flexWrap: 'wrap', justifyContent: 'center',
-                    fontFamily: T.ui, fontSize: r.touch ? 12 : 13, color: 'rgba(255,255,255,0.78)'
+                    fontFamily: T.ui, fontSize: short ? 12 : r.touch ? 13 : 15,
+                    color: 'rgba(255,255,255,0.85)', textAlign: 'center'
                 }}>
-                    <span>{season.total} episodios</span><Ic.Dot />
+                    <span>{season.total === 1 ? '1 episodio' : `${season.total} episodios`}</span><Ic.Dot />
                     <span>{season.watched}/{season.total} vistos</span><Ic.Dot />
                     <span>{season.year}</span>
                 </div>
@@ -176,9 +182,11 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                 </div>
                 <div style={{
                     marginTop: short ? 10 : r.touch ? 16 : 22,
-                    fontFamily: T.ui, fontSize: 12, color: 'rgba(255,255,255,0.62)',
+                    fontFamily: T.ui, fontSize: short ? 12 : r.touch ? 13 : 14.5,
+                    color: 'rgba(255,255,255,0.78)',
                     maxWidth: '100%', overflow: 'hidden',
-                    whiteSpace: 'nowrap', textOverflow: 'ellipsis'
+                    whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                    textAlign: 'center'
                 }}>
                     {inProgress ?
                         `Reanudar E${nextEp.n} · ${nextEp.title}` :
