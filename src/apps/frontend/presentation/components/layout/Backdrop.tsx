@@ -49,16 +49,28 @@ export function Backdrop({
 
     // La hero image es el LCP de la página y via background-image el
     // navegador la pide con prioridad baja: un preload hint la adelanta.
+    const preloadLinkRef = useRef<HTMLLinkElement | null>(null);
     useEffect(() => {
         if (!current) return;
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = current;
-        link.fetchPriority = 'high';
-        document.head.appendChild(link);
-        return () => { link.remove(); };
+        if (!preloadLinkRef.current) {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'image';
+            link.fetchPriority = 'high';
+            document.head.appendChild(link);
+            preloadLinkRef.current = link;
+        }
+        preloadLinkRef.current.href = current;
     }, [current]);
+
+    useEffect(() => {
+        return () => {
+            if (preloadLinkRef.current) {
+                preloadLinkRef.current.remove();
+                preloadLinkRef.current = null;
+            }
+        };
+    }, []);
 
     // Precarga la siguiente del ciclo para que el crossfade entre a imagen
     // ya descargada.

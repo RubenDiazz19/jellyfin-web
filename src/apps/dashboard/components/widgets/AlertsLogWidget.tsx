@@ -3,7 +3,7 @@ import globalize from 'lib/globalize';
 import Widget from './Widget';
 import List from '@mui/material/List';
 import ActivityListItem from 'apps/dashboard/features/activity/components/ActivityListItem';
-import subSeconds from 'date-fns/subSeconds';
+import { subSeconds } from 'date-fns';
 import { useLogEntries } from 'apps/dashboard/features/activity/api/useLogEntries';
 
 const AlertsLogWidget = () => {

@@ -1,7 +1,6 @@
 import browser from 'scripts/browser';
 import dom from 'utils/dom';
 import './emby-input.scss';
-import 'webcomponents.js/webcomponents-lite';
 
 const EmbyInputPrototype = Object.create(HTMLInputElement.prototype);
 
@@ -111,7 +110,7 @@ EmbyInputPrototype.label = function (text) {
     this.labelElement.innerText = text;
 };
 
-document.registerElement('emby-input', {
+document.registerElement?.('emby-input', {
     prototype: EmbyInputPrototype,
     extends: 'input'
 });

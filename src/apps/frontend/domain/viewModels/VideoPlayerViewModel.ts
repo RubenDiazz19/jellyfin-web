@@ -389,7 +389,7 @@ export class VideoPlayerViewModel {
         this.contextReady = this.loadContext(itemId);
         if (this.prefs.hasAny()) await this.contextReady;
         await this.loadSource(this.prefs.tracksFor(this.context));
-        void this.api.playback.reportPlaybackStart(itemId);
+        void this.api.playback.reportPlaybackStart(itemId, this.decision?.playMethod);
         // El timer de progreso lo arranca el evento 'play' y lo para 'pause':
         // si el autoplay se deniega no hay nada que reportar todavía.
         this.mediaSession.start();
@@ -483,14 +483,23 @@ export class VideoPlayerViewModel {
     togglePlay = () => {
         const v = this.video;
         if (!v) return;
-        if (v.paused) void v.play().catch(() => {});
-        else v.pause();
+        if (v.paused) {
+            void v.play().catch(() => {
+                this.playing.value = false;
+            });
+        } else {
+            v.pause();
+        }
     };
 
     play = () => {
         const v = this.video;
         if (!v) return;
-        if (v.paused) void v.play().catch(() => {});
+        if (v.paused) {
+            void v.play().catch(() => {
+                this.playing.value = false;
+            });
+        }
     };
 
     pause = () => {
@@ -1016,7 +1025,8 @@ export class VideoPlayerViewModel {
         await this.api.playback.reportPlaybackProgress(
             this.itemId,
             Math.floor(v.currentTime * TICKS_PER_SECOND),
-            v.paused
+            v.paused,
+            this.decision?.playMethod
         );
     }
 }

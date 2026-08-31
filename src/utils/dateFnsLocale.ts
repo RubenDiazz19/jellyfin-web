@@ -1,5 +1,5 @@
 import type { Locale } from 'date-fns';
-import enUS from 'date-fns/locale/en-US';
+import { enUS } from 'date-fns/locale/en-US';
 
 const LOCALE_MAP: Record<string, string> = {
     'af': 'af',
@@ -72,7 +72,7 @@ const DEFAULT_LOCALE = 'en-US';
  * resolved by the browser's module loader at runtime.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- keys are BCP 47 locale codes */
-const LOCALE_LOADERS: Record<string, () => Promise<{ default: Locale }>> = {
+const LOCALE_LOADERS: Record<string, () => Promise<unknown>> = {
     'af': () => import('date-fns/locale/af'),
     'ar-DZ': () => import('date-fns/locale/ar-DZ'),
     'be': () => import('date-fns/locale/be'),
@@ -135,7 +135,10 @@ let locale = enUS;
 
 export function fetchLocale(localeName: string): Promise<Locale> {
     const loader = LOCALE_LOADERS[localeName] || LOCALE_LOADERS[DEFAULT_LOCALE];
-    return loader().then(module => module.default);
+    return loader().then((module) => {
+        const mod = module as { default?: Locale; [key: string]: unknown };
+        return (mod.default ?? Object.values(mod)[0]) as Locale;
+    });
 }
 
 export function normalizeLocale(localeName: string) {

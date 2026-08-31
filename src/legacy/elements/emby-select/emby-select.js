@@ -2,7 +2,6 @@ import layoutManager from 'components/layoutManager';
 import browser from 'scripts/browser';
 import actionsheet from 'components/actionSheet/actionSheet';
 import './emby-select.scss';
-import 'webcomponents.js/webcomponents-lite';
 
 const EmbySelectPrototype = Object.create(HTMLSelectElement.prototype);
 
@@ -132,7 +131,7 @@ EmbySelectPrototype.setLabel = function (text) {
     label.innerText = text;
 };
 
-document.registerElement('emby-select', {
+document.registerElement?.('emby-select', {
     prototype: EmbySelectPrototype,
     extends: 'select'
 });

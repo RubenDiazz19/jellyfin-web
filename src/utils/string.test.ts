@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isBlank, toBoolean, toFloat } from './string';
+import { isBlank, toBoolean } from './string';
 
 describe('isBlank', () => {
     it('Should return true if the string is blank', () => {
@@ -38,23 +38,5 @@ describe('toBoolean', () => {
 
         bool = toBoolean(null, true);
         expect(bool).toBe(true);
-    });
-});
-
-describe('toFloat()', () => {
-    it('Should return a float', () => {
-        const number = toFloat('3.14159');
-        expect(number).toBe(3.14159);
-    });
-
-    it('Should return default value for NaN', () => {
-        let number = toFloat('test');
-        expect(number).toBe(0);
-
-        number = toFloat(undefined);
-        expect(number).toBe(0);
-
-        number = toFloat(null, -1);
-        expect(number).toBe(-1);
     });
 });

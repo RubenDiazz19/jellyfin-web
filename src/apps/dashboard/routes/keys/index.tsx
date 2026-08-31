@@ -6,7 +6,7 @@ import { useTheme } from '@mui/material/styles';
 import Tooltip from '@mui/material/Tooltip';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import parseISO from 'date-fns/parseISO';
+import { parseISO } from 'date-fns';
 import { type MRT_ColumnDef, type MRT_Theme, useMaterialReactTable } from 'material-react-table';
 import { useCallback, useMemo, useState } from 'react';
 

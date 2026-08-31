@@ -1,7 +1,7 @@
 import type { SessionInfoDto } from '@jellyfin/sdk/lib/generated-client/models/session-info-dto';
 import { ImageType } from '@jellyfin/sdk/lib/generated-client/models/image-type';
 import itemHelper from 'components/itemHelper';
-import formatDistanceToNow from 'date-fns/formatDistanceToNow';
+import { formatDistanceToNow } from 'date-fns';
 import globalize from 'lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { getLocaleWithSuffix } from 'utils/dateFnsLocale';

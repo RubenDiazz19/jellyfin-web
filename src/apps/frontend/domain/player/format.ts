@@ -20,6 +20,19 @@ export type { ItemChapter, MediaSegment, MediaSegmentKind };
 export { TICKS_PER_SECOND } from '../../data/api/types';
 
 /**
+ * Formatea segundos a tiempo legible del reproductor: `M:SS` o `H:MM:SS`.
+ */
+export function formatTime(totalSeconds: number): string {
+    if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return '0:00';
+    const s = Math.floor(totalSeconds % 60);
+    const m = Math.floor((totalSeconds / 60) % 60);
+    const h = Math.floor(totalSeconds / 3600);
+    const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
+    const hours = h > 0 ? `${h}:` : '';
+    return `${hours}${mm}:${String(s).padStart(2, '0')}`;
+}
+
+/**
  * Dónde reanudar, en ticks, sabiendo cuánto dura el item (en minutos) y por
  * dónde iba (0..1). `undefined` = empezar por el principio, que es lo que
  * espera el reproductor cuando no hay nada que reanudar.

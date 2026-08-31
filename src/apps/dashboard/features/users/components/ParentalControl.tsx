@@ -52,9 +52,9 @@ function handleSaveUser(
         const subScore = parentalRating?.RatingScore?.subScore;
         userPolicy.MaxParentalRating = Number.isNaN(score) ? null : score;
         userPolicy.MaxParentalSubRating = Number.isNaN(subScore) ? null : subScore;
-        userPolicy.BlockUnratedItems = Array.prototype.filter
-            .call(page.querySelectorAll('.chkUnratedItem'), i => i.checked)
-            .map(i => i.getAttribute('data-itemtype'));
+        userPolicy.BlockUnratedItems = Array.from(page.querySelectorAll<HTMLInputElement>('.chkUnratedItem'))
+            .filter(i => i.checked)
+            .map(i => i.getAttribute('data-itemtype')) as UnratedItem[];
         userPolicy.AccessSchedules = getSchedulesFromPage();
         userPolicy.AllowedTags = getAllowedTagsFromPage();
         userPolicy.BlockedTags = getBlockedTagsFromPage();
@@ -255,17 +255,17 @@ const ParentalControl = ({ userId }: ParentalControlProps) => {
         };
 
         const getSchedulesFromPage = () => {
-            return Array.prototype.map.call(page.querySelectorAll('.liSchedule'), function (elem) {
+            return Array.from(page.querySelectorAll('.liSchedule'), function (elem) {
                 return {
                     DayOfWeek: elem.getAttribute('data-day'),
                     StartHour: elem.getAttribute('data-start'),
                     EndHour: elem.getAttribute('data-end')
                 };
-            }) as AccessSchedule[];
+            }) as unknown as AccessSchedule[];
         };
 
         const getAllowedTagsFromPage = () => {
-            return Array.prototype.map.call(page.querySelectorAll('.allowedTag'), function (elem) {
+            return Array.from(page.querySelectorAll('.allowedTag'), function (elem) {
                 return elem.getAttribute('data-tag');
             }) as string[];
         };
@@ -286,7 +286,7 @@ const ParentalControl = ({ userId }: ParentalControlProps) => {
         };
 
         const getBlockedTagsFromPage = () => {
-            return Array.prototype.map.call(page.querySelectorAll('.blockedTag'), function (elem) {
+            return Array.from(page.querySelectorAll('.blockedTag'), function (elem) {
                 return elem.getAttribute('data-tag');
             }) as string[];
         };

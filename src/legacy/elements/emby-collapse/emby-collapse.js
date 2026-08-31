@@ -1,5 +1,4 @@
 import './emby-collapse.scss';
-import 'webcomponents.js/webcomponents-lite';
 import '../emby-button/emby-button';
 
 const EmbyButtonPrototype = Object.create(HTMLDivElement.prototype);
@@ -94,8 +93,7 @@ EmbyButtonPrototype.attachedCallback = function () {
     }
 };
 
-document.registerElement('emby-collapse', {
+document.registerElement?.('emby-collapse', {
     prototype: EmbyButtonPrototype,
     extends: 'div'
 });
-

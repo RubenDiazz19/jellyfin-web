@@ -17,7 +17,7 @@ type WebkitElement = HTMLElement & {
 
 const doc = (): WebkitDocument => document as WebkitDocument;
 
-export const isFullscreen = (): boolean =>
+const isFullscreen = (): boolean =>
     !!(document.fullscreenElement || doc().webkitFullscreenElement);
 
 export async function toggleFullscreen(): Promise<void> {

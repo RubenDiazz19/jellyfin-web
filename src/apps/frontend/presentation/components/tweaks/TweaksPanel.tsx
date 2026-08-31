@@ -240,7 +240,9 @@ export function TweakRadio<T extends string>({
     const n = options.length;
 
     const segAt = (clientX: number): T => {
-        const rect = trackRef.current!.getBoundingClientRect();
+        const el = trackRef.current;
+        if (!el) return options[0];
+        const rect = el.getBoundingClientRect();
         const inner = rect.width - 4;
         const i = Math.floor(((clientX - rect.left - 2) / inner) * n);
         return options[Math.max(0, Math.min(n - 1, i))];

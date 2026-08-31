@@ -29,6 +29,9 @@ import { ScrollHint } from '../layout/ScrollHint';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
 
+const SWIPE_DRAG_THRESHOLD = 48;
+const SWIPE_VERTICAL_TOLERANCE = 60;
+
 type Props = {
     slides: CarouselSlide[];
     idx: number;
@@ -63,7 +66,7 @@ export function MobileHero({
         const t = e.changedTouches[0];
         if (!start || !t) return;
         const dx = t.clientX - start.x;
-        if (Math.abs(dx) < 48 || Math.abs(t.clientY - start.y) > 60) return;
+        if (Math.abs(dx) < SWIPE_DRAG_THRESHOLD || Math.abs(t.clientY - start.y) > SWIPE_VERTICAL_TOLERANCE) return;
         goSlide(idx + (dx < 0 ? 1 : -1));
     };
 

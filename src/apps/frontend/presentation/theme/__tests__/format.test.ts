@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { formatDateLong, formatEndTime, formatRemaining, formatRemainingCompact, formatRuntime, parseRuntimeMinutes } from '../format';
+import {
+    formatDateLong, formatEndTime, formatPlaybackEndTime, formatRemaining,
+    formatRemainingCompact, formatRuntime, parseRuntimeMinutes
+} from '../format';
 
 describe('formatDateLong', () => {
     test('fecha larga en español', () => {
@@ -104,3 +107,28 @@ describe('formatEndTime', () => {
         expect(formatEndTime('—')).toBeUndefined();
     });
 });
+
+describe('formatPlaybackEndTime', () => {
+    test('calcula correctamente la hora de fin sumando los segundos restantes a velocidad 1x', () => {
+        const baseDate = new Date('2026-08-31T10:00:00');
+        // 70 minutos = 4200 segundos
+        const endTime = formatPlaybackEndTime(4200, 1, baseDate);
+        expect(endTime).toBeDefined();
+        expect(endTime).toMatch(/11:10/);
+    });
+
+    test('ajusta la hora si la velocidad de reproducción es mayor', () => {
+        const baseDate = new Date('2026-08-31T10:00:00');
+        // 70 minutos a 2x = 35 minutos de tiempo real (10:35)
+        const endTime = formatPlaybackEndTime(4200, 2, baseDate);
+        expect(endTime).toBeDefined();
+        expect(endTime).toMatch(/10:35/);
+    });
+
+    test('devuelve undefined si los segundos restantes son 0 o negativos', () => {
+        expect(formatPlaybackEndTime(0)).toBeUndefined();
+        expect(formatPlaybackEndTime(-10)).toBeUndefined();
+        expect(formatPlaybackEndTime(undefined)).toBeUndefined();
+    });
+});
+

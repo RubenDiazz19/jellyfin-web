@@ -1,5 +1,4 @@
 import './emby-toggle.scss';
-import 'webcomponents.js/webcomponents-lite';
 
 const EmbyTogglePrototype = Object.create(HTMLInputElement.prototype);
 
@@ -41,7 +40,7 @@ EmbyTogglePrototype.attachedCallback = function () {
     this.addEventListener('keydown', onKeyDown);
 };
 
-document.registerElement('emby-toggle', {
+document.registerElement?.('emby-toggle', {
     prototype: EmbyTogglePrototype,
     extends: 'input'
 });

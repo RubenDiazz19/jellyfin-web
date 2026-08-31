@@ -1,4 +1,3 @@
-import 'webcomponents.js/webcomponents-lite';
 import dom from 'utils/dom';
 import ScrollerFactory from 'lib/scroller';
 import browser from 'scripts/browser';
@@ -331,7 +330,7 @@ EmbyTabs.setTabEnabled = function (index, enabled) {
     }
 };
 
-document.registerElement('emby-tabs', {
+document.registerElement?.('emby-tabs', {
     prototype: EmbyTabs,
     extends: 'div'
 });

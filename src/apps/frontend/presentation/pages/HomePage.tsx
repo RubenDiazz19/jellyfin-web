@@ -25,6 +25,10 @@ import { MC, useResponsive } from '../theme/responsive';
 import { useHomeScrollTransition } from './useHomeScrollTransition';
 import type { Navigate } from '../../app/router';
 
+const HERO_AUTOPLAY_MS = 8000;
+const WHEEL_THRESHOLD = 100;
+const WHEEL_LOCK_MS = 900;
+
 export function HomePage({ navigate }: { navigate: Navigate }) {
     const { session } = useSession();
     const { play } = usePlayer();
@@ -58,7 +62,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     // fuera de pantalla al hacer scroll, ahorrando ciclos de CPU/batería.
     useEffect(() => {
         if (paused || dragging || slideCount <= 1 || trans.isHeroOffscreen) return;
-        const t = setTimeout(() => setIdx((n) => (n + 1) % slideCount), 8000);
+        const t = setTimeout(() => setIdx((n) => (n + 1) % slideCount), HERO_AUTOPLAY_MS);
         return () => clearTimeout(t);
     }, [idx, paused, dragging, slideCount, trans.isHeroOffscreen]);
 
@@ -109,6 +113,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         if (!el) return;
         wheelAccum.current = 0;
         let resetTimer: ReturnType<typeof setTimeout> | null = null;
+        let lockTimer: ReturnType<typeof setTimeout> | null = null;
         const onWheel = (e: WheelEvent) => {
             if (Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.2) return;
             e.preventDefault();
@@ -118,13 +123,13 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                 return;
             }
             wheelAccum.current += e.deltaX;
-            const THRESH = 100;
-            if (Math.abs(wheelAccum.current) > THRESH) {
+            if (Math.abs(wheelAccum.current) > WHEEL_THRESHOLD) {
                 const dir = wheelAccum.current > 0 ? 1 : -1;
                 goSlide(idx + dir);
                 wheelAccum.current = 0;
                 wheelLockRef.current = true;
-                setTimeout(() => { wheelLockRef.current = false; }, 900);
+                if (lockTimer) clearTimeout(lockTimer);
+                lockTimer = setTimeout(() => { wheelLockRef.current = false; }, WHEEL_LOCK_MS);
             }
             if (resetTimer) clearTimeout(resetTimer);
             resetTimer = setTimeout(() => { wheelAccum.current = 0; }, 150);
@@ -133,6 +138,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         return () => {
             el.removeEventListener('wheel', onWheel);
             if (resetTimer) clearTimeout(resetTimer);
+            if (lockTimer) clearTimeout(lockTimer);
         };
     }, [idx, goSlide]);
 
@@ -537,6 +543,24 @@ const HomeLibrary = React.memo(function HomeLibraryBase({
     );
 });
 
+function getSectionStyle(touch: boolean) {
+    return {
+        background: 'transparent',
+        color: touch ? MC.fg : '#fff',
+        paddingTop: 0,
+        paddingBottom: touch ? 'calc(var(--jfp-viewport-h, 100vh) - 180px)' : 'calc(100vh - 240px)',
+        fontFamily: T.ui
+    } as const;
+}
+
+function getHeadingStyle(titleOpacity?: number, titleTranslateY?: number) {
+    return titleOpacity !== undefined ? {
+        opacity: titleOpacity,
+        transform: titleTranslateY ? `translateY(${titleTranslateY}px)` : undefined,
+        willChange: 'opacity, transform'
+    } : undefined;
+}
+
 function HomeLibraryJellyfin({
     navigate,
     titleOpacity,
@@ -547,19 +571,8 @@ function HomeLibraryJellyfin({
     titleTranslateY?: number;
 }) {
     const r = useResponsive();
-    const sectionStyle = {
-        background: 'transparent',
-        color: r.touch ? MC.fg : '#fff',
-        paddingTop: 0,
-        paddingBottom: r.touch ? 'calc(var(--jfp-viewport-h, 100vh) - 180px)' : 'calc(100vh - 240px)',
-        fontFamily: T.ui
-    } as const;
-
-    const headingStyle = titleOpacity !== undefined ? {
-        opacity: titleOpacity,
-        transform: titleTranslateY ? `translateY(${titleTranslateY}px)` : undefined,
-        willChange: 'opacity, transform'
-    } : undefined;
+    const sectionStyle = getSectionStyle(r.touch);
+    const headingStyle = getHeadingStyle(titleOpacity, titleTranslateY);
 
     // homeVM.load() lo dispara HomePage al montar; aquí solo se leen signals.
     useVmSignals(homeVM, (vm) => [
@@ -626,19 +639,8 @@ function HomeLibraryProto({
     titleTranslateY?: number;
 }) {
     const r = useResponsive();
-    const sectionStyle = {
-        background: 'transparent',
-        color: r.touch ? MC.fg : '#fff',
-        paddingTop: 0,
-        paddingBottom: r.touch ? 'calc(var(--jfp-viewport-h, 100vh) - 180px)' : 'calc(100vh - 240px)',
-        fontFamily: T.ui
-    } as const;
-
-    const headingStyle = titleOpacity !== undefined ? {
-        opacity: titleOpacity,
-        transform: titleTranslateY ? `translateY(${titleTranslateY}px)` : undefined,
-        willChange: 'opacity, transform'
-    } : undefined;
+    const sectionStyle = getSectionStyle(r.touch);
+    const headingStyle = getHeadingStyle(titleOpacity, titleTranslateY);
 
     const cw = useMemo(() => data.carousel.filter((s) => s.type === 'continue'), [data.carousel]);
     const { movies, series, recent, hydrated } = useMemo(() => {

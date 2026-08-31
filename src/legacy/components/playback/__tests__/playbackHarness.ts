@@ -294,10 +294,6 @@ export function installPlaybackMocks(): void {
     vi.mock('components/playback/utils/mediaSessionSubscriber', () => ({
         bindMediaSessionSubscriber: () => undefined
     }));
-
-    vi.mock('screenfull', () => ({
-        default: { isEnabled: false, on: vi.fn(), off: vi.fn() }
-    }));
 }
 
 /** ApiClient de mentira. Se reinstala en cada test para poder ajustarlo. */

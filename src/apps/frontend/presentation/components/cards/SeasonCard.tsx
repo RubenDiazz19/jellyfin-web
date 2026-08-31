@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
 
-import React from 'react';
+import { memo } from 'react';
 import { T } from '../../theme/tokens';
 import { SeasonWatchedButton } from '../controls/SeasonWatchedButton';
 import { FavButton } from '../controls/FavButton';
@@ -14,7 +14,7 @@ import { seasonKey } from '../../../domain/stores';
 
 type Props = { show: Show; season: Season; navigate: Navigate };
 
-export const SeasonCard = React.memo(function SeasonCardBase({ show, season, navigate }: Props) {
+export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate }: Props) {
     const pct = season.total ? season.watched / season.total : 0;
     // Primer episodio no visto: lo mismo que calcula la ficha de temporada,
     // para que «Reproducir siguiente» del menú contextual arranque bien.

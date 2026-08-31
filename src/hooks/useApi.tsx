@@ -1,6 +1,6 @@
 import type { Api } from '@jellyfin/sdk';
 import type { UserDto } from '@jellyfin/sdk/lib/generated-client';
-import { type FC, type PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { type PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 
@@ -15,7 +15,7 @@ export interface JellyfinApiContext {
 export const ApiContext = createContext<JellyfinApiContext>({});
 export const useApi = () => useContext(ApiContext);
 
-export const ApiProvider: FC<PropsWithChildren<unknown>> = ({ children }) => {
+export function ApiProvider({ children }: Readonly<PropsWithChildren>) {
     const [ serverId, setServerId ] = useState<string>();
     const [ api, setApi ] = useState<Api>();
     const [ user, setUser ] = useState<UserDto>();

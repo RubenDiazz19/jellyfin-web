@@ -1,5 +1,4 @@
 import escapeHtml from 'escape-html';
-import Headroom from 'headroom.js';
 
 import { getSystemApi } from '@jellyfin/sdk/lib/utils/api/system-api';
 
@@ -611,22 +610,38 @@ function updateBackButton(page) {
 }
 
 function initHeadRoom(elem) {
-    const headroom = new Headroom(elem);
-    headroom.init();
+    elem.classList.add('headroom', 'headroom--pinned');
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                const currentScrollY = window.scrollY;
+                if (currentScrollY <= 0 || currentScrollY < lastScrollY) {
+                    elem.classList.add('headroom--pinned');
+                    elem.classList.remove('headroom--unpinned');
+                } else if (currentScrollY > 60) {
+                    elem.classList.remove('headroom--pinned');
+                    elem.classList.add('headroom--unpinned');
+                }
+                lastScrollY = currentScrollY;
+                ticking = false;
+            });
+            ticking = true;
+        }
+    }, { passive: true });
 }
 
 function refreshLibraryDrawer(user) {
     loadNavDrawer();
     currentDrawerType = 'library';
 
-    if (user) {
-        Promise.resolve(user);
-    } else {
-        ServerConnections.getUserInfo(getCurrentServerId()).then(function (userResult) {
-            refreshLibraryInfoInDrawer(userResult);
-            updateLibraryMenu(userResult.localUser);
-        });
-    }
+    const p = user ? Promise.resolve(user) : ServerConnections.getUserInfo(getCurrentServerId());
+    p.then(function (userResult) {
+        refreshLibraryInfoInDrawer(userResult);
+        updateLibraryMenu(userResult.localUser ?? userResult);
+    });
 }
 
 function getNavDrawerOptions() {

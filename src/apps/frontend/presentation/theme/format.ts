@@ -62,6 +62,22 @@ export function formatEndTime(
     return globalize.translate('EndsAtValue', timeStr);
 }
 
+// Calcula y formatea a qué hora terminará una reproducción a partir de los segundos restantes y la velocidad.
+export function formatPlaybackEndTime(
+    remainingSeconds: number | undefined,
+    playbackRate = 1,
+    fromDate: Date = new Date()
+): string | undefined {
+    if (remainingSeconds == null || !Number.isFinite(remainingSeconds) || remainingSeconds <= 0) {
+        return undefined;
+    }
+    const rate = playbackRate > 0 ? playbackRate : 1;
+    const realMs = (remainingSeconds / rate) * 1000;
+    const end = new Date(fromDate.getTime() + realMs);
+    const timeStr = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return globalize.translate('EndsAtValue', timeStr);
+}
+
 // Tiempo restante compacto para overlays: <60 min → "42 min";
 // a partir de 60 → "1 h 12 min" (o "2 h" si cae en punto).
 export function formatRemainingCompact(minutes: RuntimeValue): string {

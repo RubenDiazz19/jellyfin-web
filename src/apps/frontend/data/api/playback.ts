@@ -25,6 +25,7 @@ import { extractTrickplay, type TrickplayData } from './playbackContext';
 
 export type PlaybackDecision = {
     kind: 'direct' | 'hls';
+    playMethod?: 'DirectPlay' | 'DirectStream' | 'Transcode';
     url: string;
     playSessionId?: string;
     container?: string;
@@ -213,7 +214,7 @@ async function negotiatePlayback(
     // DirectPlay = el servidor ha contrastado el fichero con nuestro
     // DeviceProfile y confirma que el navegador puede con él tal cual.
     if (src.SupportsDirectPlay) {
-        return { kind: 'direct', url: directUrl(), container: src.Container, ...common };
+        return { kind: 'direct', playMethod: 'DirectPlay', url: directUrl(), container: src.Container, ...common };
     }
 
     // DirectStream es OTRA cosa: los códecs valen pero el CONTENEDOR no. Es el
@@ -223,14 +224,14 @@ async function negotiatePlayback(
     // justo lo que hace la TranscodingUrl: el servidor copia los códecs y solo
     // cambia el contenedor, así que no cuesta una recodificación.
     if (src.SupportsTranscoding && src.TranscodingUrl) {
-        return { kind: 'hls', url: hlsUrl(), container: src.TranscodingContainer, ...common };
+        return { kind: 'hls', playMethod: 'Transcode', url: hlsUrl(), container: src.TranscodingContainer, ...common };
     }
 
     // Sin URL de transcode, el fichero crudo es lo único que queda: puede que
     // el navegador lo reproduzca (algunos MKV con VP9 en Chrome), y si no, el
     // error del <video> es mejor que no intentarlo.
     if (src.SupportsDirectStream) {
-        return { kind: 'direct', url: directUrl(), container: src.Container, ...common };
+        return { kind: 'direct', playMethod: 'DirectStream', url: directUrl(), container: src.Container, ...common };
     }
 
     throw new Error('El servidor no puede reproducir este item');
@@ -245,11 +246,14 @@ export function subtitleVttUrl(itemId: string, mediaSourceId: string, streamInde
 
 // Playback reporting: without these the server won't update "continue watching",
 // mark-as-played-at-90%, or last-played timestamps.
-export async function reportPlaybackStart(itemId: string): Promise<void> {
+export async function reportPlaybackStart(
+    itemId: string,
+    playMethod: 'DirectPlay' | 'DirectStream' | 'Transcode' = 'DirectPlay'
+): Promise<void> {
     try {
         await apiSend('/Sessions/Playing', 'POST', {
             ItemId: itemId,
-            PlayMethod: 'Transcode',
+            PlayMethod: playMethod,
             CanSeek: true
         });
     } catch { /* non-blocking */ }
@@ -258,14 +262,15 @@ export async function reportPlaybackStart(itemId: string): Promise<void> {
 export async function reportPlaybackProgress(
     itemId: string,
     positionTicks: number,
-    isPaused: boolean
+    isPaused: boolean,
+    playMethod: 'DirectPlay' | 'DirectStream' | 'Transcode' = 'DirectPlay'
 ): Promise<void> {
     try {
         await apiSend('/Sessions/Playing/Progress', 'POST', {
             ItemId: itemId,
             PositionTicks: positionTicks,
             IsPaused: isPaused,
-            PlayMethod: 'Transcode',
+            PlayMethod: playMethod,
             CanSeek: true
         });
     } catch { /* silent */ }

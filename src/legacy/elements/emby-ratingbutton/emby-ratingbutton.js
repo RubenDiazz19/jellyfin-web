@@ -152,7 +152,7 @@ EmbyRatingButtonPrototype.setItem = function (item) {
     }
 };
 
-document.registerElement('emby-ratingbutton', {
+document.registerElement?.('emby-ratingbutton', {
     prototype: EmbyRatingButtonPrototype,
     extends: 'button'
 });

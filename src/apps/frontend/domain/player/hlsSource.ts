@@ -86,11 +86,15 @@ export async function attachHlsSource(
 
     const hls = new HlsMod(HLS_CONFIG);
     hls.on(HlsMod.Events.ERROR, (_ev, data) => {
-        console.warn('[player] hls.js', data.type, data.details, { fatal: data.fatal });
         if (!data.fatal || opts.isClosed()) return;
-        if (data.type === 'networkError') hls.startLoad();
-        else if (data.type === 'mediaError') hls.recoverMediaError();
-        else opts.onUnrecoverable();
+        if (data.type === 'networkError') {
+            hls.startLoad();
+        } else if (data.type === 'mediaError') {
+            hls.recoverMediaError();
+            hls.startLoad();
+        } else {
+            opts.onUnrecoverable();
+        }
     });
     hls.loadSource(url);
     hls.attachMedia(video);

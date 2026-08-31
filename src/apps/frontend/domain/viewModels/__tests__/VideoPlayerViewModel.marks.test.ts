@@ -8,7 +8,7 @@ import type { PlaybackDecision } from '../../../data/api/playback';
 import type { PlaybackContext } from '../../../data/api/playbackContext';
 import type { MediaSegment } from '../../../data/api/segments';
 import {
-    chapterAt, chapterDisplayName, playerMarks, progressDividers
+    chapterAt, chapterDisplayName, formatTime, playerMarks, progressDividers
 } from '../../player/format';
 import { VideoPlayerViewModel } from '../VideoPlayerViewModel';
 
@@ -74,6 +74,17 @@ function mockApi(segments: MediaSegment[] = []) {
         session: { load: vi.fn(() => ({ userId: 'u1' })) }
     } as unknown as ApiService;
 }
+
+describe('formatTime', () => {
+    test('formatea segundos a M:SS o H:MM:SS', () => {
+        expect(formatTime(0)).toBe('0:00');
+        expect(formatTime(45)).toBe('0:45');
+        expect(formatTime(75)).toBe('1:15');
+        expect(formatTime(3665)).toBe('1:01:05');
+        expect(formatTime(-10)).toBe('0:00');
+        expect(formatTime(NaN)).toBe('0:00');
+    });
+});
 
 describe('chapterAt', () => {
     test('devuelve el capítulo que contiene el instante', () => {

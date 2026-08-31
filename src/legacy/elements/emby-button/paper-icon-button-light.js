@@ -1,6 +1,5 @@
 import layoutManager from 'components/layoutManager';
 import './emby-button.scss';
-import 'webcomponents.js/webcomponents-lite';
 
 const EmbyButtonPrototype = Object.create(HTMLButtonElement.prototype);
 
@@ -12,7 +11,7 @@ EmbyButtonPrototype.createdCallback = function () {
     }
 };
 
-document.registerElement('paper-icon-button-light', {
+document.registerElement?.('paper-icon-button-light', {
     prototype: EmbyButtonPrototype,
     extends: 'button'
 });

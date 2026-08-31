@@ -12,7 +12,6 @@
 
 import React, { useCallback, useState } from 'react';
 import { BlurhashCanvas } from 'react-blurhash';
-import { LazyLoadImage } from 'react-lazy-load-image-component';
 
 import * as userSettings from 'scripts/settings/userSettings';
 
@@ -56,13 +55,8 @@ function Image({
     layout = 'fill'
 }: ImageProps) {
     const [isLoaded, setIsLoaded] = useState(false);
-    const [isLoadStarted, setIsLoadStarted] = useState(false);
     const handleLoad = useCallback(() => {
         setIsLoaded(true);
-    }, []);
-
-    const handleLoadStarted = useCallback(() => {
-        setIsLoadStarted(true);
     }, []);
 
     const fadeinDuration = userSettings.enableFastFadein() ? '0.1s' : '0.5s';
@@ -71,7 +65,7 @@ function Image({
 
     return (
         <div>
-            {!isLoaded && isLoadStarted && blurhash && userSettings.enableBlurhash() && (
+            {!isLoaded && blurhash && userSettings.enableBlurhash() && (
                 <BlurhashCanvas
                     hash={blurhash}
                     width={20}
@@ -84,10 +78,12 @@ function Image({
                     }}
                 />
             )}
-            <LazyLoadImage
+            <img
                 key={imgUrl}
                 src={imgUrl}
                 alt={alt}
+                loading='lazy'
+                decoding='async'
                 style={{
                     ...baseStyle,
                     objectFit: containImage ? 'contain' : 'cover',
@@ -95,7 +91,6 @@ function Image({
                     transition: transitionDuration
                 }}
                 onLoad={handleLoad}
-                beforeLoad={handleLoadStarted}
             />
 
         </div>

@@ -1,7 +1,6 @@
 import browser from 'scripts/browser';
 import dom from 'utils/dom';
 import './emby-checkbox.scss';
-import 'webcomponents.js/webcomponents-lite';
 
 const EmbyCheckboxPrototype = Object.create(HTMLInputElement.prototype);
 
@@ -101,7 +100,7 @@ EmbyCheckboxPrototype.detachedCallback = function () {
     });
 };
 
-document.registerElement('emby-checkbox', {
+document.registerElement?.('emby-checkbox', {
     prototype: EmbyCheckboxPrototype,
     extends: 'input'
 });

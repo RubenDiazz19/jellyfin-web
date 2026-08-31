@@ -1,4 +1,4 @@
-import { type FC, type PropsWithChildren, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { type PropsWithChildren, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { FALLBACK_CULTURE } from 'lib/globalize';
 import { currentSettings as userSettings } from 'scripts/settings/userSettings';
@@ -41,7 +41,7 @@ const UserSettingsContext = createContext<UserSettings>({
 
 export const useUserSettings = () => useContext(UserSettingsContext);
 
-export const UserSettingsProvider: FC<PropsWithChildren<unknown>> = ({ children }) => {
+export function UserSettingsProvider({ children }: Readonly<PropsWithChildren>) {
     const [ customCss, setCustomCss ] = useState<string>();
     const [ disableCustomCss, setDisableCustomCss ] = useState(false);
     const [ theme, setTheme ] = useState<string>();

@@ -1,5 +1,3 @@
-import 'webcomponents.js/webcomponents-lite';
-
 import { appHost } from 'components/apphost';
 import layoutManager from 'components/layoutManager';
 import { appRouter } from 'components/router/appRouter';
@@ -65,12 +63,12 @@ EmbyButtonPrototype.detachedCallback = function () {
 EmbyLinkButtonPrototype.createdCallback = EmbyButtonPrototype.createdCallback;
 EmbyLinkButtonPrototype.attachedCallback = EmbyButtonPrototype.attachedCallback;
 
-document.registerElement('emby-button', {
+document.registerElement?.('emby-button', {
     prototype: EmbyButtonPrototype,
     extends: 'button'
 });
 
-document.registerElement('emby-linkbutton', {
+document.registerElement?.('emby-linkbutton', {
     prototype: EmbyLinkButtonPrototype,
     extends: 'a'
 });

@@ -3,26 +3,17 @@
 // play/pausa, volumen, ajustes y fullscreen.
 import globalize from 'lib/globalize';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import {
-    chapterDisplayName, chapterIndexAt, progressDividers
+    chapterDisplayName, chapterIndexAt, formatTime, progressDividers
 } from '../../../domain/player/format';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
+import { formatPlaybackEndTime } from '../../theme/format';
 import { PlayerIc } from './playerIcons';
 import { VolumeSlider } from './VolumeSlider';
 import { VideoSettingsMenu } from './VideoSettingsMenu';
-
-function formatTime(totalSeconds: number): string {
-    if (!Number.isFinite(totalSeconds) || totalSeconds < 0) return '0:00';
-    const s = Math.floor(totalSeconds % 60);
-    const m = Math.floor((totalSeconds / 60) % 60);
-    const h = Math.floor(totalSeconds / 3600);
-    const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
-    const hours = h > 0 ? `${h}:` : '';
-    return `${hours}${mm}:${String(s).padStart(2, '0')}`;
-}
 
 /** % de la barra que ocupa un instante del vídeo. */
 function toPct(seconds: number, duration: number): number {
@@ -37,10 +28,11 @@ type Props = {
 export function VideoControls({ onToggleQueue }: Props) {
     const barRef = useRef<HTMLDivElement>(null);
     const [dragPct, setDragPct] = useState<number | null>(null);
+    const [now, setNow] = useState(() => new Date());
 
     // Suscripciones individuales: useViewModel suscribiría a TODOS los
     // signals del VM (audioTracks, subtitleUrl, buffering…); así solo
-    // re-renderizamos por los 4 que este componente pinta de verdad.
+    // re-renderizamos por los que este componente pinta de verdad.
     const duration = useSignalValue(videoPlayerVM.duration);
     const current = useSignalValue(videoPlayerVM.currentTime);
     const playing = useSignalValue(videoPlayerVM.playing);
@@ -52,7 +44,19 @@ export function VideoControls({ onToggleQueue }: Props) {
     const segments = useSignalValue(videoPlayerVM.segmentList);
     const skip = useSignalValue(videoPlayerVM.skip);
     const showRemaining = useSignalValue(videoPlayerVM.showRemainingTime);
+    const playbackRate = useSignalValue(videoPlayerVM.playbackRate);
     useSignalValue(videoPlayerVM.trickplay);
+
+    const hasDuration = duration > 0;
+    // Actualiza la referencia horaria cada segundo cuando el reproductor tiene duración
+    // para que la hora prevista de fin avance automáticamente con el reloj real.
+    useEffect(() => {
+        if (!hasDuration) return;
+        const timer = setInterval(() => {
+            setNow(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [hasDuration]);
     // Se recalcula solo al cambiar de item o al llegar los segmentos, no en
     // cada timeupdate.
     const dividers = useMemo(
@@ -62,6 +66,8 @@ export function VideoControls({ onToggleQueue }: Props) {
 
     const pct = dragPct ?? (duration > 0 ? (current / duration) * 100 : 0);
     const shownTime = dragPct != null ? (dragPct / 100) * duration : current;
+    const remainingSeconds = duration > 0 ? Math.max(0, duration - shownTime) : 0;
+    const endTimeText = formatPlaybackEndTime(remainingSeconds, playbackRate, now);
 
     // Posición del puntero sobre la barra: alimenta la etiqueta flotante con
     // el tiempo y el nombre del capítulo al que se saltaría.
@@ -107,6 +113,11 @@ export function VideoControls({ onToggleQueue }: Props) {
 
     return (
         <div className='jfp-video-controls' onClick={(e) => e.stopPropagation()}>
+            {endTimeText && (
+                <div className='jfp-video-controls-info'>
+                    <span className='jfp-video-ends-at'>{endTimeText}</span>
+                </div>
+            )}
             <div
                 ref={barRef}
                 className='jfp-video-progress'

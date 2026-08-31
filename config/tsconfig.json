@@ -15,6 +15,7 @@
     "outDir": "../dist/",
     "checkJs": false,
     "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "paths": {
       "hooks/*": ["../src/hooks/*"],

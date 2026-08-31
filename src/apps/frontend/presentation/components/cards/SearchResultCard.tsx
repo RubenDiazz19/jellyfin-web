@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
 
-import React from 'react';
+import { memo } from 'react';
 import { PosterTile } from './PosterTile';
 import { useCardInteractions } from './useCardInteractions';
 import type { CatalogItem } from '../../../domain/models';
@@ -15,7 +15,7 @@ import type { Navigate } from '../../../app/router';
 
 type Props = { item: CatalogItem; navigate: Navigate };
 
-export const SearchResultCard = React.memo(function SearchResultCardBase({ item, navigate }: Props) {
+export const SearchResultCard = memo(function SearchResultCardBase({ item, navigate }: Props) {
     const interactions = useCardInteractions(
         { id: item.id, title: item.title, kind: item.kind, poster: item.poster, year: item.year },
         navigate

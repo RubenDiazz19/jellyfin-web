@@ -50,8 +50,7 @@ export function loadView(options) {
             pageIndex = 0;
         }
 
-        const isPluginpage = options.url.includes('configurationpage');
-        const newViewInfo = normalizeNewView(options, isPluginpage);
+        const newViewInfo = normalizeNewView(options);
         const newView = newViewInfo.elem;
 
         const currentPage = allPages[pageIndex];
@@ -131,36 +130,18 @@ function parseHtml(html, hasScript) {
     return wrapper.querySelector('div[data-role="page"]');
 }
 
-function normalizeNewView(options, isPluginpage) {
+function normalizeNewView(options) {
     const viewHtml = options.view;
 
     if (viewHtml.indexOf('data-role="page"') === -1) {
-        return viewHtml;
+        return { elem: viewHtml };
     }
 
-    let hasScript = viewHtml.indexOf('<script') !== -1;
+    const hasScript = viewHtml.indexOf('<script') !== -1;
     const elem = parseHtml(viewHtml, hasScript);
 
-    if (hasScript) {
-        hasScript = elem.querySelector('script') != null;
-    }
-
-    let hasjQuery = false;
-    let hasjQuerySelect = false;
-    let hasjQueryChecked = false;
-
-    if (isPluginpage) {
-        hasjQuery = viewHtml.indexOf('jQuery') != -1 || viewHtml.indexOf('$(') != -1 || viewHtml.indexOf('$.') != -1;
-        hasjQueryChecked = viewHtml.indexOf('.checked(') != -1;
-        hasjQuerySelect = viewHtml.indexOf('.selectmenu(') != -1;
-    }
-
     return {
-        elem: elem,
-        hasScript: hasScript,
-        hasjQuerySelect: hasjQuerySelect,
-        hasjQueryChecked: hasjQueryChecked,
-        hasjQuery: hasjQuery
+        elem: elem
     };
 }
 

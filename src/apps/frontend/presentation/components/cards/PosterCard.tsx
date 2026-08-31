@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import { episodeKey, WATCHED } from '../../../domain/stores';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
@@ -28,7 +28,7 @@ type Props = {
 };
 
 // Póster vertical de serie (fila de home y librería).
-export const PosterCard = React.memo(function PosterCardBase({ slide, navigate, fluid }: Props) {
+export const PosterCard = memo(function PosterCardBase({ slide, navigate, fluid }: Props) {
     const r = useResponsive();
     // 130/160 en mobile/tablet (spec 4.1); desktop conserva 230.
     const w = r.touch ? r.cardW : POSTER_W;

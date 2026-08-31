@@ -26,9 +26,11 @@ type ResetProvider = BaseItemDto & {
     checkedAttribute: string
 };
 
-const getCheckedElementDataIds = (elements: NodeListOf<Element>) => (
-    Array.prototype.filter.call(elements, e => e.checked)
-        .map(e => e.getAttribute('data-id'))
+const getCheckedElementDataIds = (elements: NodeListOf<Element>): string[] => (
+    Array.from(elements)
+        .filter((e) => (e as HTMLInputElement).checked)
+        .map((e) => e.getAttribute('data-id'))
+        .filter((id): id is string => id !== null)
 );
 
 const Profile = ({ userDto }: ProfileProps) => {

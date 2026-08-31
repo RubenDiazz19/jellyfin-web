@@ -309,11 +309,6 @@ function executeAction(card, target, action) {
         case ItemAction.PlayMenu:
             showPlayMenu(card, target);
             break;
-        case ItemAction.Edit:
-            getItem(target).then(() => {
-                void editItem();
-            });
-            break;
         case ItemAction.PlayTrailer:
             getItem(target).then(playTrailer);
             break;
@@ -357,12 +352,6 @@ function playTrailer(item) {
     }).then(({ data: trailers }) => {
         playbackManager.play({ items: trailers });
     });
-}
-
-function editItem() {
-    // Los editores de grabaciones y metadatos se retiraron con el
-    // frontend legacy.
-    return Promise.reject(new Error('Editing is no longer available'));
 }
 
 export function onClick(e) {

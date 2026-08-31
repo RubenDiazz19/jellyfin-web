@@ -1,35 +1,40 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface Event {
     type: string;
 }
 
-type Callback = (e: Event, ...args: any[]) => void;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Callback = (e: Event, ...args: any[]) => void;
 
-function getCallbacks(obj: any, type: string): Callback[] {
-    if (!obj) {
+interface EventObject {
+    _callbacks?: Record<string, Callback[]>;
+}
+
+function getCallbacks(obj: unknown, type: string): Callback[] {
+    if (!obj || typeof obj !== 'object') {
         throw new Error('obj cannot be null!');
     }
 
-    obj._callbacks = obj._callbacks || {};
+    const eventObj = obj as EventObject;
+    eventObj._callbacks = eventObj._callbacks || {};
 
-    let callbacks = obj._callbacks[type];
+    let callbacks = eventObj._callbacks[type];
 
     if (!callbacks) {
-        obj._callbacks[type] = [];
-        callbacks = obj._callbacks[type];
+        callbacks = [];
+        eventObj._callbacks[type] = callbacks;
     }
 
     return callbacks;
 }
 
 export default {
-    on(obj: any, type: string, fn: Callback): void {
+    on(obj: unknown, type: string, fn: Callback): void {
         const callbacks = getCallbacks(obj, type);
 
         callbacks.push(fn);
     },
 
-    off(obj: any, type: string, fn: Callback): void {
+    off(obj: unknown, type: string, fn: Callback): void {
         const callbacks = getCallbacks(obj, type);
 
         const i = callbacks.indexOf(fn);
@@ -38,8 +43,8 @@ export default {
         }
     },
 
-    trigger(obj: any, type: string, args: any[] = []) {
-        const eventArgs: [Event, ...any] = [{ type }, ...args];
+    trigger(obj: unknown, type: string, args: unknown[] = []): void {
+        const eventArgs: [Event, ...unknown[]] = [{ type }, ...args];
 
         getCallbacks(obj, type).slice(0)
             .forEach(callback => {
@@ -47,4 +52,3 @@ export default {
             });
     }
 };
-/* eslint-enable @typescript-eslint/no-explicit-any */

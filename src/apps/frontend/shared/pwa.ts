@@ -10,7 +10,7 @@ const SW_URL = '/serviceworker.js';
 // probarlo en dev: localStorage.setItem('jfp-sw-dev', '1') y recargar.
 const DEV_OPTIN_KEY = 'jfp-sw-dev';
 
-export const STANDALONE_CLASS = 'jfp-standalone';
+const STANDALONE_CLASS = 'jfp-standalone';
 
 type BeforeInstallPromptEvent = Event & {
     prompt: () => Promise<void>;

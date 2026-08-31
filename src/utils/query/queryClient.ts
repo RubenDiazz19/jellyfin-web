@@ -17,14 +17,28 @@ const MAX_RETRIES = 2;
 // eslint-disable-next-line prefer-const
 export let queryClient: QueryClient;
 
+interface RequestError {
+    status?: number;
+    statusCode?: number;
+    response?: {
+        status?: number;
+    };
+}
+
+function getErrorStatus(error: unknown): number | undefined {
+    if (error && typeof error === 'object') {
+        const reqErr = error as RequestError;
+        return reqErr.response?.status ?? reqErr.status ?? reqErr.statusCode;
+    }
+    return undefined;
+}
+
 /** Query cache for handling query errors and side effects. */
 const queryCache = new QueryCache({
     onError: (error, { queryKey }) => {
         if (!queryClient) return;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const requestError = error as any;
-        const status = requestError?.response?.status || requestError?.status || requestError?.statusCode;
+        const status = getErrorStatus(error);
         if (status === HTTP_UNAUTHORIZED) {
             try {
                 // If a query fails due to authorization, cancel it and remove it from the cache to prevent showing
@@ -49,9 +63,7 @@ queryClient = new QueryClient({
             networkMode: 'always', // network connection is not required if running on localhost
             staleTime: MAX_STALENESS,
             retry: (failureCount, error) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const requestError = error as any;
-                const status = requestError?.response?.status || requestError?.status || requestError?.statusCode;
+                const status = getErrorStatus(error);
                 // Don't retry if unauthorized
                 if (status === HTTP_UNAUTHORIZED) return false;
                 return failureCount < MAX_RETRIES;

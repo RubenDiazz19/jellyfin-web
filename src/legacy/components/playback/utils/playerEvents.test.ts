@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { PlayTarget } from 'types/playTarget';
 import Events from 'utils/events';
@@ -6,44 +6,25 @@ import Events from 'utils/events';
 import type { Player } from '../types/player';
 import { bindToFullscreenChange, triggerPlayerChange } from './playerEvents';
 
-// Screenfull mira el document real al cargarse; se sustituye para poder
-// probar las dos ramas (API estándar y el prefijo de Safari en iOS).
-// `vi.hoisted` porque `vi.mock` sube al principio del fichero y no vería una
-// constante declarada aquí abajo.
-const screenfull = vi.hoisted(() => ({ isEnabled: true, on: vi.fn() }));
-vi.mock('screenfull', () => ({ default: screenfull }));
-
 const makePlayer = (): Player => ({
     name: 'Reproductor', id: 'p1', canPlayMediaType: () => true
 });
 
 const target = (id: string): PlayTarget => ({ id, name: id, playableMediaTypes: [] });
 
-beforeEach(() => {
-    screenfull.isEnabled = true;
-    screenfull.on.mockReset();
-});
-
 describe('bindToFullscreenChange', () => {
-    it('con la API estándar, se suscribe a Screenfull', () => {
-        bindToFullscreenChange(makePlayer());
-        expect(screenfull.on).toHaveBeenCalledWith('change', expect.any(Function));
-    });
-
-    it('reemite el cambio como evento del player', () => {
+    it('reemite el cambio estándar como evento del player', () => {
         const player = makePlayer();
         const onChange = vi.fn();
         Events.on(player, 'fullscreenchange', onChange);
 
         bindToFullscreenChange(player);
-        // Dispara el listener que Screenfull acaba de registrar.
-        (screenfull.on.mock.calls[0][1] as () => void)();
+        document.dispatchEvent(new Event('fullscreenchange'));
 
         expect(onChange).toHaveBeenCalledOnce();
     });
 
-    it('sin la API estándar (Safari iOS), escucha el evento con prefijo', () => {
-        screenfull.isEnabled = false;
+    it('reemite el cambio con prefijo webkit como evento del player', () => {
         const player = makePlayer();
         const onChange = vi.fn();
         Events.on(player, 'fullscreenchange', onChange);
@@ -51,7 +32,6 @@ describe('bindToFullscreenChange', () => {
         bindToFullscreenChange(player);
         document.dispatchEvent(new Event('webkitfullscreenchange'));
 
-        expect(screenfull.on).not.toHaveBeenCalled();
         expect(onChange).toHaveBeenCalledOnce();
     });
 });

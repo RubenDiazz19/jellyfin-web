@@ -516,7 +516,6 @@ export default defineConfig(({ command, mode }) => ({
         include: [
             // Heavy players/readers loaded on demand
             'dompurify',
-            'headroom.js',
             'hls.js',
             'markdown-it',
             'sortablejs',

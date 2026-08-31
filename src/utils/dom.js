@@ -235,57 +235,6 @@ export function whichAnimationEvent() {
     return _animationEvent;
 }
 
-/**
- * Returns name of animation cancel event.
- * @returns {string} Name of animation cancel event.
- */
-export function whichAnimationCancelEvent() {
-    return whichAnimationEvent().replace('animationend', 'animationcancel').replace('AnimationEnd', 'AnimationCancel');
-}
-
-/**
- * Name of transition end event.
- */
-let _transitionEvent;
-
-/**
- * Returns name of transition end event.
- * @returns {string} Name of transition end event.
- */
-export function whichTransitionEvent() {
-    if (_transitionEvent) {
-        return _transitionEvent;
-    }
-
-    const el = document.createElement('div');
-    const transitions = {
-        'transition': 'transitionend',
-        'OTransition': 'oTransitionEnd',
-        'MozTransition': 'transitionend',
-        'WebkitTransition': 'webkitTransitionEnd'
-    };
-    for (const t in transitions) {
-        if (el.style[t] !== undefined) {
-            _transitionEvent = transitions[t];
-            return transitions[t];
-        }
-    }
-
-    _transitionEvent = 'transitionend';
-    return _transitionEvent;
-}
-
-/**
- * Sets title and ARIA-label of element.
- * @param {HTMLElement} elem - Element to set the title and ARIA-label.
- * @param {string} title - Title.
- * @param {string?} [ariaLabel] - ARIA-label.
- */
-export function setElementTitle(elem, title, ariaLabel) {
-    elem.setAttribute('title', title);
-    elem.setAttribute('aria-label', ariaLabel);
-}
-
 export default {
     parentWithAttribute,
     parentWithClass,
@@ -294,8 +243,5 @@ export default {
     removeEventListener,
     getWindowSize,
     getScreenWidth,
-    setElementTitle,
-    whichTransitionEvent,
-    whichAnimationEvent,
-    whichAnimationCancelEvent
+    whichAnimationEvent
 };

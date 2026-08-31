@@ -1,5 +1,5 @@
 import type { Locale } from 'date-fns';
-import enUS from 'date-fns/locale/en-US';
+import { enUS } from 'date-fns/locale/en-US';
 import { useEffect, useMemo, useState } from 'react';
 
 import { getDefaultLanguage, normalizeLocaleName } from 'lib/globalize';

@@ -138,7 +138,7 @@ EmbyPlaystateButtonPrototype.setItem = function (item) {
     }
 };
 
-document.registerElement('emby-playstatebutton', {
+document.registerElement?.('emby-playstatebutton', {
     prototype: EmbyPlaystateButtonPrototype,
     extends: 'button'
 });

@@ -140,6 +140,14 @@ export function applySubtitleAppearance(appearance: SubtitleAppearance): void {
 }
 
 /**
+ * Retira la etiqueta <style> inyectada para las cues de subtítulos.
+ */
+export function removeSubtitleAppearance(): void {
+    if (typeof document === 'undefined') return;
+    document.getElementById(STYLE_ID)?.remove();
+}
+
+/**
  * Cues que hemos colocado nosotros.
  *
  * Sin esto, la posición solo se podría cambiar una vez: al escribir `line` la

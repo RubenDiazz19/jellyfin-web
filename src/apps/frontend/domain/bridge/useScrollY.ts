@@ -10,7 +10,10 @@ export function useScrollY(): number {
             raf = requestAnimationFrame(() => setY(window.scrollY));
         };
         window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('scroll', onScroll);
+        };
     }, []);
     return y;
 }

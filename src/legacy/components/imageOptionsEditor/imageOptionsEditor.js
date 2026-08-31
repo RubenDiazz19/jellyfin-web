@@ -44,7 +44,7 @@ function setVisibilityOfBackdrops(elem, visible) {
 function loadValues(context, itemType, options, availableOptions) {
     const supportedImageTypes = availableOptions.SupportedImageTypes || [];
     setVisibilityOfBackdrops(context.querySelector('.backdropFields'), supportedImageTypes.includes('Backdrop'));
-    Array.prototype.forEach.call(context.querySelectorAll('.imageType'), i => {
+    context.querySelectorAll('.imageType').forEach(i => {
         const imageType = i.getAttribute('data-imagetype');
         const container = dom.parentWithTag(i, 'LABEL');
 
@@ -66,7 +66,7 @@ function loadValues(context, itemType, options, availableOptions) {
 }
 
 function saveValues(context, options) {
-    options.ImageOptions = Array.prototype.map.call(context.querySelectorAll('.imageType:not(.hide)'), c => {
+    options.ImageOptions = Array.from(context.querySelectorAll('.imageType:not(.hide)'), c => {
         return {
             Type: c.getAttribute('data-imagetype'),
             Limit: c.checked ? 1 : 0,

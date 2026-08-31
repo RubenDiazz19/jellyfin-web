@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useWatched } from '../../../domain/bridge/useWatched';
@@ -14,7 +14,7 @@ type Props = { show: Show; season: Season; ep: Episode; navigate: Navigate };
 
 // Tarjeta de episodio. La preview solo se ve nítida si el episodio está
 // visto o en progreso; en otro caso se desenfoca para preservar spoilers.
-export const EpCard = React.memo(function EpCardBase({ show, season, ep, navigate }: Props) {
+export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: Props) {
     const [liveW] = useWatched(episodeKey(show.id, season.n, ep.n));
     const watched = ep.watched >= 1 || liveW;
     const inProgress = !watched && ep.watched > 0 && ep.watched < 1;

@@ -137,22 +137,18 @@ const UserNew = () => {
                     user.Policy.EnabledFolders = [];
 
                     if (!user.Policy.EnableAllFolders) {
-                        user.Policy.EnabledFolders = Array.prototype.filter.call(page.querySelectorAll('.chkFolder'), function (i) {
-                            return i.checked;
-                        }).map(function (i) {
-                            return i.getAttribute('data-id');
-                        });
+                        user.Policy.EnabledFolders = Array.from(page.querySelectorAll<HTMLInputElement>('.chkFolder'))
+                            .filter((i) => i.checked)
+                            .map((i) => i.getAttribute('data-id') as string);
                     }
 
                     user.Policy.EnableAllChannels = (page.querySelector('.chkEnableAllChannels') as HTMLInputElement).checked;
                     user.Policy.EnabledChannels = [];
 
                     if (!user.Policy.EnableAllChannels) {
-                        user.Policy.EnabledChannels = Array.prototype.filter.call(page.querySelectorAll('.chkChannel'), function (i) {
-                            return i.checked;
-                        }).map(function (i) {
-                            return i.getAttribute('data-id');
-                        });
+                        user.Policy.EnabledChannels = Array.from(page.querySelectorAll<HTMLInputElement>('.chkChannel'))
+                            .filter((i) => i.checked)
+                            .map((i) => i.getAttribute('data-id') as string);
                     }
 
                     updateUserPolicy.mutate({

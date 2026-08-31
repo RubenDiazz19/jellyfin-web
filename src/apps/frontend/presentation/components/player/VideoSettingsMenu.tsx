@@ -8,7 +8,7 @@ import {
     Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode
 } from 'react';
 import {
-    chapterDisplayName, playerMarks, segmentDisplayName,
+    chapterDisplayName, formatTime, playerMarks, segmentDisplayName,
     type AspectRatio, type PlayerMark
 } from '../../../domain/player/format';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
@@ -20,15 +20,6 @@ const SubtitlePickerModal = lazy(() =>
 );
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2];
-
-function markTime(seconds: number): string {
-    const s = Math.floor(seconds % 60);
-    const m = Math.floor((seconds / 60) % 60);
-    const h = Math.floor(seconds / 3600);
-    const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
-    const hours = h > 0 ? `${h}:` : '';
-    return `${hours}${mm}:${String(s).padStart(2, '0')}`;
-}
 
 /** Nombre del capítulo, o el del tramo detectado, o un ordinal de respaldo. */
 function markLabel(mark: PlayerMark, index: number): string {
@@ -400,7 +391,7 @@ function ChapterOptions({
             {marks.map((mark, i) => (
                 <MenuOption
                     key={mark.start}
-                    label={`${markLabel(mark, i)} · ${markTime(mark.start)}`}
+                    label={`${markLabel(mark, i)} · ${formatTime(mark.start)}`}
                     active={mark === currentMark}
                     onSelect={() => onSelect(mark.start)}
                 />

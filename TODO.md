@@ -1,13 +1,288 @@
-# TODO — Optimizaciones y mejoras del frontend propio
+# TODO — Auditoría del proyecto
 
-Trabajo sobre el frontend propio (`src/apps/frontend/`). Regla cardinal que se
-respeta: **desktop no cambia byte a byte** (`desktopIntegrity.test.tsx` lo
-vigila), los comentarios van en español y el cierre de cada fase es
-`build:check`, `lint` y `test`.
+Hallazgos de la auditoría profunda del código. Regla cardinal: **desktop no
+cambia byte a byte** (`desktopIntegrity.test.tsx` lo vigila), los comentarios
+van en español y el cierre de cada fase es `build:check`, `lint` y `test`.
 
 ---
 
-# Pendiente
+## Fase 1 — Bugs críticos
+
+| # | Archivo | Línea(s) | Problema |
+|---|---------|-----------|----------|
+| **C1** | `presentation/components/player/VideoPlayer.tsx` | 62 | `observeLayoutMode()` no retorna cleanup al useEffect — el observer nunca se desconecta al desmontar |
+| **C2** | `presentation/theme/MobileThemeProvider.tsx` | 122 | Mismo problema: `observeLayoutMode()` return descartado |
+| **C3** | `data/api/playback.ts` | 252, 268 | `PlayMethod` hardcoded como `'Transcode'` siempre — incluso para DirectPlay. El servidor malinterpreta el estado de codificación |
+
+---
+
+## Fase 2 — Memory leaks y correctitud
+
+| # | Archivo | Línea(s) | Problema |
+|---|---------|-----------|----------|
+| **H1** | `presentation/components/player/VideoPlayer.tsx` | 109, 327-329 | `osdNoticeTimer` no se limpia al desmontar — `setTimeout` dispara sobre componente desmontado |
+| **H2** | `presentation/components/player/VideoGestures.tsx` | 88-89 | `feedbackTimer` y `singleTapTimer` no se limpian al desmontar |
+| **H3** | `domain/bridge/useScrollY.ts` | 6-14 | Cleanup no cancela `requestAnimationFrame` pendiente al desmontar |
+| **H4** | `presentation/components/admin/editor/useSubtitleSearch.ts` | 72-76 | `isPerfectMatch` no está en deps del useEffect — usa valor obsoleto del mount |
+| **H5** | `domain/player/hlsSource.ts` | 92 | `recoverMediaError()` no va seguido de `startLoad()` — la reproducción puede bloquearse |
+| **H6** | `domain/viewModels/VideoPlayerViewModel.ts` | 486 | `togglePlay` traga rechazo de `play()` sin actualizar UI — botón dice "pausa" pero el vídeo está pausado |
+| **H7** | `presentation/pages/HomePage.tsx` | 127 | Wheel lock timer de 900ms no se limpia al desmontar — almacenar en ref y limpiar en cleanup |
+
+---
+
+## Fase 3 — Duplicación en SearchViewModel
+
+| # | Archivo | Línea(s) | Problema |
+|---|---------|-----------|----------|
+| **M1** | `domain/viewModels/SearchViewModel.ts` | 318-394 | Lógica de filtrado por rating duplicada idéntica para items locales vs remotos |
+| **M2** | `domain/viewModels/SearchViewModel.ts` | 300-377 | Lógica de filtrado por estado (vistos/favs) duplicada idéntica |
+| **M5** | `domain/viewModels/SearchViewModel.ts` | 532-538 | `clearRatingFilter` y `clearRatingFilters` son idénticos — eliminar uno |
+| **M7** | `domain/viewModels/SearchViewModel.ts` | 135-136 | `typeFilters` / `stateFilters` usan `string[]` en vez de los tipos unión `TypeFilter[]` / `StateFilter[]` |
+
+---
+
+## Fase 4 — Duplicación en el reproductor
+
+| # | Archivo | Línea(s) | Problema |
+|---|---------|-----------|----------|
+| **M3** | `presentation/components/player/VideoControls.tsx` / `VideoSettingsMenu.tsx` / `VideoGestures.tsx` | 18 / 24 / 47 | `formatTime` / `markTime` / `fmt` son funciones idénticas — extraer a `domain/player/format.ts` |
+| **M8** | `domain/player/subtitleStyle.ts` | 131-140 | Elemento `<style>` de apariencia de subtítulos nunca se elimina al cerrar el reproductor |
+
+---
+
+## Fase 5 — Duplicación en HomePage y tipos débiles
+
+| # | Archivo | Línea(s) | Problema |
+|---|---------|-----------|----------|
+| **M4** | `presentation/pages/HomePage.tsx` | 550-562 / 629-641 | `sectionStyle` / `headingStyle` duplicados entre `HomeLibraryJellyfin` y `HomeLibraryProto` |
+| **M6** | `data/stores/viewsStore.ts` | 27 | `ratingFilter.operator` es `string` en vez de `RatingOperator` union type |
+
+---
+
+## Fase 6 — Dependencias innecesarias
+
+| # | Archivo | Problema |
+|---|---------|----------|
+| **M10** | `package.json` | `@preact/signals-react` no se importa en ningún archivo — ~180KB innecesarios |
+| **L8** | `package.json` | `history` es solo tipo (type-only import) — mover a devDependencies |
+
+---
+
+## Fase 7 — Archivos muertos
+
+| # | Archivo | Evidencia |
+|---|---------|-----------|
+| **F1** | `utils/date.ts` | Exporta `toIsoDateOnlyString` pero nunca se importa |
+| **F2** | `utils/mediaSource.ts` | Exporta `isHls()` pero nunca se importa |
+| **F3** | `constants/homeSectionType.ts` | Exporta `HomeSectionType` y `DEFAULT_SECTIONS` — nadie los importa |
+| **F4** | `legacy/components/groupedcards.js` | Nunca se importa — archivo muerto |
+| **F5** | `legacy/scripts/screensavermanager.scss` | Nunca se importa — archivo muerto |
+| **F6** | `legacy/components/appFooter/appFooter.js` | Solo se importa a sí mismo — nadie lo usa |
+| **F7** | `apps/frontend/domain/bridge/useImageStorage.ts` | Exporta `useImageStorage` pero nunca se importa |
+| **F8** | `types/base/models/item-dto-query-result.ts` | Exporta `ItemDtoQueryResult` pero nunca se importa — se usa `BaseItemDtoQueryResult` del SDK |
+| **F9** | `utils/reactUtils.tsx` | Exporta `renderComponent` pero nunca se importa |
+| **F10** | `legacy/components/shortcuts.js` | Líneas 362-366: `editItem()` siempre rechaza — la ruta `ItemAction.Edit` es muerta |
+| **F11** | `legacy/scripts/libraryMenu.js` | Línea 622-623: `Promise.resolve(user)` descartado — noop |
+
+---
+
+## Fase 8 — Exports sin usar
+
+| # | Archivo | Línea | Export |
+|---|---------|-------|--------|
+| **E1** | `utils/dom.js` | 242 | `whichAnimationCancelEvent` — nunca se llama como `dom.whichAnimationCancelEvent()` |
+| **E2** | `utils/dom.js` | 255 | `whichTransitionEvent` — nunca se llama |
+| **E3** | `utils/dom.js` | 284 | `setElementTitle` — nunca se llama |
+| **E4** | `utils/number.ts` | 56 | `decimalCount` — exportado pero nunca importado |
+| **E5** | `utils/string.ts` | 38 | `toFloat` — solo se importa en `string.test.ts`, nunca en producción |
+| **E6** | `apps/frontend/shared/fullscreen.ts` | 20 | `isFullscreen` — solo se usa internamente, el export es innecesario |
+| **E7** | `apps/frontend/shared/pwa.ts` | 13 | `STANDALONE_CLASS` — solo se usa internamente |
+
+---
+
+## Fase 9 — Imports innecesarios
+
+| # | Archivo | Problema |
+|---|---------|----------|
+| **L6** | Cards (`EpCard`, `SeasonCard`, `CwCard`, `PosterCard`, `MovieCard`, `SearchResultCard`) | `import React from 'react'` solo para `React.memo` — cambiar a `import { memo }` |
+| **L7** | `presentation/components/admin/editor/useSubtitleSearch.ts` | Importa `React` completo solo para `React.DragEvent` — usar `import type { DragEvent }` |
+| **L11** | `legacy/components/viewContainer.js` | Líneas 141-163: `hasjQuery`/`hasScript`/etc. calculados pero nunca consumidos |
+
+---
+
+## Fase 10 — Performance
+
+| # | Archivo | Línea(s) | Problema |
+|---|---------|-----------|----------|
+| **P1** | `presentation/components/player/VideoPlayer.tsx` | 360-489 | Keyboard handler se recrea en cada cambio de `queueItems` — usar ref para estabilizar deps |
+| **P2** | `presentation/components/player/VideoPlayer.tsx` | 47-51 | `pointerIsOverBars` ejecuta `querySelectorAll` en cada mouse move — cachear refs de los elementos |
+| **P3** | `domain/viewModels/SearchViewModel.ts` | 257-401 | `results` computed: O(n*m) en cada keystroke. El `known` Set se reconstruye entero en cada cambio — cachearlo como computed separado |
+| **P4** | `presentation/components/layout/Backdrop.tsx` | 52-61 | Preload `<link>` se crea/destruye en cada cambio de imagen — reusar un solo elemento y actualizar `href` |
+| **P5** | `presentation/components/player/VideoControls.tsx` | 45-50 | `setInterval(new Date())` corre cada segundo aunque el player esté activo — solo activar cuando `endTimeText` sea visible |
+| **P6** | `presentation/components/player/VideoPlayer.tsx` | 93-98 | `buffering` en pick list causa re-render completo del árbol en cada toggle — mover a VideoControls |
+
+---
+
+## Fase 11 — Code smells
+
+### Números mágicos sin nombre
+
+| Archivo | Línea | Valor | Significado |
+|---------|-------|-------|-------------|
+| `VideoPlayer.tsx` | 118 | `2200` | Duración del aviso OSD |
+| `VideoPlayer.tsx` | 339 | `4200` | Duración de hints de gestos |
+| `VideoPlayer.tsx` | 355 | `3800` | Duración de sugerencia landscape |
+| `VideoGestures.tsx` | 94 | `650` | Duración default de feedback |
+| `HomePage.tsx` | 61 | `8000` | Intervalo de autoplay del hero |
+| `HomePage.tsx` | 121 | `100` | Umbral de wheel |
+| `HomePage.tsx` | 127 | `900` | Duración del lock de wheel |
+| `MobileHero.tsx` | 66 | `48`, `60` | Umbrales de swipe |
+
+**Plan:** Extraer como constantes nombradas al inicio de cada archivo.
+
+### `Array.prototype.map.call` anti-pattern (30+ ocurrencias)
+
+- `legacy/components/libraryoptionseditor/libraryoptionseditor.js` — 20+ instancias
+- `apps/dashboard/features/users/components/ParentalControl.tsx` — 4 ocurrencias
+- `apps/dashboard/features/users/components/Access.tsx` — 3 ocurrencias
+- `apps/dashboard/routes/users/add.tsx` — 2 ocurrencias
+
+**Plan:** Reemplazar con `[...nodeList]` o `Array.from(nodeList)`.
+
+---
+
+## Fase 12 — TypeScript
+
+### Uso de `any`
+
+| Archivo | Línea | Problema |
+|---------|-------|----------|
+| `utils/events.ts` | 6-51 | Archivo entero usa `any` — el event bus custom debería usar generics |
+| `utils/query/queryClient.ts` | 26, 53 | `as any` para acceder a campos del error |
+| `legacy/components/router/routerHistory.ts` | 11, 44, 48 | `any` en implementación de History |
+| `global.d.ts` | 11 | `NativeShell: any` |
+| `types/cardOptions.ts` | 78 | `widths?: any` |
+
+### Non-null assertions (`!.`)
+
+24 ocurrencias. En producción (no tests):
+- `presentation/components/tweaks/TweaksPanel.tsx:243` — `trackRef.current!.getBoundingClientRect()` → usar optional chaining
+- `utils/container.ts:36` — `list!.includes(s)` → usar null guard
+
+### `@ts-expect-error`
+
+3 ocurrencias:
+- `legacy/elements/emby-scrollbuttons/utils.ts:100`
+- `themes/utils.ts:8`
+- `utils/motion.test.ts:33` (test, aceptable)
+
+---
+
+## Fase 13 — Configuración
+
+| # | Archivo | Problema |
+|---|---------|----------|
+| **L11** | `config/tsconfig.json` | Falta `forceConsistentCasingInImports` |
+| **L12** | `config/eslint/app.mjs` | Línea 154: TODO pendiente — añadir `tseslint.configs.recommendedTypeChecked` |
+
+---
+
+## Fase 14 — Legacy: deuda técnica acumulada
+
+### `innerHTML` (78 ocurrencias en legacy)
+
+El frontend propio usa 0 `innerHTML`. Legacy tiene 78 — principal superficie
+de XSS. Principales ofensores:
+- `libraryoptionseditor.js` — 17 asignaciones
+- `libraryMenu.js` — 7 asignaciones
+- `multiSelect.js` — 3 asignaciones
+
+### `.then()` chains (225 ocurrencias en legacy)
+
+El frontend propio usa `async/await` consistentemente. Legacy tiene 225
+cadenas `.then()`, muchas sin `.catch()`. Casos críticos:
+- `playbackmanager.js:1125` — `stopActiveEncodings().then()` sin `.catch()`
+
+### `dangerouslySetInnerHTML` (6 ocurrencias en legacy)
+
+- `SelectElement.tsx:28`
+- `IconButtonElement.tsx:48, 56`
+- `CheckBoxElement.tsx:71`
+- `MarkdownBox.tsx:17`
+- `ConnectionErrorPage.tsx:73` (sanitizado con DOMPurify)
+
+### `React.FC` en legacy (141 archivos)
+
+141 archivos en `src/legacy/` usan `FC` o `React.FC`. El frontend propio no
+usa ninguno (correcto). Los 3 con la forma explícita `React.FC`:
+- `legacy/elements/emby-button/IconButton.tsx:13`
+- `legacy/elements/emby-button/LinkButton.tsx:21`
+- `legacy/elements/emby-button/Button.tsx:19`
+
+### `webcomponents.js` polyfill innecesario
+
+El proyecto depende de `webcomponents.js: 0.7.24` pero el browserslist apunta
+a `last 2 versions` de navegadores modernos que soportan Custom Elements v1
+nativamente. Los 9 archivos legacy que lo importan:
+- `emby-textarea.js`, `emby-select.js`, `emby-checkbox.js`, `emby-tabs.js`,
+  `emby-toggle.js`, `emby-input.js`, `emby-button.js`,
+  `paper-icon-button-light.js`, `emby-collapse.js`
+
+### Archivos legacy más endeudados
+
+| Archivo | Líneas | Problemas |
+|---------|--------|-----------|
+| `playback/playbackmanager.js` | 3627 | God object, `.then()`, innerHTML, sin tipos |
+| `scripts/browserDeviceProfile.js` | 1631 | HACKs, FIXMEs, compat checks |
+| `scripts/libraryMenu.js` | 847 | innerHTML, headroom.js, TODOs |
+| `libraryoptionseditor/libraryoptionseditor.js` | 835 | 17 innerHTML, 20+ `Array.prototype.map.call` |
+
+---
+
+## Fase 15 — i18n y accesibilidad
+
+| # | Archivo | Línea | Problema |
+|---|---------|-------|----------|
+| **A1** | `presentation/components/search/SearchPills.tsx` | 165 | `aria-label` hardcodeado en español (`'Cerrar selector'` / `'Añadir filtro'`) — debería usar `globalize.translate()` |
+| **A2** | `legacy/components/imageUploader/imageUploader.js` | 69 | `<img>` sin atributo `alt` |
+
+---
+
+## Fase 16 — Dependencias obsoletas
+
+| Paquete | Versión actual | Problema |
+|---------|---------------|----------|
+| `date-fns` | 2.30.0 | v4 ya existe — v2 sin mejoras ni fixes activos |
+| `webcomponents.js` | 0.7.24 | Polyfill innecesario — todos los targets soportan Custom Elements v1 |
+| `screenfull` | 6.0.2 | La API Fullscreen es nativa en todos los targets |
+| `headroom.js` | 0.12.0 | Solo usado en `libraryMenu.js` — reemplazable con `position: sticky` + `IntersectionObserver` |
+| `react-lazy-load-image-component` | 1.6.3 | Nativo `loading="lazy"` soportado en todos los targets |
+
+---
+
+## Fase 17 — Archivos grandes: división
+
+| Líneas | Archivo | Recomendación |
+|--------|---------|---------------|
+| 1024 | `domain/viewModels/VideoPlayerViewModel.ts` | Extraer event wiring y source loading a colaboradores |
+| 878 | `presentation/components/player/VideoPlayer.tsx` | Extraer keyboard shortcuts, OSD auto-hide, subtitle offset a hooks custom |
+| 706 | `domain/viewModels/SearchViewModel.ts` | Extraer helpers de filtrado — reducir duplicación en `results` computed |
+| 691 | `presentation/pages/HomePage.tsx` | Extraer estilos compartidos; fusionar `HomeLibraryJellyfin` + `HomeLibraryProto` |
+| 3627 | `legacy/components/playback/playbackmanager.js` | God object — descomponer en módulos de responsabilidad única |
+
+---
+
+## Fase 18 — Session y datos
+
+| # | Archivo | Línea(s) | Problema |
+|---|---------|-----------|----------|
+| **D1** | `data/session/session.ts` | 58 | `createdAt: 0` hardcodeado — campo vestigial |
+| **D2** | `data/api/http.ts` | 68 | `res.json()` sin validar content-type — el proxy devuelve HTML en 404 |
+| **D3** | `data/api/playback.ts` | 248-271 | Reporting functions tragan errores silenciosamente — añadir `console.debug` |
+
+---
+
+# Pendiente (features)
 
 ## Selector de avatar a pantalla completa estilo Crunchyroll
 
@@ -41,8 +316,9 @@ pantalla completa con todas las opciones a la vista:
 
 ---
 
-## Fase 1 — Componentes duplicados en `presentation/` (COMPLETADA)
+# Completado (histórico, ir a git log)
 
+## Fase 1 — Componentes duplicados en `presentation/` (COMPLETADA)
 
 ### 1.1 Unificar los 4 WatchedButton en un componente genérico
 
@@ -171,8 +447,6 @@ Todas hacen `useViewModel(vm)` +
 
 **Plan:** Hook combinado `useViewModelLoad(vm, loadFn, deps)`.
 
----
-
 ## Fase 2 — ViewModels y domain layer (COMPLETADA)
 
 ### 2.1 Crear `DetailViewModel` base para Show/Movie
@@ -206,8 +480,6 @@ principal sigue siendo grande.
 
 **Plan:** Extraer `SubtitlesBinding` y `CastBinding` como colaboradores
 adicionales si el VM crece.
-
----
 
 ## Fase 3 — Reorganización de código compartido
 
@@ -252,8 +524,6 @@ en dos lugares.
 **Plan:** Documentar la relación en un comentario o generar ambos desde un
 único JSON.
 
----
-
 ## Fase 4 — Limpieza de legacy
 
 ### 4.1 Eliminar código muerto confirmado
@@ -287,8 +557,6 @@ existen equivalentes React puros (`Button.tsx`, `Input.tsx`).
 **Plan:** Verificar que el dashboard puede usar los equivalentes React y
 eliminar los wrappers.
 
----
-
 ## Fase 5 — Estilos y tokens
 
 ### 5.1 Centralizar constantes de color de error
@@ -313,50 +581,6 @@ responsive en `responsive.ts`.
 
 **Plan:** Documentar una vez en un comentario compartido o crear una
 directiva.
-
----
-
-# Completado (histórico, ir a git log)
-
-## Selector de avatar a pantalla completa — Pendiente
-
-## Ronda de avatares — Plan A (2026-08-14)
-
-El avatar ya es el PERSONAJE, no el intérprete: la biblioteca local etiqueta
-con el rol, pero su imagen es la del actor de doblaje, y Jellyfin no guarda
-arte de personajes. El arte se resuelve desde AniList.
-
-- `data/api/characterArt.ts` (nuevo): `resolveSeriesArt(serie)` busca la serie
-  en AniList (`Media` search, `type: ANIME`) y devuelve `rol → arte oficial` de
-  sus personajes. Un único paso por serie (una petición, no una por personaje),
-  caché en memoria por serie, fusión de peticiones en vuelo y pool de
-  concurrencia (3) para no tocar el rate-limit público. Falla tolerante: sin
-  match se devuelve vacío y el candidato conserva la foto del intérprete.
-- `avatars.ts`: `AvatarCandidate.series` (la serie de la que sale), que usa el
-  cruce con AniList. Se expone en `ApiService` (`avatarService`).
-- `AvatarPickerViewModel`: signal `artById` (id de candidato → arte). Al cargar
-  candidatos se pinta al instante con la foto del intérprete y, cuando llega el
-  arte de AniList, la tile lo muestra. `apply()` compone con la URL resuelta,
-  así el avatar subido es el dibujo del personaje.
-- Vista: la tile y la vista previa usan `artById.get(id) ?? imageUrl`.
-- Emparejamiento por nombre de rol normalizado (minúsculas + sin acentos):
-  «Naruto Uzumaki» = «naruto uzumaki».
-- Tests: `characterArt.test.ts` (nuevo) y ampliados `avatars`,
-  `AvatarPickerViewModel` y `AvatarPickerDialog`.
-
-## Correcciones de avatares (2026-08-17)
-
-- **«Failed to fetch · al cargar la imagen» al guardar personajes de anime.**
-  La rejilla ya ha enseñado esa misma URL como tile (CSS, sin CORS) y el CDN
-  de AniList la cachea un mes; al guardar, el `fetch` con CORS podía reutilizar
-  esa entrada de caché —que llegó sin cabeceras CORS porque la petición de la
-  tile no lleva Origin— y la comprobación CORS reventaba sin red de por medio.
-  Por eso solo fallaban los personajes ya pintados en la rejilla (anime: las
-  URLs del propio Jellyfin no se cachean tanto y pasaban). `buildAvatarFile`
-  pide ahora con `cache: 'reload'`; hay test de regresión del argumento.
-- **Fuera los colores de fondo.** La composición lleva un fondo fijo
-  (`AVATAR_BACKGROUND`), que solo asoma en los PNG transparentes del arte de
-  AniList; el selector de colores y `AvatarPickerBackground` se eliminaron.
 
 ## Ronda de optimización (2026-08-06)
 

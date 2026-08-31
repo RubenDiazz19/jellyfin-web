@@ -6,7 +6,7 @@ import ListItem from '@mui/material/ListItem';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
-import formatRelative from 'date-fns/formatRelative';
+import { formatRelative } from 'date-fns';
 import { getLocale } from 'utils/dateFnsLocale';
 import Stack from '@mui/material/Stack';
 import getLogLevelColor from '../utils/getLogLevelColor';

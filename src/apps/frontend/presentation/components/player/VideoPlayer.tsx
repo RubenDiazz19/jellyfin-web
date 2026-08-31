@@ -9,7 +9,7 @@ import {
     sanitizeVttCueText, segmentSkipLabelKey, subtitleTrackMode, type AspectRatio
 } from '../../../domain/player/format';
 import {
-    applyCueLine, applySubtitleAppearance, getSubtitleAppearance
+    applyCueLine, applySubtitleAppearance, getSubtitleAppearance, removeSubtitleAppearance
 } from '../../../domain/player/subtitleStyle';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
@@ -25,6 +25,9 @@ import '../../styles/player.css';
 
 const HIDE_CONTROLS_MS = 3000;
 const SKIP_VISIBLE_MS = 3000;
+const OSD_NOTICE_MS = 2200;
+const GESTURE_HINTS_MS = 4200;
+const SUGGEST_LANDSCAPE_MS = 3800;
 /** Actividad del usuario que saca el OSD. Ver el efecto que los engancha. */
 const WAKE_EVENTS = [
     'pointermove', 'mousemove', 'pointerdown', 'touchstart', 'wheel', 'keydown'
@@ -115,7 +118,7 @@ export function VideoPlayer({
         osdNoticeTimer.current = setTimeout(() => {
             setOsdNotice(null);
             osdNoticeTimer.current = null;
-        }, 2200);
+        }, OSD_NOTICE_MS);
     }, []);
 
     // Callback ref en vez de onLoad: 'load' no está en la lista de eventos
@@ -326,6 +329,8 @@ export function VideoPlayer({
 
     useEffect(() => () => {
         if (hideTimer.current) clearTimeout(hideTimer.current);
+        if (osdNoticeTimer.current) clearTimeout(osdNoticeTimer.current);
+        removeSubtitleAppearance();
     }, []);
 
     // Hints de gestos en el primer uso táctil (una vez, persistido).
@@ -336,7 +341,7 @@ export function VideoPlayer({
         const t = setTimeout(() => {
             setShowHints(false);
             localStorage.setItem(HINTS_KEY, '1');
-        }, 4200);
+        }, GESTURE_HINTS_MS);
         return () => clearTimeout(t);
     }, [touch]);
 
@@ -352,11 +357,25 @@ export function VideoPlayer({
         if (!touch || !portrait || suggestedRef.current) return;
         suggestedRef.current = true;
         setSuggestLandscape(true);
-        const t = setTimeout(() => setSuggestLandscape(false), 3800);
+        const t = setTimeout(() => setSuggestLandscape(false), SUGGEST_LANDSCAPE_MS);
         return () => clearTimeout(t);
     }, [touch, portrait]);
 
-    // Atajos de teclado del OSD.
+    // Atajos de teclado del OSD. Estabilizado con refs para no re-vincular
+    // el listener de ventana en cada cambio de cola o estado de atajos.
+    const queueItemsRef = useRef(queueItems);
+    queueItemsRef.current = queueItems;
+    const shortcutsOpenRef = useRef(shortcutsOpen);
+    shortcutsOpenRef.current = shortcutsOpen;
+    const onPlayQueuedRef = useRef(onPlayQueued);
+    onPlayQueuedRef.current = onPlayQueued;
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
+    const showControlsRef = useRef(showControls);
+    showControlsRef.current = showControls;
+    const showNoticeRef = useRef(showNotice);
+    showNoticeRef.current = showNotice;
+
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement | null;
@@ -414,26 +433,26 @@ export function VideoPlayer({
                 case 'G': {
                     videoPlayerVM.adjustSubtitleOffset(-0.1);
                     const off = videoPlayerVM.subtitleOffset.peek();
-                    showNotice(`${globalize.translate('SubtitleOffset')}: ${off > 0 ? '+' : ''}${off.toFixed(1)}s`);
+                    showNoticeRef.current(`${globalize.translate('SubtitleOffset')}: ${off > 0 ? '+' : ''}${off.toFixed(1)}s`);
                     break;
                 }
                 case 'h':
                 case 'H': {
                     videoPlayerVM.adjustSubtitleOffset(0.1);
                     const off = videoPlayerVM.subtitleOffset.peek();
-                    showNotice(`${globalize.translate('SubtitleOffset')}: ${off > 0 ? '+' : ''}${off.toFixed(1)}s`);
+                    showNoticeRef.current(`${globalize.translate('SubtitleOffset')}: ${off > 0 ? '+' : ''}${off.toFixed(1)}s`);
                     break;
                 }
                 case '[': {
                     const r = Math.max(0.25, Math.round((videoPlayerVM.playbackRate.peek() - 0.25) * 100) / 100);
                     videoPlayerVM.setPlaybackRate(r);
-                    showNotice(`${globalize.translate('LabelPlaybackSpeed')}: ${r}×`);
+                    showNoticeRef.current(`${globalize.translate('LabelPlaybackSpeed')}: ${r}×`);
                     break;
                 }
                 case ']': {
                     const r = Math.min(3, Math.round((videoPlayerVM.playbackRate.peek() + 0.25) * 100) / 100);
                     videoPlayerVM.setPlaybackRate(r);
-                    showNotice(`${globalize.translate('LabelPlaybackSpeed')}: ${r}×`);
+                    showNoticeRef.current(`${globalize.translate('LabelPlaybackSpeed')}: ${r}×`);
                     break;
                 }
                 case 's':
@@ -444,12 +463,14 @@ export function VideoPlayer({
                     break;
                 case 'n':
                 case 'N': {
-                    const qNext = queueItems[0];
+                    const qNext = queueItemsRef.current[0];
                     if (qNext) {
-                        onPlayQueued({ itemId: qNext.itemId, title: qNext.title });
-                    } else if (videoPlayerVM.nextEpisode.peek()) {
-                        const next = videoPlayerVM.nextEpisode.peek()!;
-                        onPlayQueued({ itemId: next.id, title: next.title });
+                        onPlayQueuedRef.current({ itemId: qNext.itemId, title: qNext.title });
+                    } else {
+                        const next = videoPlayerVM.nextEpisode.peek();
+                        if (next) {
+                            onPlayQueuedRef.current({ itemId: next.id, title: next.title });
+                        }
                     }
                     break;
                 }
@@ -472,21 +493,21 @@ export function VideoPlayer({
                     break;
                 }
                 case 'Escape':
-                    if (shortcutsOpen) {
+                    if (shortcutsOpenRef.current) {
                         setShortcutsOpen(false);
                         break;
                     }
                     // Con fullscreen activo, Escape ya lo cierra el navegador.
-                    if (!document.fullscreenElement) onClose();
+                    if (!document.fullscreenElement) onCloseRef.current();
                     break;
                 default:
                     return;
             }
-            showControls();
+            showControlsRef.current();
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [onClose, showControls, showNotice, onPlayQueued, queueItems, shortcutsOpen]);
+    }, []);
 
     // Aviso de temporizador de apagado completado.
     useEffect(() => {
@@ -611,8 +632,6 @@ export function VideoPlayer({
     // botón ▶| de la ventana flotante y de los mandos del sistema. Se registra
     // desde aquí porque encadenar es navegar, y de eso no se encarga el VM.
     // Sin nada detrás se retira, y el navegador lo pinta apagado.
-    const onPlayQueuedRef = useRef(onPlayQueued);
-    onPlayQueuedRef.current = onPlayQueued;
     const nextId = nextEpisode?.id;
     const nextTitle = nextEpisode?.title;
     useEffect(() => {

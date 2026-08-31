@@ -1,5 +1,4 @@
 import './emby-textarea.scss';
-import 'webcomponents.js/webcomponents-lite';
 import '../emby-input/emby-input';
 
 /**
@@ -128,7 +127,7 @@ EmbyTextAreaPrototype.attachedCallback = function () {
     new AutoGrow(this);
 };
 
-document.registerElement('emby-textarea', {
+document.registerElement?.('emby-textarea', {
     prototype: EmbyTextAreaPrototype,
     extends: 'textarea'
 });

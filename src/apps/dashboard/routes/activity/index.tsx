@@ -1,4 +1,4 @@
-import parseISO from 'date-fns/parseISO';
+import { parseISO } from 'date-fns';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LogLevel } from '@jellyfin/sdk/lib/generated-client/models/log-level';
 import { SortOrder } from '@jellyfin/sdk/lib/generated-client/models/sort-order';

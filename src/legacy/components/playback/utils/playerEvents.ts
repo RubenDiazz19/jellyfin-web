@@ -1,5 +1,3 @@
-import Screenfull from 'screenfull';
-
 import type { PlayTarget } from 'types/playTarget';
 import Events from 'utils/events';
 
@@ -15,19 +13,16 @@ import type { Player } from '../types/player';
 /**
  * Reemite el cambio de pantalla completa del navegador como evento del player.
  *
- * Safari en iOS no implementa la Fullscreen API estándar que envuelve
- * Screenfull, así que ahí se escucha el evento con prefijo directamente.
+ * Safari en iOS no implementa la Fullscreen API estándar completa,
+ * así que se escucha tanto el evento estándar como el que lleva prefijo webkit.
  */
 export function bindToFullscreenChange(player: Player): void {
     const notify = () => {
         Events.trigger(player, 'fullscreenchange');
     };
 
-    if (Screenfull.isEnabled) {
-        Screenfull.on('change', notify);
-    } else {
-        document.addEventListener('webkitfullscreenchange', notify, false);
-    }
+    document.addEventListener('fullscreenchange', notify);
+    document.addEventListener('webkitfullscreenchange', notify);
 }
 
 /**

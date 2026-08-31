@@ -1,6 +1,7 @@
 // Componentes de píldoras y botones de selección para el buscador de frontend.
 // Optimizados con React.memo para evitar re-renderizados innecesarios durante el filtrado.
 
+import globalize from 'lib/globalize';
 import { memo } from 'react';
 import { T } from '../../theme/tokens';
 
@@ -29,7 +30,9 @@ export const MainPill = memo(function MainPillBase({
         <button
             onClick={onClick}
             onMouseDown={(e) => e.preventDefault()}
+            aria-label={displayText}
             aria-expanded={isOpen}
+            aria-pressed={isSelected}
             style={{
                 padding: '7px 16px',
                 borderRadius: 999,
@@ -77,6 +80,8 @@ export const OptionPill = memo(function OptionPillBase({
         <button
             onClick={onClick}
             onMouseDown={(e) => e.preventDefault()}
+            aria-label={label}
+            aria-pressed={selected}
             style={{
                 padding: '5px 14px',
                 borderRadius: 999,
@@ -155,14 +160,17 @@ export type AddFilterButtonProps = {
 export const AddFilterButton = memo(function AddFilterButtonBase({
     onClick,
     isOpen = false,
-    title = 'Añadir filtro'
+    title
 }: AddFilterButtonProps) {
+    const defaultLabel = isOpen ? globalize.translate('CloseSelector') : globalize.translate('AddFilter');
+    const label = title || defaultLabel;
+
     return (
         <button
             onClick={onClick}
             onMouseDown={(e) => e.preventDefault()}
-            title={title}
-            aria-label={title || (isOpen ? 'Cerrar selector' : 'Añadir filtro')}
+            title={label}
+            aria-label={label}
             aria-expanded={isOpen}
             style={{
                 width: 26,

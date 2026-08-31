@@ -46,6 +46,7 @@ describe('getPlaybackDecision', () => {
         const decision = await getPlaybackDecision('item1');
 
         expect(decision.kind).toBe('direct');
+        expect(decision.playMethod).toBe('DirectPlay');
         expect(decision.url).toContain('/Videos/item1/stream?');
         expect(decision.url).toContain('Static=true');
         expect(decision.container).toBe('mp4');
@@ -66,6 +67,7 @@ describe('getPlaybackDecision', () => {
 
         // Lo que rompía: kind 'direct' + Static=true devolvía el Matroska.
         expect(decision.kind).toBe('hls');
+        expect(decision.playMethod).toBe('Transcode');
         expect(decision.url).toBe('http://s/videos/item1/master.m3u8?x=1');
         expect(decision.url).not.toContain('Static=true');
     });

@@ -8,6 +8,8 @@
 
 import { createListStore } from './persistentStore';
 
+export type RatingOperator = '>=' | '>' | '<=' | '<' | '=';
+
 export type SavedView = {
     id: string;
     name: string;
@@ -24,8 +26,8 @@ export type SavedView = {
     /** Texto de búsqueda; ausente = vacío. */
     query?: string;
     /** Filtro de valoración numérica; ausente = sin filtro. */
-    ratingFilter?: { operator: string; value: number };
-    ratingFilters?: { operator: string; value: number }[];
+    ratingFilter?: { operator: RatingOperator; value: number };
+    ratingFilters?: { operator: RatingOperator; value: number }[];
 };
 
 function isView(v: unknown): v is SavedView {

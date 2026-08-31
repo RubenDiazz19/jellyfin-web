@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { WatchedButton } from '../controls/WatchedButton';
@@ -15,7 +15,7 @@ import { episodeKey } from '../../../domain/stores';
 type Props = { slide: CarouselSlide; navigate: Navigate };
 
 // Tarjeta de "continuar viendo" (apaisada, con miniatura del episodio).
-export const CwCard = React.memo(function CwCardBase({ slide, navigate }: Props) {
+export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
     const r = useResponsive();
     // Apaisada 16:9 aprox — 380x214 en desktop; compacta en touch.
     const w = r.touch ? (r.mobile ? 250 : 300) : 380;

@@ -8,7 +8,6 @@ import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { getVideoApi } from '@jellyfin/sdk/lib/utils/api/video-api';
 import { ItemSortBy } from '@jellyfin/sdk/lib/generated-client/models/item-sort-by';
 import { MediaType } from '@jellyfin/sdk/lib/generated-client/models/media-type';
-import Screenfull from 'screenfull';
 
 import Events from 'utils/events.ts';
 import datetime from 'scripts/datetime';
@@ -2824,12 +2823,7 @@ export class PlaybackManager {
             return player.isFullscreen();
         }
 
-        if (!Screenfull.isEnabled) {
-            // iOS Safari
-            return document.webkitIsFullScreen;
-        }
-
-        return Screenfull.isFullscreen;
+        return Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.webkitIsFullScreen);
     }
 
     toggleFullscreen(player) {
@@ -2838,8 +2832,16 @@ export class PlaybackManager {
             return player.toggleFullscreen();
         }
 
-        if (Screenfull.isEnabled) {
-            Screenfull.toggle();
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        } else if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+        } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen();
         } else if (document.webkitIsFullScreen && document.webkitCancelFullscreen) {
             // iOS Safari
             document.webkitCancelFullscreen();

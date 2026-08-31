@@ -1,6 +1,7 @@
 // Barra interactiva de filtros de valoración por estrellas con operadores y presets numéricos.
 
 import { Fragment, useState } from 'react';
+import globalize from 'lib/globalize';
 import {
     searchVM,
     type RatingFilter,
@@ -81,7 +82,7 @@ export function RatingFilterBar() {
             {filters.length > 0 && !isAdding && (
                 <AddFilterButton
                     onClick={() => setIsAdding(true)}
-                    title='Añadir otro filtro de valoración'
+                    title={globalize.translate('AddRatingFilter')}
                 />
             )}
         </div>

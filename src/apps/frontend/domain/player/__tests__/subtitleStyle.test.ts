@@ -22,7 +22,8 @@ vi.mock('lib/jellyfin-apiclient', () => ({
 }));
 
 import {
-    DEFAULT_SUBTITLE_APPEARANCE, applyCueLine, subtitleCueCss, subtitleTextStyle
+    DEFAULT_SUBTITLE_APPEARANCE, applyCueLine, applySubtitleAppearance,
+    removeSubtitleAppearance, subtitleCueCss, subtitleTextStyle
 } from '../subtitleStyle';
 
 describe('subtitleTextStyle', () => {
@@ -115,5 +116,17 @@ describe('applyCueLine', () => {
         applyCueLine(asCues([cue]), -5);
         applyCueLine(asCues([cue]), -1);
         expect(cue.line).toBe(-1);
+    });
+});
+
+describe('applySubtitleAppearance y removeSubtitleAppearance', () => {
+    test('inserta y elimina el elemento <style> del documento', () => {
+        applySubtitleAppearance(DEFAULT_SUBTITLE_APPEARANCE);
+        const style = document.getElementById('jfp-subtitle-appearance');
+        expect(style).not.toBeNull();
+        expect(style?.textContent).toContain('.jfp-video-el::cue');
+
+        removeSubtitleAppearance();
+        expect(document.getElementById('jfp-subtitle-appearance')).toBeNull();
     });
 });

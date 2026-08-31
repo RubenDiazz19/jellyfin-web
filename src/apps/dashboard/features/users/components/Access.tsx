@@ -209,23 +209,17 @@ const Access = ({ userId }: AccessProps) => {
             }
 
             user.Policy.EnableAllFolders = (page.querySelector('.chkEnableAllFolders') as HTMLInputElement).checked;
-            user.Policy.EnabledFolders = user.Policy.EnableAllFolders ? [] : Array.prototype.filter.call(page.querySelectorAll('.chkFolder'), function (c) {
-                return c.checked;
-            }).map(function (c) {
-                return c.getAttribute('data-id');
-            });
+            user.Policy.EnabledFolders = user.Policy.EnableAllFolders ? [] : Array.from(page.querySelectorAll<HTMLInputElement>('.chkFolder'))
+                .filter(c => c.checked)
+                .map(c => c.getAttribute('data-id') as string);
             user.Policy.EnableAllChannels = (page.querySelector('.chkEnableAllChannels') as HTMLInputElement).checked;
-            user.Policy.EnabledChannels = user.Policy.EnableAllChannels ? [] : Array.prototype.filter.call(page.querySelectorAll('.chkChannel'), function (c) {
-                return c.checked;
-            }).map(function (c) {
-                return c.getAttribute('data-id');
-            });
+            user.Policy.EnabledChannels = user.Policy.EnableAllChannels ? [] : Array.from(page.querySelectorAll<HTMLInputElement>('.chkChannel'))
+                .filter(c => c.checked)
+                .map(c => c.getAttribute('data-id') as string);
             user.Policy.EnableAllDevices = (page.querySelector('.chkEnableAllDevices') as HTMLInputElement).checked;
-            user.Policy.EnabledDevices = user.Policy.EnableAllDevices ? [] : Array.prototype.filter.call(page.querySelectorAll('.chkDevice'), function (c) {
-                return c.checked;
-            }).map(function (c) {
-                return c.getAttribute('data-id');
-            });
+            user.Policy.EnabledDevices = user.Policy.EnableAllDevices ? [] : Array.from(page.querySelectorAll<HTMLInputElement>('.chkDevice'))
+                .filter(c => c.checked)
+                .map(c => c.getAttribute('data-id') as string);
             user.Policy.BlockedChannels = null;
             user.Policy.BlockedMediaFolders = null;
             const api = ServerConnections.getApi();

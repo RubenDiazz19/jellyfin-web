@@ -1,4 +1,4 @@
-import format from 'date-fns/format';
+import { format } from 'date-fns';
 import type { MRT_Cell, MRT_RowData } from 'material-react-table';
 import { FC } from 'react';
 

@@ -15,18 +15,18 @@ import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { useToast } from '../toast/ToastProvider';
-import { searchVM } from '../../../domain/viewModels/SearchViewModel';
+import { searchVM, type StateFilter, type TypeFilter } from '../../../domain/viewModels/SearchViewModel';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { VIEWS, type SavedView } from '../../../domain/stores';
 import { AddFilterButton, MainPill, OptionPill } from './SearchPills';
 import { RatingFilterBar } from './RatingFilterBar';
 
-const TYPE_OPTIONS = [
+const TYPE_OPTIONS: { id: TypeFilter; key: string }[] = [
     { id: 'series', key: 'Shows' },
     { id: 'peliculas', key: 'Movies' }
 ];
 
-const STATE_OPTIONS = [
+const STATE_OPTIONS: { id: StateFilter; key: string }[] = [
     { id: 'favs', key: 'Favorites' },
     { id: 'vistos', key: 'Watched' },
     { id: 'no-vistos', key: 'Unwatched' }
@@ -276,7 +276,7 @@ export function SearchFilters() {
                         <AddFilterButton
                             onClick={() => setIsPickingCategory((prev) => !prev)}
                             isOpen={isPickingCategory}
-                            title='Añadir o cambiar de categoría de filtro'
+                            title={globalize.translate('AddOrChangeFilterCategory')}
                         />
 
                         {/* Selector desplegado de categorías disponibles para anidar */}

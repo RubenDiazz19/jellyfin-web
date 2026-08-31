@@ -10,8 +10,9 @@
 //   · Pinch ............... aspect ratio (contener ↔ rellenar)
 //   · Swipe abajo (borde superior) ... cerrar el reproductor
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { formatTime as fmt } from '../../../domain/player/format';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { haptic } from '../../../shared/haptics';
 import {
@@ -31,6 +32,7 @@ import {
 import { PlayerIc } from './playerIcons';
 
 const DOUBLE_TAP_MS = 300;
+const DEFAULT_FEEDBACK_MS = 650;
 
 type Feedback =
     | { kind: 'seek'; target: number; delta: number }
@@ -44,19 +46,17 @@ type Props = {
     onWake: () => void;
 };
 
-function fmt(t: number): string {
-    if (!Number.isFinite(t) || t < 0) t = 0;
-    const s = Math.floor(t % 60);
-    const m = Math.floor((t / 60) % 60);
-    const h = Math.floor(t / 3600);
-    const mm = h > 0 ? String(m).padStart(2, '0') : String(m);
-    const hh = h > 0 ? `${h}:` : '';
-    return `${hh}${mm}:${String(s).padStart(2, '0')}`;
-}
-
 export function VideoGestures({ onClose, onWake }: Props) {
     const layerRef = useRef<HTMLDivElement>(null);
     const [feedback, setFeedback] = useState<Feedback>(null);
+
+    const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+        if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+    }, []);
 
     // Estado del gesto en curso (fuera de React: se lee/escribe cada move sin
     // provocar renders; el render solo lo dispara `feedback`).
@@ -85,10 +85,8 @@ export function VideoGestures({ onClose, onWake }: Props) {
         lastTapX: 0,
         moved: false
     });
-    const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const flashFeedback = (f: Feedback, ms = 650) => {
+    const flashFeedback = (f: Feedback, ms = DEFAULT_FEEDBACK_MS) => {
         setFeedback(f);
         if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
         feedbackTimer.current = setTimeout(() => setFeedback(null), ms);

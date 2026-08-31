@@ -4,7 +4,7 @@ import Widget from './Widget';
 import List from '@mui/material/List';
 import ActivityListItem from 'apps/dashboard/features/activity/components/ActivityListItem';
 import { useLogEntries } from 'apps/dashboard/features/activity/api/useLogEntries';
-import subSeconds from 'date-fns/subSeconds';
+import { subSeconds } from 'date-fns';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 

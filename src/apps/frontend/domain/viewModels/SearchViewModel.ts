@@ -17,16 +17,16 @@ import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { MANUAL_TAGS } from '../../data/stores/manualTagsStore';
 import { WATCHED } from '../../data/stores/watchedStore';
-import type { SavedView } from '../../data/stores/viewsStore';
+import type { RatingOperator, SavedView } from '../../data/stores/viewsStore';
 import { MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
 import { LoadGuard } from './loadGuard';
 import { translateGenre } from '../genres';
 
+export type { RatingOperator };
 export type TypeFilter = 'todo' | 'series' | 'peliculas';
 export type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
 export type FilterCategory = 'tipo' | 'estado' | 'generos' | 'valoracion';
-export type RatingOperator = '>=' | '>' | '<=' | '<' | '=';
 export type RatingFilter = { operator: RatingOperator; value: number };
 
 const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas'];
@@ -95,14 +95,30 @@ function isMovieWatched(movie: Movie): boolean {
     return (movie.watched ?? 0) >= 1 || WATCHED.has(movieKey(movie.id));
 }
 
-/** Dónde busca el texto libre dentro de un título del catálogo cargado. */
-function matchesText(item: SearchResult, q: string): boolean {
-    return !!(
-        item.title?.toLowerCase().includes(q)
-        || item.synopsis?.toLowerCase().includes(q)
-        || item.genres?.some((g) => g.toLowerCase().includes(q) || translateGenre(g).toLowerCase().includes(q))
-        || item.cast?.some((c) => c.name?.toLowerCase().includes(q))
-    );
+function matchesRating(score: number, filters: readonly RatingFilter[]): boolean {
+    for (const rf of filters) {
+        switch (rf.operator) {
+            case '>=': if (score < rf.value) return false; break;
+            case '>': if (score <= rf.value) return false; break;
+            case '<=': if (score > rf.value) return false; break;
+            case '<': if (score >= rf.value) return false; break;
+            case '=': if (Math.abs(score - rf.value) >= 0.05) return false; break;
+        }
+    }
+    return true;
+}
+
+function matchesState(
+    kind: 'show' | 'movie',
+    id: string,
+    isWatched: boolean,
+    states: readonly StateFilter[]
+): boolean {
+    const isFav = kind === 'show' ? FAVS.has(id) : FAVS.has(movieKey(id));
+    if (states.includes('favs') && !isFav) return false;
+    if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) return false;
+    if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) return false;
+    return true;
 }
 
 /**
@@ -132,8 +148,8 @@ type IndexedItem = {
 
 export class SearchViewModel {
     query = signal('');
-    typeFilters = signal<string[]>([]);
-    stateFilters = signal<string[]>([]);
+    typeFilters = signal<TypeFilter[]>([]);
+    stateFilters = signal<StateFilter[]>([]);
     /**
      * Categoría padre activa cuando se despliega su submenú horizontal.
      * Si no es null, el buscador principal pasa a buscar en las subcategorías.
@@ -254,6 +270,8 @@ export class SearchViewModel {
         });
     });
 
+    knownCatalogIds = computed<Set<string>>(() => new Set(this.catalog.value.map((i) => i.id)));
+
     results = computed<SearchResult[]>(() => {
         // Lecturas intencionadas: registran los contadores como dependencias
         // del computed para re-filtrar cuando cambian favoritos/vistos.
@@ -277,9 +295,7 @@ export class SearchViewModel {
         const hasRatings = rFilters.length > 0;
 
         const local: SearchResult[] = [];
-        for (let i = 0; i < indexedCatalog.length; i++) {
-            const entry = indexedCatalog[i]!;
-
+        for (const entry of indexedCatalog) {
             if (hasTypes) {
                 const matchesType = (types.includes('series') && entry.kind === 'show')
                     || (types.includes('peliculas') && entry.kind === 'movie');
@@ -287,48 +303,19 @@ export class SearchViewModel {
             }
 
             if (hasTags) {
-                let allMatch = true;
-                for (let j = 0; j < requiredTags.length; j++) {
-                    if (!entry.tags.includes(requiredTags[j]!)) {
-                        allMatch = false;
-                        break;
-                    }
-                }
+                const allMatch = requiredTags.every((t) => entry.tags.includes(t));
                 if (!allMatch) continue;
             }
 
             if (hasStates) {
-                const isFav = entry.kind === 'show' ?
-                    FAVS.has(entry.id) :
-                    FAVS.has(movieKey(entry.id));
-
-                let isWatched: boolean;
-                if (entry.kind === 'show') {
-                    const keys = entry.seriesEpisodeKeys;
-                    isWatched = !!keys && keys.length > 0 && keys.every((k) => WATCHED.has(k));
-                } else {
-                    isWatched = (entry.item.watched ?? 0) >= 1 || WATCHED.has(movieKey(entry.id));
-                }
-
-                if (states.includes('favs') && !isFav) continue;
-                if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) continue;
-                if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) continue;
+                const isWatched = entry.kind === 'show' ?
+                    !!entry.seriesEpisodeKeys && entry.seriesEpisodeKeys.length > 0 && entry.seriesEpisodeKeys.every((k) => WATCHED.has(k)) :
+                    ((entry.item.watched ?? 0) >= 1 || WATCHED.has(movieKey(entry.id)));
+                if (!matchesState(entry.kind, entry.id, isWatched, states)) continue;
             }
 
-            if (hasRatings) {
-                let ratingPass = true;
-                for (let j = 0; j < rFilters.length; j++) {
-                    const rf = rFilters[j]!;
-                    switch (rf.operator) {
-                        case '>=': if (entry.imdb < rf.value) ratingPass = false; break;
-                        case '>': if (entry.imdb <= rf.value) ratingPass = false; break;
-                        case '<=': if (entry.imdb > rf.value) ratingPass = false; break;
-                        case '<': if (entry.imdb >= rf.value) ratingPass = false; break;
-                        case '=': if (Math.abs(entry.imdb - rf.value) >= 0.05) ratingPass = false; break;
-                    }
-                    if (!ratingPass) break;
-                }
-                if (!ratingPass) continue;
+            if (hasRatings && !matchesRating(entry.imdb, rFilters)) {
+                continue;
             }
 
             if (q) {
@@ -347,10 +334,9 @@ export class SearchViewModel {
         const remoteItems = this.remote.value;
         if (remoteItems.length === 0) return local;
 
-        const known = new Set(indexedCatalog.map((i) => i.id));
+        const known = this.knownCatalogIds.value;
         const extra: SearchResult[] = [];
-        for (let i = 0; i < remoteItems.length; i++) {
-            const item = remoteItems[i]!;
+        for (const item of remoteItems) {
             if (known.has(item.id)) continue;
 
             if (hasTypes) {
@@ -365,33 +351,15 @@ export class SearchViewModel {
             }
 
             if (hasStates) {
-                const isFav = item.kind === 'show' ?
-                    FAVS.has(item.id) :
-                    FAVS.has(movieKey(item.id));
                 const isWatched = item.kind === 'show' ?
                     isSeriesWatched(item) :
                     isMovieWatched(item);
-
-                if (states.includes('favs') && !isFav) continue;
-                if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) continue;
-                if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) continue;
+                if (!matchesState(item.kind, item.id, isWatched, states)) continue;
             }
 
             if (hasRatings) {
                 const score = item.rating?.imdb ?? 0;
-                let ratingPass = true;
-                for (let j = 0; j < rFilters.length; j++) {
-                    const rf = rFilters[j]!;
-                    switch (rf.operator) {
-                        case '>=': if (score < rf.value) ratingPass = false; break;
-                        case '>': if (score <= rf.value) ratingPass = false; break;
-                        case '<=': if (score > rf.value) ratingPass = false; break;
-                        case '<': if (score >= rf.value) ratingPass = false; break;
-                        case '=': if (Math.abs(score - rf.value) >= 0.05) ratingPass = false; break;
-                    }
-                    if (!ratingPass) break;
-                }
-                if (!ratingPass) continue;
+                if (!matchesRating(score, rFilters)) continue;
             }
 
             extra.push(item);
@@ -451,20 +419,20 @@ export class SearchViewModel {
     setStateFilter = (f: StateFilter) => {
         this.stateFilters.value = (f === 'todo' || !f) ? [] : [f];
     };
-    toggleTypeFilter = (t: string) => {
+    toggleTypeFilter = (t: TypeFilter) => {
         const current = this.typeFilters.value;
         this.typeFilters.value = current.includes(t) ?
             current.filter((x) => x !== t) :
             [...current, t];
     };
-    toggleStateFilter = (s: string) => {
+    toggleStateFilter = (s: StateFilter) => {
         const current = this.stateFilters.value;
         this.stateFilters.value = current.includes(s) ?
             current.filter((x) => x !== s) :
             [...current, s];
     };
-    hasTypeFilter = (t: string): boolean => this.typeFilters.value.includes(t);
-    hasStateFilter = (s: string): boolean => this.stateFilters.value.includes(s);
+    hasTypeFilter = (t: TypeFilter): boolean => this.typeFilters.value.includes(t);
+    hasStateFilter = (s: StateFilter): boolean => this.stateFilters.value.includes(s);
 
     clearTypeFilters = () => { this.typeFilters.value = []; };
     clearStateFilters = () => { this.stateFilters.value = []; };
@@ -533,10 +501,6 @@ export class SearchViewModel {
         this.ratingFilters.value = [];
     };
 
-    clearRatingFilters = () => {
-        this.ratingFilters.value = [];
-    };
-
     openOverlay = () => {
         void this.load();
         this.overlayOpen.value = true;
@@ -592,12 +556,12 @@ export class SearchViewModel {
         this.query.value = view.query ?? '';
         if (view.ratingFilters && Array.isArray(view.ratingFilters) && view.ratingFilters.length > 0) {
             this.ratingFilters.value = view.ratingFilters.map((rf) => ({
-                operator: rf.operator as RatingOperator,
+                operator: rf.operator,
                 value: rf.value
             }));
         } else if (view.ratingFilter) {
             this.ratingFilters.value = [{
-                operator: view.ratingFilter.operator as RatingOperator,
+                operator: view.ratingFilter.operator,
                 value: view.ratingFilter.value
             }];
         } else {

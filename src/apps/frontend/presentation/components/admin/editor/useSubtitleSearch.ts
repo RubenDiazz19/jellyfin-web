@@ -3,7 +3,7 @@
 
 import globalize from 'lib/globalize';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import {
     downloadSubtitle,
     fileToBase64,
@@ -73,7 +73,7 @@ export function useSubtitleSearch({ itemId, onSubtitleUpdated }: UseSubtitleSear
         if (itemId) {
             void doSearch('spa', isPerfectMatch);
         }
-    }, [itemId]);
+    }, [itemId, isPerfectMatch]);
 
     const handleSelectLanguage = (code: string) => {
         setLang(code);
@@ -124,7 +124,7 @@ export function useSubtitleSearch({ itemId, onSubtitleUpdated }: UseSubtitleSear
         }
     };
 
-    const handleFileDrop = (e: React.DragEvent) => {
+    const handleFileDrop = (e: DragEvent) => {
         e.preventDefault();
         setDragOver(false);
         const dropped = e.dataTransfer.files?.[0];

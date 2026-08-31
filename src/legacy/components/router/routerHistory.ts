@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Router, RouterState } from '@remix-run/router';
 import type { History, Listener, To } from 'history';
 
@@ -8,7 +7,7 @@ const HISTORY_UPDATE_EVENT = 'HISTORY_UPDATE';
 
 export class RouterHistory implements History {
     _router: Router;
-    createHref: (arg: any) => string;
+    createHref: (to: Parameters<Router['createHref']>[0]) => string;
 
     constructor(router: Router) {
         this._router = router;
@@ -41,11 +40,11 @@ export class RouterHistory implements History {
         void this._router.navigate(delta);
     }
 
-    push(to: To, state?: any) {
+    push(to: To, state?: unknown) {
         void this._router.navigate(to, { state });
     }
 
-    replace(to: To, state?: any): void {
+    replace(to: To, state?: unknown): void {
         void this._router.navigate(to, { state, replace: true });
     }
 
@@ -69,5 +68,3 @@ export class RouterHistory implements History {
 export const createRouterHistory = (router: Router): History => {
     return new RouterHistory(router);
 };
-
-/* eslint-enable @typescript-eslint/no-explicit-any */

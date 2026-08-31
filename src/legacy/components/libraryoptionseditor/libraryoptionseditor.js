@@ -480,7 +480,7 @@ function onSortableContainerClick(e) {
                 prev.parentNode.insertBefore(li, prev);
             }
         }
-        Array.prototype.forEach.call(list.querySelectorAll('.sortableOption'), adjustSortableListElement);
+        list.querySelectorAll('.sortableOption').forEach(adjustSortableListElement);
     }
 }
 
@@ -583,37 +583,31 @@ export function setContentType(parent, contentType) {
 }
 
 function setSubtitleFetchersIntoOptions(parent, options) {
-    options.DisabledSubtitleFetchers = Array.prototype.map.call(Array.prototype.filter.call(parent.querySelectorAll('.chkSubtitleFetcher'), elem => {
-        return !elem.checked;
-    }), elem => {
-        return elem.getAttribute('data-pluginname');
-    });
+    options.DisabledSubtitleFetchers = Array.from(parent.querySelectorAll('.chkSubtitleFetcher'))
+        .filter(elem => !elem.checked)
+        .map(elem => elem.getAttribute('data-pluginname'));
 
-    options.SubtitleFetcherOrder = Array.prototype.map.call(parent.querySelectorAll('.subtitleFetcherItem'), elem => {
+    options.SubtitleFetcherOrder = Array.from(parent.querySelectorAll('.subtitleFetcherItem'), elem => {
         return elem.getAttribute('data-pluginname');
     });
 }
 
 function setLyricFetchersIntoOptions(parent, options) {
-    options.DisabledLyricFetchers = Array.prototype.map.call(Array.prototype.filter.call(parent.querySelectorAll('.chkLyricFetcher'), elem => {
-        return !elem.checked;
-    }), elem => {
-        return elem.getAttribute('data-pluginname');
-    });
+    options.DisabledLyricFetchers = Array.from(parent.querySelectorAll('.chkLyricFetcher'))
+        .filter(elem => !elem.checked)
+        .map(elem => elem.getAttribute('data-pluginname'));
 
-    options.LyricFetcherOrder = Array.prototype.map.call(parent.querySelectorAll('.lyricFetcherItem'), elem => {
+    options.LyricFetcherOrder = Array.from(parent.querySelectorAll('.lyricFetcherItem'), elem => {
         return elem.getAttribute('data-pluginname');
     });
 }
 
 function setMediaSegmentProvidersIntoOptions(parent, options) {
-    options.DisabledMediaSegmentProviders = Array.prototype.map.call(Array.prototype.filter.call(parent.querySelectorAll('.chkMediaSegmentProvider'), elem => {
-        return !elem.checked;
-    }), elem => {
-        return elem.getAttribute('data-pluginname');
-    });
+    options.DisabledMediaSegmentProviders = Array.from(parent.querySelectorAll('.chkMediaSegmentProvider'))
+        .filter(elem => !elem.checked)
+        .map(elem => elem.getAttribute('data-pluginname'));
 
-    options.MediaSegmentProviderOrder = Array.prototype.map.call(parent.querySelectorAll('.mediaSegmentProviderItem'), elem => {
+    options.MediaSegmentProviderOrder = Array.from(parent.querySelectorAll('.mediaSegmentProviderItem'), elem => {
         return elem.getAttribute('data-pluginname');
     });
 }
@@ -629,13 +623,11 @@ function setMetadataFetchersIntoOptions(parent, options) {
             };
             options.TypeOptions.push(typeOptions);
         }
-        typeOptions.MetadataFetchers = Array.prototype.map.call(Array.prototype.filter.call(section.querySelectorAll('.chkMetadataFetcher'), elem => {
-            return elem.checked;
-        }), elem => {
-            return elem.getAttribute('data-pluginname');
-        });
+        typeOptions.MetadataFetchers = Array.from(section.querySelectorAll('.chkMetadataFetcher'))
+            .filter(elem => elem.checked)
+            .map(elem => elem.getAttribute('data-pluginname'));
 
-        typeOptions.MetadataFetcherOrder = Array.prototype.map.call(section.querySelectorAll('.metadataFetcherItem'), elem => {
+        typeOptions.MetadataFetcherOrder = Array.from(section.querySelectorAll('.metadataFetcherItem'), elem => {
             return elem.getAttribute('data-pluginname');
         });
     }
@@ -653,13 +645,11 @@ function setImageFetchersIntoOptions(parent, options) {
             options.TypeOptions.push(typeOptions);
         }
 
-        typeOptions.ImageFetchers = Array.prototype.map.call(Array.prototype.filter.call(section.querySelectorAll('.chkImageFetcher'), elem => {
-            return elem.checked;
-        }), elem => {
-            return elem.getAttribute('data-pluginname');
-        });
+        typeOptions.ImageFetchers = Array.from(section.querySelectorAll('.chkImageFetcher'))
+            .filter(elem => elem.checked)
+            .map(elem => elem.getAttribute('data-pluginname'));
 
-        typeOptions.ImageFetcherOrder = Array.prototype.map.call(section.querySelectorAll('.imageFetcherItem'), elem => {
+        typeOptions.ImageFetcherOrder = Array.from(section.querySelectorAll('.imageFetcherItem'), elem => {
             return elem.getAttribute('data-pluginname');
         });
     }
@@ -677,13 +667,11 @@ function setSimilarItemProvidersIntoOptions(parent, options) {
             options.TypeOptions.push(typeOptions);
         }
 
-        typeOptions.SimilarItemProviders = Array.prototype.map.call(Array.prototype.filter.call(section.querySelectorAll('.chkSimilarItemProvider'), elem => {
-            return elem.checked;
-        }), elem => {
-            return elem.getAttribute('data-pluginname');
-        });
+        typeOptions.SimilarItemProviders = Array.from(section.querySelectorAll('.chkSimilarItemProvider'))
+            .filter(elem => elem.checked)
+            .map(elem => elem.getAttribute('data-pluginname'));
 
-        typeOptions.SimilarItemProviderOrder = Array.prototype.map.call(section.querySelectorAll('.similarItemProviderItem'), elem => {
+        typeOptions.SimilarItemProviderOrder = Array.from(section.querySelectorAll('.similarItemProviderItem'), elem => {
             return elem.getAttribute('data-pluginname');
         });
     }
@@ -737,22 +725,18 @@ export function getLibraryOptions(parent) {
         AutomaticallyAddToCollection: parent.querySelector('#chkAutomaticallyAddToCollection').checked,
         PreferNonstandardArtistsTag: parent.querySelector('#chkPreferNonstandardArtistsTag').checked,
         UseCustomTagDelimiters: parent.querySelector('#chkUseCustomTagDelimiters').checked,
-        MetadataSavers: Array.prototype.map.call(Array.prototype.filter.call(parent.querySelectorAll('.chkMetadataSaver'), elem => {
-            return elem.checked;
-        }), elem => {
-            return elem.getAttribute('data-pluginname');
-        }),
+        MetadataSavers: Array.from(parent.querySelectorAll('.chkMetadataSaver'))
+            .filter(elem => elem.checked)
+            .map(elem => elem.getAttribute('data-pluginname')),
         TypeOptions: []
     };
 
-    options.LocalMetadataReaderOrder = Array.prototype.map.call(parent.querySelectorAll('.localReaderOption'), elem => {
+    options.LocalMetadataReaderOrder = Array.from(parent.querySelectorAll('.localReaderOption'), elem => {
         return elem.getAttribute('data-pluginname');
     });
-    options.SubtitleDownloadLanguages = Array.prototype.map.call(Array.prototype.filter.call(parent.querySelectorAll('.chkSubtitleLanguage'), elem => {
-        return elem.checked;
-    }), elem => {
-        return elem.getAttribute('data-lang');
-    });
+    options.SubtitleDownloadLanguages = Array.from(parent.querySelectorAll('.chkSubtitleLanguage'))
+        .filter(elem => elem.checked)
+        .map(elem => elem.getAttribute('data-lang'));
     options.CustomTagDelimiters = parent.querySelector('#customTagDelimitersInput').value.split('');
     options.DelimiterWhitelist = parent.querySelector('#tagDelimiterWhitelist').value.split('\n').filter(item => item.trim());
     setSubtitleFetchersIntoOptions(parent, options);
@@ -807,10 +791,10 @@ export function setLibraryOptions(parent, options) {
     parent.querySelector('#chkAutomaticallyAddToCollection').checked = options.AutomaticallyAddToCollection;
     parent.querySelector('#chkPreferNonstandardArtistsTag').checked = options.PreferNonstandardArtistsTag;
     parent.querySelector('#chkUseCustomTagDelimiters').checked = options.UseCustomTagDelimiters;
-    Array.prototype.forEach.call(parent.querySelectorAll('.chkMetadataSaver'), elem => {
+    parent.querySelectorAll('.chkMetadataSaver').forEach(elem => {
         elem.checked = options.MetadataSavers ? options.MetadataSavers.includes(elem.getAttribute('data-pluginname')) : elem.getAttribute('data-defaultenabled') === 'true';
     });
-    Array.prototype.forEach.call(parent.querySelectorAll('.chkSubtitleLanguage'), elem => {
+    parent.querySelectorAll('.chkSubtitleLanguage').forEach(elem => {
         elem.checked = !!options.SubtitleDownloadLanguages && options.SubtitleDownloadLanguages.includes(elem.getAttribute('data-lang'));
     });
     parent.querySelector('#customTagDelimitersInput').value = options.CustomTagDelimiters.join('');

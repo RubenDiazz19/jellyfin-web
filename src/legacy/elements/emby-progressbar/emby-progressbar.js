@@ -33,7 +33,7 @@ ProgressBarPrototype.detachedCallback = function () {
     }
 };
 
-document.registerElement('emby-progressbar', {
+document.registerElement?.('emby-progressbar', {
     prototype: ProgressBarPrototype,
     extends: 'div'
 });

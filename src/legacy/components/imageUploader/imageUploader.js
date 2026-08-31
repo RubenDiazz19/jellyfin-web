@@ -66,7 +66,8 @@ function setFiles(page, files) {
     reader.onload = (theFile => {
         return e => {
             // Render thumbnail.
-            const html = ['<img style="max-width:100%;max-height:100%;" src="', e.target.result, '" title="', escape(theFile.name), '"/>'].join('');
+            const encodedName = encodeURIComponent(theFile.name);
+            const html = ['<img style="max-width:100%;max-height:100%;" src="', e.target.result, '" alt="', encodedName, '" title="', encodedName, '"/>'].join('');
 
             page.querySelector('#imageOutput').innerHTML = html;
             page.querySelector('#dropImageText').classList.add('hide');
@@ -78,7 +79,6 @@ function setFiles(page, files) {
     reader.readAsDataURL(file);
 }
 
-// eslint-disable-next-line sonarjs/no-invariant-returns
 /**
  * Sube una imagen a un item.
  *
@@ -108,6 +108,7 @@ function uploadItemImage(api, itemId, imageType, file) {
     });
 }
 
+// eslint-disable-next-line sonarjs/no-invariant-returns
 function onSubmit(e) {
     const file = currentFile;
 

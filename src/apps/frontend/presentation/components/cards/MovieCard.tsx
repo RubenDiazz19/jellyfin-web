@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
 
-import React from 'react';
+import { memo } from 'react';
 import { formatRuntime } from '../../theme/format';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { FavButton } from '../controls/FavButton';
@@ -26,7 +26,7 @@ const GRID_GRADIENT = 'linear-gradient(180deg, transparent 45%, rgba(0,0,0,0.9))
 // dice la duración; en rejilla (biblioteca, género, favoritos) llena la
 // columna y el pie dice el tipo, para que case con el «Serie» de PosterCard
 // de al lado — ahí lo que se compara es qué es cada cosa, no cuánto dura.
-export const MovieCard = React.memo(function MovieCardBase({ movie, navigate, fluid }: Props) {
+export const MovieCard = memo(function MovieCardBase({ movie, navigate, fluid }: Props) {
     const r = useResponsive();
     const w = r.touch ? r.cardW : POSTER_W;
     const card = useCardInteractions(

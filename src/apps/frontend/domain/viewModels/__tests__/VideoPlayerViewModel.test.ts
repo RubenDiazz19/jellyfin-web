@@ -38,6 +38,7 @@ class FakeVideo extends EventTarget {
 function decision(overrides: Partial<PlaybackDecision> = {}): PlaybackDecision {
     return {
         kind: 'direct',
+        playMethod: 'DirectPlay',
         url: 'http://server/Videos/x/stream',
         playSessionId: 'ps1',
         mediaSourceId: 'ms1',
@@ -95,7 +96,7 @@ describe('VideoPlayerViewModel', () => {
 
         expect(video.src).toBe('http://server/Videos/x/stream');
         expect(vm.title.value).toBe('Dandelion 1x01');
-        expect(api.playback.reportPlaybackStart).toHaveBeenCalledWith('item1');
+        expect(api.playback.reportPlaybackStart).toHaveBeenCalledWith('item1', 'DirectPlay');
 
         // El seek de reanudación llega al cargar los metadatos.
         video.duration = 1400;
