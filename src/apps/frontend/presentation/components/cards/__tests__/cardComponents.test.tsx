@@ -70,6 +70,8 @@ describe('CardProgress', () => {
     test('renderiza barra de progreso cuando el valor es mayor a 0', async () => {
         await mount(<CardProgress value={0.5} />);
         expect(host?.children.length).toBe(1);
+        const container = host?.firstElementChild as HTMLElement;
+        expect(container.style.bottom).toBe('0px');
     });
 });
 

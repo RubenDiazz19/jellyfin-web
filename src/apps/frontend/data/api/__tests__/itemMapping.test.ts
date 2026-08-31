@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { extractMediaBadges, mapCommonFields } from '../itemMapping';
+import { extractMediaBadges, formatVideoRange, mapCommonFields, summarizeVideo } from '../itemMapping';
 import { mapMovie } from '../movies';
 import { mapShow } from '../shows';
 import type { JFItem } from '../types';
@@ -117,5 +117,57 @@ describe('itemMapping and detail fields', () => {
         expect(badges).toContain('H.264');
         expect(badges).toContain('DTS-HD');
         expect(badges).toContain('7.1');
+    });
+
+    test('formatVideoRange y summarizeVideo formatean DOVIWithHDR10 como Dolby Vision', () => {
+        const videoStream = {
+            Index: 0,
+            Type: 'Video' as const,
+            Width: 3840,
+            Height: 2160,
+            Codec: 'hevc',
+            VideoRangeType: 'DOVIWithHDR10'
+        };
+
+        expect(formatVideoRange(videoStream)).toBe('Dolby Vision');
+        expect(summarizeVideo([videoStream])).toBe('2160p · HEVC · Dolby Vision');
+    });
+
+    test('summarizeVideo formatea otros rangos dinámicos correctamente', () => {
+        expect(summarizeVideo([{
+            Index: 0,
+            Type: 'Video' as const,
+            Width: 3840,
+            Height: 2160,
+            Codec: 'hevc',
+            VideoRangeType: 'DOVIWithHDR10Plus'
+        }])).toBe('2160p · HEVC · Dolby Vision');
+
+        expect(summarizeVideo([{
+            Index: 0,
+            Type: 'Video' as const,
+            Width: 1920,
+            Height: 1080,
+            Codec: 'hevc',
+            VideoRangeType: 'HDR10+'
+        }])).toBe('1080p · HEVC · HDR10+');
+
+        expect(summarizeVideo([{
+            Index: 0,
+            Type: 'Video' as const,
+            Width: 1920,
+            Height: 1080,
+            Codec: 'h264',
+            VideoRangeType: 'HLG'
+        }])).toBe('1080p · H264 · HLG');
+
+        expect(summarizeVideo([{
+            Index: 0,
+            Type: 'Video' as const,
+            Width: 1280,
+            Height: 720,
+            Codec: 'h264',
+            VideoRangeType: 'SDR'
+        }])).toBe('720p · H264 · SDR');
     });
 });

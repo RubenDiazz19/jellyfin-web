@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { formatDateLong, formatRemaining, formatRuntime } from '../theme/format';
+import { formatDateLong, formatRemaining } from '../theme/format';
 import { translateStatus } from '../../domain/status';
 import { episodeKey, WATCHED } from '../../domain/stores';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
@@ -24,6 +24,7 @@ import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
+import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
@@ -257,7 +258,7 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                         )}
                         {show.runtime && show.runtime !== '—' && (
                             <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>
-                                {formatRuntime(show.runtime)}
+                                <RuntimeDisplay runtime={show.runtime} />
                             </DetailRow>
                         )}
                         {show.premiere && (

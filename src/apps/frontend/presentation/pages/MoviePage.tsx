@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { formatDateLong, formatRemaining, formatRuntime } from '../theme/format';
+import { formatDateLong, formatRemaining } from '../theme/format';
 import { useWatched } from '../../domain/bridge/useWatched';
 import type { Movie } from '../../domain/models';
 import {
@@ -19,6 +19,7 @@ import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { CastList } from '../components/cast/CastList';
 import { Similar } from '../components/similar/Similar';
+import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { getHeroCategories, getItemCategories } from '../../domain/genres';
@@ -133,7 +134,10 @@ function MovieHero({
 
                 {!minimal && (
                     <HeroMeta
-                        items={[movie.year, formatRuntime(movie.runtime)]}
+                        items={[
+                            movie.year,
+                            movie.runtime ? <RuntimeDisplay runtime={movie.runtime} autoCycle /> : null
+                        ]}
                         ageRating={movie.rating.age}
                         imdbRating={movie.rating.imdb}
                         badges={movie.mediaBadges}
@@ -216,7 +220,7 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
                         )}
                         {movie.runtime && movie.runtime !== '—' && (
                             <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>
-                                {formatRuntime(movie.runtime)}
+                                <RuntimeDisplay runtime={movie.runtime} />
                             </DetailRow>
                         )}
                         {movie.premiere && (

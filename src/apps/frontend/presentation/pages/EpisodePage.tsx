@@ -17,6 +17,7 @@ import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { FavButton } from '../components/controls/FavButton';
 import { WatchedButton } from '../components/controls/WatchedButton';
 import { CastList } from '../components/cast/CastList';
+import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { episodeKey } from '../../domain/stores';
@@ -158,7 +159,7 @@ function EpisodeHero({
                                 r.touch ? 'clamp(24px, 6vw, 38px)' : 'clamp(29px, 3.6vw, 52px)',
                             lineHeight: 1.05,
                             margin: 0, fontWeight: 300, letterSpacing: -0.5,
-                            textShadow: '0 2px 24px rgba(0,0,0,0.7)', textWrap: 'balance',
+                            textWrap: 'balance',
                             minWidth: 0,
                             // Un título largo no puede empujar al resto fuera
                             // del hero: como mucho, dos líneas.
@@ -183,14 +184,17 @@ function EpisodeHero({
 
                     <HeroMeta
                         items={[
-                            ep.runtime != null ? `${ep.runtime} min` : null,
-                            ep.date ? formatDateLong(ep.date) : null,
-                            ep.video
+                            ep.runtime != null ? (
+                                <RuntimeDisplay runtime={ep.runtime} autoCycle>
+                                    {`${ep.runtime} min`}
+                                </RuntimeDisplay>
+                            ) : null,
+                            ep.date ? formatDateLong(ep.date) : null
                         ]}
                         badges={ep.mediaBadges}
-                        badgeSize='sm'
+                        badgeSize='md'
                         align='center'
-                        color='rgba(255,255,255,0.6)'
+                        color='rgba(255,255,255,0.75)'
                         marginTop={short ? 8 : 12}
                     />
                 </div>
@@ -249,7 +253,9 @@ function EpisodeDetail({
                         )}
                         {ep.runtime != null && (
                             <DetailRow label={globalize.translate('LabelRuntimeMinutes')}>
-                                {ep.runtime} min
+                                <RuntimeDisplay runtime={ep.runtime}>
+                                    {`${ep.runtime} min`}
+                                </RuntimeDisplay>
                             </DetailRow>
                         )}
                         <DetailRow label={globalize.translate('Video')}>{ep.video ?? '—'}</DetailRow>

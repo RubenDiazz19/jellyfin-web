@@ -97,7 +97,7 @@ export function PosterShell({
                     inProgress={inProgress}
                 />
                 {inProgress && (
-                    <CardProgress value={progress} bottom={3} />
+                    <CardProgress value={progress} />
                 )}
             </PosterFrame>
             <div style={{

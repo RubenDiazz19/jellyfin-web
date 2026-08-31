@@ -163,25 +163,9 @@ export function extractMediaBadges(streams: JFMediaStream[] = []): string[] {
         }
 
         // Detección de HDR / Dolby Vision
-        const rangeType = video.VideoRangeType ?? '';
-        const range = video.VideoRange ?? '';
-        const doViTitle = video.VideoDoViTitle ?? '';
-        const title = video.Title ?? '';
-        const isDoVi = Boolean(doViTitle)
-            || /dovi|dolby\s*vision/i.test(rangeType)
-            || /dovi|dolby\s*vision/i.test(range)
-            || /dolby\s*vision|\bdv\b/i.test(title);
-
-        if (isDoVi) {
-            badges.push('Dolby Vision');
-        } else if (/hdr10\+/i.test(rangeType) || /hdr10\+/i.test(range)) {
-            badges.push('HDR10+');
-        } else if (/hdr10/i.test(rangeType) || /hdr10/i.test(range)) {
-            badges.push('HDR10');
-        } else if (/hdr/i.test(rangeType) || /hdr/i.test(range)) {
-            badges.push('HDR');
-        } else if (/hlg/i.test(rangeType) || /hlg/i.test(range)) {
-            badges.push('HLG');
+        const videoRange = formatVideoRange(video);
+        if (videoRange) {
+            badges.push(videoRange);
         }
 
         // Códec de vídeo
@@ -239,6 +223,44 @@ export function extractMediaBadges(streams: JFMediaStream[] = []): string[] {
     return Array.from(new Set(badges));
 }
 
+/**
+ * Normaliza y formatea el rango dinámico del vídeo (Dolby Vision, HDR10+, HDR10, HLG, HDR, SDR).
+ * Evita que enums internos del SDK como DOVIWithHDR10 o DOVIWithHDR10Plus se muestren directamente en la interfaz.
+ */
+export function formatVideoRange(video: JFMediaStream): string | undefined {
+    const rangeType = video.VideoRangeType ?? '';
+    const range = video.VideoRange ?? '';
+    const doViTitle = video.VideoDoViTitle ?? '';
+    const title = video.Title ?? '';
+    const isDoVi = Boolean(doViTitle)
+        || /dovi|dolby\s*vision/i.test(rangeType)
+        || /dovi|dolby\s*vision/i.test(range)
+        || /dolby\s*vision|\bdv\b/i.test(title);
+
+    if (isDoVi) {
+        return 'Dolby Vision';
+    }
+    if (/hdr10\+/i.test(rangeType) || /hdr10\+/i.test(range)) {
+        return 'HDR10+';
+    }
+    if (/hdr10/i.test(rangeType) || /hdr10/i.test(range)) {
+        return 'HDR10';
+    }
+    if (/hlg/i.test(rangeType) || /hlg/i.test(range)) {
+        return 'HLG';
+    }
+    if (/hdr/i.test(rangeType) || /hdr/i.test(range)) {
+        return 'HDR';
+    }
+    if (/sdr/i.test(rangeType) || /sdr/i.test(range)) {
+        return 'SDR';
+    }
+    if (rangeType && rangeType !== 'Unknown') {
+        return rangeType;
+    }
+    return (range && range !== 'Unknown') ? range : undefined;
+}
+
 export function summarizeVideo(streams: JFMediaStream[] = []): string | undefined {
     const video = streams.find((s) => s.Type === 'Video');
     if (!video) return undefined;
@@ -246,8 +268,7 @@ export function summarizeVideo(streams: JFMediaStream[] = []): string | undefine
     const res = resolutionLabel(video.Height, video.Width);
     if (res) parts.push(res);
     if (video.Codec) parts.push(video.Codec.toUpperCase());
-    const range = (video.VideoRangeType && video.VideoRangeType !== 'Unknown') ?
-        video.VideoRangeType : (video.VideoRange || undefined);
+    const range = formatVideoRange(video);
     if (range) parts.push(range);
     return parts.length ? parts.join(' · ') : undefined;
 }

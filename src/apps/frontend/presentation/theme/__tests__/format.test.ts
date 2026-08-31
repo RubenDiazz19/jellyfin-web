@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { formatDateLong, formatRemaining, formatRemainingCompact, formatRuntime } from '../format';
+import { formatDateLong, formatEndTime, formatRemaining, formatRemainingCompact, formatRuntime, parseRuntimeMinutes } from '../format';
 
 describe('formatDateLong', () => {
     test('fecha larga en español', () => {
@@ -61,5 +61,46 @@ describe('formatRuntime', () => {
 
     test('valores no simples se devuelven tal cual', () => {
         expect(formatRuntime('47–51 min')).toBe('47–51 min');
+    });
+});
+
+describe('parseRuntimeMinutes', () => {
+    test('extrae minutos desde números', () => {
+        expect(parseRuntimeMinutes(70)).toBe(70);
+        expect(parseRuntimeMinutes(45)).toBe(45);
+    });
+
+    test('extrae minutos desde cadenas simples', () => {
+        expect(parseRuntimeMinutes('70 min')).toBe(70);
+        expect(parseRuntimeMinutes('176 min')).toBe(176);
+        expect(parseRuntimeMinutes('45')).toBe(45);
+    });
+
+    test('extrae minutos desde formatos en horas y minutos', () => {
+        expect(parseRuntimeMinutes('1 h 10 min')).toBe(70);
+        expect(parseRuntimeMinutes('2 h 56 min')).toBe(176);
+        expect(parseRuntimeMinutes('2 h')).toBe(120);
+    });
+
+    test('valores no válidos devuelven undefined', () => {
+        expect(parseRuntimeMinutes(undefined)).toBeUndefined();
+        expect(parseRuntimeMinutes('')).toBeUndefined();
+        expect(parseRuntimeMinutes('—')).toBeUndefined();
+        expect(parseRuntimeMinutes(0)).toBeUndefined();
+    });
+});
+
+describe('formatEndTime', () => {
+    test('calcula correctamente la hora de fin sumando la duración', () => {
+        const baseDate = new Date('2026-08-31T10:00:00');
+        const endTime = formatEndTime(70, baseDate);
+        expect(endTime).toBeDefined();
+        // Contiene la hora 11:10 (10:00 + 70 min)
+        expect(endTime).toMatch(/11:10/);
+    });
+
+    test('devuelve undefined si no hay duración válida', () => {
+        expect(formatEndTime(undefined)).toBeUndefined();
+        expect(formatEndTime('—')).toBeUndefined();
     });
 });
