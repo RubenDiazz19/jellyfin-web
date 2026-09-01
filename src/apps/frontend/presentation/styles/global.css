@@ -715,3 +715,88 @@ html body.jf-video-active .dialogBackdropOpened {
     }
 }
 
+/* ==========================================================================
+   Landing Page Inmersiva de Colecciones / Sagas (Estilo Disney+ / Star Hub)
+   Aplica tanto a las clases del frontend moderno como a selectores nativos
+   de Jellyfin Web ([data-type="BoxSet"], [data-type="CollectionFolder"]).
+   ========================================================================== */
+
+/* 1. Backdrop a pantalla completa con posición fija */
+.collectionHero,
+div[data-type="BoxSet"] .backdropContainer,
+div[data-type="CollectionFolder"] .backdropContainer,
+#itemDetailPage[data-type="BoxSet"] .backdropContainer {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    background-color: #000000 !important;
+    z-index: 0 !important;
+}
+
+.collectionHeroBackdrop,
+.collectionHeroBackdrop .backdropImage,
+div[data-type="BoxSet"] .backdropImage,
+div[data-type="CollectionFolder"] .backdropImage {
+    background-size: cover !important;
+    background-position: center top !important;
+    background-repeat: no-repeat !important;
+    filter: brightness(0.88) !important;
+    opacity: 1 !important;
+}
+
+/* 2. Máscara de degradado desactivada temporalmente a petición del usuario */
+.collectionGradientOverlay,
+div[data-type="BoxSet"] .backdropContainer::after,
+div[data-type="CollectionFolder"] .backdropContainer::after {
+    display: none !important;
+}
+
+/* 3. Posicionamiento del Logo / Título centrado en la mitad superior */
+.collectionHeroHeader,
+div[data-type="BoxSet"] .itemPageHeader,
+div[data-type="CollectionFolder"] .itemPageHeader {
+    position: absolute !important;
+    top: 40% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 2 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    pointer-events: none !important;
+}
+
+.collectionHeroHeader .itemLogo,
+div[data-type="BoxSet"] .itemPageHeader .itemLogo,
+div[data-type="CollectionFolder"] .itemPageHeader .itemLogo {
+    max-width: min(34vw, 420px) !important;
+    max-height: min(20vh, 160px) !important;
+    object-fit: contain !important;
+    filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.9)) !important;
+}
+
+/* 4. Zona de contenido reposando sobre fondo negro absoluto con carruseles horizontales */
+.collectionItemsCarousel,
+div[data-type="BoxSet"] .itemsContainer,
+div[data-type="CollectionFolder"] .itemsContainer {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-behavior: smooth !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+}
+
+.collectionItemsCarousel::-webkit-scrollbar,
+div[data-type="BoxSet"] .itemsContainer::-webkit-scrollbar,
+div[data-type="CollectionFolder"] .itemsContainer::-webkit-scrollbar {
+    display: none !important;
+}
+
+

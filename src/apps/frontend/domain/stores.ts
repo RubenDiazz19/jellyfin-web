@@ -14,4 +14,5 @@ export { VIEWS, type RatingOperator, type SavedView } from '../data/stores/views
 // expone igual porque el contrato hacia la vista es el mismo (leer + evento
 // de cambio).
 export { LISTS, displayItems, type ListKind, type ListRef } from '../data/stores/listsStore';
+export { COLLECTION_STYLES, type CollectionStyle } from '../data/stores/collectionStylesStore';
 export type { ListEntry } from '../data/api/lists';

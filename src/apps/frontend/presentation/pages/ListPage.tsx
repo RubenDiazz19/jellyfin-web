@@ -13,14 +13,18 @@ import { EditableTitle } from '../components/controls/EditableTitle';
 import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { PosterTile } from '../components/cards/PosterTile';
+import { CollectionCard } from '../components/collection/CollectionCard';
+import { CollectionHero } from '../components/collection/CollectionHero';
+import { PillButton } from '../components/controls/fields';
+import { CreateCollectionDialog } from '../components/controls/CreateCollectionDialog';
 import { CardGrid } from '../components/layout/CardGrid';
 import { LoadState } from '../components/controls/LoadState';
 import { getCollectionAncestors, getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
 import { displayItems, LISTS, type ListKind, type ListRef } from '../../domain/stores';
 
 import { useListSync } from '../../domain/bridge/useLists';
-
 import { useResponsive } from '../theme/responsive';
+
 import type { Navigate, Route } from '../../app/router';
 
 type Props = { kind: ListKind; listId: string; navigate: Navigate };
@@ -61,6 +65,40 @@ export function ListPage({ kind, listId, navigate }: Props) {
     }, [kind, listId]);
 
     const kindLabel = globalize.translate(kind === 'playlist' ? 'Playlists' : 'Collections');
+
+    const collectionMenuRef = useRef<ListMenuHandle | null>(null);
+
+    if (kind === 'collection') {
+        const fallbackBackdrop = items?.find((i) => i.backdrop || i.heroBackdrop)?.backdrop
+            ?? items?.find((i) => i.backdrop || i.heroBackdrop)?.heroBackdrop
+            ?? items?.[0]?.poster;
+
+        return (
+            <div
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    collectionMenuRef.current?.openAt(e.clientX, e.clientY);
+                }}
+                style={{
+                    position: 'relative',
+                    width: '100vw',
+                    height: '100vh',
+                    overflow: 'hidden',
+                    background: 'transparent'
+                }}
+            >
+                <CollectionHero
+                    listId={listId}
+                    list={list}
+                    ancestors={ancestors}
+                    fallbackBackdrop={fallbackBackdrop}
+                    navigate={navigate}
+                    onChanged={refresh}
+                    menuRef={collectionMenuRef}
+                />
+            </div>
+        );
+    }
 
     return (
         <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
@@ -168,6 +206,7 @@ function ListInfoStrip({
     onCoverChanged: () => void;
 }) {
     const r = useResponsive();
+    const [createSub, setCreateSub] = useState(false);
     const parent = ancestors.length > 0 ? ancestors[ancestors.length - 1] : null;
     const backTo: Route | undefined = parent ?
         { page: 'list', kind: 'collection', listId: parent.id } :
@@ -200,16 +239,38 @@ function ListInfoStrip({
                         {count != null && ` · ${globalize.translate('ItemCount', count)}`}
                     </div>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {kind === 'collection' && (
+                        <PillButton
+                            size='sm'
+                            variant='ghost'
+                            onClick={() => setCreateSub(true)}
+                        >
+                            + {globalize.translate('HeaderNewCollection')}
+                        </PillButton>
+                    )}
                     <ListCardMenu
                         kind={kind}
                         listId={listId}
+                        title={list?.name}
+                        logo={list?.logo}
                         onChanged={onCoverChanged}
                         onDeleted={() => navigate({ page: 'lists' })}
                         size={32}
                     />
                 </div>
             </div>
+
+            {createSub && (
+                <CreateCollectionDialog
+                    parentId={listId}
+                    parentTitle={list?.name}
+                    onClose={() => setCreateSub(false)}
+                    onCreated={() => {
+                        onCoverChanged();
+                    }}
+                />
+            )}
         </>
     );
 }
@@ -253,15 +314,31 @@ function ListGrid({ items, error, navigate }: {
  * el menú de cada uno.
  */
 function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
-    const isCollection = item.kind === 'collection';
+    if (item.kind === 'collection') {
+        return (
+            <CollectionCard
+                id={item.id}
+                title={item.title}
+                logo={item.logo}
+                backdrop={item.backdrop}
+                image={item.poster}
+                onClick={() => navigate({ page: 'list', kind: 'collection', listId: item.id })}
+                onChanged={() => {}}
+            />
+        );
+    }
+    return <MediaItemCard item={item} navigate={navigate} />;
+}
+
+function MediaItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
     const ctx = useItemContextMenu({
         id: item.id,
-        type: isCollection ? 'collection' : item.kind === 'movie' ? 'movie' : 'show',
+        type: item.kind === 'movie' ? 'movie' : 'show',
         itemTitle: item.title,
         queueSubtitle: item.year ? String(item.year) : undefined,
         queuePoster: item.poster
     });
-    const kindKey = isCollection ? 'LabelCollection' : item.kind === 'movie' ? 'Movie' : item.kind === 'episode' ? 'Episode' : 'Series';
+    const kindKey = item.kind === 'movie' ? 'Movie' : item.kind === 'episode' ? 'Episode' : 'Series';
     return (
         <PosterTile
             title={item.title}
@@ -269,12 +346,8 @@ function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Naviga
             cover={item.poster}
             logo={item.logo}
             interactions={{
-                // Una subcolección navega recursivamente como colección. Un
-                // episodio suelto lleva a su serie, y una película a su ficha.
                 onClick: () => {
-                    if (item.kind === 'collection') {
-                        navigate({ page: 'list', kind: 'collection', listId: item.id });
-                    } else if (item.kind === 'movie') {
+                    if (item.kind === 'movie') {
                         navigate({ page: 'movie', movieId: item.id });
                     } else {
                         navigate({ page: 'show', showId: item.seriesId ?? item.id });
@@ -288,3 +361,4 @@ function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Naviga
         />
     );
 }
+

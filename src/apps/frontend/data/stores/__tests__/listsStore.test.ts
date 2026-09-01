@@ -39,11 +39,15 @@ vi.mock('../../api/metadata', async (importActual) => {
     };
 });
 
-vi.mock('../../api/remote-images', () => ({
-    setImageByUrl: (...a: unknown[]) => setImageByUrl(...a),
-    uploadImageFile: (...a: unknown[]) => uploadImageFile(...a),
-    deleteImage: (...a: unknown[]) => deleteImage(...a)
-}));
+vi.mock('../../api/remote-images', async (importActual) => {
+    const actual = await importActual<typeof import('../../api/remote-images')>();
+    return {
+        ...actual,
+        setImageByUrl: (...a: unknown[]) => setImageByUrl(...a),
+        uploadImageFile: (...a: unknown[]) => uploadImageFile(...a),
+        deleteImage: (...a: unknown[]) => deleteImage(...a)
+    };
+});
 
 // La URL de la imagen propia se construye con `imageUrl`, que necesita sesión.
 vi.mock('../../api/images', () => ({
@@ -409,10 +413,32 @@ describe('create', () => {
         expect(createCollection).not.toHaveBeenCalled();
     });
 
+    test('crea una lista de reproducción vacía', async () => {
+        createPlaylist.mockResolvedValue('pl-empty');
+        const id = await LISTS.create('playlist', 'SoloPlaylist');
+        expect(createPlaylist).toHaveBeenCalledWith('SoloPlaylist', undefined);
+        expect(id).toBe('pl-empty');
+    });
+
     test('crea una colección', async () => {
         await LISTS.create('collection', 'Nueva', 'x');
-        expect(createCollection).toHaveBeenCalledWith('Nueva', 'x');
+        expect(createCollection).toHaveBeenCalledWith('Nueva', 'x', undefined);
         expect(createPlaylist).not.toHaveBeenCalled();
+    });
+
+    test('crea una colección vacía', async () => {
+        createCollection.mockResolvedValue('c-empty');
+        const id = await LISTS.create('collection', 'SoloNombre');
+        expect(createCollection).toHaveBeenCalledWith('SoloNombre', undefined, undefined);
+        expect(id).toBe('c-empty');
+    });
+
+    test('crea una subcolección vinculada al padre', async () => {
+        createCollection.mockResolvedValue('c-sub');
+        const id = await LISTS.create('collection', 'Hija', undefined, 'padre-123');
+        expect(createCollection).toHaveBeenCalledWith('Hija', undefined, 'padre-123');
+        expect(addToCollection).toHaveBeenCalledWith('padre-123', 'c-sub');
+        expect(id).toBe('c-sub');
     });
 
     test('un fallo al crear se propaga', async () => {
@@ -448,6 +474,26 @@ describe('isRoot y jerarquía de colecciones', () => {
         const c2 = LISTS.find('collection', 'c2');
         expect(LISTS.isRoot(c1!)).toBe(true);
         expect(LISTS.isRoot(c2!)).toBe(false);
+    });
+
+    test('una colección contenida en los items de otra colección se marca como subcolección aunque compartan parentId físico', async () => {
+        getCollections.mockResolvedValue([
+            { id: 'c-marvel', name: 'Marvel', parentId: 'boxsets-library' },
+            { id: 'c-ironman', name: 'Iron Man - Colección', parentId: 'boxsets-library' }
+        ]);
+        getCollectionItems.mockImplementation(async (id: string) => {
+            if (id === 'c-marvel') {
+                return [
+                    { id: 'c-ironman', title: 'Iron Man - Colección', kind: 'collection' }
+                ];
+            }
+            return [];
+        });
+        await LISTS.ensure();
+        const marvel = LISTS.find('collection', 'c-marvel');
+        const ironman = LISTS.find('collection', 'c-ironman');
+        expect(LISTS.isRoot(marvel!)).toBe(true);
+        expect(LISTS.isRoot(ironman!)).toBe(false);
     });
 });
 
