@@ -14,7 +14,7 @@ import { MoreButton, type ItemMenuHandle } from './MoreButton';
 
 type Options = {
     id: string;
-    type: 'movie' | 'show' | 'season' | 'episode';
+    type: 'movie' | 'show' | 'season' | 'episode' | 'collection';
     itemTitle: string;
     queueSubtitle?: string;
     queuePoster?: string;

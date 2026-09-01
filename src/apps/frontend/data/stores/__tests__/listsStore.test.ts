@@ -21,10 +21,23 @@ const setImageByUrl = vi.fn();
 const uploadImageFile = vi.fn();
 const deleteImage = vi.fn();
 const updateItemMetadata = vi.fn();
+const deleteItem = vi.fn();
 
-vi.mock('../../api/metadata', () => ({
-    updateItemMetadata: (...a: unknown[]) => updateItemMetadata(...a)
-}));
+vi.mock('../../api/items', async (importActual) => {
+    const actual = await importActual<typeof import('../../api/items')>();
+    return {
+        ...actual,
+        deleteItem: (...a: unknown[]) => deleteItem(...a)
+    };
+});
+
+vi.mock('../../api/metadata', async (importActual) => {
+    const actual = await importActual<typeof import('../../api/metadata')>();
+    return {
+        ...actual,
+        updateItemMetadata: (...a: unknown[]) => updateItemMetadata(...a)
+    };
+});
 
 vi.mock('../../api/remote-images', () => ({
     setImageByUrl: (...a: unknown[]) => setImageByUrl(...a),
@@ -81,6 +94,7 @@ beforeEach(() => {
         m.mockResolvedValue(undefined);
     }
     for (const m of [setImageByUrl, uploadImageFile, deleteImage]) m.mockResolvedValue(undefined);
+    deleteItem.mockResolvedValue(undefined);
     updateItemMetadata.mockResolvedValue(undefined);
     createPlaylist.mockResolvedValue('p9');
     createCollection.mockResolvedValue('c9');
@@ -404,5 +418,43 @@ describe('create', () => {
     test('un fallo al crear se propaga', async () => {
         createCollection.mockRejectedValue(new Error('sin permiso'));
         await expect(LISTS.create('collection', 'Nueva', 'x')).rejects.toThrow('sin permiso');
+    });
+});
+
+describe('isRoot y jerarquía de colecciones', () => {
+    test('una playlist siempre es raíz', async () => {
+        await LISTS.ensure();
+        const playlist = LISTS.ofKind('playlist')[0];
+        expect(LISTS.isRoot(playlist)).toBe(true);
+    });
+
+    test('una colección sin parentId o con parentId que no es colección es raíz', async () => {
+        getCollections.mockResolvedValue([
+            { id: 'c1', name: 'Colección Raíz', parentId: 'virtual-boxsets-library' }
+        ]);
+        await LISTS.ensure();
+        const c1 = LISTS.find('collection', 'c1');
+        expect(c1).toBeDefined();
+        expect(LISTS.isRoot(c1!)).toBe(true);
+    });
+
+    test('una colección con parentId perteneciente a otra colección no es raíz (es subcolección)', async () => {
+        getCollections.mockResolvedValue([
+            { id: 'c1', name: 'Universo Marvel', parentId: 'boxsets-root' },
+            { id: 'c2', name: 'Fase 1', parentId: 'c1' }
+        ]);
+        await LISTS.ensure();
+        const c1 = LISTS.find('collection', 'c1');
+        const c2 = LISTS.find('collection', 'c2');
+        expect(LISTS.isRoot(c1!)).toBe(true);
+        expect(LISTS.isRoot(c2!)).toBe(false);
+    });
+});
+
+describe('delete', () => {
+    test('elimina una lista o colección llamando a deleteItem', async () => {
+        await LISTS.ensure();
+        await LISTS.delete('collection', 'c1');
+        expect(deleteItem).toHaveBeenCalledWith('c1');
     });
 });

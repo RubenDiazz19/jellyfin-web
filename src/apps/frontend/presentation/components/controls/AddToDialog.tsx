@@ -41,8 +41,10 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
 
     useEffect(() => {
         const fetchEntries = kind === 'playlist' ? getPlaylists : getCollections;
-        fetchEntries().then(setEntries).catch((e) => setError((e as Error).message));
-    }, [kind]);
+        fetchEntries()
+            .then((list) => setEntries(list.filter((e) => e.id !== itemId)))
+            .catch((e) => setError((e as Error).message));
+    }, [kind, itemId]);
 
     const suffix = itemTitle ? ` · ${itemTitle}` : '';
 

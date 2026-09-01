@@ -7,6 +7,8 @@ import { useToast } from '../toast/ToastProvider';
 import { LISTS, type ListKind } from '../../../domain/stores';
 import { PopupPanel } from './PopupPanel';
 import { MenuEntry } from './MenuEntry';
+import { AddToDialog } from './AddToDialog';
+import { ConfirmDialog } from './ConfirmDialog';
 
 // Los tres puntos de una lista: en la esquina de su tarjeta del índice y en el
 // hero de la propia lista. De momento solo llevan el fondo: subir una imagen,
@@ -23,6 +25,7 @@ type Props = {
     kind: ListKind;
     listId: string;
     onChanged: () => void;
+    onDeleted?: () => void;
     /** Diámetro del botón: en el hero se pinta más grande que en la tarjeta. */
     size?: number;
     /** Sin botón visible: solo lo abre quien tenga el `handle`. */
@@ -35,7 +38,7 @@ const MENU_H = 190;
 const GAP = 8;
 
 export function ListCardMenu({
-    kind, listId, onChanged, size = 26, hideTrigger, handle
+    kind, listId, onChanged, onDeleted, size = 26, hideTrigger, handle
 }: Props) {
     const toast = useToast();
     const btnRef = useRef<HTMLButtonElement>(null);
@@ -45,6 +48,8 @@ export function ListCardMenu({
     const [busy, setBusy] = useState(false);
     const [askingUrl, setAskingUrl] = useState(false);
     const [url, setUrl] = useState('');
+    const [addTo, setAddTo] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
     const custom = LISTS.hasCustomCover(kind, listId);
 
     // Cerrar al hacer scroll o resize: el menú va en posición fija y
@@ -227,9 +232,48 @@ export function ListCardMenu({
                                 {globalize.translate('MessageCoverCleared')}
                             </MenuEntry>
                         )}
+                        {kind === 'collection' && (
+                            <>
+                                <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
+                                <MenuEntry disabled={busy} onClick={() => { setOpen(false); setAddTo(true); }}>
+                                    {globalize.translate('AddToCollection')}
+                                </MenuEntry>
+                            </>
+                        )}
+                        <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
+                        <MenuEntry
+                            danger
+                            disabled={busy}
+                            onClick={() => { setOpen(false); setConfirmDelete(true); }}
+                        >
+                            {globalize.translate(kind === 'collection' ? 'HeaderDeleteCollection' : 'HeaderDeletePlaylist')}
+                        </MenuEntry>
                     </>
                 )}
             </PopupPanel>
+
+            {addTo && (
+                <AddToDialog
+                    kind='collection'
+                    itemId={listId}
+                    onClose={() => { setAddTo(false); onChanged(); }}
+                />
+            )}
+
+            {confirmDelete && (
+                <ConfirmDialog
+                    title={globalize.translate(kind === 'collection' ? 'HeaderDeleteCollection' : 'HeaderDeletePlaylist')}
+                    message={globalize.translate(kind === 'collection' ? 'ConfirmDeleteCollection' : 'ConfirmDeletePlaylist')}
+                    confirmLabel={globalize.translate('Delete')}
+                    onConfirm={async () => {
+                        await LISTS.delete(kind, listId);
+                        toast(globalize.translate('Delete'), 'success');
+                        if (onDeleted) onDeleted();
+                        else onChanged();
+                    }}
+                    onClose={() => setConfirmDelete(false)}
+                />
+            )}
         </>
     );
 }

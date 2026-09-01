@@ -10,7 +10,7 @@ import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCa
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
 import { PageTitle, SectionTitle } from '../components/layout/Title';
-import { type ListKind, type ListRef } from '../../domain/stores';
+import { LISTS, type ListKind, type ListRef } from '../../domain/stores';
 import { useListsSync } from '../../domain/bridge/useLists';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate, Route } from '../../app/router';
@@ -30,7 +30,7 @@ export function ListsPage({ navigate }: Props) {
     const { lists, loading, error, refresh } = useListsSync();
 
     const playlists = lists.filter((l) => l.kind === 'playlist');
-    const collections = lists.filter((l) => l.kind === 'collection');
+    const collections = lists.filter((l) => l.kind === 'collection' && LISTS.isRoot(l));
 
     return (
 
@@ -218,12 +218,17 @@ function ListCard({ title, image, icon, cover, onClick }: {
     );
 }
 
-/** Cabecera compartida por Favoritos y las listas: vuelta atrás al índice. */
-export function ListBackLink({ navigate }: { navigate: Navigate }) {
-    const to: Route = { page: 'lists' };
+/** Cabecera compartida por Favoritos y las listas: vuelta atrás al índice o colección padre. */
+export function ListBackLink({ navigate, to, label }: {
+    navigate: Navigate;
+    to?: Route;
+    label?: string;
+}) {
+    const target: Route = to ?? { page: 'lists' };
+    const text = label ?? globalize.translate('Lists');
     return (
         <button
-            onClick={() => navigate(to)}
+            onClick={() => navigate(target)}
             onMouseDown={(e) => e.preventDefault()}
             style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -233,7 +238,7 @@ export function ListBackLink({ navigate }: { navigate: Navigate }) {
             onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
             onMouseLeave={(e) => (e.currentTarget.style.color = T.dim)}
         >
-            <Ic.Arrow size={14} /> {globalize.translate('Lists')}
+            <Ic.Arrow size={14} /> {text}
         </button>
     );
 }

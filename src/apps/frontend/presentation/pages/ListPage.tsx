@@ -15,13 +15,13 @@ import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { PosterTile } from '../components/cards/PosterTile';
 import { CardGrid } from '../components/layout/CardGrid';
 import { LoadState } from '../components/controls/LoadState';
-import { getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
+import { getCollectionAncestors, getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
 import { displayItems, LISTS, type ListKind, type ListRef } from '../../domain/stores';
 
 import { useListSync } from '../../domain/bridge/useLists';
 
 import { useResponsive } from '../theme/responsive';
-import type { Navigate } from '../../app/router';
+import type { Navigate, Route } from '../../app/router';
 
 type Props = { kind: ListKind; listId: string; navigate: Navigate };
 
@@ -40,6 +40,7 @@ type Props = { kind: ListKind; listId: string; navigate: Navigate };
 export function ListPage({ kind, listId, navigate }: Props) {
     const [items, setItems] = useState<PlaylistItem[] | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [ancestors, setAncestors] = useState<Array<{ id: string; name: string }>>([]);
     const { list, refresh } = useListSync(kind, listId);
 
     useEffect(() => {
@@ -49,6 +50,14 @@ export function ListPage({ kind, listId, navigate }: Props) {
         fetchItems(listId)
             .then((all) => setItems(displayItems(kind, all)))
             .catch((e) => setError((e as Error).message));
+
+        if (kind === 'collection') {
+            getCollectionAncestors(listId)
+                .then(setAncestors)
+                .catch(() => setAncestors([]));
+        } else {
+            setAncestors([]);
+        }
     }, [kind, listId]);
 
     const kindLabel = globalize.translate(kind === 'playlist' ? 'Playlists' : 'Collections');
@@ -59,6 +68,7 @@ export function ListPage({ kind, listId, navigate }: Props) {
                 kind={kind}
                 listId={listId}
                 list={list}
+                ancestors={ancestors}
                 kindLabel={kindLabel}
                 navigate={navigate}
                 onCoverChanged={refresh}
@@ -68,6 +78,7 @@ export function ListPage({ kind, listId, navigate }: Props) {
                     kind={kind}
                     listId={listId}
                     list={list}
+                    ancestors={ancestors}
                     kindLabel={kindLabel}
                     count={items?.length}
                     navigate={navigate}
@@ -87,11 +98,12 @@ export function ListPage({ kind, listId, navigate }: Props) {
  * mano— se abre con el clic derecho, que es lo único que no ocupa sitio.
  */
 function ListHero({
-    kind, listId, list, kindLabel, navigate, onCoverChanged
+    kind, listId, list, ancestors, kindLabel, navigate, onCoverChanged
 }: {
     kind: ListKind;
     listId: string;
     list: ListRef | undefined;
+    ancestors: Array<{ id: string; name: string }>;
     kindLabel: string;
     navigate: Navigate;
     onCoverChanged: () => void;
@@ -106,6 +118,10 @@ function ListHero({
                     active='lists'
                     breadcrumb={[
                         { label: globalize.translate('Lists'), to: { page: 'lists' } },
+                        ...ancestors.map((a) => ({
+                            label: a.name,
+                            to: { page: 'list' as const, kind: 'collection' as const, listId: a.id }
+                        })),
                         { label: list?.name ?? kindLabel }
                     ]}
                 />
@@ -124,6 +140,7 @@ function ListHero({
                 kind={kind}
                 listId={listId}
                 onChanged={onCoverChanged}
+                onDeleted={() => navigate({ page: 'lists' })}
             />
         </HeroFrame>
     );
@@ -138,21 +155,29 @@ function ListHero({
  * puntos se quedan también aquí para el móvil, donde no hay clic derecho con
  * el que abrir el menú de la portada.
  */
-function ListInfoStrip({ kind, listId, list, kindLabel, count, navigate, onCoverChanged }: {
+function ListInfoStrip({
+    kind, listId, list, ancestors, kindLabel, count, navigate, onCoverChanged
+}: {
     kind: ListKind;
     listId: string;
     list: ListRef | undefined;
+    ancestors: Array<{ id: string; name: string }>;
     kindLabel: string;
     count: number | undefined;
     navigate: Navigate;
     onCoverChanged: () => void;
 }) {
     const r = useResponsive();
+    const parent = ancestors.length > 0 ? ancestors[ancestors.length - 1] : null;
+    const backTo: Route | undefined = parent ?
+        { page: 'list', kind: 'collection', listId: parent.id } :
+        undefined;
+    const backLabel: string | undefined = parent ? parent.name : undefined;
+
     return (
         <>
-            {/* La vuelta al índice, que en táctil no la pinta nadie más: la
-                barra de arriba no lleva migas de pan y el hero va desnudo. */}
-            {r.touch && <ListBackLink navigate={navigate} />}
+            {/* La vuelta al índice o a la colección padre en táctil */}
+            {r.touch && <ListBackLink navigate={navigate} to={backTo} label={backLabel} />}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 16,
                 paddingBottom: r.touch ? 22 : 30, marginBottom: r.touch ? 24 : 34,
@@ -180,6 +205,7 @@ function ListInfoStrip({ kind, listId, list, kindLabel, count, navigate, onCover
                         kind={kind}
                         listId={listId}
                         onChanged={onCoverChanged}
+                        onDeleted={() => navigate({ page: 'lists' })}
                         size={32}
                     />
                 </div>
@@ -227,14 +253,15 @@ function ListGrid({ items, error, navigate }: {
  * el menú de cada uno.
  */
 function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
+    const isCollection = item.kind === 'collection';
     const ctx = useItemContextMenu({
         id: item.id,
-        type: item.kind === 'movie' ? 'movie' : 'show',
+        type: isCollection ? 'collection' : item.kind === 'movie' ? 'movie' : 'show',
         itemTitle: item.title,
         queueSubtitle: item.year ? String(item.year) : undefined,
         queuePoster: item.poster
     });
-    const kindKey = item.kind === 'movie' ? 'Movie' : item.kind === 'episode' ? 'Episode' : 'Series';
+    const kindKey = isCollection ? 'LabelCollection' : item.kind === 'movie' ? 'Movie' : item.kind === 'episode' ? 'Episode' : 'Series';
     return (
         <PosterTile
             title={item.title}
@@ -242,12 +269,17 @@ function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Naviga
             cover={item.poster}
             logo={item.logo}
             interactions={{
-                // Un episodio suelto lleva a su serie: sin temporada ni número
-                // no se puede construir la ruta del episodio, y la ficha de la
-                // serie es el destino útil más cercano.
-                onClick: () => (item.kind === 'movie' ?
-                    navigate({ page: 'movie', movieId: item.id }) :
-                    navigate({ page: 'show', showId: item.seriesId ?? item.id })),
+                // Una subcolección navega recursivamente como colección. Un
+                // episodio suelto lleva a su serie, y una película a su ficha.
+                onClick: () => {
+                    if (item.kind === 'collection') {
+                        navigate({ page: 'list', kind: 'collection', listId: item.id });
+                    } else if (item.kind === 'movie') {
+                        navigate({ page: 'movie', movieId: item.id });
+                    } else {
+                        navigate({ page: 'show', showId: item.seriesId ?? item.id });
+                    }
+                },
                 selecting: false,
                 selected: false,
                 onContextMenu: ctx.onContextMenu,

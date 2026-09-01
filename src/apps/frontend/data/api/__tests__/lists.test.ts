@@ -58,6 +58,11 @@ describe('collapseSeries', () => {
         expect(out).toEqual([movie('m1')]);
     });
 
+    test('las colecciones (subcolecciones) pasan intactas', () => {
+        const col: PlaylistItem = { id: 'col1', title: 'Subcolección', kind: 'collection' };
+        expect(collapseSeries([col])).toEqual([col]);
+    });
+
     test('conserva el orden y el sitio del primer capítulo', () => {
         const out = collapseSeries([movie('m1'), episode(1), episode(2), movie('m2')]);
         expect(out.map((i) => i.id)).toEqual(['m1', 's1', 'm2']);

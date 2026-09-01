@@ -92,6 +92,8 @@ export {
     removeFromPlaylist,
     getCollections,
     getCollectionItems,
+    getCollectionAncestors,
+    deleteCollection,
     addToCollection,
     removeFromCollection,
     createCollection,

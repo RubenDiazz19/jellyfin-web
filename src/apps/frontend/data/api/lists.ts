@@ -22,6 +22,7 @@ export type ListEntry = {
     name: string;
     count?: number;
     image?: string;
+    parentId?: string;
 };
 
 /** Campos que devuelve el listado de playlists/colecciones y aquí se usan. */
@@ -29,6 +30,7 @@ type JFListItem = {
     Id: string;
     Name: string;
     ChildCount?: number;
+    ParentId?: string;
     ImageTags?: Record<string, string>;
 };
 
@@ -37,7 +39,8 @@ function mapEntry(i: JFListItem): ListEntry {
         id: i.Id,
         name: i.Name,
         count: i.ChildCount,
-        image: firstImageUrl([['Primary', i.Id, i.ImageTags?.Primary]], { maxHeight: 200 })
+        image: firstImageUrl([['Primary', i.Id, i.ImageTags?.Primary]], { maxHeight: 200 }),
+        parentId: i.ParentId
     };
 }
 
@@ -129,7 +132,8 @@ export function collapseSeries(items: readonly PlaylistItem[]): PlaylistItem[] {
 export type PlaylistItem = {
     id: string;
     title: string;
-    kind: 'show' | 'movie' | 'episode';
+    kind: 'show' | 'movie' | 'episode' | 'collection';
+    childCount?: number;
     year?: number;
     poster?: string;
     /** Imagen apaisada, para las tarjetas 16/9 del índice de listas. */
@@ -157,6 +161,7 @@ type JFPlaylistItem = {
     Id: string;
     Name: string;
     Type?: string;
+    ChildCount?: number;
     ProductionYear?: number;
     ImageTags?: Record<string, string>;
     BackdropImageTags?: string[];
@@ -172,10 +177,12 @@ type JFPlaylistItem = {
 };
 
 function mapPlaylistItem(i: JFPlaylistItem): PlaylistItem {
+    const isCollection = i.Type === 'BoxSet';
     return {
         id: i.Id,
         title: i.Name,
-        kind: i.Type === 'Series' ? 'show' : i.Type === 'Episode' ? 'episode' : 'movie',
+        kind: isCollection ? 'collection' : i.Type === 'Series' ? 'show' : i.Type === 'Episode' ? 'episode' : 'movie',
+        childCount: i.ChildCount,
         year: i.ProductionYear,
         // Un episodio no suele traer carátula propia; se cae a la de su serie
         // para que la rejilla no quede con huecos grises.
@@ -254,7 +261,7 @@ export async function createPlaylist(name: string, itemId: string): Promise<stri
 
 export async function getCollections(): Promise<ListEntry[]> {
     const items = await fetchUserItems<JFListItem>(
-        'IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&Fields=ChildCount'
+        'IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&Fields=ChildCount,ParentId'
     );
     return items.map(mapEntry);
 }
@@ -293,7 +300,36 @@ export async function createCollection(name: string, itemId: string): Promise<st
 export async function getCollectionItems(collectionId: string): Promise<PlaylistItem[]> {
     const items = await fetchUserItems<JFPlaylistItem>(
         `ParentId=${collectionId}&SortBy=SortName`
-            + '&Fields=ProductionYear,ImageTags,DateCreated&EnableImageTypes=Primary,Logo,Backdrop'
+            + '&Fields=ProductionYear,ImageTags,DateCreated,ChildCount&EnableImageTypes=Primary,Logo,Backdrop'
     );
     return items.map(mapPlaylistItem);
+}
+
+/**
+ * Ancestros de una colección (las colecciones padre hasta la raíz).
+ * Devuelve la lista en orden raíz → padre inmediato, lista para las migas de pan.
+ */
+export async function getCollectionAncestors(
+    collectionId: string
+): Promise<Array<{ id: string; name: string }>> {
+    const session = loadSession();
+    if (!session?.userId) return [];
+    try {
+        const ancestors = await apiFetch<Array<{ Id: string; Name: string; Type?: string }>>(
+            `/Items/${collectionId}/Ancestors?userId=${session.userId}`
+        );
+        // Jellyfin devuelve del padre inmediato hacia la raíz; invertimos para que
+        // la jerarquía en migas de pan se lea de izquierda a derecha (raíz -> padre).
+        return (ancestors ?? [])
+            .filter((a) => a.Type === 'BoxSet')
+            .reverse()
+            .map((a) => ({ id: a.Id, name: a.Name }));
+    } catch {
+        return [];
+    }
+}
+
+/** Borra una colección por completo. */
+export async function deleteCollection(collectionId: string): Promise<void> {
+    await apiSend(`/Items/${collectionId}`, 'DELETE');
 }

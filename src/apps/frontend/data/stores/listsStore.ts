@@ -24,6 +24,7 @@ import {
     removeFromCollection, removeFromPlaylist, type ListEntry, type PlaylistItem
 } from '../api/lists';
 import { updateItemMetadata } from '../api/metadata';
+import { deleteItem } from '../api/items';
 import { deleteImage, setImageByUrl, uploadImageFile } from '../api/remote-images';
 import { LIST_COVERS } from './listCoversStore';
 
@@ -348,6 +349,25 @@ export const LISTS = {
             emit();
             throw e;
         }
+        await reload();
+    },
+
+    /**
+     * Comprueba si una lista es raíz (no es subcolección de otra).
+     * Las playlists siempre son raíz; una colección es raíz si su `parentId`
+     * no coincide con el `id` de ninguna otra colección conocida.
+     */
+    isRoot(list: ListRef): boolean {
+        if (list.kind === 'playlist') return true;
+        if (!list.parentId) return true;
+        if (!cache) return true;
+        return !cache.lists.some((other) => other.kind === 'collection' && other.id === list.parentId);
+    },
+
+    /** Borra una lista o colección por completo del servidor. */
+    async delete(kind: ListKind, listId: string): Promise<void> {
+        await deleteItem(listId);
+        LIST_COVERS.unmark(keyOf(kind, listId));
         await reload();
     },
 
