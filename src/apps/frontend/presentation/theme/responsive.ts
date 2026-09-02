@@ -95,6 +95,13 @@ export function useTallTablet(): boolean {
     return useMediaQuery('(min-aspect-ratio: 6/5)');
 }
 
+/**
+ * Pantalla panorámica (16:9, 16:10 o desktop apaisado de al menos 900px de ancho).
+ */
+export function useWidescreen(): boolean {
+    return useMediaQuery('(min-aspect-ratio: 4/3) and (min-width: 900px)');
+}
+
 // Atajos de color M3 con fallback al look dark actual: en desktop las vars
 // no existen y el fallback reproduce el valor de siempre.
 export const MC = {

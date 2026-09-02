@@ -54,8 +54,8 @@ export class DiscoverViewModel extends CatalogViewModel {
 export const genreVM = new DiscoverViewModel(apiService, (api, genre) =>
     api.discover.getByGenre(genre, getGenreVariants(genre)));
 
-export const personVM = new DiscoverViewModel(apiService, (api, name) =>
-    api.discover.getByPerson(name));
+export { personVM } from './PersonViewModel';
 
 export const similarVM = new DiscoverViewModel(apiService, (api, itemId) =>
     api.discover.getSimilar(itemId));
+

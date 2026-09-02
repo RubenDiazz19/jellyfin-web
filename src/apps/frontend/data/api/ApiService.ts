@@ -33,6 +33,7 @@ import { getShows, getShow } from './shows';
 import { getMovie, getMovies, getMovieSaga } from './movies';
 import { getByGenre, getByPerson, getSimilar, searchCatalog } from './discover';
 import { getHomeCarousel } from './home';
+import { getPersonMetadata } from './person';
 import { imageUrl } from './images';
 import {
     markPlayed,
@@ -193,6 +194,10 @@ const userService = {
     getUsers
 };
 
+const personService = {
+    getPersonMetadata
+};
+
 export type SessionService = typeof sessionService;
 export type AuthService = typeof authService;
 export type CatalogService = typeof catalogService;
@@ -207,6 +212,7 @@ export type AdminService = typeof adminService;
 export type TaskService = typeof taskService;
 export type AvatarService = typeof avatarService;
 export type UserService = typeof userService;
+export type PersonService = typeof personService;
 
 export class ApiService {
     // eslint-disable-next-line max-params -- DI por constructor con defaults
@@ -224,7 +230,8 @@ export class ApiService {
         readonly admin: AdminService = adminService,
         readonly tasks: TaskService = taskService,
         readonly users: UserService = userService,
-        readonly avatars: AvatarService = avatarService
+        readonly avatars: AvatarService = avatarService,
+        readonly person: PersonService = personService
     ) {}
 }
 
