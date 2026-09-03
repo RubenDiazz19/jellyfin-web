@@ -11,6 +11,7 @@ import globalize from 'lib/globalize';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { normalizeName } from '../../data/api/characterArt';
 import type { AvatarCandidate } from '../../data/api/avatars';
+import { guardedLoad } from './guardedLoad';
 import { LoadGuard } from './loadGuard';
 
 // El tipo de los candidatos también lo pinta la vista; se reexporta aquí
@@ -48,6 +49,7 @@ export class AvatarPickerViewModel {
     artById = signal<Map<string, string>>(new Map());
 
     private loads = new LoadGuard();
+    private guarded = guardedLoad(this.loading, undefined, this.loads).guarded;
     private timer: ReturnType<typeof setTimeout> | null = null;
     /** Series para las que ya se pidió el arte: un solo disparo por serie. */
     private enrichingSeries = new Set<string>();
@@ -170,24 +172,22 @@ export class AvatarPickerViewModel {
      * locales, que son los que seguro funcionan.
      */
     private async refresh(): Promise<void> {
-        const isLatest = this.loads.begin();
         const term = this.query.peek().trim();
         this.loading.value = true;
-        try {
+        await this.guarded(async (isLatest) => {
             const results = term ?
                 await this.mergeSources(term) :
                 await this.api.avatars.getLibraryCharacters();
             if (!isLatest()) return;
             this.candidates.value = results;
             this.enrich(results);
-        } catch {
+        }, () => {
             // Sin nada que pintar: el hueco se nota menos que un error que
             // corta el diálogo, y el pie sigue ofreciendo «guardar» sobre la
             // selección previa si la había.
-            if (isLatest()) this.candidates.value = [];
-        } finally {
-            if (isLatest()) this.loading.value = false;
-        }
+            this.candidates.value = [];
+            return false;
+        });
     }
 
     /** Local primero (es tu biblioteca), AniList después y TMDB al final. */

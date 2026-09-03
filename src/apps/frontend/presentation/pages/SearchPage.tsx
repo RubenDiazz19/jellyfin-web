@@ -7,7 +7,7 @@ import { useEffect, useMemo } from 'react';
 
 import globalize from 'lib/globalize';
 
-import { T } from '../theme/tokens';
+import { C, T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { SearchFilters } from '../components/search/SearchFilters';
 import { SearchInput } from '../components/search/SearchInput';
@@ -15,7 +15,7 @@ import { SearchResults } from '../components/search/SearchResults';
 import { searchVM } from '../../domain/viewModels/SearchViewModel';
 import { selectionVM, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
 import { useSignalValue } from '../../domain/bridge/useViewModel';
-import { MC, useResponsive } from '../theme/responsive';
+import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 export function SearchPage({ navigate }: { navigate: Navigate }) {
@@ -49,8 +49,8 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
     return (
         <div style={{
             minHeight: '100vh',
-            background: r.touch ? MC.bg : '#0a0a0b',
-            color: r.touch ? MC.fg : T.fg,
+            background: C.bg,
+            color: C.fg,
             fontFamily: T.ui
         }}>
             <Nav

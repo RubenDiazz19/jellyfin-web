@@ -2,14 +2,17 @@
 // snackbars). Igual que videoGestures.ts: fuera del componente para poder
 // testear los umbrales sin simular eventos touch.
 
-/** Movimiento (px) que hay que superar para que el roce sea un arrastre. */
-export const DRAG_THRESHOLD = 8;
+import {
+    DRAG_THRESHOLD,
+    DISMISS_DISTANCE,
+    DISMISS_VELOCITY
+} from './gestures/thresholds';
 
-/** Recorrido (px) que descarta por distancia, sin importar la velocidad. */
-export const DISMISS_DISTANCE = 96;
-
-/** Velocidad (px/ms) que descarta aunque el recorrido sea corto (flick). */
-export const DISMISS_VELOCITY = 0.5;
+export {
+    DRAG_THRESHOLD,
+    DISMISS_DISTANCE,
+    DISMISS_VELOCITY
+};
 
 /**
  * Velocidad instantánea (px/ms) entre dos muestras del arrastre. Se mide

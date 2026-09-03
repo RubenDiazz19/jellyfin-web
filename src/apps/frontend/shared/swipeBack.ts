@@ -5,11 +5,12 @@
 // borde y el trazo rápido y horizontal.
 
 import { currentMobileLayout } from './layoutMode';
-
-const EDGE_PX = 20;
-const MIN_DX = 90;
-const MAX_DY = 50;
-const MAX_MS = 500;
+import {
+    SWIPE_BACK_EDGE_PX,
+    SWIPE_BACK_MAX_DY,
+    SWIPE_BACK_MAX_MS,
+    SWIPE_BACK_MIN_DX
+} from './gestures/thresholds';
 
 export function initSwipeBack(): () => void {
     let tracking = false;
@@ -22,7 +23,7 @@ export function initSwipeBack(): () => void {
         if (!currentMobileLayout()) return;
         if (e.touches.length !== 1) return;
         const t = e.touches[0];
-        if (t.clientX > EDGE_PX) return;
+        if (t.clientX > SWIPE_BACK_EDGE_PX) return;
         // El reproductor tiene (fase 5) sus propios gestos: no interferimos.
         if (e.target instanceof Element && e.target.closest('.jfp-video')) return;
         tracking = true;
@@ -38,7 +39,7 @@ export function initSwipeBack(): () => void {
         if (!t) return;
         const dx = t.clientX - startX;
         const dy = Math.abs(t.clientY - startY);
-        if (dx >= MIN_DX && dy <= MAX_DY && performance.now() - startT <= MAX_MS) {
+        if (dx >= SWIPE_BACK_MIN_DX && dy <= SWIPE_BACK_MAX_DY && performance.now() - startT <= SWIPE_BACK_MAX_MS) {
             window.history.back();
         }
     };

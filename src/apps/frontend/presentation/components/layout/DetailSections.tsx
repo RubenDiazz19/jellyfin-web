@@ -7,8 +7,8 @@
 // que había copiados en cada una.
 
 import type { CSSProperties, ReactNode } from 'react';
-import { T } from '../../theme/tokens';
-import { MC, useResponsive } from '../../theme/responsive';
+import { C, T } from '../../theme/tokens';
+import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
 import { translateGenre } from '../../../domain/genres';
 
@@ -47,7 +47,7 @@ export function DetailBody({ children }: { children: ReactNode }) {
             position: 'relative',
             zIndex: 2,
             background: 'transparent',
-            color: r.touch ? MC.fg : '#fff',
+            color: C.fg,
             padding: r.touch ? `24px ${r.pagePad}px 56px` : '32px 56px 96px',
             fontFamily: T.ui,
             minHeight: '100vh'
@@ -107,7 +107,7 @@ export function DetailHeading({
             style={{
                 all: 'unset',
                 cursor: 'pointer',
-                fontFamily: T.display,
+                fontFamily: T.ui,
                 fontSize: 30,
                 fontWeight: 300,
                 margin: 0,
@@ -120,7 +120,7 @@ export function DetailHeading({
         </button>
     ) : (
         <h3 style={{
-            fontFamily: T.display, fontSize: 30, fontWeight: 300, margin: 0
+            fontFamily: T.ui, fontSize: 30, fontWeight: 300, margin: 0
         }}>
             {title}
         </h3>

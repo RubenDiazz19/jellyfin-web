@@ -51,7 +51,7 @@ export function CastList({ cast, navigate, label = 'Reparto principal' }: Props)
                         <div style={{ fontSize: 14, color: '#fff', fontWeight: 600, lineHeight: 1.3, marginBottom: 4 }}>
                             {c.name}
                         </div>
-                        <div style={{ fontSize: 13, color: T.dim, fontFamily: T.display }}>
+                        <div style={{ fontSize: 13, color: T.dim, fontFamily: T.ui }}>
                             {c.role}
                         </div>
                     </div>

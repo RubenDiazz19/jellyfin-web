@@ -9,6 +9,7 @@ import { MovieCard } from '../components/cards/MovieCard';
 import { PosterCard } from '../components/cards/PosterCard';
 import { LoadState } from '../components/controls/LoadState';
 import { Nav } from '../components/layout/Nav';
+import { FilmographyRow } from '../components/layout/FilmographyRow';
 import { useWidescreen } from '../theme/responsive';
 
 type Props = { name: string; navigate: Navigate };
@@ -137,7 +138,7 @@ export function PersonPage({ name, navigate }: Props) {
             {/* Género */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 84 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 32 }}>
-                    <span style={{ fontSize: 20, fontWeight: 700, fontFamily: T.display }}>
+                    <span style={{ fontSize: 20, fontWeight: 700, fontFamily: T.ui }}>
                         {gender || '—'}
                     </span>
                 </div>
@@ -146,7 +147,7 @@ export function PersonPage({ name, navigate }: Props) {
 
             {/* Edad */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 84 }}>
-                <div style={{ fontFamily: T.display, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 32 }}>
+                <div style={{ fontFamily: T.ui, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 32 }}>
                     <span style={{ fontSize: 28, fontWeight: 700 }}>
                         {(age !== null && age !== undefined) ? age : '—'}
                     </span>
@@ -236,51 +237,19 @@ export function PersonPage({ name, navigate }: Props) {
 
     const filmographyContent = totalCount > 0 ? (
         <div>
-            {movies.length > 0 && (
-                <div style={{ marginBottom: 40 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-                        <h2 style={{ fontFamily: T.display, fontSize: 22, fontWeight: 700, margin: 0 }}>Películas</h2>
-                        <span style={{ fontSize: 14, color: T.dim, fontFamily: T.ui }}>{moviesWatched} / {movies.length} vistas</span>
-                    </div>
-                    <div style={{
-                        display: 'flex',
-                        gap: 16,
-                        overflowX: 'auto',
-                        paddingBottom: 12,
-                        scrollbarWidth: 'none',
-                        WebkitOverflowScrolling: 'touch'
-                    }}>
-                        {movies.map((m) => (
-                            <div key={m.id} style={{ width: 140, flexShrink: 0 }}>
-                                <MovieCard movie={m} navigate={navigate} />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {shows.length > 0 && (
-                <div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 20 }}>
-                        <h2 style={{ fontFamily: T.display, fontSize: 22, fontWeight: 700, margin: 0 }}>Series</h2>
-                        <span style={{ fontSize: 14, color: T.dim, fontFamily: T.ui }}>{showsWatched} / {shows.length} vistas</span>
-                    </div>
-                    <div style={{
-                        display: 'flex',
-                        gap: 16,
-                        overflowX: 'auto',
-                        paddingBottom: 12,
-                        scrollbarWidth: 'none',
-                        WebkitOverflowScrolling: 'touch'
-                    }}>
-                        {shows.map((s) => (
-                            <div key={s.id} style={{ width: 140, flexShrink: 0 }}>
-                                <PosterCard slide={s} navigate={navigate} />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+            <FilmographyRow
+                title='Películas'
+                items={movies}
+                watchedCount={moviesWatched}
+                renderCard={(m) => <MovieCard movie={m} navigate={navigate} />}
+                marginBottom={40}
+            />
+            <FilmographyRow
+                title='Series'
+                items={shows}
+                watchedCount={showsWatched}
+                renderCard={(s) => <PosterCard slide={s} navigate={navigate} />}
+            />
         </div>
     ) : (
         <div style={{ marginTop: 40 }}>

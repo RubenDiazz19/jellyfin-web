@@ -369,7 +369,7 @@ function CollectionVerticalCard({
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontFamily: T.display,
+                            fontFamily: T.ui,
                             fontSize: 32,
                             color: 'rgba(255,255,255,0.15)'
                         }}

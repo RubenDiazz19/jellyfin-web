@@ -6,9 +6,7 @@ import { computed, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/librarySortStore';
-import {
-    ItemMutationSubscription, MUTATION_DEBOUNCE_MS, subscribeToMutations
-} from './itemMutations';
+import { mutationOnLoad } from './mutationSubscription';
 import { registerTagSource } from './knownTags';
 
 import { CatalogViewModel } from './CatalogViewModel';
@@ -64,7 +62,6 @@ export class LibraryViewModel extends CatalogViewModel {
 
     // Cambia al volver a elegir «aleatorio»: es la forma de pedir otra baraja.
     private randomSeed = signal(0);
-    private mutations = new ItemMutationSubscription();
 
     // Sin `loadsOnMount`: con los listados cacheados, volver a una biblioteca
     // ya visitada resuelve en el mismo tick y el spinner sería un parpadeo.
@@ -136,14 +133,16 @@ export class LibraryViewModel extends CatalogViewModel {
     // Con debounce porque una acción del usuario emite muchas mutaciones
     // seguidas (ver MUTATION_DEBOUNCE_MS): la biblioteca entera se recarga una
     // vez por lote, no una vez por episodio.
+    private ensureSubscribed = mutationOnLoad(() => {
+        // Solo refetcheamos si la lista ya se pintó (no en montaje inicial
+        // sin datos, para no forzar cargas concurrentes).
+        const hasData = this.shows.value.length > 0 || this.movies.value.length > 0;
+        if (!hasData) return;
+        void this.load(this.kind.value);
+    }, { debounce: true });
+
     private subscribeToMutations() {
-        subscribeToMutations(this.mutations, () => {
-            // Solo refetcheamos si la lista ya se pintó (no en montaje inicial
-            // sin datos, para no forzar cargas concurrentes).
-            const hasData = this.shows.value.length > 0 || this.movies.value.length > 0;
-            if (!hasData) return;
-            void this.load(this.kind.value);
-        }, MUTATION_DEBOUNCE_MS);
+        this.ensureSubscribed();
     }
 }
 

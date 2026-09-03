@@ -174,14 +174,125 @@ function focusSet(url: string, focus: number | null): void {
     }
 }
 
-/** Solo para tests: vacía la memoización. */
+// ── IndexedDB: L2 persistente ───────────────────────────────────────────
+//
+// Las cachés en memoria (L1) se pierden al recargar. IndexedDB retiene los
+// resultados entre sesiones — las mismas imágenes (pósteres, backdrops) no
+// cambian y re-analizarlas es trabajo tirado. TTL de 90 días: si el
+// servidor regenera las URLs (distinto tag de cache-bust), la entrada vieja
+// caduca sola sin necesidad de gc manual.
+//
+// Las lecturas son async, pero solo se hacen en cache miss de L1 — es decir,
+// una vez por URL y sesión. Las escrituras son fire-and-forget: si IDB falla
+// (modo privado, cuota, jsdom) la app funciona igual con el L1 solo.
+
+const IDB_NAME = 'jfp-dynamic-color';
+const IDB_STORE = 'analysis';
+const IDB_VERSION = 1;
+/** 90 días en milisegundos. */
+const IDB_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+type IdbEntry = {
+    url: string;
+    seed: string | null;
+    focusX: number | null;
+    ts: number;
+};
+
+function openIdb(): Promise<IDBDatabase | null> {
+    if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+    return new Promise((resolve) => {
+        try {
+            const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(IDB_STORE)) {
+                    db.createObjectStore(IDB_STORE, { keyPath: 'url' });
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+        } catch {
+            // indexedDB.open puede lanzar en ciertos contextos restringidos.
+            resolve(null);
+        }
+    });
+}
+
+/** Promesa única para no abrir N conexiones en paralelo. */
+let idbPromise: Promise<IDBDatabase | null> | null = null;
+
+function getIdb(): Promise<IDBDatabase | null> {
+    idbPromise ??= openIdb();
+    return idbPromise;
+}
+
+/** Lee un análisis de IndexedDB (L2). Devuelve undefined si no existe o expiró. */
+async function idbGet(url: string): Promise<ImageAnalysis | undefined> {
+    const db = await getIdb();
+    if (!db) return undefined;
+    return new Promise((resolve) => {
+        try {
+            const tx = db.transaction(IDB_STORE, 'readonly');
+            const store = tx.objectStore(IDB_STORE);
+            const req = store.get(url);
+            req.onsuccess = () => {
+                const entry = req.result as IdbEntry | undefined;
+                if (!entry || Date.now() - entry.ts > IDB_TTL_MS) {
+                    resolve(undefined);
+                    return;
+                }
+                resolve({ seed: entry.seed, focusX: entry.focusX });
+            };
+            req.onerror = () => resolve(undefined);
+        } catch {
+            resolve(undefined);
+        }
+    });
+}
+
+/** Guarda un análisis en IndexedDB (L2). Fire-and-forget. */
+function idbSet(url: string, analysis: ImageAnalysis): void {
+    void getIdb().then((db) => {
+        if (!db) return;
+        try {
+            const tx = db.transaction(IDB_STORE, 'readwrite');
+            const store = tx.objectStore(IDB_STORE);
+            const entry: IdbEntry = {
+                url,
+                seed: analysis.seed,
+                focusX: analysis.focusX,
+                ts: Date.now()
+            };
+            store.put(entry);
+        } catch {
+            // Cuota llena o contexto restringido: silencioso.
+        }
+    });
+}
+
+/** Limpia todo el object store de IndexedDB. */
+function idbClear(): void {
+    void getIdb().then((db) => {
+        if (!db) return;
+        try {
+            const tx = db.transaction(IDB_STORE, 'readwrite');
+            tx.objectStore(IDB_STORE).clear();
+        } catch {
+            // Silencioso.
+        }
+    });
+}
+
+/** Solo para tests: vacía la memoización (L1 + L2). */
 export function resetAnalysisCache(): void {
     cache.clear();
     focusCache.clear();
     sampling.clear();
+    idbClear();
 }
 
-/** Solo para tests: cuántas imágenes hay memoizadas ahora mismo. */
+/** Solo para tests: cuántas imágenes hay memoizadas ahora mismo (L1). */
 export function analysisCacheSize(): number {
     return cache.size;
 }
@@ -251,6 +362,14 @@ function sampleImage(url: string): Promise<Sampled | null> {
 export async function imageFocus(url: string): Promise<number | null> {
     const memo = peekImageFocus(url);
     if (memo !== undefined) return memo;
+    // L2: IndexedDB puede tener el encuadre de una sesión anterior.
+    const persisted = await idbGet(url);
+    if (persisted) {
+        focusSet(url, persisted.focusX);
+        // Aprovecha para hidratar la caché completa.
+        cacheSet(url, persisted);
+        return persisted.focusX;
+    }
     const px = await sampleImage(url);
     const focus = px ? focusFromPixels(px.data, px.w, px.h) : null;
     focusSet(url, focus);
@@ -271,6 +390,14 @@ export function peekImageFocus(url: string): number | null | undefined {
 export async function analyzeImage(url: string): Promise<ImageAnalysis> {
     const memo = cacheGet(url);
     if (memo !== undefined) return memo;
+
+    // L2: IndexedDB retiene resultados entre sesiones.
+    const persisted = await idbGet(url);
+    if (persisted) {
+        cacheSet(url, persisted);
+        focusSet(url, persisted.focusX);
+        return persisted;
+    }
 
     let analysis = UNREADABLE;
     try {
@@ -299,5 +426,6 @@ export async function analyzeImage(url: string): Promise<ImageAnalysis> {
     // Se memoiza también el fallo, para no reintentarlo en cada rotación del
     // carrusel.
     cacheSet(url, analysis);
+    idbSet(url, analysis);
     return analysis;
 }

@@ -3,15 +3,12 @@ import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useWatched } from '../../../domain/bridge/useWatched';
 import { FavButton } from '../controls/FavButton';
-import { CardProgress } from './CardProgress';
-import { CardOverlay } from './CardOverlay';
-import { useItemContextMenu } from '../controls/useItemContextMenu';
-import { useSelectionMode } from '../controls/useSelectionMode';
 import { SelectionMark } from './SelectionMark';
 import type { Show, Season, Episode } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
-import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { episodeKey } from '../../../domain/stores';
+import { useCardInteractions } from './useCardInteractions';
+import { LandscapeCardShell } from './LandscapeCardShell';
 
 type Props = { show: Show; season: Season; ep: Episode; navigate: Navigate };
 
@@ -24,83 +21,58 @@ export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: P
     const revealed = watched || inProgress;
     const epId = ep.jfId ?? episodeKey(show.id, season.n, ep.n);
     const wKey = episodeKey(show.id, season.n, ep.n);
-    const selectable: SelectableItem = {
+
+    const interactions = useCardInteractions({
         id: epId,
         title: ep.title ?? `${show.title} · E${ep.n}`,
         kind: 'episode',
         poster: ep.thumb ?? show.poster,
-        watchedKey: wKey
-    };
-    const sel = useSelectionMode(
-        selectable,
-        () => navigate({ page: 'episode', showId: show.id, seasonN: season.n, epN: ep.n })
-    );
-    const ctx = useItemContextMenu({
-        id: epId,
-        type: 'episode',
-        itemTitle: ep.title ?? `${show.title} · E${ep.n}`,
+        watchedKey: wKey,
+        showId: show.id,
+        seasonN: season.n,
+        epN: ep.n,
         queueSubtitle: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')}`,
-        queuePoster: ep.thumb ?? show.poster,
-        selectable
-    });
+        queuePoster: ep.thumb ?? show.poster
+    }, navigate);
+
     return (
-        <div
-            onClick={sel.onClick}
-            onContextMenu={ctx.onContextMenu}
-            style={{ position: 'relative', cursor: 'pointer' }}
-            className='jfp-hoverlift'
-        >
-            <div className='jfp-card-m3' style={{
-                aspectRatio: '16/9', borderRadius: 4, overflow: 'hidden', position: 'relative',
-                background: '#0b0b0b',
-                outline: sel.selected ? '3px solid #fff' : ep.current ? '1px solid rgba(255,255,255,0.95)' : 'none',
-                outlineOffset: sel.selected ? -3 : ep.current ? 2 : 0
-            }}>
-                <div style={{
-                    position: 'absolute', inset: 0,
-                    backgroundImage: `url(${ep.thumb})`, backgroundSize: 'cover', backgroundPosition: 'center',
-                    filter: revealed ? 'none' : 'blur(12px)',
-                    transform: revealed ? 'none' : 'scale(1.25)',
-                    transition: 'filter .4s, transform .4s'
-                }} />
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.9))' }} />
-
-                <CardOverlay
-                    top={8}
-                    right={8}
-                    topLeft={
-                        sel.selecting ? (
-                            <SelectionMark selected={sel.selected} />
-                        ) : (
-                            <div style={{
-                                fontFamily: T.display, fontSize: 30, lineHeight: 1,
-                                textShadow: '0 2px 14px rgba(0,0,0,0.6)',
-                                marginTop: 2, marginLeft: 4
-                            }}>
-                                {String(ep.n).padStart(2, '0')}
-                            </div>
-                        )
-                    }
-                    topRight={sel.selecting ? null : <FavButton id={wKey} size={15} />}
-                />
-
-                {watched && (
+        <LandscapeCardShell
+            cover={ep.thumb}
+            coverFilter={revealed ? 'none' : 'blur(12px)'}
+            coverTransform={revealed ? 'none' : 'scale(1.25)'}
+            selected={interactions.selected}
+            outline={interactions.selected ? '3px solid #fff' : ep.current ? '1px solid rgba(255,255,255,0.95)' : 'none'}
+            outlineOffset={interactions.selected ? -3 : ep.current ? 2 : 0}
+            gradient='linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.9))'
+            onClick={interactions.onClick}
+            onContextMenu={interactions.onContextMenu}
+            contextMenu={interactions.contextMenu}
+            progress={inProgress ? ep.watched : 0}
+            topLeft={
+                interactions.selecting ? (
+                    <SelectionMark selected={interactions.selected} />
+                ) : (
                     <div style={{
-                        position: 'absolute', bottom: 8, right: 8,
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: 'rgba(255,255,255,0.95)', color: '#000',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        fontFamily: T.ui, fontSize: 30, lineHeight: 1,
+                        textShadow: '0 2px 14px rgba(0,0,0,0.6)',
+                        marginTop: 2, marginLeft: 4
                     }}>
-                        <Ic.Check size={12} />
+                        {String(ep.n).padStart(2, '0')}
                     </div>
-                )}
-
-                {inProgress && (
-                    <CardProgress value={ep.watched} />
-                )}
-            </div>
-            {ctx.menu}
-        </div>
+                )
+            }
+            topRight={interactions.selecting ? null : <FavButton id={wKey} size={15} />}
+            bottomOverlay={watched ? (
+                <div style={{
+                    position: 'absolute', bottom: 8, right: 8,
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.95)', color: '#000',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <Ic.Check size={12} />
+                </div>
+            ) : null}
+        />
     );
 });
 

@@ -7,8 +7,11 @@
 
 import { useEffect, useState } from 'react';
 
-import { useMobileTheme } from './MobileThemeProvider';
-import type { MobileLayout } from '../../shared/layoutMode';
+import {
+    currentMobileLayout,
+    observeLayoutMode,
+    type MobileLayout
+} from '../../shared/layoutMode';
 
 export type Responsive = {
     layout: MobileLayout | null;
@@ -45,7 +48,17 @@ const DESKTOP: Responsive = {
 };
 
 export function useResponsive(): Responsive {
-    const { layout } = useMobileTheme();
+    const [layout, setLayout] = useState<MobileLayout | null>(() => (
+        typeof document !== 'undefined' ? currentMobileLayout() : null
+    ));
+
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        return observeLayoutMode(() => {
+            setLayout(currentMobileLayout());
+        });
+    }, []);
+
     if (layout === 'mobile') return MOBILE;
     if (layout === 'tablet') return TABLET;
     return DESKTOP;
@@ -101,18 +114,3 @@ export function useTallTablet(): boolean {
 export function useWidescreen(): boolean {
     return useMediaQuery('(min-aspect-ratio: 4/3) and (min-width: 900px)');
 }
-
-// Atajos de color M3 con fallback al look dark actual: en desktop las vars
-// no existen y el fallback reproduce el valor de siempre.
-export const MC = {
-    bg: 'var(--md-sys-color-background, #000)',
-    fg: 'var(--md-sys-color-on-background, #fff)',
-    surface: 'var(--md-sys-color-surface, #000)',
-    onSurface: 'var(--md-sys-color-on-surface, #fff)',
-    onSurfaceVariant: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.55))',
-    surfaceContainer: 'var(--md-sys-color-surface-container, #161a1e)',
-    surfaceContainerHigh: 'var(--md-sys-color-surface-container-high, #202020)',
-    primary: 'var(--md-sys-color-primary, #fff)',
-    onPrimary: 'var(--md-sys-color-on-primary, #000)',
-    outlineVariant: 'var(--md-sys-color-outline-variant, rgba(255,255,255,0.12))'
-} as const;

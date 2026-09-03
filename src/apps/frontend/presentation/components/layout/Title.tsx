@@ -11,7 +11,7 @@ import { useResponsive } from '../../theme/responsive';
 import { T } from '../../theme/tokens';
 
 const display: CSSProperties = {
-    fontFamily: T.display,
+    fontFamily: T.ui,
     fontWeight: 300
 };
 

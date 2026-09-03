@@ -1,9 +1,9 @@
 import globalize from 'lib/globalize';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { T } from '../theme/tokens';
+import { C, T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { formatRemainingCompact } from '../theme/format';
+import { formatRemainingCompact } from '../utils/format';
 import { PROTO_DATA, type CarouselSlide } from '../../domain/models';
 import { homeVM } from '../../domain/viewModels/HomeViewModel';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
@@ -21,7 +21,7 @@ import { TextButton } from '../components/controls/TextButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { SkeletonRow } from '../components/skeleton/Skeleton';
 import { MobileHero } from '../components/home/MobileHero';
-import { MC, useResponsive } from '../theme/responsive';
+import { useResponsive } from '../theme/responsive';
 import { useHomeScrollTransition } from './useHomeScrollTransition';
 import type { Navigate } from '../../app/router';
 
@@ -428,7 +428,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                         />
                     ) : (
                         <h1 style={{
-                            fontFamily: T.display, fontSize: 'clamp(58px, 7vw, 116px)', lineHeight: 0.92,
+                            fontFamily: T.ui, fontSize: 'clamp(58px, 7vw, 116px)', lineHeight: 0.92,
                             margin: 0, fontWeight: 250, letterSpacing: -2,
                             textShadow: '0 4px 50px rgba(0,0,0,0.55)', textWrap: 'balance'
                         }}>
@@ -475,7 +475,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                             <>
                                                 <Ic.Dot />
                                                 <span style={{
-                                                    fontFamily: T.display, fontSize: 18
+                                                    fontFamily: T.ui, fontSize: 18
                                                 }}>
                                                     {slide.episodeTitle}
                                                 </span>
@@ -546,7 +546,7 @@ const HomeLibrary = React.memo(function HomeLibraryBase({
 function getSectionStyle(touch: boolean) {
     return {
         background: 'transparent',
-        color: touch ? MC.fg : '#fff',
+        color: C.fg,
         paddingTop: 0,
         paddingBottom: touch ? 'calc(var(--jfp-viewport-h, 100vh) - 180px)' : 'calc(100vh - 240px)',
         fontFamily: T.ui
@@ -591,7 +591,7 @@ function HomeLibraryJellyfin({
     if (homeVM.showsError.value) {
         return (
             <section style={{
-                background: r.touch ? MC.bg : '#000', color: '#ff6b6b',
+                background: C.bg, color: '#ff6b6b',
                 padding: r.touch ? `48px ${r.pagePad}px` : '80px 56px',
                 fontFamily: T.ui, fontSize: 14
             }}>

@@ -2,6 +2,8 @@
 // El shape es plano y serializable: se sube tal cual al server via
 // DisplayPreferences.CustomPrefs (data/api/theme.ts).
 
+import { createKVStore } from './persistentStore';
+
 export type ThemeMode = 'dark' | 'light' | 'system';
 
 /**
@@ -22,13 +24,13 @@ const KEY = 'jfp-theme';
 
 // Dark por defecto: es el look actual de la app. 'system'/'light' son
 // opt-in hasta que las páginas consuman los tokens (fases 4/6).
-export const THEME_DEFAULTS: ThemePrefs = { mode: 'dark', seed: null, seedSource: 'auto' };
+const THEME_DEFAULTS: ThemePrefs = { mode: 'dark', seed: null, seedSource: 'auto' };
 
 export function isThemeMode(v: unknown): v is ThemeMode {
     return v === 'dark' || v === 'light' || v === 'system';
 }
 
-export function isSeedSource(v: unknown): v is SeedSource {
+function isSeedSource(v: unknown): v is SeedSource {
     return v === 'auto' || v === 'manual';
 }
 
@@ -36,20 +38,26 @@ export function isSeedColor(v: unknown): v is string {
     return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
 }
 
-export const THEME_STORE = {
-    load(): ThemePrefs {
-        try {
-            const raw = JSON.parse(localStorage.getItem(KEY) || '{}') as Record<string, unknown>;
-            return {
-                mode: isThemeMode(raw.mode) ? raw.mode : THEME_DEFAULTS.mode,
-                seed: isSeedColor(raw.seed) ? raw.seed.toLowerCase() : THEME_DEFAULTS.seed,
-                seedSource: isSeedSource(raw.seedSource) ? raw.seedSource : THEME_DEFAULTS.seedSource
-            };
-        } catch {
-            return { ...THEME_DEFAULTS };
-        }
+const store = createKVStore<ThemePrefs>({
+    key: KEY,
+    parse: (raw) => {
+        const obj = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+        return {
+            mode: isThemeMode(obj.mode) ? obj.mode : THEME_DEFAULTS.mode,
+            seed: isSeedColor(obj.seed) ? obj.seed.toLowerCase() : THEME_DEFAULTS.seed,
+            seedSource: isSeedSource(obj.seedSource) ? obj.seedSource : THEME_DEFAULTS.seedSource
+        };
     },
-    save(prefs: ThemePrefs) {
-        localStorage.setItem(KEY, JSON.stringify(prefs));
+    fallback: () => ({ ...THEME_DEFAULTS })
+});
+
+export const THEME_STORE = {
+    load: (): ThemePrefs => store.get(),
+    save(prefs: ThemePrefs): void {
+        store.set(prefs);
+    },
+    _reset(): void {
+        store._reset();
     }
 };
+

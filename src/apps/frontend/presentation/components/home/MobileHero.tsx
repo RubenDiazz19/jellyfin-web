@@ -21,16 +21,14 @@ import globalize from 'lib/globalize';
 import type { CarouselSlide } from '../../../domain/models';
 import { T } from '../../theme/tokens';
 import { useShortViewport } from '../../theme/responsive';
-import { formatRemainingCompact } from '../../theme/format';
+import { formatRemainingCompact } from '../../utils/format';
 import { Backdrop } from '../layout/Backdrop';
 import { PlayBtn } from '../controls/PlayBtn';
 import { TextButton, TEXT_BTN_TAP } from '../controls/TextButton';
 import { ScrollHint } from '../layout/ScrollHint';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
-
-const SWIPE_DRAG_THRESHOLD = 48;
-const SWIPE_VERTICAL_TOLERANCE = 60;
+import { SWIPE_DRAG_THRESHOLD, SWIPE_VERTICAL_TOLERANCE } from '../../../shared/gestures/thresholds';
 
 type Props = {
     slides: CarouselSlide[];
@@ -188,7 +186,7 @@ export function MobileHero({
                             />
                         ) : (
                             <h1 style={{
-                                fontFamily: T.display,
+                                fontFamily: T.ui,
                                 fontSize: short ? 'clamp(24px, 5vh, 34px)' :
                                     (tablet ? 'clamp(40px, 6vw, 72px)' : 'clamp(30px, 9vw, 46px)'),
                                 lineHeight: 1.02,

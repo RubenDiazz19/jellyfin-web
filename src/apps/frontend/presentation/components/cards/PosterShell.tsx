@@ -17,18 +17,18 @@ type Props = {
     cover?: string;
     onClick: () => void;
     /** Ancho fijo para las filas con scroll; null = llena la columna del grid. */
-    width: number | null;
+    width?: number | null;
     /** Degradado inferior; se deja configurable porque el grid lo usa más alto. */
     gradient?: string;
     /** Botón de "visto" (varía según sea serie, película o temporada). */
-    watchedButton: ReactNode;
-    favButton: ReactNode;
+    watchedButton?: ReactNode;
+    favButton?: ReactNode;
     logo?: string | null;
     title: string;
     /** Progreso 0..1. Solo se pinta a medias: ni empezado ni terminado. */
     progress?: number;
     /** Línea bajo la carátula: año, duración, tipo… */
-    caption: ReactNode;
+    caption?: ReactNode;
     /** Modo selección: los botones de la carátula dejan paso a la marca. */
     selecting?: boolean;
     selected?: boolean;
@@ -36,6 +36,11 @@ type Props = {
     onContextMenu?: (e: MouseEvent) => void;
     /** El menú en sí, invisible hasta que se abre. */
     contextMenu?: ReactNode;
+    /** Variante 'full' (con botones y caption) o 'tile' (ligera para búsqueda/listas). */
+    variant?: 'full' | 'tile';
+    /** Etiqueta superior cuando variant === 'tile' */
+    kindLabel?: string;
+    borderRadius?: number;
 };
 
 const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))';
@@ -48,11 +53,28 @@ const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.
 export const POSTER_W = 230;
 
 export function PosterShell({
-    cover, onClick, width, gradient = DEFAULT_GRADIENT,
+    cover, onClick, width = null, gradient = DEFAULT_GRADIENT,
     watchedButton, favButton, logo, title, progress = 0, caption,
-    selecting = false, selected = false, onContextMenu, contextMenu
+    selecting = false, selected = false, onContextMenu, contextMenu,
+    variant = 'full', kindLabel, borderRadius
 }: Props) {
-    const inProgress = progress > 0 && progress < 1;
+    const isTile = variant === 'tile';
+    const inProgress = !isTile && progress > 0 && progress < 1;
+    const computedRadius = borderRadius ?? (isTile ? 8 : undefined);
+
+    const topLeftOverlay = selecting ? (
+        <SelectionMark selected={selected} />
+    ) : isTile && kindLabel ? (
+        <span style={{
+            fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.55)',
+            background: 'rgba(0,0,0,0.5)',
+            padding: '3px 7px', borderRadius: 4
+        }}>
+            {kindLabel}
+        </span>
+    ) : watchedButton;
+
     return (
         <div
             onClick={onClick}
@@ -62,7 +84,7 @@ export function PosterShell({
                 { width, flex: `0 0 ${width}px`, cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
-            <PosterFrame selected={selected}>
+            <PosterFrame borderRadius={computedRadius} selected={selected}>
                 {/* `<img>` y no `background-image`: un fondo CSS no admite
                     `loading='lazy'`, así que el navegador se descargaba de
                     golpe las carátulas de toda la rejilla —cientos— aunque no
@@ -80,32 +102,41 @@ export function PosterShell({
                     />
                 )}
                 <div style={{ position: 'absolute', inset: 0, background: gradient }} />
-                {selecting ? (
-                    // En modo selección los botones estorban: pulsar «visto» o
-                    // «favorito» dentro de una tarjeta que se está marcando es
-                    // ambiguo. Se sustituyen por la marca de seleccionado.
-                    <CardOverlay topLeft={<SelectionMark selected={selected} />} />
-                ) : (
-                    <CardOverlay
-                        topLeft={watchedButton}
-                        topRight={favButton}
-                    />
+                <CardOverlay
+                    top={isTile ? 8 : undefined}
+                    left={isTile ? 10 : undefined}
+                    topLeft={topLeftOverlay}
+                    topRight={selecting || isTile ? null : favButton}
+                />
+                {isTile && !cover && (
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: T.ui, fontSize: 32,
+                        color: 'rgba(255,255,255,0.15)'
+                    }}>
+                        {title?.[0]}
+                    </div>
                 )}
                 <PosterOverlay
                     logo={logo}
                     title={title}
                     inProgress={inProgress}
+                    fontSize={isTile ? 'clamp(11px, 7.5cqi, 15px)' : undefined}
+                    fontWeight={isTile ? 600 : undefined}
                 />
                 {inProgress && (
                     <CardProgress value={progress} />
                 )}
             </PosterFrame>
-            <div style={{
-                marginTop: 10, fontFamily: T.ui, fontSize: 11, color: T.dim,
-                letterSpacing: 1, textTransform: 'uppercase'
-            }}>
-                {caption}
-            </div>
+            {caption && (
+                <div style={{
+                    marginTop: 10, fontFamily: T.ui, fontSize: 11, color: T.dim,
+                    letterSpacing: 1, textTransform: 'uppercase'
+                }}>
+                    {caption}
+                </div>
+            )}
             {contextMenu}
         </div>
     );

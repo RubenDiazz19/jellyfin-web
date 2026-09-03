@@ -9,24 +9,27 @@
 type WebkitDocument = Document & {
     webkitFullscreenElement?: Element | null;
     webkitExitFullscreen?: () => Promise<void> | void;
+    msFullscreenElement?: Element | null;
+    msExitFullscreen?: () => Promise<void> | void;
 };
 
 type WebkitElement = HTMLElement & {
     webkitRequestFullscreen?: () => Promise<void> | void;
+    msRequestFullscreen?: () => Promise<void> | void;
 };
 
 const doc = (): WebkitDocument => document as WebkitDocument;
 
-const isFullscreen = (): boolean =>
-    !!(document.fullscreenElement || doc().webkitFullscreenElement);
+export const isFullscreen = (): boolean =>
+    !!(document.fullscreenElement || doc().webkitFullscreenElement || doc().msFullscreenElement);
 
 export async function toggleFullscreen(): Promise<void> {
     try {
         if (isFullscreen()) {
-            await (document.exitFullscreen?.() ?? doc().webkitExitFullscreen?.());
+            await (document.exitFullscreen?.() ?? doc().webkitExitFullscreen?.() ?? doc().msExitFullscreen?.());
         } else {
             const el = document.documentElement as WebkitElement;
-            await (el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.());
+            await (el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.() ?? el.msRequestFullscreen?.());
         }
     } catch {
     // Algunos navegadores rechazan la petición si el gesto de usuario ya

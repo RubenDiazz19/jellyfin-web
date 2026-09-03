@@ -5,22 +5,46 @@
 
 import { signal, type Signal } from '@preact/signals-core';
 import type { ApiService } from '../../data/api/ApiService';
-import { ItemMutationSubscription, subscribeToMutations } from './itemMutations';
+import { guardedLoad, type GuardedBody, type GuardedOnError } from './guardedLoad';
+import { loadingError } from './loadingState';
 import { LoadGuard } from './loadGuard';
+import { mutationOnLoad } from './mutationSubscription';
 
 export abstract class DetailViewModel<T extends { id: string }> {
     item: Signal<T | null> = signal<T | null>(null);
-    loading = signal(false);
-    error = signal<string | null>(null);
+    loading: Signal<boolean>;
+    error: Signal<string | null>;
     /**
      * Id de la entidad que se acaba de borrar. La ficha lo observa para irse.
      */
     gone = signal<string | null>(null);
 
-    protected loads = new LoadGuard();
-    protected mutations = new ItemMutationSubscription();
+    protected loads: LoadGuard;
+    protected guarded: (body: GuardedBody, onError?: GuardedOnError) => Promise<void>;
+    private ensureSubscribed: () => void;
 
-    constructor(protected api: ApiService) {}
+    constructor(protected api: ApiService) {
+        const state = loadingError(false);
+        this.loading = state.loading;
+        this.error = state.error;
+
+        const gl = guardedLoad(this.loading, this.error);
+        this.loads = gl.loads;
+        this.guarded = gl.guarded;
+
+        this.ensureSubscribed = mutationOnLoad(({ itemId, deleted }) => {
+            const current = this.item.value;
+            if (!current) return;
+            if (itemId && !this.belongsToItem(current, itemId)) return;
+            if (deleted && (itemId === current.id || !itemId)) {
+                this.item.value = null;
+                this.error.value = null;
+                this.gone.value = current.id;
+                return;
+            }
+            void this.load(current.id, true);
+        });
+    }
 
     /** Entidad cargada solo si coincide con la id solicitada. */
     itemFor(id: string): T | null {
@@ -50,8 +74,6 @@ export abstract class DetailViewModel<T extends { id: string }> {
             this.error.value = null;
         }
 
-        const isLatest = this.loads.begin();
-
         if (proto) {
             this.item.value = proto;
             this.loading.value = false;
@@ -61,7 +83,7 @@ export abstract class DetailViewModel<T extends { id: string }> {
             this.loading.value = true;
         }
 
-        try {
+        await this.guarded(async (isLatest) => {
             const result = await this.fetchItem(id);
 
             if (!isLatest()) return;
@@ -69,30 +91,13 @@ export abstract class DetailViewModel<T extends { id: string }> {
             this.item.value = result;
             this.loading.value = false;
             this.error.value = null;
-        } catch (e) {
-            if (!isLatest()) return;
-            if (proto || (cached && cached.id === id)) return;
-            this.error.value = (e as Error).message;
-            this.loading.value = false;
-        } finally {
-            if (isLatest()) {
-                this.loading.value = false;
-            }
-        }
+        }, (e) => {
+            if (proto || (cached && cached.id === id)) return false;
+            this.error.value = e.message;
+        });
     }
 
     protected subscribeToMutations(): void {
-        subscribeToMutations(this.mutations, ({ itemId, deleted }) => {
-            const current = this.item.value;
-            if (!current) return;
-            if (itemId && !this.belongsToItem(current, itemId)) return;
-            if (deleted && (itemId === current.id || !itemId)) {
-                this.item.value = null;
-                this.error.value = null;
-                this.gone.value = current.id;
-                return;
-            }
-            void this.load(current.id, true);
-        });
+        this.ensureSubscribed();
     }
 }

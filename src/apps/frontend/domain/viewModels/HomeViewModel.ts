@@ -4,9 +4,7 @@
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import type { CarouselSlide, Movie, Show } from '../../data/models';
-import {
-    ItemMutationSubscription, MUTATION_DEBOUNCE_MS, subscribeToMutations
-} from './itemMutations';
+import { mutationOnLoad } from './mutationSubscription';
 import { LoadGuard } from './loadGuard';
 
 export class HomeViewModel {
@@ -24,7 +22,6 @@ export class HomeViewModel {
     showsReady = signal(false);
 
     private loads = new LoadGuard();
-    private mutations = new ItemMutationSubscription();
 
     constructor(private api: ApiService) {}
 
@@ -77,16 +74,13 @@ export class HomeViewModel {
         }
     }
 
-    // Cualquier mutación de item recarga la Home si ya hay datos: la lista
-    // de series/películas y el hero pueden contener el item afectado y no
-    // queremos que el usuario tenga que recargar para verlo. Con debounce: un
-    // lote de mutaciones (marcar una temporada entera) es una recarga, no una
-    // por episodio. Ver MUTATION_DEBOUNCE_MS.
+    private ensureSubscribed = mutationOnLoad(() => {
+        if (!this.showsReady.value) return;
+        void this.load();
+    }, { debounce: true });
+
     private subscribeToMutations() {
-        subscribeToMutations(this.mutations, () => {
-            if (!this.showsReady.value) return;
-            void this.load();
-        }, MUTATION_DEBOUNCE_MS);
+        this.ensureSubscribed();
     }
 }
 

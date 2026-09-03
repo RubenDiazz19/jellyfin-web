@@ -131,4 +131,3 @@ describe('formatPlaybackEndTime', () => {
         expect(formatPlaybackEndTime(undefined)).toBeUndefined();
     });
 });
-

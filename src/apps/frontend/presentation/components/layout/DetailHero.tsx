@@ -255,7 +255,7 @@ export function HeroTitle({
     }
     return (
         <h1 style={{
-            fontFamily: T.display, fontSize, lineHeight: 0.92,
+            fontFamily: T.ui, fontSize, lineHeight: 0.92,
             margin: 0, fontWeight: 250, letterSpacing,
             textShadow: '0 4px 60px rgba(0,0,0,0.6)',
             ...(balance ? { textWrap: 'balance' as const } : {})

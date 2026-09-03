@@ -8,7 +8,7 @@ lo vigila), los comentarios van en español y el cierre de cada fase es
 
 ## Fase 1 — Detección de foco del backdrop: mejoras al algoritmo
 
-### Completadas (2026-08-31)
+### Completadas (2026-08-31 / 2026-09-03)
 
 - **1.1** Saliencia CIELAB con blur gausiano 5×5 separable (σ≈1.0).
 - **1.2** Detección de piel YCbCr (Cb∈[77,127] AND Cr∈[133,173]) como
@@ -18,15 +18,9 @@ lo vigila), los comentarios van en español y el cierre de cada fase es
   suavizado.
 - **1.4** Peso de regla de tercios: boost ×1.08 suave en 1/3 y 2/3 del
   ancho, decae linealmente en ±15 columnas.
-
-### Pendiente
-
-#### 1.5 Cache persistente en IndexedDB
-
-**Archivos:** `presentation/theme/dynamicColor.ts`
-
-El cache LRU en memoria se pierde al recargar la página. Las mismas
-imágenes se re-analizan en cada sesión. IndexedDB con TTL de 90 días.
+- **1.5** Cache persistente en IndexedDB (`presentation/theme/dynamicColor.ts`):
+  L2 async con TTL de 90 días usando IndexedDB nativa sin dependencias externas.
+  El cache LRU en memoria se mantiene como L1 rápido. ✅
 
 ---
 
@@ -39,14 +33,9 @@ imágenes se re-analizan en cada sesión. IndexedDB con TTL de 90 días.
 | **D1** | `data/session/session.ts` | `createdAt: 0` hardcodeado — campo vestigial | ✅ eliminado |
 | **D2** | `data/api/http.ts` | `res.json()` sin validar content-type | ✅ validación añadida |
 | **D3** | `data/api/playback.ts` | Reporting functions tragan errores silenciosamente | ✅ `console.warn` añadido |
-
-### Pendientes
-
-| # | Archivo | Línea | Problema |
-|---|---------|-------|----------|
-| **A1** | `presentation/components/search/SearchPills.tsx` | 165 | `aria-label` hardcodeado en español — debería usar `globalize.translate()` |
-| **A2** | `legacy/components/imageUploader/imageUploader.js` | 69 | `<img>` sin atributo `alt` |
-| **C1** | `config/eslint/app.mjs` | 154 | TODO pendiente — añadir `tseslint.configs.recommendedTypeChecked` |
+| **A1** | `presentation/components/search/SearchPills.tsx` | `aria-label` en español | ✅ usa `globalize.translate()` |
+| **A2** | `legacy/components/imageUploader/imageUploader.js` | `<img>` sin atributo `alt` | ✅ atributo `alt` añadido |
+| **C1** | `config/eslint/app.mjs` | ESLint type-checked rules | ✅ verificado y acotado |
 
 ### Dependencias obsoletas
 
@@ -60,206 +49,78 @@ imágenes se re-analizan en cada sesión. IndexedDB con TTL de 90 días.
 
 ---
 
-## Fase 3 — Eliminar código muerto (~635 líneas)
+## Fase 3 — Eliminar código muerto (~635 líneas) — ✅ Completada (2026-09-03)
 
-**Riesgo:** ninguno. Código sin importadores en ningún sitio del frontend.
-
-| # | Archivo | Líneas | Problema |
-|---|---------|--------|----------|
-| **M1** | `data/stores/imageStorage.ts` | 41 | Archivo entero muerto — cero importadores (ni `getImage` ni `setImage`) |
-| **M2** | `presentation/components/collection/CollectionCarousel.tsx` | 395 | Componente exportado pero nunca importado — superseded por `CollectionCardCarousel` |
-| **M3** | `presentation/components/cards/LandscapeTile.tsx` | 122 | Componente exportado pero nunca importado |
-| **M4** | `presentation/components/controls/ImageUploadMenu.tsx` | 42 | Componente exportado pero nunca importado |
-| **M5** | `presentation/components/media/RuntimeDisplay.tsx` | ~15 | `EndTime` exportado pero nunca usado como JSX — `RuntimeDisplay` lo maneja internamente |
-| **M6** | `domain/viewModels/SearchViewModel.ts` | ~12 | 3 computed signals muertos: `typeFilter` (:160), `stateFilter` (:170), `ratingFilter` (:177) — suplantados por `typeFilters`/`stateFilters`/`ratingFilters` |
-| **M7** | `domain/viewModels/CastViewModel.ts` | ~3 | `deviceName` signal (:28) escrito pero nunca leído por ningún componente |
-| **M8** | `data/stores/librarySortStore.ts:7` | 1 | `SORT_KEYS` exportado pero solo usado internamente — quitar `export` |
-| **M9** | `data/stores/themeStore.ts:25,31` | 2 | `THEME_DEFAULTS` e `isSeedSource` exportados pero solo usados internamente — quitar `export` |
-| **M10** | `data/stores/persistentStore.ts:79` | 1 | `flushPersistentStores` exportado "solo para tests" pero nunca importado en ningún test |
+| # | Archivo | Líneas | Problema | Estado |
+|---|---------|--------|----------|--------|
+| **M1** | `data/stores/imageStorage.ts` | 41 | Archivo entero muerto | ✅ Eliminado |
+| **M2** | `presentation/components/collection/CollectionCarousel.tsx` | 395 | Componente sin uso | ✅ Eliminado |
+| **M3** | `presentation/components/cards/LandscapeTile.tsx` | 122 | Componente sin uso | ✅ Eliminado |
+| **M4** | `presentation/components/controls/ImageUploadMenu.tsx` | 42 | Componente sin uso | ✅ Eliminado |
+| **M5** | `presentation/components/media/RuntimeDisplay.tsx` | ~15 | `EndTime` solo usado internamente | ✅ Privado |
+| **M6** | `domain/viewModels/SearchViewModel.ts` | ~12 | Signals muertos `typeFilter`, `stateFilter`, `ratingFilter` | ✅ Eliminados |
+| **M7** | `domain/viewModels/CastViewModel.ts` | ~3 | `deviceName` signal sin lectura | ✅ Eliminado |
+| **M8** | `data/stores/librarySortStore.ts:7` | 1 | `SORT_KEYS` exportado solo uso interno | ✅ Unexported |
+| **M9** | `data/stores/themeStore.ts:25,31` | 2 | `THEME_DEFAULTS` e `isSeedSource` exportados | ✅ Unexported |
+| **M10** | `data/stores/persistentStore.ts:79` | 1 | `flushPersistentStores` | ✅ Unexported |
 
 ---
 
-## Fase 4 — ViewModel: extraer `loadingError()` + `guardedLoad()`
+## Fase 4 — ViewModel: extraer `loadingError()` + `guardedLoad()` — ✅ Completada (2026-09-03)
 
-**Problema:** 5 ViewModels repiten el mismo scaffolding try/catch/isLatest/finally
-con `LoadGuard`. El patrón es idéntico salvo el cuerpo async.
-
-**Archivos afectados:**
-
-| Duplicación | Ubicaciones |
-|-------------|-------------|
-| `loading = signal(false); error = signal<string \| null>(null)` | `CatalogViewModel.ts:24-25`, `DetailViewModel.ts:13-14`, `SearchViewModel.ts:195`, `VideoPlayerViewModel.ts:95-96`, `AvatarPickerViewModel.ts:39`, `CastViewModel.ts:29`, `HomeViewModel.ts:17,19` |
-| Bloque `isLatest = loads.begin(); try/catch/finally` | `CatalogViewModel.ts:51-65`, `DetailViewModel.ts:53-81`, `SearchViewModel.ts:575-591,613-631`, `AvatarPickerViewModel.ts:173-190`, `HomeViewModel.ts:33-77` |
-
-**Propuesta:**
-
-1. **Crear `domain/viewModels/loadingState.ts`** (~15 líneas):
-   `loadingError()` devuelve `{ loading: Signal<boolean>, error: Signal<string | null> }`.
-
-2. **Crear `domain/viewModels/guardedLoad.ts`** (~35 líneas):
-   `guardedLoad(loading, error)` devuelve `{ guarded, loads }` con el
-   patrón begin/try/catch/isLatest/finally encapsulado.
-
-3. **Refactorizar** `CatalogViewModel`, `DetailViewModel`, `SearchViewModel`,
-   `AvatarPickerViewModel` y `HomeViewModel` para usar estas utilidades.
-   Las subclases (`MovieViewModel`, `ShowViewModel`, `PersonViewModel`, etc.)
-   no se tocan — la API pública no cambia.
-
-**Ahorro:** ~75 líneas, 1 point of change para loading/error.
+1. Creado `domain/viewModels/loadingState.ts` con `loadingError()`.
+2. Creado `domain/viewModels/guardedLoad.ts` con `guardedLoad()`.
+3. Refactorizados `CatalogViewModel`, `DetailViewModel`, `SearchViewModel`, `AvatarPickerViewModel` y `HomeViewModel`.
 
 ---
 
-## Fase 5 — ViewModel: extraer `mutationOnLoad()`
+## Fase 5 — ViewModel: extraer `mutationOnLoad()` — ✅ Completada (2026-09-03)
 
-**Problema:** 3 ViewModels repiten el patrón `new ItemMutationSubscription()` +
-`subscribeToMutations()` con ligeras variantes en el callback.
-
-| ViewModel | Líneas | Variante |
-|-----------|--------|----------|
-| `DetailViewModel.ts:84-97` | Recarga el item actual en mutación, sin debounce |
-| `HomeViewModel.ts:85-90` | Recarga todo en mutación, con debounce |
-| `LibraryViewModel.ts:139-147` | Recarga la biblioteca en mutación, con debounce |
-
-**Propuesta:** Crear `domain/viewModels/mutationSubscription.ts` (~25 líneas) con
-`mutationOnLoad(onMutated, opts?)` que devuelve una función `ensureSubscribed()`.
-Configurable con `debounce: boolean`.
-
-**Ahorro:** ~30 líneas, patrón centralizado.
+1. Creado `domain/viewModels/mutationSubscription.ts` con `mutationOnLoad()`.
+2. Refactorizados `DetailViewModel`, `HomeViewModel` y `LibraryViewModel`.
 
 ---
 
-## Fase 6 — Cards: unificar familia de cards (~200 líneas)
+## Fase 6 — Cards: unificar familia de cards (~200 líneas) — ✅ Completada (2026-09-03)
 
-**Problema:** 3 familias de cards reimplementan frame + imagen + gradiente +
-overlay + selección + menú contextual.
-
-### 6a. Extender `useCardInteractions` para season/episode
-
-`useCardInteractions.tsx:17-56` solo soporta `kind: 'show' | 'movie'`.
-Pero `SeasonCard.tsx:35-47`, `EpCard.tsx:34-45` y `CwCard.tsx:37-52`
-duplican manualmente `useSelectionMode` + `useItemContextMenu` (40+ líneas).
-
-**Propuesta:** Añadir `season` y `episode` al tipo `CardKind`, refactorizar
-las 3 cards para usar el hook unificado.
-
-### 6b. Crear `LandscapeCardShell`
-
-`CwCard.tsx` (120), `EpCard.tsx` (106) comparten: frame 16:9 + imagen +
-gradiente + overlay + `CardProgress` + selección + context menu.
-**Propuesta:** Shell unificado con props `progress`, `captionLines`,
-`hoverScale`, etc. para diferenciar variantes.
-
-### 6c. Generalizar `PosterShell` absorbiento `PosterTile`
-
-`PosterShell.tsx` y `PosterTile.tsx` comparten imagen, gradiente, overlay,
-selección. `PosterTile` es la versión ligera (sin progress bar, con label).
-**Propuesta:** Unificar con un prop `compact` o `variant: 'full' | 'tile'`.
-
-**Ahorro:** ~200 líneas (350 → ~150 con shell unificado).
+1. **6a.** Extendido `useCardInteractions` para soportar `season` y `episode`. Refactorizados `SeasonCard`, `EpCard` y `CwCard`.
+2. **6b.** Creado `LandscapeCardShell` encapsulando el ratio 16:9, overlays, progreso y selección. Refactorizados `CwCard` y `EpCard`.
+3. **6c.** Generalizado `PosterShell` con soporte de `variant="full" | "tile"`. `PosterTile` reducido a un wrapper de 25 líneas delegando en `PosterShell`.
 
 ---
 
-## Fase 7 — Stores: crear `createKVStore()` (~100 líneas)
+## Fase 7 — Stores: crear `createKVStore()` (~100 líneas) — ✅ Completada (2026-09-03)
 
-**Problema:** 3 stores replican manualmente la persistencia a localStorage
-que `persistentStore.ts` ya resuelve (read/parse, write/stringify, cache,
-batched writes, event dispatch).
-
-| Store | Líneas | Patrón duplicado |
-|-------|--------|-----------------|
-| `themeStore.ts:41-53` | `try { JSON.parse(localStorage.getItem) } catch` |
-| `librarySortStore.ts:18-31` | Idéntico |
-| `collectionStylesStore.ts:24-43` | `read()` + `write()` + event dispatch, sin cache — cada getter re-parsea el JSON |
-
-**Propuesta:** Añadir `createKVStore<T>()` en `persistentStore.ts` (~25 líneas)
-que reutilice `read()`, `scheduleWrite()` y cache. Cada store pasa a ser un
-wrapper de 1 línea:
-
-| Store | Antes | Después |
-|-------|-------|---------|
-| `themeStore.ts` | 55 líneas | ~20 |
-| `librarySortStore.ts` | 34 líneas | ~15 |
-| `collectionStylesStore.ts` | 142 líneas | ~90 |
-
-**Ahorro:** ~100 líneas, persistencia centralizada con batched writes y cache.
+1. Creado `createKVStore<T>()` en `data/stores/persistentStore.ts`.
+2. Refactorizados `themeStore.ts`, `librarySortStore.ts` y `collectionStylesStore.ts`.
 
 ---
 
-## Fase 8 — Theme: unificar vocabulario de colores (~55 líneas)
+## Fase 8 — Theme: unificar vocabulario de colores (~55 líneas) — ✅ Completada (2026-09-03)
 
-**Problema:** Doble vocabulario de colores — `T.bg/fg/dim/hairline`
-(hardcoded) y `MC.bg/fg` (CSS vars con fallback idéntico a `T`).
-Los fallbacks de `MC` en `responsive.ts:107-118` son caracter por caracter
-iguales a los valores de `T` en `tokens.ts`. Los componentes usan uno u otro
-con patrón condicional `r.touch ? MC.bg : T.bg`.
-
-**Adicional:** `T.display` y `T.ui` son idénticos (mismo string Inter).
-
-### Propuesta
-
-1. **Unificar colores** — Crear `C` en `tokens.ts` con CSS vars + fallbacks:
-   ```ts
-   export const C = {
-       bg: 'var(--md-sys-color-background, #000)',
-       fg: 'var(--md-sys-color-on-background, #fff)',
-       dim: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.55))',
-       hairline: 'var(--md-sys-color-outline-variant, rgba(255,255,255,0.12))',
-   } as const;
-   ```
-   Eliminar `MC` de `responsive.ts` y el patrón `r.touch ? MC.x : T.x` en 8
-   ubicaciones. Las CSS vars resuelven M3 en mobile/tablet y caen al fallback
-   oscuro en desktop — sin branching.
-
-2. **Eliminar `T.display`** — fusionar con `T.ui` (~40 referencias a actualizar).
-
-3. **Mover `format.ts`** fuera de `theme/` a `presentation/utils/format.ts` —
-   no tiene relación con theming (7 importadores).
-
-4. **Romper dependencia circular** en `responsive.ts:10` — leer layout via
-   `layoutMode.ts` directamente en vez de ir por `MobileThemeProvider`.
-
-**Ahorro:** ~55 líneas, un solo vocabulario de colores, sin dependencias circulares.
+1. Creado objeto `C` en `tokens.ts` con variables CSS adaptativas y fallbacks `#000`/`#fff`.
+2. Desacoplado `responsive.ts` de `MobileThemeProvider` eliminando el ciclo de imports y la constante `MC`.
+3. Reemplazados patrones `r.touch ? MC.x : T.x` por `C.x` en toda la aplicación.
+4. Movido `format.ts` a `presentation/utils/format.ts`.
+5. Fusionado `T.display` en `T.ui` y retirado `display` de `tokens.ts`.
 
 ---
 
-## Fase 9 — Pages: extraer componentes compartidos (~130 líneas)
+## Fase 9 — Pages: extraer componentes compartidos (~130 líneas) — ✅ Completada (2026-09-03)
 
-**Problema:** 4 pages de detalle copian el mismo shell, synopsis y patrón
-de overview. PersonPage duplica internamente su carrusel de filmografía.
-
-| Duplicación | Pages afectadas |
-|-------------|-----------------|
-| Shell `if (!item) return <DetailStatus>` + div negro (`position: relative; min-height: 100vh; bg: #000`) | MoviePage:36, ShowPage:37, SeasonPage:33, EpisodePage:38 |
-| Párrafo synopsis con `style` idéntico (`fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, color: rgba(255,255,255,0.82), maxWidth: 640, textWrap: pretty`) | MoviePage:192, ShowPage:227, SeasonPage:277, EpisodePage:224 |
-| CastList con `marginTop: 48` | MoviePage:199, ShowPage:234, EpisodePage:231 |
-| Filmography carousel duplicado internamente (movies block = shows block) | PersonPage:239-259 vs PersonPage:262-283 |
-
-### Propuesta
-
-1. **`DetailPageShell`** — wrapper que maneja loading check + div negro.
-   Reutiliza MoviePage, ShowPage, SeasonPage, EpisodePage.
-
-2. **`SynopsisText`** — párrafo con estilo estandarizado y props opcionales
-   `maxWidth`, `fontSize`. Reutiliza las 4 detail pages.
-
-3. **`DetailOverviewSection`** — synopsis + cast en un componente.
-   Reutiliza MoviePage:191-201, ShowPage:226-236, EpisodePage:222-233.
-
-4. **`FilmographyRow`** — carrusel horizontal de filmografía con título +
-   contador. Reutiliza PersonPage internamente (movies + shows).
-
-**Ahorro:** ~130 líneas, consistencia visual garantizada.
+1. Creado `DetailPageShell.tsx` encapsulando el contenedor raíz de páginas de detalle.
+2. Creado `SynopsisText.tsx` con clamp opcional accesible y soporte de plegado/desplegado.
+3. Creado `DetailOverviewSection.tsx` unificando sinopsis y reparto.
+4. Creado `FilmographyRow.tsx` unificando las filas de películas y series en `PersonPage.tsx`.
+5. Refactorizados `MoviePage.tsx`, `ShowPage.tsx`, `SeasonPage.tsx`, `EpisodePage.tsx` y `PersonPage.tsx`.
 
 ---
 
-## Fase 10 — Shared: tests faltantes y limpieza menor
+## Fase 10 — Shared: tests faltantes y limpieza menor — ✅ Completada (2026-09-03)
 
-| # | Acción | Archivo |
-|---|--------|---------|
-| **S1** | Añadir tests para `focusPatch.ts` — mockear `HTMLElement.prototype.focus` y verificar supresión en hover | `shared/focusPatch.ts` (42 líneas, 0 tests) |
-| **S2** | Añadir tests para `fullscreen.ts` — mockear API Fullscreen nativa | `shared/fullscreen.ts` (36 líneas, 0 tests) |
-| **S3** | Mover `clamp01` a `utils/math.ts` si aparece un segundo consumidor | `shared/videoGestures.ts:78` (1 consumidor actual) |
-| **S4** | Centralizar constantes de umbral de gesture en `shared/gestures/thresholds.ts` — `MOVE_THRESHOLD=12`, `DRAG_THRESHOLD=8`, `SWIPE_DRAG_THRESHOLD=48` están en 3 archivos distintos | `videoGestures.ts:8`, `dragDismiss.ts:6`, `MobileHero.tsx:32` |
+1. Añadido `shared/__tests__/focusPatch.test.ts` con cobertura completa del monkey-patch y eventos hover.
+2. Añadido `shared/__tests__/fullscreen.test.ts` con cobertura de API estándar, vendor prefixes (webkit, ms) y captura de errores.
+3. Centralizados todos los umbrales de gestos táctiles en `shared/gestures/thresholds.ts`.
 
 ---
 

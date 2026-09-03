@@ -4,17 +4,17 @@
 export type Zone = 'left' | 'center' | 'right';
 export type SwipeAxis = 'horizontal' | 'vertical' | 'none';
 
-/** Umbral (px) a partir del cual un movimiento deja de ser un tap. */
-export const MOVE_THRESHOLD = 12;
+import {
+    VIDEO_CLOSE_BAND,
+    VIDEO_CLOSE_DISTANCE,
+    VIDEO_MOVE_THRESHOLD,
+    VIDEO_SEEK_RANGE_SECONDS
+} from './gestures/thresholds';
 
-/** Ancho de banda superior (fracción de alto) reservado al swipe-de-cierre. */
-export const CLOSE_BAND = 0.22;
-
-/** Recorrido vertical (px) para cerrar con swipe hacia abajo desde la banda. */
-export const CLOSE_DISTANCE = 110;
-
-/** Segundos de seek que cubre un arrastre horizontal de todo el ancho. */
-export const SEEK_RANGE_SECONDS = 120;
+export const MOVE_THRESHOLD = VIDEO_MOVE_THRESHOLD;
+export const CLOSE_BAND = VIDEO_CLOSE_BAND;
+export const CLOSE_DISTANCE = VIDEO_CLOSE_DISTANCE;
+export const SEEK_RANGE_SECONDS = VIDEO_SEEK_RANGE_SECONDS;
 
 /** Tercio horizontal donde cae x dentro de un ancho dado. */
 export function gestureZone(x: number, width: number): Zone {

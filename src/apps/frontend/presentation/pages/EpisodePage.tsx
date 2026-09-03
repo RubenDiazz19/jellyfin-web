@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { formatDateLong, formatRemainingCompact } from '../theme/format';
+import { formatDateLong, formatRemainingCompact } from '../utils/format';
 import { findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { useWatched } from '../../domain/bridge/useWatched';
 import { HeroFrame, HeroMeta } from '../components/layout/DetailHero';
@@ -16,7 +16,8 @@ import { MoreButton } from '../components/controls/MoreButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { FavButton } from '../components/controls/FavButton';
 import { WatchedButton } from '../components/controls/WatchedButton';
-import { CastList } from '../components/cast/CastList';
+import { DetailPageShell } from '../components/layout/DetailPageShell';
+import { DetailOverviewSection } from '../components/layout/DetailOverviewSection';
 import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
@@ -42,10 +43,9 @@ export function EpisodePage({ showId, seasonN, epN, navigate }: PageProps) {
     }
     const nextEp = season.episodes.find((e) => e.n === epN + 1);
     return (
-        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
-            <EpisodeHero show={show} season={season} ep={ep} navigate={navigate} />
+        <DetailPageShell hero={<EpisodeHero show={show} season={season} ep={ep} navigate={navigate} />}>
             <EpisodeDetail show={show} season={season} ep={ep} nextEp={nextEp} navigate={navigate} />
-        </div>
+        </DetailPageShell>
     );
 }
 
@@ -154,7 +154,7 @@ function EpisodeHero({
                             </span>
                         )}
                         <h1 style={{
-                            fontFamily: T.display,
+                            fontFamily: T.ui,
                             fontSize: short ? 'clamp(20px, 5vh, 30px)' :
                                 r.touch ? 'clamp(24px, 6vw, 38px)' : 'clamp(29px, 3.6vw, 52px)',
                             lineHeight: 1.05,
@@ -219,19 +219,12 @@ function EpisodeDetail({
                 ancha) → la rejilla se desborda y en pantalla completa el
                 sobrante se ve como una columna negra a la derecha. */}
             <DetailColumns>
-                <div>
-                    <SectionLabel>{globalize.translate('Overview')}</SectionLabel>
-                    <p style={{
-                        fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
-                        color: 'rgba(255,255,255,0.82)', textWrap: 'pretty', fontWeight: 400
-                    }}>
-                        {`${show.title} — Temporada ${season.n}, episodio ${ep.n}: «${ep.title}». ${season.synopsis ?? ''}`}
-                    </p>
-
-                    <div style={{ marginTop: 56 }}>
-                        <CastList cast={show.cast} navigate={navigate} label={globalize.translate('HeaderCastAndCrew')} />
-                    </div>
-                </div>
+                <DetailOverviewSection
+                    synopsis={`${show.title} — Temporada ${season.n}, episodio ${ep.n}: «${ep.title}». ${season.synopsis ?? ''}`}
+                    cast={show.cast}
+                    castLabel={globalize.translate('HeaderCastAndCrew')}
+                    navigate={navigate}
+                />
 
                 <div>
                     <SectionLabel>{globalize.translate('HeaderTechnicalInfo')}</SectionLabel>
@@ -319,7 +312,7 @@ function EpisodeDetail({
                                     </div>
                                     <div style={{
                                         position: 'absolute', left: 16, bottom: 12,
-                                        fontFamily: T.display, fontSize: 22
+                                        fontFamily: T.ui, fontSize: 22
                                     }}>
                                         {String(nextEp.n).padStart(2, '0')} · {nextEp.title}
                                     </div>

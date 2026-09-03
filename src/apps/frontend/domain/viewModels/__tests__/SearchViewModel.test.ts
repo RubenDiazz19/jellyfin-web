@@ -356,8 +356,8 @@ describe('capa de búsqueda', () => {
         expect(v.overlayOpen.value).toBe(false);
         expect(v.query.value).toBe('');
         expect(v.tagFilters.value).toEqual([]);
-        expect(v.typeFilter.value).toBe('todo');
-        expect(v.stateFilter.value).toBe('todo');
+        expect(v.typeFilters.value).toEqual([]);
+        expect(v.stateFilters.value).toEqual([]);
         expect(v.anyFilterActive.value).toBe(false);
     });
 });
@@ -633,7 +633,7 @@ describe('filtro de valoración', () => {
         expect(ids(v)).toEqual(['s2', 'm2']);
 
         v.clearRatingFilter();
-        expect(v.ratingFilter.value).toBeNull();
+        expect(v.ratingFilters.value).toEqual([]);
         expect(ids(v)).toEqual(['s1', 's2', 'm1', 'm2']);
     });
 
@@ -645,10 +645,10 @@ describe('filtro de valoración', () => {
         expect(view.ratingFilter).toEqual({ operator: '>=', value: 8.5 });
 
         const v2 = vm();
-        expect(v2.ratingFilter.value).toBeNull();
+        expect(v2.ratingFilters.value).toEqual([]);
 
         v2.applyView({ id: 'v1', ...view });
-        expect(v2.ratingFilter.value).toEqual({ operator: '>=', value: 8.5 });
+        expect(v2.ratingFilters.value).toEqual([{ operator: '>=', value: 8.5 }]);
         expect(ids(v2)).toEqual(['m2']);
     });
 

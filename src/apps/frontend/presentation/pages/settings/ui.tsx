@@ -5,8 +5,7 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import globalize from 'lib/globalize';
 
-import { MC } from '../../theme/responsive';
-import { T } from '../../theme/tokens';
+import { C, T } from '../../theme/tokens';
 
 export function MobileSettingsItem({
     label, hint, onClick
@@ -20,19 +19,19 @@ export function MobileSettingsItem({
                 display: 'flex', alignItems: 'center', gap: 12, width: '100%',
                 textAlign: 'left', padding: '16px 4px',
                 background: 'none', border: 'none', cursor: 'pointer',
-                borderBottom: `1px solid ${MC.outlineVariant}`,
+                borderBottom: `1px solid ${C.outlineVariant}`,
                 color: 'inherit', fontFamily: T.ui
             }}
         >
             <span style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15 }}>{label}</div>
                 {hint && (
-                    <div style={{ fontSize: 12, color: MC.onSurfaceVariant, marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: C.onSurfaceVariant, marginTop: 2 }}>
                         {hint}
                     </div>
                 )}
             </span>
-            <span aria-hidden='true' style={{ color: MC.onSurfaceVariant, fontSize: 18 }}>›</span>
+            <span aria-hidden='true' style={{ color: C.onSurfaceVariant, fontSize: 18 }}>›</span>
         </button>
     );
 }

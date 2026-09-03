@@ -8,11 +8,9 @@ import { CardProgress } from './CardProgress';
 import { CardOverlay } from './CardOverlay';
 import { PosterFrame } from './PosterFrame';
 import { SelectionMark } from './SelectionMark';
-import { useItemContextMenu } from '../controls/useItemContextMenu';
-import { useSelectionMode } from '../controls/useSelectionMode';
+import { useCardInteractions } from './useCardInteractions';
 import type { Show, Season } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
-import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { seasonKey } from '../../../domain/stores';
 
 type Props = { show: Show; season: Season; navigate: Navigate };
@@ -24,31 +22,25 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
     const nextEp = season.episodes.find((e) => e.watched < 1) || season.episodes[0];
     const sId = season.jfId ?? seasonKey(show.id, season.n);
     const wKey = seasonKey(show.id, season.n);
-    const selectable: SelectableItem = {
+
+    const interactions = useCardInteractions({
         id: sId,
         title: `${show.title} · ${globalize.translate('ValueSeason', season.n)}`,
         kind: 'season',
         poster: season.backdrop ?? show.poster,
         year: season.year,
-        watchedKey: wKey
-    };
-    const sel = useSelectionMode(
-        selectable,
-        () => navigate({ page: 'season', showId: show.id, seasonN: season.n })
-    );
-    const ctx = useItemContextMenu({
-        id: sId,
-        type: 'season',
-        itemTitle: `${show.title} · ${globalize.translate('ValueSeason', season.n)}`,
+        watchedKey: wKey,
+        showId: show.id,
+        seasonN: season.n,
         nextEpisodeId: nextEp?.jfId,
         queueSubtitle: nextEp?.title,
-        queuePoster: show.poster,
-        selectable
-    });
+        queuePoster: show.poster
+    }, navigate);
+
     return (
         <div
-            onClick={sel.onClick}
-            onContextMenu={ctx.onContextMenu}
+            onClick={interactions.onClick}
+            onContextMenu={interactions.onContextMenu}
             style={{ cursor: 'pointer', width: 230, flex: '0 0 230px' }}
             className='jfp-hoverlift'
         >
@@ -56,7 +48,7 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
                 tiene) se queda con el de la serie: es lo que Jellyfin enseña
                 en su sitio, y mejor eso que un rectángulo gris. */}
             <PosterFrame
-                selected={sel.selected}
+                selected={interactions.selected}
                 style={{
                     backgroundImage: `url(${season.backdrop ?? show.poster})`,
                     backgroundSize: 'cover', backgroundPosition: 'center'
@@ -72,8 +64,8 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
                     left={14}
                     right={14}
                     topLeft={
-                        sel.selecting ? (
-                            <SelectionMark selected={sel.selected} />
+                        interactions.selecting ? (
+                            <SelectionMark selected={interactions.selected} />
                         ) : (
                             <div style={{
                                 fontFamily: T.ui, fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase',
@@ -84,7 +76,7 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
                         )
                     }
                     topRight={
-                        sel.selecting ? null : (
+                        interactions.selecting ? null : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <SeasonWatchedButton show={show} season={season} size={15} />
                                 <FavButton id={wKey} size={15} />
@@ -97,7 +89,7 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
                     position: 'absolute', left: 14, right: 14, bottom: 0, padding: '0 0 18px 0'
                 }}>
                     <div style={{
-                        fontFamily: T.display, fontSize: 40, lineHeight: 0.9,
+                        fontFamily: T.ui, fontSize: 40, lineHeight: 0.9,
                         margin: 0, fontWeight: 300, letterSpacing: -0.5,
                         textShadow: '0 2px 16px rgba(0,0,0,0.5)',
                         color: 'rgba(255,255,255,0.92)'
@@ -117,7 +109,7 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
 
                 <CardProgress value={pct} />
             </PosterFrame>
-            {ctx.menu}
+            {interactions.contextMenu}
         </div>
     );
 });

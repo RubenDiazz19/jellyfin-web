@@ -7,8 +7,27 @@ export const T = {
     fg: '#fff',
     dim: 'rgba(255,255,255,0.55)',
     hairline: 'rgba(255,255,255,0.12)',
-    display: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     ui: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+} as const;
+
+/**
+ * Vocabulario de color adaptativo M3 / Desktop.
+ * En desktop las variables CSS caen al fallback (idéntico al look original).
+ * En mobile/tablet se resuelven contra los tokens del tema M3 activo.
+ */
+export const C = {
+    bg: 'var(--md-sys-color-background, #000)',
+    fg: 'var(--md-sys-color-on-background, #fff)',
+    dim: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.55))',
+    hairline: 'var(--md-sys-color-outline-variant, rgba(255,255,255,0.12))',
+    surface: 'var(--md-sys-color-surface, #000)',
+    onSurface: 'var(--md-sys-color-on-surface, #fff)',
+    onSurfaceVariant: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.55))',
+    surfaceContainer: 'var(--md-sys-color-surface-container, #161a1e)',
+    surfaceContainerHigh: 'var(--md-sys-color-surface-container-high, #202020)',
+    primary: 'var(--md-sys-color-primary, #fff)',
+    onPrimary: 'var(--md-sys-color-on-primary, #000)',
+    outlineVariant: 'var(--md-sys-color-outline-variant, rgba(255,255,255,0.12))'
 } as const;
 
 // Tipado con las propiedades CSS reales para que las páginas no necesiten

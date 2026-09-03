@@ -11,8 +11,8 @@ import { useSession } from '../../domain/bridge/useSession';
 import { Nav } from '../components/layout/Nav';
 import { useToast } from '../components/toast/ToastProvider';
 import { PageTitle } from '../components/layout/Title';
-import { MC, useResponsive } from '../theme/responsive';
-import { T } from '../theme/tokens';
+import { useResponsive } from '../theme/responsive';
+import { C, T } from '../theme/tokens';
 import { AppearanceSection } from './settings/AppearanceSection';
 import { DisplaySection } from './settings/DisplaySection';
 import { LibrariesSection } from './settings/LibrariesSection';
@@ -150,13 +150,13 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
             <>
                 <Nav navigate={navigate} breadcrumb={breadcrumb} />
                 <section style={{
-                    background: MC.bg, color: MC.fg, minHeight: '100vh',
+                    background: C.bg, color: C.fg, minHeight: '100vh',
                     padding: `76px ${r.pagePad + 4}px 48px`, fontFamily: T.ui
                 }}>
                     {mobileOpen === null ? (
                         <>
                             <h1 style={{
-                                fontFamily: T.display, fontWeight: 300,
+                                fontFamily: T.ui, fontWeight: 300,
                                 fontSize: 32, margin: '0 0 18px', letterSpacing: -0.5
                             }}>
                                 {globalize.translate('Settings')}

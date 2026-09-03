@@ -12,8 +12,8 @@
 
 import type { CSSProperties, ReactNode } from 'react';
 
-import { MC, useResponsive } from '../../theme/responsive';
-import { T } from '../../theme/tokens';
+import { useResponsive } from '../../theme/responsive';
+import { C, T } from '../../theme/tokens';
 
 type Props = {
     children: ReactNode;
@@ -25,8 +25,8 @@ export function PageSection({ children, style }: Props) {
     const r = useResponsive();
     return (
         <section style={{
-            background: r.touch ? MC.bg : '#000',
-            color: r.touch ? MC.fg : '#fff',
+            background: C.bg,
+            color: C.fg,
             minHeight: '100vh',
             padding: r.touch ? `76px ${r.pagePad}px 48px` : '120px 56px 96px',
             fontFamily: T.ui,

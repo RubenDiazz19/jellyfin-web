@@ -3,8 +3,7 @@ import globalize from 'lib/globalize';
 import type { ThemeMode } from '../../../domain/viewModels/ThemeViewModel';
 import { useMobileTheme } from '../../theme/MobileThemeProvider';
 import { M3_DEFAULT_SEED } from '../../theme/m3';
-import { MC } from '../../theme/responsive';
-import { T } from '../../theme/tokens';
+import { C, T } from '../../theme/tokens';
 import { SectionTitle } from './ui';
 
 // Semillas de la paleta manual: una por zona del círculo de color, para que
@@ -47,25 +46,25 @@ export function AppearanceSection() {
                                 display: 'flex', alignItems: 'center', gap: 14, width: '100%',
                                 textAlign: 'left', padding: '14px 4px',
                                 background: 'none', border: 'none', cursor: 'pointer',
-                                borderBottom: `1px solid ${MC.outlineVariant}`,
+                                borderBottom: `1px solid ${C.outlineVariant}`,
                                 color: 'inherit', fontFamily: T.ui
                             }}
                         >
                             <span style={{
                                 width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                                border: `2px solid ${active ? MC.primary : MC.onSurfaceVariant}`,
+                                border: `2px solid ${active ? C.primary : C.onSurfaceVariant}`,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}>
                                 {active && (
                                     <span style={{
                                         width: 10, height: 10, borderRadius: '50%',
-                                        background: MC.primary
+                                        background: C.primary
                                     }} />
                                 )}
                             </span>
                             <span style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 15 }}>{label}</div>
-                                <div style={{ fontSize: 12, color: MC.onSurfaceVariant, marginTop: 2 }}>
+                                <div style={{ fontSize: 12, color: C.onSurfaceVariant, marginTop: 2 }}>
                                     {hint}
                                 </div>
                             </span>
@@ -98,11 +97,11 @@ export function AppearanceSection() {
                     />
                 ))}
             </div>
-            <div style={{ fontSize: 12, color: MC.onSurfaceVariant, marginTop: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: C.onSurfaceVariant, marginTop: 10, lineHeight: 1.5 }}>
                 {globalize.translate(auto ? 'AccentColorAutoHelp' : 'AccentColorManualHelp')}
             </div>
 
-            <div style={{ fontSize: 12, color: MC.onSurfaceVariant, marginTop: 18, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: C.onSurfaceVariant, marginTop: 18, lineHeight: 1.5 }}>
                 {globalize.translate('ThemeMobileOnlyHelp')}
             </div>
         </div>
@@ -128,7 +127,7 @@ function Swatch({
                 // El aro exterior marca la selección sin tapar el color: el
                 // primer anillo es del fondo y el segundo, del acento.
                 boxShadow: active ?
-                    `0 0 0 3px ${MC.surface}, 0 0 0 5px ${MC.primary}` :
+                    `0 0 0 3px ${C.surface}, 0 0 0 5px ${C.primary}` :
                     'none',
                 transition: 'box-shadow var(--md-sys-motion-duration-short4, 200ms)'
                     + ' var(--md-sys-motion-easing-standard, cubic-bezier(0.2, 0, 0, 1))'

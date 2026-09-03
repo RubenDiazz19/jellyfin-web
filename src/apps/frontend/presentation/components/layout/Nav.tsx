@@ -91,7 +91,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                     style={{
                         ...linkReset,
                         display: 'flex', alignItems: 'center', gap: 8,
-                        fontFamily: T.display, fontSize: 21, letterSpacing: 0.5,
+                        fontFamily: T.ui, fontSize: 21, letterSpacing: 0.5,
                         color: 'var(--md-sys-color-on-surface, #fff)'
                     }}
                 >
@@ -131,7 +131,7 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                 style={{
                     ...linkReset,
                     display: 'flex', alignItems: 'center', gap: 10,
-                    fontFamily: T.display, fontSize: 24, letterSpacing: 0.5,
+                    fontFamily: T.ui, fontSize: 24, letterSpacing: 0.5,
                     color: T.fg
                 }}
             >

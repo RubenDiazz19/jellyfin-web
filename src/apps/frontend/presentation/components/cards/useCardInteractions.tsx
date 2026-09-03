@@ -8,13 +8,29 @@
 
 import type { MouseEvent, ReactNode } from 'react';
 import type { Navigate } from '../../../app/router';
-import type { CatalogItem } from '../../../domain/models';
 import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
 import { useSelectionMode } from '../controls/useSelectionMode';
 
+export type CardKind = 'show' | 'movie' | 'season' | 'episode';
+
 /** Lo que hace falta del item para navegar a su ficha y para encolarlo. */
-export type CardItem = Pick<CatalogItem, 'id' | 'title' | 'kind' | 'year' | 'poster'>;
+export type CardItem = {
+    id: string;
+    title: string;
+    kind: CardKind;
+    year?: number | string;
+    poster?: string;
+    watchedKey?: string;
+    /** Navegación específica de season/episode */
+    showId?: string;
+    seasonN?: number;
+    epN?: number;
+    nextEpisodeId?: string;
+    queueSubtitle?: string;
+    queuePoster?: string;
+    onOpen?: () => void;
+};
 
 export type CardInteractions = {
     onClick: () => void;
@@ -31,22 +47,38 @@ export function useCardInteractions(item: CardItem, navigate: Navigate): CardInt
         title: item.title,
         kind: item.kind,
         poster: item.poster,
-        year: item.year
+        year: item.year,
+        watchedKey: item.watchedKey
     };
-    const sel = useSelectionMode(
-        selectable,
-        () => navigate(item.kind === 'show' ?
-            { page: 'show', showId: item.id } :
-            { page: 'movie', movieId: item.id })
-    );
+
+    const onOpen = () => {
+        if (item.onOpen) {
+            item.onOpen();
+            return;
+        }
+        if (item.kind === 'show') {
+            navigate({ page: 'show', showId: item.id });
+        } else if (item.kind === 'movie') {
+            navigate({ page: 'movie', movieId: item.id });
+        } else if (item.kind === 'season' && item.showId && item.seasonN != null) {
+            navigate({ page: 'season', showId: item.showId, seasonN: item.seasonN });
+        } else if (item.kind === 'episode' && item.showId && item.seasonN != null && item.epN != null) {
+            navigate({ page: 'episode', showId: item.showId, seasonN: item.seasonN, epN: item.epN });
+        }
+    };
+
+    const sel = useSelectionMode(selectable, onOpen);
+
     const ctx = useItemContextMenu({
         id: item.id,
         type: item.kind,
         itemTitle: item.title,
-        queueSubtitle: String(item.year),
-        queuePoster: item.poster,
+        nextEpisodeId: item.nextEpisodeId,
+        queueSubtitle: item.queueSubtitle ?? (item.year ? String(item.year) : undefined),
+        queuePoster: item.queuePoster ?? item.poster,
         selectable
     });
+
     return {
         onClick: sel.onClick,
         selecting: sel.selecting,

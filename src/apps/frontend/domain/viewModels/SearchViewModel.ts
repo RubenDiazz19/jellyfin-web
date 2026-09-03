@@ -20,6 +20,7 @@ import { WATCHED } from '../../data/stores/watchedStore';
 import type { RatingOperator, SavedView } from '../../data/stores/viewsStore';
 import { MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
+import { guardedLoad } from './guardedLoad';
 import { LoadGuard } from './loadGuard';
 import { translateGenre } from '../genres';
 
@@ -157,7 +158,6 @@ export class SearchViewModel {
     categoryMode = signal<FilterCategory | null>(null);
     categoryQuery = signal<string>('');
     ratingFilters = signal<RatingFilter[]>([]);
-    ratingFilter = computed<RatingFilter | null>(() => this.ratingFilters.value[0] ?? null);
     /**
      * Etiquetas elegidas en la fila de chips. Se acumulan en Y: pulsar
      * «Anime» y «Instituto» deja lo que tenga las dos, no la unión. Es lo que
@@ -165,21 +165,6 @@ export class SearchViewModel {
      * acota y el matiz afina.
      */
     tagFilters = signal<string[]>([]);
-
-    /** Acceso y compatibilidad con TypeFilter / StateFilter unitario */
-    typeFilter = computed<TypeFilter>(() => {
-        if (this.typeFilters.value.length === 1) {
-            return this.typeFilters.value[0] as TypeFilter;
-        }
-        return 'todo';
-    });
-
-    stateFilter = computed<StateFilter>(() => {
-        if (this.stateFilters.value.length === 1) {
-            return this.stateFilters.value[0] as StateFilter;
-        }
-        return 'todo';
-    });
 
     /**
      * La búsqueda como superposición sobre la página actual, que es lo que
@@ -569,12 +554,14 @@ export class SearchViewModel {
         }
     }
 
+    private guarded = guardedLoad(this.loading, undefined, this.loads).guarded;
+    private remoteGuarded = guardedLoad(this.searching, undefined, this.remoteLoads).guarded;
+
     /** Carga la biblioteca real para buscar sobre ella (si hay sesión). */
     async load() {
         if (!this.api.session.load()?.accessToken) return;
-        const isLatest = this.loads.begin();
         this.loading.value = true;
-        try {
+        await this.guarded(async (isLatest) => {
             const [shows, movies] = await Promise.all([
                 this.api.catalog.getShows(),
                 this.api.catalog.getMovies().catch(() => [] as Movie[])
@@ -582,13 +569,11 @@ export class SearchViewModel {
             if (!isLatest()) return;
             this.shows.value = shows;
             this.movies.value = movies;
-        } catch {
-            if (!isLatest()) return;
+        }, () => {
             this.shows.value = [];
             this.movies.value = [];
-        } finally {
-            if (isLatest()) this.loading.value = false;
-        }
+            return false;
+        });
     }
 
     /**
@@ -612,22 +597,18 @@ export class SearchViewModel {
 
     private async searchRemote(text: string) {
         if (!this.api.session.load()?.accessToken) return;
-        const isLatest = this.remoteLoads.begin();
         this.searching.value = true;
-        try {
+        await this.remoteGuarded(async (isLatest) => {
             const { shows, movies } = await this.api.discover.searchCatalog(text);
             if (!isLatest()) return;
             this.remote.value = [
                 ...shows.map((s) => ({ ...s, kind: 'show' as const })),
                 ...movies.map((m) => ({ ...m, kind: 'movie' as const }))
             ];
-        } catch {
-            // El servidor no contesta: quedan los resultados locales, que es
-            // exactamente lo que había antes de que existiera esta llamada.
-            if (isLatest()) this.remote.value = [];
-        } finally {
-            if (isLatest()) this.searching.value = false;
-        }
+        }, () => {
+            this.remote.value = [];
+            return false;
+        });
     }
 
     /** Suscribe el VM a favoritos/vistos y a las mutaciones. Devuelve cleanup. */

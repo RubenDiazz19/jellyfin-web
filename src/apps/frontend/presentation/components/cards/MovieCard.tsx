@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { memo } from 'react';
-import { formatRuntime } from '../../theme/format';
+import { formatRuntime } from '../../utils/format';
 import { MovieWatchedButton } from '../controls/MovieWatchedButton';
 import { FavButton } from '../controls/FavButton';
 import { useResponsive } from '../../theme/responsive';

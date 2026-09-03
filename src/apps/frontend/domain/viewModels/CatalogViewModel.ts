@@ -16,15 +16,18 @@
 
 import { signal, type Signal } from '@preact/signals-core';
 import type { Movie, Show } from '../../data/models';
+import { guardedLoad, type GuardedBody, type GuardedOnError } from './guardedLoad';
+import { loadingError } from './loadingState';
 import { LoadGuard } from './loadGuard';
 
 export abstract class CatalogViewModel {
     shows = signal<Show[]>([]);
     movies = signal<Movie[]>([]);
     loading: Signal<boolean>;
-    error = signal<string | null>(null);
+    error: Signal<string | null>;
 
-    protected loads = new LoadGuard();
+    protected loads: LoadGuard;
+    protected guarded: (body: GuardedBody, onError?: GuardedOnError) => Promise<void>;
 
     /**
      * `loadsOnMount` arranca el spinner encendido. Lo quieren las pantallas
@@ -33,34 +36,12 @@ export abstract class CatalogViewModel {
      * no lo quiere, porque puede resolver desde caché en el mismo tick.
      */
     constructor({ loadsOnMount = false } = {}) {
-        this.loading = signal(loadsOnMount);
-    }
+        const state = loadingError(loadsOnMount);
+        this.loading = state.loading;
+        this.error = state.error;
 
-    /**
-     * Corre una carga bajo la guardia de carreras.
-     *
-     * `body` recibe el test de vigencia y debe consultarlo después de cada
-     * `await`: si el usuario ha navegado y ha empezado otra carga, la
-     * respuesta lenta no puede escribir encima de la rápida.
-     *
-     * El error de la carga vigente se publica en `error`; `onError` permite
-     * añadir limpieza (vaciar las listas, por ejemplo) o quedárselo devolviendo
-     * `false`, que es lo que hace una ficha que prefiere conservar los datos
-     * anteriores antes que enseñar un fallo.
-     */
-    protected async guarded(
-        body: (isLatest: () => boolean) => Promise<void>,
-        onError?: (error: Error) => boolean | void
-    ): Promise<void> {
-        const isLatest = this.loads.begin();
-        try {
-            await body(isLatest);
-        } catch (e) {
-            if (!isLatest()) return;
-            const error = e as Error;
-            if (onError?.(error) !== false) this.error.value = error.message;
-        } finally {
-            if (isLatest()) this.loading.value = false;
-        }
+        const gl = guardedLoad(this.loading, this.error);
+        this.loads = gl.loads;
+        this.guarded = gl.guarded;
     }
 }

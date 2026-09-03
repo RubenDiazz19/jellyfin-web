@@ -59,7 +59,7 @@ export function LoginPage() {
         >
             <div style={{ width: '100%', maxWidth: 380 }}>
                 <div style={{
-                    fontFamily: T.display,
+                    fontFamily: T.ui,
                     fontSize: 42, letterSpacing: 0.5, marginBottom: 40, textAlign: 'center'
                 }}>
                     jellyfin
@@ -166,7 +166,7 @@ function QuickConnectCode({ code, onCancel }: { code: string; onCancel: () => vo
                 {globalize.translate('QuickConnect')}
             </div>
             <div style={{
-                fontFamily: T.display, fontSize: 46, letterSpacing: 10,
+                fontFamily: T.ui, fontSize: 46, letterSpacing: 10,
                 margin: '22px 0 6px', paddingLeft: 10
             }}>
                 {code}

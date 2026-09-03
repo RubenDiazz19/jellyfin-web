@@ -1,7 +1,6 @@
 import globalize from 'lib/globalize';
 
-import { T } from '../theme/tokens';
-import { formatDateLong, formatRemaining } from '../theme/format';
+import { formatDateLong, formatRemaining } from '../utils/format';
 import { useWatched } from '../../domain/bridge/useWatched';
 import type { Movie } from '../../domain/models';
 import {
@@ -17,7 +16,8 @@ import { MoreButton } from '../components/controls/MoreButton';
 import { MyListButton } from '../components/controls/MyListButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
-import { CastList } from '../components/cast/CastList';
+import { DetailPageShell } from '../components/layout/DetailPageShell';
+import { DetailOverviewSection } from '../components/layout/DetailOverviewSection';
 import { Similar } from '../components/similar/Similar';
 import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
@@ -35,10 +35,9 @@ export function MoviePage({ movieId, navigate, hero }: PageProps) {
     const { item: movie, error } = useMovieEntity(movieId, navigate);
     if (!movie) return <DetailStatus error={error} />;
     return (
-        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
-            <MovieHero movie={movie} navigate={navigate} hero={hero} />
+        <DetailPageShell hero={<MovieHero movie={movie} navigate={navigate} hero={hero} />}>
             <MovieDetail movie={movie} navigate={navigate} />
-        </div>
+        </DetailPageShell>
     );
 }
 
@@ -187,19 +186,11 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
     return (
         <DetailBody>
             <DetailColumns>
-                <div>
-                    <SectionLabel>{globalize.translate('Overview')}</SectionLabel>
-                    <p style={{
-                        fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
-                        color: 'rgba(255,255,255,0.82)', maxWidth: 640, textWrap: 'pretty', fontWeight: 400
-                    }}>
-                        {movie.synopsis}
-                    </p>
-
-                    <div style={{ marginTop: 48 }}>
-                        <CastList cast={movie.cast} navigate={navigate} />
-                    </div>
-                </div>
+                <DetailOverviewSection
+                    synopsis={movie.synopsis}
+                    cast={movie.cast}
+                    navigate={navigate}
+                />
 
                 <div>
                     <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>

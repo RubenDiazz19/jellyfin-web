@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { formatDateLong, formatRemaining } from '../theme/format';
+import { formatDateLong, formatRemaining } from '../utils/format';
 import { translateStatus } from '../../domain/status';
 import { episodeKey, WATCHED } from '../../domain/stores';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
@@ -22,7 +22,8 @@ import { MyListButton } from '../components/controls/MyListButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
-import { CastList } from '../components/cast/CastList';
+import { DetailPageShell } from '../components/layout/DetailPageShell';
+import { DetailOverviewSection } from '../components/layout/DetailOverviewSection';
 import { Similar } from '../components/similar/Similar';
 import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
@@ -36,10 +37,9 @@ export function ShowPage({ showId, navigate, hero }: PageProps) {
     const { item: show, error } = useShowEntity(showId, navigate);
     if (!show) return <DetailStatus error={error} />;
     return (
-        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
-            <ShowHero show={show} navigate={navigate} hero={hero} />
+        <DetailPageShell hero={<ShowHero show={show} navigate={navigate} hero={hero} />}>
             <ShowDetail show={show} navigate={navigate} />
-        </div>
+        </DetailPageShell>
     );
 }
 
@@ -222,19 +222,11 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
     return (
         <DetailBody>
             <DetailColumns>
-                <div>
-                    <SectionLabel>{globalize.translate('Overview')}</SectionLabel>
-                    <p style={{
-                        fontFamily: T.ui, fontSize: 17, lineHeight: 1.55, margin: 0,
-                        color: 'rgba(255,255,255,0.82)', maxWidth: 640, textWrap: 'pretty', fontWeight: 400
-                    }}>
-                        {show.synopsis}
-                    </p>
-
-                    <div style={{ marginTop: 48 }}>
-                        <CastList cast={show.cast} navigate={navigate} />
-                    </div>
-                </div>
+                <DetailOverviewSection
+                    synopsis={show.synopsis}
+                    cast={show.cast}
+                    navigate={navigate}
+                />
 
                 <div>
                     <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>

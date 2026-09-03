@@ -10,7 +10,7 @@ import {
 } from '../../../domain/player/format';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
-import { formatPlaybackEndTime } from '../../theme/format';
+import { formatPlaybackEndTime } from '../../utils/format';
 import { PlayerIc } from './playerIcons';
 import { VolumeSlider } from './VolumeSlider';
 import { VideoSettingsMenu } from './VideoSettingsMenu';

@@ -5,6 +5,8 @@
 // Es persistente en localStorage para conservarse entre sesiones y ligero
 // para no requerir peticiones de red al pintar las tarjetas.
 
+import { createKVStore } from './persistentStore';
+
 const KEY = 'jfp-collection-styles';
 const EVENT = 'jfp-collection-styles-change';
 
@@ -21,75 +23,75 @@ type StylesMap = Record<string, CollectionStyle>;
 // Previews volátiles en memoria para feedback instantáneo (Blob URLs)
 const activePreviews = new Map<string, { backdrop?: string; logo?: string }>();
 
-function read(): StylesMap {
-    if (typeof localStorage === 'undefined') return {};
-    try {
-        return (JSON.parse(localStorage.getItem(KEY) || '{}') ?? {}) as StylesMap;
-    } catch {
-        return {};
-    }
-}
-
-function write(map: StylesMap): void {
-    if (typeof localStorage === 'undefined') return;
-    try {
-        localStorage.setItem(KEY, JSON.stringify(map));
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent(EVENT));
-        }
-    } catch {
-        // En modo incógnito o cuota llena, no se rompe la ejecución.
-    }
-}
+const store = createKVStore<StylesMap>({
+    key: KEY,
+    event: EVENT,
+    parse: (raw) => (raw && typeof raw === 'object' ? (raw as StylesMap) : {}),
+    fallback: () => ({})
+});
 
 export const COLLECTION_STYLES = {
     event: EVENT,
 
     get(collectionId: string): CollectionStyle {
-        return read()[collectionId] ?? {};
+        return store.get()[collectionId] ?? {};
     },
 
     getColor(collectionId: string): string | undefined {
-        return read()[collectionId]?.backgroundColor;
+        return store.get()[collectionId]?.backgroundColor;
     },
 
     setColor(collectionId: string, color: string | undefined): void {
-        const map = read();
         const trimmed = color?.trim();
-        if (!trimmed) {
-            delete map[collectionId];
-        } else {
-            map[collectionId] = { ...map[collectionId], backgroundColor: trimmed };
-        }
-        write(map);
+        store.update((map) => {
+            const next = { ...map };
+            if (!trimmed) {
+                delete next[collectionId];
+            } else {
+                next[collectionId] = { ...next[collectionId], backgroundColor: trimmed };
+            }
+            return next;
+        });
     },
 
     getBackdrop(collectionId: string): string | undefined {
-        return activePreviews.get(collectionId)?.backdrop ?? read()[collectionId]?.customBackdrop;
+        return activePreviews.get(collectionId)?.backdrop ?? store.get()[collectionId]?.customBackdrop;
     },
 
     setBackdrop(collectionId: string, url: string | undefined): void {
-        const map = read();
-        if (!url) {
-            if (map[collectionId]) delete map[collectionId].customBackdrop;
-        } else {
-            map[collectionId] = { ...map[collectionId], customBackdrop: url };
-        }
-        write(map);
+        store.update((map) => {
+            const next = { ...map };
+            if (!url) {
+                if (next[collectionId]) {
+                    const current = { ...next[collectionId] };
+                    delete current.customBackdrop;
+                    next[collectionId] = current;
+                }
+            } else {
+                next[collectionId] = { ...next[collectionId], customBackdrop: url };
+            }
+            return next;
+        });
     },
 
     getLogo(collectionId: string): string | undefined {
-        return activePreviews.get(collectionId)?.logo ?? read()[collectionId]?.customLogo;
+        return activePreviews.get(collectionId)?.logo ?? store.get()[collectionId]?.customLogo;
     },
 
     setLogo(collectionId: string, url: string | undefined): void {
-        const map = read();
-        if (!url) {
-            if (map[collectionId]) delete map[collectionId].customLogo;
-        } else {
-            map[collectionId] = { ...map[collectionId], customLogo: url };
-        }
-        write(map);
+        store.update((map) => {
+            const next = { ...map };
+            if (!url) {
+                if (next[collectionId]) {
+                    const current = { ...next[collectionId] };
+                    delete current.customLogo;
+                    next[collectionId] = current;
+                }
+            } else {
+                next[collectionId] = { ...next[collectionId], customLogo: url };
+            }
+            return next;
+        });
     },
 
     setPreview(collectionId: string, type: 'Backdrop' | 'Logo' | 'Primary', url: string): void {
@@ -106,37 +108,39 @@ export const COLLECTION_STYLES = {
     },
 
     touch(collectionId: string): void {
-        const map = read();
-        map[collectionId] = { ...map[collectionId], imageVersion: Date.now() };
-        write(map);
+        store.update((map) => ({
+            ...map,
+            [collectionId]: { ...map[collectionId], imageVersion: Date.now() }
+        }));
     },
 
     getVersion(collectionId: string): number {
-        return read()[collectionId]?.imageVersion ?? 0;
+        return store.get()[collectionId]?.imageVersion ?? 0;
     },
 
     getOrder(collectionId: string): string[] | undefined {
-        return read()[collectionId]?.itemOrder;
+        return store.get()[collectionId]?.itemOrder;
     },
 
     setOrder(collectionId: string, order: string[]): void {
-        const map = read();
-        map[collectionId] = { ...map[collectionId], itemOrder: order };
-        write(map);
+        store.update((map) => ({
+            ...map,
+            [collectionId]: { ...map[collectionId], itemOrder: order }
+        }));
     },
 
     clear(collectionId: string): void {
-        const map = read();
-        delete map[collectionId];
         activePreviews.delete(collectionId);
-        write(map);
+        store.update((map) => {
+            const next = { ...map };
+            delete next[collectionId];
+            return next;
+        });
     },
 
     /** Solo para tests. */
     _reset(): void {
         activePreviews.clear();
-        if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem(KEY);
-        }
+        store._reset();
     }
 };

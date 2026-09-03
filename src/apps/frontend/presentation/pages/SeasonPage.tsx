@@ -7,6 +7,8 @@ import { HeroFrame } from '../components/layout/DetailHero';
 import {
     DetailBody, DetailColumns, DetailHeading, DetailRow, DetailStatus, DetailTable, SectionLabel
 } from '../components/layout/DetailSections';
+import { DetailPageShell } from '../components/layout/DetailPageShell';
+import { SynopsisText } from '../components/layout/SynopsisText';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
@@ -36,10 +38,9 @@ export function SeasonPage({ showId, seasonN, navigate }: PageProps) {
         return null;
     }
     return (
-        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
-            <SeasonHero show={show} season={season} navigate={navigate} />
+        <DetailPageShell hero={<SeasonHero show={show} season={season} navigate={navigate} />}>
             <SeasonDetail show={show} season={season} navigate={navigate} />
-        </div>
+        </DetailPageShell>
     );
 }
 
@@ -108,7 +109,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                 </div>
 
                 <div style={{
-                    fontFamily: T.display,
+                    fontFamily: T.ui,
                     fontSize: short ? 22 : r.touch ? 28 : 38, fontWeight: 300,
                     color: 'rgba(255,255,255,0.75)', marginBottom: 6,
                     textAlign: 'center'
@@ -116,7 +117,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     {globalize.translate('Season')}
                 </div>
                 <h1 style={{
-                    fontFamily: T.display,
+                    fontFamily: T.ui,
                     fontVariantNumeric: 'tabular-nums',
                     // El número gigante es el protagonista, pero en táctil se
                     // mide contra el alto disponible: con `clamp(160px…)` no
@@ -272,13 +273,7 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
             <div style={{ paddingTop: r.touch ? 28 : 48, borderTop: `1px solid ${T.hairline}` }}>
                 <DetailColumns>
                     <div>
-                        <SectionLabel>Sinopsis de la temporada</SectionLabel>
-                        <p style={{
-                            fontFamily: T.ui, fontSize: r.touch ? 15 : 17, lineHeight: 1.55, margin: 0,
-                            color: 'rgba(255,255,255,0.82)', textWrap: 'pretty', fontWeight: 400
-                        }}>
-                            {season.synopsis}
-                        </p>
+                        <SynopsisText label='Sinopsis de la temporada' text={season.synopsis} />
                     </div>
                     <div>
                         <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>

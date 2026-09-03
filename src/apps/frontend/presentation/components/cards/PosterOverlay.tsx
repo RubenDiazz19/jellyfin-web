@@ -64,7 +64,7 @@ export function PosterOverlay({
             filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))'
         }}>
             <div style={{
-                fontFamily: T.display,
+                fontFamily: T.ui,
                 fontSize,
                 fontWeight,
                 lineHeight: 1.05,

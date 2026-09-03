@@ -15,6 +15,7 @@ vi.mock('lib/jellyfin-apiclient', () => ({
 }));
 
 import { LibraryViewModel } from '../LibraryViewModel';
+import { LIBRARY_SORT } from '../../../data/stores/librarySortStore';
 import type { ApiService } from '../../../data/api/ApiService';
 import type { Movie } from '../../../data/models';
 
@@ -35,7 +36,10 @@ function makeVm(movies: Movie[]) {
 
 const titles = (vm: LibraryViewModel) => vm.sortedMovies.value.map((m) => m.title);
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+    localStorage.clear();
+    LIBRARY_SORT._reset();
+});
 
 describe('orden de la biblioteca', () => {
     test('por título, con collator (acentos y números naturales)', () => {

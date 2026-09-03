@@ -14,6 +14,12 @@ function read<T>(key: string, parse: (raw: unknown) => T, fallback: () => T): T 
     try {
         return parse(JSON.parse(localStorage.getItem(key) || 'null'));
     } catch {
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw !== null) return parse(raw);
+        } catch {
+            // Storage inaccesible o restringido.
+        }
         return fallback();
     }
 }
@@ -300,3 +306,46 @@ export function createListStore<T>(options: {
         }
     };
 }
+
+/** Store clave-valor para estados estructurados persistidos en localStorage. */
+export type KVStore<T> = {
+    readonly event?: string;
+    get(): T;
+    set(value: T): void;
+    update(next: (current: T) => T): void;
+    _reset(): void;
+};
+
+export function createKVStore<T>(options: {
+    key: string;
+    fallback: () => T;
+    parse?: (raw: unknown) => T;
+    event?: string;
+}): KVStore<T> {
+    const { key, fallback, parse = (raw) => (raw != null ? (raw as T) : fallback()), event } = options;
+    let cache: T | null = null;
+
+    function ensure(): T {
+        cache ??= read(key, parse, fallback);
+        return cache;
+    }
+
+    const set = (value: T) => {
+        cache = value;
+        write(key, value, event);
+    };
+
+    return {
+        event,
+        get: () => ensure(),
+        set,
+        update(next) {
+            set(next(ensure()));
+        },
+        _reset() {
+            cache = null;
+            pending.delete(key);
+        }
+    };
+}
+
