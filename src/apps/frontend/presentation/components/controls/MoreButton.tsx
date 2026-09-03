@@ -21,6 +21,8 @@ import { ItemMenuList, type MenuItem } from './ItemMenuList';
 import { PopupPanel } from './PopupPanel';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
+import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
+import { useSignalSelector } from '../../../domain/bridge/useViewModel';
 import { usePlayer } from '../player/PlayerProvider';
 import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
@@ -53,6 +55,9 @@ type Props = {
     nextEpisodeId?: string;
     // Callback personalizado de reproducción aleatoria (para reproducir con el player propio)
     onShuffle?: () => void;
+    /** Datos del item para el modo selección cuando se abre desde una tarjeta. */
+    selectable?: SelectableItem;
+    onSelect?: () => void;
 };
 
 // Botón "más opciones" (tres puntos) con menú flotante y editor de metadata
@@ -69,7 +74,8 @@ type MenuPos = {
 
 export function MoreButton({
     id, size = 18, items, type = 'show', itemTitle, nextEpisodeId,
-    queueSubtitle, queuePoster, handle, hideTrigger, onShuffle
+    queueSubtitle, queuePoster, handle, hideTrigger, onShuffle,
+    selectable, onSelect
 }: Props) {
     const [open, setOpen] = useState(false);
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
@@ -232,9 +238,33 @@ export function MoreButton({
         { label: t('HeaderPlayAll'), fn: doPlayNextEpisode }
     ] : [];
 
+    const isSelected = useSignalSelector(
+        selectionVM.selectedIds,
+        (ids) => (selectable ? ids.has(selectable.id) : false)
+    );
+
+    const doSelect = () => {
+        if (!selectable) return;
+        if (onSelect) {
+            onSelect();
+        } else if (!selectionVM.selecting.value) {
+            selectionVM.start(selectable);
+        } else {
+            selectionVM.toggle(selectable);
+        }
+    };
+
+    const selectItem: MenuItem[] = selectable ? [
+        {
+            label: t(isSelected ? 'ClearSelection' : 'Select'),
+            fn: doSelect
+        }
+    ] : [];
+
     const menuByType: Record<ItemKind, MenuItem[]> = {
         movie: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
+            ...selectItem,
             ...queueing,
             // Sin «añadir a lista/colección»: de eso se encarga el botón
             // «Mi lista» de la ficha, que además enseña de un vistazo si el
@@ -250,6 +280,7 @@ export function MoreButton({
                 [{ label: t('ShufflePlay') || t('Shuffle'), fn: onShuffle }] :
                 [{ label: t('Shuffle'), fn: () => openNative(undefined, '&shuffle=true') }]),
             { isDivider: true },
+            ...selectItem,
             ...queueing,
             { isDivider: true },
             ...editing({ identify: true, images: true })
@@ -257,6 +288,7 @@ export function MoreButton({
         season: [
             ...continueEntries,
             { isDivider: true },
+            ...selectItem,
             ...queueing,
             { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
             { label: t('AddToCollection'), fn: () => setAddTo('collection') },
@@ -265,6 +297,7 @@ export function MoreButton({
         ],
         episode: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
+            ...selectItem,
             ...queueing,
             { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
             { isDivider: true },
@@ -274,7 +307,7 @@ export function MoreButton({
         ]
     };
 
-    const menu = items ?? (isReal ? menuByType[type] : legacyMenu(toast));
+    const menu = items ?? (isReal ? menuByType[type] : [...selectItem, ...legacyMenu(toast)]);
     const close = () => setOpen(false);
 
     return (

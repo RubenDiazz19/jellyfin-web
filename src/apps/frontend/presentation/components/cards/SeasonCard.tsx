@@ -7,9 +7,12 @@ import { FavButton } from '../controls/FavButton';
 import { CardProgress } from './CardProgress';
 import { CardOverlay } from './CardOverlay';
 import { PosterFrame } from './PosterFrame';
+import { SelectionMark } from './SelectionMark';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
+import { useSelectionMode } from '../controls/useSelectionMode';
 import type { Show, Season } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
+import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { seasonKey } from '../../../domain/stores';
 
 type Props = { show: Show; season: Season; navigate: Navigate };
@@ -19,17 +22,32 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
     // Primer episodio no visto: lo mismo que calcula la ficha de temporada,
     // para que «Reproducir siguiente» del menú contextual arranque bien.
     const nextEp = season.episodes.find((e) => e.watched < 1) || season.episodes[0];
+    const sId = season.jfId ?? seasonKey(show.id, season.n);
+    const wKey = seasonKey(show.id, season.n);
+    const selectable: SelectableItem = {
+        id: sId,
+        title: `${show.title} · ${globalize.translate('ValueSeason', season.n)}`,
+        kind: 'season',
+        poster: season.backdrop ?? show.poster,
+        year: season.year,
+        watchedKey: wKey
+    };
+    const sel = useSelectionMode(
+        selectable,
+        () => navigate({ page: 'season', showId: show.id, seasonN: season.n })
+    );
     const ctx = useItemContextMenu({
-        id: season.jfId ?? seasonKey(show.id, season.n),
+        id: sId,
         type: 'season',
         itemTitle: `${show.title} · ${globalize.translate('ValueSeason', season.n)}`,
         nextEpisodeId: nextEp?.jfId,
         queueSubtitle: nextEp?.title,
-        queuePoster: show.poster
+        queuePoster: show.poster,
+        selectable
     });
     return (
         <div
-            onClick={() => navigate({ page: 'season', showId: show.id, seasonN: season.n })}
+            onClick={sel.onClick}
             onContextMenu={ctx.onContextMenu}
             style={{ cursor: 'pointer', width: 230, flex: '0 0 230px' }}
             className='jfp-hoverlift'
@@ -37,10 +55,13 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
             {/* Una temporada sin póster propio (el proveedor no siempre lo
                 tiene) se queda con el de la serie: es lo que Jellyfin enseña
                 en su sitio, y mejor eso que un rectángulo gris. */}
-            <PosterFrame style={{
-                backgroundImage: `url(${season.backdrop ?? show.poster})`,
-                backgroundSize: 'cover', backgroundPosition: 'center'
-            }}>
+            <PosterFrame
+                selected={sel.selected}
+                style={{
+                    backgroundImage: `url(${season.backdrop ?? show.poster})`,
+                    backgroundSize: 'cover', backgroundPosition: 'center'
+                }}
+            >
                 <div style={{
                     position: 'absolute', inset: 0,
                     background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.94) 100%)'
@@ -51,18 +72,24 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
                     left={14}
                     right={14}
                     topLeft={
-                        <div style={{
-                            fontFamily: T.ui, fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase',
-                            color: 'rgba(255,255,255,0.78)', fontWeight: 500
-                        }}>
-                            Temporada
-                        </div>
+                        sel.selecting ? (
+                            <SelectionMark selected={sel.selected} />
+                        ) : (
+                            <div style={{
+                                fontFamily: T.ui, fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase',
+                                color: 'rgba(255,255,255,0.78)', fontWeight: 500
+                            }}>
+                                Temporada
+                            </div>
+                        )
                     }
                     topRight={
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <SeasonWatchedButton show={show} season={season} size={15} />
-                            <FavButton id={seasonKey(show.id, season.n)} size={15} />
-                        </div>
+                        sel.selecting ? null : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <SeasonWatchedButton show={show} season={season} size={15} />
+                                <FavButton id={wKey} size={15} />
+                            </div>
+                        )
                     }
                 />
 

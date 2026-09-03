@@ -22,6 +22,8 @@ import { useListSync } from '../../domain/bridge/useLists';
 
 import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
+import { useSelectionMode } from '../components/controls/useSelectionMode';
+import { selectionVM, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
 
 type Props = { kind: ListKind; listId: string; navigate: Navigate };
 
@@ -50,6 +52,21 @@ export function ListPage({ kind, listId, navigate }: Props) {
             .then((all) => setItems(displayItems(kind, all)))
             .catch((e) => setError((e as Error).message));
     }, [kind, listId]);
+
+    useEffect(() => {
+        if (!items) return;
+        const selectable: SelectableItem[] = items.map((item) => ({
+            id: item.id,
+            title: item.title,
+            kind: item.kind === 'movie' ? 'movie' : item.kind === 'episode' ? 'episode' : 'show',
+            poster: item.poster,
+            year: item.year
+        }));
+        selectionVM.setVisibleItems(selectable);
+        return () => {
+            selectionVM.setVisibleItems([]);
+        };
+    }, [items]);
 
     const kindLabel = globalize.translate(kind === 'playlist' ? 'Playlists' : 'Collections');
 
@@ -220,19 +237,28 @@ function ListGrid({ items, error, navigate }: {
 
 /**
  * Un título de la lista.
-
- *
- * No entra en el modo selección, a diferencia de la búsqueda: en una lista lo
- * que se hace con varios títulos a la vez es quitarlos de ella, y eso vive en
- * el menú de cada uno.
  */
 function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
+    const selectable: SelectableItem = {
+        id: item.id,
+        title: item.title,
+        kind: item.kind === 'movie' ? 'movie' : item.kind === 'episode' ? 'episode' : 'show',
+        poster: item.poster,
+        year: item.year
+    };
+    const sel = useSelectionMode(
+        selectable,
+        () => (item.kind === 'movie' ?
+            navigate({ page: 'movie', movieId: item.id }) :
+            navigate({ page: 'show', showId: item.seriesId ?? item.id }))
+    );
     const ctx = useItemContextMenu({
         id: item.id,
         type: item.kind === 'movie' ? 'movie' : 'show',
         itemTitle: item.title,
         queueSubtitle: item.year ? String(item.year) : undefined,
-        queuePoster: item.poster
+        queuePoster: item.poster,
+        selectable
     });
     const kindKey = item.kind === 'movie' ? 'Movie' : item.kind === 'episode' ? 'Episode' : 'Series';
     return (
@@ -245,11 +271,9 @@ function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Naviga
                 // Un episodio suelto lleva a su serie: sin temporada ni número
                 // no se puede construir la ruta del episodio, y la ficha de la
                 // serie es el destino útil más cercano.
-                onClick: () => (item.kind === 'movie' ?
-                    navigate({ page: 'movie', movieId: item.id }) :
-                    navigate({ page: 'show', showId: item.seriesId ?? item.id })),
-                selecting: false,
-                selected: false,
+                onClick: sel.onClick,
+                selecting: sel.selecting,
+                selected: sel.selected,
                 onContextMenu: ctx.onContextMenu,
                 contextMenu: ctx.menu
             }}

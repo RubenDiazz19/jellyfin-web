@@ -42,7 +42,7 @@ vi.mock('../SearchFilters', () => ({ SearchFilters: () => null }));
 vi.mock('../SearchResults', () => ({ SearchResults: () => null }));
 vi.mock('../../controls/SelectionBar', () => ({ SelectionBar: () => null }));
 vi.mock('../../../../domain/viewModels/SelectionViewModel', () => ({
-    selectionVM: { stop: () => undefined }
+    selectionVM: { stop: () => undefined, setVisibleItems: () => undefined }
 }));
 
 let root: Root | null = null;

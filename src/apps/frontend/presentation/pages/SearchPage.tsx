@@ -3,7 +3,7 @@
 // una capa; en escritorio la lupa de la barra abre `SearchOverlay`, que usa
 // exactamente estos mismos componentes sobre el mismo ViewModel.
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -12,15 +12,15 @@ import { Nav } from '../components/layout/Nav';
 import { SearchFilters } from '../components/search/SearchFilters';
 import { SearchInput } from '../components/search/SearchInput';
 import { SearchResults } from '../components/search/SearchResults';
-import { SelectionBar } from '../components/controls/SelectionBar';
 import { searchVM } from '../../domain/viewModels/SearchViewModel';
 import { selectionVM, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
-import { useVmSignals } from '../../domain/bridge/useViewModel';
+import { useSignalValue } from '../../domain/bridge/useViewModel';
 import { MC, useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 
 export function SearchPage({ navigate }: { navigate: Navigate }) {
     const r = useResponsive();
+    const rawResults = useSignalValue(searchVM.results);
 
     useEffect(() => {
         // start() re-filtra cuando cambian favoritos/vistos desde otro sitio;
@@ -31,8 +31,20 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
             stop();
             // Salir de la búsqueda no debe dejar una selección viva.
             selectionVM.stop();
+            selectionVM.setVisibleItems([]);
         };
     }, []);
+
+    const selectable: SelectableItem[] = useMemo(() => {
+        const results = rawResults ?? [];
+        return results.map((i) => ({
+            id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
+        }));
+    }, [rawResults]);
+
+    useEffect(() => {
+        selectionVM.setVisibleItems(selectable);
+    }, [selectable]);
 
     return (
         <div style={{
@@ -57,18 +69,6 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
             <div style={{ padding: r.touch ? `24px ${r.pagePad}px 56px` : '36px 64px 80px' }}>
                 <SearchResults navigate={navigate} />
             </div>
-
-            <SearchSelectionBar />
         </div>
     );
-}
-
-function SearchSelectionBar() {
-    useVmSignals(selectionVM, (vm) => (vm?.selecting ? [vm.selecting] : []));
-    useVmSignals(searchVM, (vm) => (vm?.results ? [vm.results] : []));
-    if (!selectionVM.selecting?.value) return null;
-    const selectable: SelectableItem[] = (searchVM.results?.value ?? []).map((i) => ({
-        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
-    }));
-    return <SelectionBar items={selectable} />;
 }

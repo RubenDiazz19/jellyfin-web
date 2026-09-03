@@ -11,8 +11,8 @@ import { aboveNav } from '../nav/navMetrics';
 import { BulkTagsDialog } from './BulkTagsDialog';
 
 type Props = {
-    /** Todo lo visible ahora mismo, para «seleccionar todo». */
-    items: SelectableItem[];
+    /** Todo lo visible ahora mismo, para «seleccionar todo». Opcional si se resuelve desde SelectionViewModel. */
+    items?: SelectableItem[];
 };
 
 /**
@@ -20,16 +20,18 @@ type Props = {
  * quede por encima de la rejilla y del FAB de subir, sin que ningún
  * `overflow` de la página la recorte.
  */
-export function SelectionBar({ items }: Props) {
+export function SelectionBar({ items: propItems }: Props = {}) {
     const toast = useToast();
     const [tagsOpen, setTagsOpen] = useState(false);
-    useVmSignals(selectionVM, (vm) => [vm.selecting, vm.selected, vm.busy]);
+    useVmSignals(selectionVM, (vm) => [vm.selecting, vm.selected, vm.busy, vm.visibleItems]);
 
     if (!selectionVM.selecting.value) return null;
 
+    const items = propItems ?? selectionVM.visibleItems.value;
     const count = selectionVM.count.value;
     const busy = selectionVM.busy.value;
     const disabled = busy || count === 0;
+    const hasItems = items.length > 0;
 
     const doWatched = async (watched: boolean) => {
         try {
@@ -68,12 +70,14 @@ export function SelectionBar({ items }: Props) {
                     {globalize.translate('HeaderSelectedCount', count)}
                 </span>
 
-                <BarButton
-                    onClick={() => selectionVM.selectAll(items)}
-                    disabled={busy || count === items.length}
-                >
-                    {globalize.translate('SelectAll')}
-                </BarButton>
+                {hasItems && (
+                    <BarButton
+                        onClick={() => selectionVM.selectAll(items)}
+                        disabled={busy || count === items.length}
+                    >
+                        {globalize.translate('SelectAll')}
+                    </BarButton>
+                )}
                 <BarButton onClick={() => doWatched(true)} disabled={disabled}>
                     {globalize.translate('MarkPlayed')}
                 </BarButton>
@@ -140,4 +144,11 @@ function BarButton({
             {children}
         </button>
     );
+}
+
+/** Barra de selección a nivel de app. Se muestra en cualquier pantalla cuando hay selección activa. */
+export function GlobalSelectionBar() {
+    useVmSignals(selectionVM, (vm) => [vm.selecting]);
+    if (!selectionVM.selecting.value) return null;
+    return <SelectionBar />;
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -14,7 +14,6 @@ import { libraryVM, type SortKey } from '../../domain/viewModels/LibraryViewMode
 import {
     selectionVM, type SelectableItem
 } from '../../domain/viewModels/SelectionViewModel';
-import { SelectionBar } from '../components/controls/SelectionBar';
 import { SelectToggle } from '../components/controls/SelectToggle';
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
@@ -41,16 +40,22 @@ export function LibraryPage({ kind, navigate }: Props) {
     // móvil/tablet), y en desktop las series fijan ancho.
     const cardWidth = !isSeries || r.touch ? null : POSTER_W;
     // Lo que «seleccionar todo» abarca: exactamente lo que hay en la rejilla.
-    const selectable: SelectableItem[] = items.map((i) => ({
+    const selectable: SelectableItem[] = useMemo(() => items.map((i) => ({
         id: i.id,
         title: i.title,
         kind: isSeries ? 'show' : 'movie',
         poster: i.poster,
         year: i.year
-    }));
+    })), [items, isSeries]);
 
-    // Salir de la página no debe dejar una selección viva en otra pantalla.
-    useEffect(() => () => selectionVM.stop(), []);
+    // Registrar los items visibles para que la barra de selección global sepa qué seleccionar en lote
+    useEffect(() => {
+        selectionVM.setVisibleItems(selectable);
+        return () => {
+            selectionVM.setVisibleItems([]);
+            selectionVM.stop();
+        };
+    }, [selectable]);
 
     return (
         <>
@@ -99,7 +104,6 @@ export function LibraryPage({ kind, navigate }: Props) {
                     </CardGrid>
                 </LoadState>
             </PageSection>
-            <SelectionBar items={selectable} />
             <ScrollTopFab />
         </>
     );

@@ -6,8 +6,11 @@ import { FavButton } from '../controls/FavButton';
 import { CardProgress } from './CardProgress';
 import { CardOverlay } from './CardOverlay';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
+import { useSelectionMode } from '../controls/useSelectionMode';
+import { SelectionMark } from './SelectionMark';
 import type { Show, Season, Episode } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
+import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { episodeKey } from '../../../domain/stores';
 
 type Props = { show: Show; season: Season; ep: Episode; navigate: Navigate };
@@ -19,16 +22,30 @@ export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: P
     const watched = ep.watched >= 1 || liveW;
     const inProgress = !watched && ep.watched > 0 && ep.watched < 1;
     const revealed = watched || inProgress;
+    const epId = ep.jfId ?? episodeKey(show.id, season.n, ep.n);
+    const wKey = episodeKey(show.id, season.n, ep.n);
+    const selectable: SelectableItem = {
+        id: epId,
+        title: ep.title ?? `${show.title} · E${ep.n}`,
+        kind: 'episode',
+        poster: ep.thumb ?? show.poster,
+        watchedKey: wKey
+    };
+    const sel = useSelectionMode(
+        selectable,
+        () => navigate({ page: 'episode', showId: show.id, seasonN: season.n, epN: ep.n })
+    );
     const ctx = useItemContextMenu({
-        id: ep.jfId ?? episodeKey(show.id, season.n, ep.n),
+        id: epId,
         type: 'episode',
         itemTitle: ep.title ?? `${show.title} · E${ep.n}`,
         queueSubtitle: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')}`,
-        queuePoster: ep.thumb ?? show.poster
+        queuePoster: ep.thumb ?? show.poster,
+        selectable
     });
     return (
         <div
-            onClick={() => navigate({ page: 'episode', showId: show.id, seasonN: season.n, epN: ep.n })}
+            onClick={sel.onClick}
             onContextMenu={ctx.onContextMenu}
             style={{ position: 'relative', cursor: 'pointer' }}
             className='jfp-hoverlift'
@@ -36,8 +53,8 @@ export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: P
             <div className='jfp-card-m3' style={{
                 aspectRatio: '16/9', borderRadius: 4, overflow: 'hidden', position: 'relative',
                 background: '#0b0b0b',
-                outline: ep.current ? '1px solid rgba(255,255,255,0.95)' : 'none',
-                outlineOffset: ep.current ? 2 : 0
+                outline: sel.selected ? '3px solid #fff' : ep.current ? '1px solid rgba(255,255,255,0.95)' : 'none',
+                outlineOffset: sel.selected ? -3 : ep.current ? 2 : 0
             }}>
                 <div style={{
                     position: 'absolute', inset: 0,
@@ -52,15 +69,19 @@ export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: P
                     top={8}
                     right={8}
                     topLeft={
-                        <div style={{
-                            fontFamily: T.display, fontSize: 30, lineHeight: 1,
-                            textShadow: '0 2px 14px rgba(0,0,0,0.6)',
-                            marginTop: 2, marginLeft: 4
-                        }}>
-                            {String(ep.n).padStart(2, '0')}
-                        </div>
+                        sel.selecting ? (
+                            <SelectionMark selected={sel.selected} />
+                        ) : (
+                            <div style={{
+                                fontFamily: T.display, fontSize: 30, lineHeight: 1,
+                                textShadow: '0 2px 14px rgba(0,0,0,0.6)',
+                                marginTop: 2, marginLeft: 4
+                            }}>
+                                {String(ep.n).padStart(2, '0')}
+                            </div>
+                        )
                     }
-                    topRight={<FavButton id={episodeKey(show.id, season.n, ep.n)} size={15} />}
+                    topRight={sel.selecting ? null : <FavButton id={wKey} size={15} />}
                 />
 
                 {watched && (

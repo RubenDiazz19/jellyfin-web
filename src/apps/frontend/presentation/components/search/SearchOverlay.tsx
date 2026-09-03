@@ -5,7 +5,7 @@
 // funciona igual esté uno en Inicio, en una ficha o en la biblioteca, y la
 // capa queda por encima de cualquier hero a pantalla completa.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import globalize from 'lib/globalize';
@@ -15,11 +15,10 @@ import { useResponsive } from '../../theme/responsive';
 import { SearchFilters } from './SearchFilters';
 import { SearchInput } from './SearchInput';
 import { SearchResults } from './SearchResults';
-import { SelectionBar } from '../controls/SelectionBar';
 import { NAV_BOTTOM_VAR } from '../nav/navMetrics';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
-import { useVmSignals } from '../../../domain/bridge/useViewModel';
+import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 
 export function SearchOverlay({ navigate }: { navigate: Navigate }) {
@@ -132,17 +131,24 @@ export function SearchOverlay({ navigate }: { navigate: Navigate }) {
                 <SearchResults navigate={navigateAndClose} />
             </div>
 
-            <SearchSelectionBar />
+            <SearchSelectionSync />
         </div>
     );
 }
 
-function SearchSelectionBar() {
-    useVmSignals(selectionVM, (vm) => (vm?.selecting ? [vm.selecting] : []));
-    useVmSignals(searchVM, (vm) => (vm?.results ? [vm.results] : []));
-    if (!selectionVM.selecting?.value) return null;
-    const selectable: SelectableItem[] = (searchVM.results?.value ?? []).map((i) => ({
-        id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
-    }));
-    return <SelectionBar items={selectable} />;
+function SearchSelectionSync() {
+    const rawResults = useSignalValue(searchVM.results);
+    const selectable: SelectableItem[] = useMemo(() => {
+        const results = rawResults ?? [];
+        return results.map((i) => ({
+            id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
+        }));
+    }, [rawResults]);
+    useEffect(() => {
+        selectionVM.setVisibleItems(selectable);
+        return () => {
+            selectionVM.setVisibleItems([]);
+        };
+    }, [selectable]);
+    return null;
 }

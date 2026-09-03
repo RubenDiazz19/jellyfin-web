@@ -14,6 +14,8 @@ import {
 import { HomePage } from '../presentation/pages/HomePage';
 import { SearchOverlay } from '../presentation/components/search/SearchOverlay';
 import { TaskProgress } from '../presentation/components/tasks/TaskProgress';
+import { GlobalSelectionBar } from '../presentation/components/controls/SelectionBar';
+import { selectionVM } from '../domain/viewModels/SelectionViewModel';
 import { LoginPage } from '../presentation/pages/LoginPage';
 
 // Páginas de acceso puntual: se cargan bajo demanda para no engordar el
@@ -145,6 +147,11 @@ function AuthedApp() {
 
     useEffect(prefetchTabs, []);
 
+    // Limpiar cualquier selección viva al cambiar de pantalla
+    useEffect(() => {
+        selectionVM.stop();
+    }, [location.pathname]);
+
     // Scroll al top en cada cambio de ruta. Un único reset no basta: la
     // inercia del ratón puede seguir viva tras el click y el documento crece
     // cuando llegan datos e imágenes (lo que reabre el rango de scroll). Por
@@ -274,6 +281,9 @@ function AuthedApp() {
                 el usuario se vaya a otra pantalla, que es lo que hace mientras
                 espera. */}
             <TaskProgress />
+            {/* Fuera del wrapper de la ruta: la barra de selección flotante
+                aparece cuando hay items marcados en cualquier página. */}
+            <GlobalSelectionBar />
         </>
     );
 }

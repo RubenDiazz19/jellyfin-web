@@ -43,6 +43,16 @@ describe('watchedKey', () => {
         expect(watchedKey(movie)).toBe('movie-m1');
         expect(watchedKey(show)).toBe('s1');
     });
+
+    test('usa watchedKey explícito si está presente', () => {
+        const ep: SelectableItem = {
+            id: 'ep1',
+            title: 'Episodio 1',
+            kind: 'episode',
+            watchedKey: 'show-s1-e1'
+        };
+        expect(watchedKey(ep)).toBe('show-s1-e1');
+    });
 });
 
 describe('selección', () => {
@@ -74,6 +84,13 @@ describe('selección', () => {
         vm.toggle(movie);
         vm.selectAll([movie, show]);
         expect(vm.count.value).toBe(2);
+    });
+
+    test('setVisibleItems actualiza los items visibles', () => {
+        const vm = makeVm();
+        expect(vm.visibleItems.value).toEqual([]);
+        vm.setVisibleItems([movie, show]);
+        expect(vm.visibleItems.value).toEqual([movie, show]);
     });
 });
 

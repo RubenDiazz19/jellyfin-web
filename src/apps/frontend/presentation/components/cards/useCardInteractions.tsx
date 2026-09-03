@@ -9,6 +9,7 @@
 import type { MouseEvent, ReactNode } from 'react';
 import type { Navigate } from '../../../app/router';
 import type { CatalogItem } from '../../../domain/models';
+import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
 import { useSelectionMode } from '../controls/useSelectionMode';
 
@@ -25,14 +26,15 @@ export type CardInteractions = {
 };
 
 export function useCardInteractions(item: CardItem, navigate: Navigate): CardInteractions {
+    const selectable: SelectableItem = {
+        id: item.id,
+        title: item.title,
+        kind: item.kind,
+        poster: item.poster,
+        year: item.year
+    };
     const sel = useSelectionMode(
-        {
-            id: item.id,
-            title: item.title,
-            kind: item.kind,
-            poster: item.poster,
-            year: item.year
-        },
+        selectable,
         () => navigate(item.kind === 'show' ?
             { page: 'show', showId: item.id } :
             { page: 'movie', movieId: item.id })
@@ -42,7 +44,8 @@ export function useCardInteractions(item: CardItem, navigate: Navigate): CardInt
         type: item.kind,
         itemTitle: item.title,
         queueSubtitle: String(item.year),
-        queuePoster: item.poster
+        queuePoster: item.poster,
+        selectable
     });
     return {
         onClick: sel.onClick,

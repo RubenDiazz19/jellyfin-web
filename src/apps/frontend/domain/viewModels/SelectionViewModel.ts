@@ -15,9 +15,10 @@ import { WATCHED } from '../../data/stores/watchedStore';
 export type SelectableItem = {
     id: string;
     title: string;
-    kind: 'show' | 'movie';
+    kind: 'show' | 'movie' | 'season' | 'episode';
     poster?: string;
-    year?: number;
+    year?: number | string;
+    watchedKey?: string;
 };
 
 /**
@@ -28,6 +29,7 @@ export type SelectableItem = {
  * ve el usuario al instante del que se guarda.
  */
 export function watchedKey(item: SelectableItem): string {
+    if (item.watchedKey) return item.watchedKey;
     return item.kind === 'movie' ? movieKey(item.id) : item.id;
 }
 
@@ -35,6 +37,8 @@ export class SelectionViewModel {
     /** Modo selección activo: las tarjetas pasan a alternar en vez de navegar. */
     selecting = signal(false);
     selected = signal<SelectableItem[]>([]);
+    /** Items visibles en la pantalla actual para «seleccionar todo». */
+    visibleItems = signal<SelectableItem[]>([]);
     /** Una acción en lote en curso; la barra se deshabilita mientras tanto. */
     busy = signal(false);
 
@@ -69,6 +73,10 @@ export class SelectionViewModel {
     start(item?: SelectableItem) {
         this.selecting.value = true;
         this.selected.value = item ? [item] : [];
+    }
+
+    setVisibleItems(items: SelectableItem[]) {
+        this.visibleItems.value = items;
     }
 
     selectAll(items: SelectableItem[]) {

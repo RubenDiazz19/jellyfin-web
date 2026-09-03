@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { MoreButton, type ItemMenuHandle } from './MoreButton';
 
 // Clic derecho sobre una tarjeta: abre el mismo menú que los tres puntos de la
@@ -20,6 +21,9 @@ type Options = {
     queuePoster?: string;
     nextEpisodeId?: string;
     onShuffle?: () => void;
+    /** Pasar null si se desea desactivar la opción de selección explícitamente */
+    selectable?: SelectableItem | null;
+    onSelect?: () => void;
 };
 
 export function useItemContextMenu(opts: Options) {
@@ -61,6 +65,13 @@ export function useItemContextMenu(opts: Options) {
                 queuePoster={opts.queuePoster}
                 nextEpisodeId={opts.nextEpisodeId}
                 onShuffle={opts.onShuffle}
+                selectable={opts.selectable === null ? undefined : (opts.selectable ?? {
+                    id: opts.id,
+                    title: opts.itemTitle,
+                    kind: opts.type,
+                    poster: opts.queuePoster
+                })}
+                onSelect={opts.onSelect}
             />
         ) : null
     };
