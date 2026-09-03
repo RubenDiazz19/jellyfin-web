@@ -10,14 +10,14 @@ lo vigila), los comentarios van en español y el cierre de cada fase es
 
 ### Completadas (2026-08-31 / 2026-09-03)
 
-- **1.1** Saliencia CIELAB con blur gausiano 5×5 separable (σ≈1.0).
+- **1.1** Saliencia CIELAB con blur gausiano 5×5 separable (σ≈1.0). ✅
 - **1.2** Detección de piel YCbCr (Cb∈[77,127] AND Cr∈[133,173]) como
-  proxy de cara, integrada en la señal combinada.
+  proxy de cara, integrada en la señal combinada. ✅
 - **1.3** Energía combinada: 35% salencia cromática + 55% bordes (luma
   linealizada) + 10% piel. Las tres señales se fusionan antes del
-  suavizado.
+  suavizado. ✅
 - **1.4** Peso de regla de tercios: boost ×1.08 suave en 1/3 y 2/3 del
-  ancho, decae linealmente en ±15 columnas.
+  ancho, decae linealmente en ±15 columnas. ✅
 - **1.5** Cache persistente en IndexedDB (`presentation/theme/dynamicColor.ts`):
   L2 async con TTL de 90 días usando IndexedDB nativa sin dependencias externas.
   El cache LRU en memoria se mantiene como L1 rápido. ✅
@@ -33,9 +33,14 @@ lo vigila), los comentarios van en español y el cierre de cada fase es
 | **D1** | `data/session/session.ts` | `createdAt: 0` hardcodeado — campo vestigial | ✅ eliminado |
 | **D2** | `data/api/http.ts` | `res.json()` sin validar content-type | ✅ validación añadida |
 | **D3** | `data/api/playback.ts` | Reporting functions tragan errores silenciosamente | ✅ `console.warn` añadido |
-| **A1** | `presentation/components/search/SearchPills.tsx` | `aria-label` en español | ✅ usa `globalize.translate()` |
-| **A2** | `legacy/components/imageUploader/imageUploader.js` | `<img>` sin atributo `alt` | ✅ atributo `alt` añadido |
-| **C1** | `config/eslint/app.mjs` | ESLint type-checked rules | ✅ verificado y acotado |
+
+### Pendientes
+
+| # | Archivo | Línea | Problema |
+|---|---------|-------|----------|
+| **A1** | `presentation/components/search/SearchPills.tsx` | 165 | `aria-label` hardcodeado en español — debería usar `globalize.translate()` |
+| **A2** | `legacy/components/imageUploader/imageUploader.js` | 69 | `<img>` sin atributo `alt` |
+| **C1** | `config/eslint/app.mjs` | 154 | TODO pendiente — añadir `tseslint.configs.recommendedTypeChecked` |
 
 ### Dependencias obsoletas
 
@@ -46,81 +51,6 @@ lo vigila), los comentarios van en español y el cierre de cada fase es
 | `screenfull` | 6.0.2 | La API Fullscreen es nativa en todos los targets |
 | `headroom.js` | 0.12.0 | Solo usado en `libraryMenu.js` — reemplazable con `position: sticky` + `IntersectionObserver` |
 | `react-lazy-load-image-component` | 1.6.3 | Nativo `loading="lazy"` soportado en todos los targets |
-
----
-
-## Fase 3 — Eliminar código muerto (~635 líneas) — ✅ Completada (2026-09-03)
-
-| # | Archivo | Líneas | Problema | Estado |
-|---|---------|--------|----------|--------|
-| **M1** | `data/stores/imageStorage.ts` | 41 | Archivo entero muerto | ✅ Eliminado |
-| **M2** | `presentation/components/collection/CollectionCarousel.tsx` | 395 | Componente sin uso | ✅ Eliminado |
-| **M3** | `presentation/components/cards/LandscapeTile.tsx` | 122 | Componente sin uso | ✅ Eliminado |
-| **M4** | `presentation/components/controls/ImageUploadMenu.tsx` | 42 | Componente sin uso | ✅ Eliminado |
-| **M5** | `presentation/components/media/RuntimeDisplay.tsx` | ~15 | `EndTime` solo usado internamente | ✅ Privado |
-| **M6** | `domain/viewModels/SearchViewModel.ts` | ~12 | Signals muertos `typeFilter`, `stateFilter`, `ratingFilter` | ✅ Eliminados |
-| **M7** | `domain/viewModels/CastViewModel.ts` | ~3 | `deviceName` signal sin lectura | ✅ Eliminado |
-| **M8** | `data/stores/librarySortStore.ts:7` | 1 | `SORT_KEYS` exportado solo uso interno | ✅ Unexported |
-| **M9** | `data/stores/themeStore.ts:25,31` | 2 | `THEME_DEFAULTS` e `isSeedSource` exportados | ✅ Unexported |
-| **M10** | `data/stores/persistentStore.ts:79` | 1 | `flushPersistentStores` | ✅ Unexported |
-
----
-
-## Fase 4 — ViewModel: extraer `loadingError()` + `guardedLoad()` — ✅ Completada (2026-09-03)
-
-1. Creado `domain/viewModels/loadingState.ts` con `loadingError()`.
-2. Creado `domain/viewModels/guardedLoad.ts` con `guardedLoad()`.
-3. Refactorizados `CatalogViewModel`, `DetailViewModel`, `SearchViewModel`, `AvatarPickerViewModel` y `HomeViewModel`.
-
----
-
-## Fase 5 — ViewModel: extraer `mutationOnLoad()` — ✅ Completada (2026-09-03)
-
-1. Creado `domain/viewModels/mutationSubscription.ts` con `mutationOnLoad()`.
-2. Refactorizados `DetailViewModel`, `HomeViewModel` y `LibraryViewModel`.
-
----
-
-## Fase 6 — Cards: unificar familia de cards (~200 líneas) — ✅ Completada (2026-09-03)
-
-1. **6a.** Extendido `useCardInteractions` para soportar `season` y `episode`. Refactorizados `SeasonCard`, `EpCard` y `CwCard`.
-2. **6b.** Creado `LandscapeCardShell` encapsulando el ratio 16:9, overlays, progreso y selección. Refactorizados `CwCard` y `EpCard`.
-3. **6c.** Generalizado `PosterShell` con soporte de `variant="full" | "tile"`. `PosterTile` reducido a un wrapper de 25 líneas delegando en `PosterShell`.
-
----
-
-## Fase 7 — Stores: crear `createKVStore()` (~100 líneas) — ✅ Completada (2026-09-03)
-
-1. Creado `createKVStore<T>()` en `data/stores/persistentStore.ts`.
-2. Refactorizados `themeStore.ts`, `librarySortStore.ts` y `collectionStylesStore.ts`.
-
----
-
-## Fase 8 — Theme: unificar vocabulario de colores (~55 líneas) — ✅ Completada (2026-09-03)
-
-1. Creado objeto `C` en `tokens.ts` con variables CSS adaptativas y fallbacks `#000`/`#fff`.
-2. Desacoplado `responsive.ts` de `MobileThemeProvider` eliminando el ciclo de imports y la constante `MC`.
-3. Reemplazados patrones `r.touch ? MC.x : T.x` por `C.x` en toda la aplicación.
-4. Movido `format.ts` a `presentation/utils/format.ts`.
-5. Fusionado `T.display` en `T.ui` y retirado `display` de `tokens.ts`.
-
----
-
-## Fase 9 — Pages: extraer componentes compartidos (~130 líneas) — ✅ Completada (2026-09-03)
-
-1. Creado `DetailPageShell.tsx` encapsulando el contenedor raíz de páginas de detalle.
-2. Creado `SynopsisText.tsx` con clamp opcional accesible y soporte de plegado/desplegado.
-3. Creado `DetailOverviewSection.tsx` unificando sinopsis y reparto.
-4. Creado `FilmographyRow.tsx` unificando las filas de películas y series en `PersonPage.tsx`.
-5. Refactorizados `MoviePage.tsx`, `ShowPage.tsx`, `SeasonPage.tsx`, `EpisodePage.tsx` y `PersonPage.tsx`.
-
----
-
-## Fase 10 — Shared: tests faltantes y limpieza menor — ✅ Completada (2026-09-03)
-
-1. Añadido `shared/__tests__/focusPatch.test.ts` con cobertura completa del monkey-patch y eventos hover.
-2. Añadido `shared/__tests__/fullscreen.test.ts` con cobertura de API estándar, vendor prefixes (webkit, ms) y captura de errores.
-3. Centralizados todos los umbrales de gestos táctiles en `shared/gestures/thresholds.ts`.
 
 ---
 
@@ -230,9 +160,9 @@ en el código. Los items pendientes quedan en la Fase 2 de este archivo.
 
 ## Decisiones tomadas (no son deuda pendiente)
 
-- **`imageStorage` se elimina en la Fase 3 (M1).** `setImage` no tiene ni un
+- **`imageStorage` NO se migró a IndexedDB.** `setImage` no tiene ni un
   llamador: los fondos que sube el usuario van al servidor
-  (`listsStore.setCover`). El archivo entero es dead code.
+  (`listsStore.setCover`).
 - **`HomeViewModel`, `ShowViewModel` y `MovieViewModel` se quedan fuera de
   `CatalogViewModel`.** El primero tiene dos cargas independientes con su
   propio par `loading`/`ready`; los otros dos no son catálogos sino una entidad

@@ -79,37 +79,197 @@ const FOCUS_MAX = 80;
  * que dista del foco `f·|0.5 - c| ≤ f/2`, y f/2 es exactamente la
  * semianchura de la ventana.
  */
+// Lookup table para sRGB -> luma linealizada
+const SRGB_TO_LIN = new Float32Array(256);
+for (let i = 0; i < 256; i++) {
+    const v = i / 255;
+    SRGB_TO_LIN[i] = v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+
+// Kernel Gaussiano 1D separable de 5 coeficientes (σ ≈ 1.0, suma = 1.0)
+const GAUSS_5 = [0.0545, 0.2442, 0.4026, 0.2442, 0.0545] as const;
+
+function labF(t: number): number {
+    return t > 0.00885645167 ? Math.cbrt(t) : 7.787037 * t + 0.13793103;
+}
+
+/**
+ * Dónde está lo que importa de la imagen, en % de su ancho.
+ *
+ * Algoritmo combinado multi-señal:
+ *   1. Saliencia cromática CIELAB (35%): distancia perceptiva ΔE respecto a la media de la imagen.
+ *   2. Bordes en luma linealizada (55%): gradientes horizontal y vertical.
+ *   3. Detección de piel en espacio YCbCr (10%): proxy rápido de rostros humanos (Cb∈[77,127], Cr∈[133,173]).
+ *   4. Suavizado gaussiano 5×5 separable (σ≈1.0): filtra picos de ruido aislados.
+ *   5. Regla de los tercios: boost ×1.08 suave en 1/3 y 2/3 del ancho, decayendo en ±15 columnas.
+ *   6. Centroide ponderado de los picos que superan la media, acotado entre FOCUS_MIN (20%) y FOCUS_MAX (80%).
+ */
 export function focusFromPixels(
     data: Uint8ClampedArray, w: number, h: number
 ): number | null {
     if (w < 3 || h < 3) return null;
 
-    // Luma sin linearizar: aquí solo se miran DIFERENCIAS entre vecinos, y para
-    // detectar un borde da igual el espacio de color.
-    const luma = new Float32Array(w * h);
-    for (let i = 0, p = 0; p < luma.length; i += 4, p++) {
-        luma[p] = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
-    }
+    const n = w * h;
+    const lumaLin = new Float32Array(n);
+    const labL = new Float32Array(n);
+    const labA = new Float32Array(n);
+    const labB = new Float32Array(n);
+    const skin = new Uint8Array(n);
 
-    const energy = new Float32Array(w);
-    for (let y = 1; y < h; y++) {
-        for (let x = 1; x < w; x++) {
-            const p = y * w + x;
-            energy[x] += Math.abs(luma[p] - luma[p - 1]) + Math.abs(luma[p] - luma[p - w]);
+    let sumL = 0;
+    let sumA = 0;
+    let sumB = 0;
+
+    // Pasada 1: Luma linealizada, conversión a CIELAB (D65) y detección de piel YCbCr
+    for (let i = 0, p = 0; p < n; i += 4, p++) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        // Luma linealizada
+        const rLin = SRGB_TO_LIN[r];
+        const gLin = SRGB_TO_LIN[g];
+        const bLin = SRGB_TO_LIN[b];
+        lumaLin[p] = 0.2126 * rLin + 0.7152 * gLin + 0.0722 * bLin;
+
+        // Linear sRGB -> CIEXYZ -> CIELAB (referencia D65: Xn=0.95047, Yn=1.0, Zn=1.08883)
+        const X = (0.4124564 * rLin + 0.3575761 * gLin + 0.1804375 * bLin) / 0.95047;
+        const Y = (0.2126729 * rLin + 0.7151522 * gLin + 0.0721750 * bLin);
+        const Z = (0.0193339 * rLin + 0.1191920 * gLin + 0.9503041 * bLin) / 1.08883;
+
+        const fx = labF(X);
+        const fy = labF(Y);
+        const fz = labF(Z);
+
+        const L = 116 * fy - 16;
+        const A = 500 * (fx - fy);
+        const B = 200 * (fy - fz);
+
+        labL[p] = L;
+        labA[p] = A;
+        labB[p] = B;
+
+        sumL += L;
+        sumA += A;
+        sumB += B;
+
+        // Detección de piel YCbCr (Cb∈[77,127] AND Cr∈[133,173])
+        const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+        const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+        if (cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173) {
+            skin[p] = 1;
         }
     }
 
+    const meanL = sumL / n;
+    const meanA = sumA / n;
+    const meanB = sumB / n;
+
+    // Pasada 2: Bordes y Saliencia cromática
+    const edge = new Float32Array(n);
+    const sal = new Float32Array(n);
+    let maxEdge = 0;
+    let maxSal = 0;
+
+    for (let y = 0; y < h; y++) {
+        const row = y * w;
+        for (let x = 0; x < w; x++) {
+            const p = row + x;
+
+            // Bordes en luma linealizada
+            let e = 0;
+            if (x > 0) e += Math.abs(lumaLin[p] - lumaLin[p - 1]);
+            if (y > 0) e += Math.abs(lumaLin[p] - lumaLin[p - w]);
+            edge[p] = e;
+            if (e > maxEdge) maxEdge = e;
+
+            // Saliencia cromática respecto a la media de la imagen (distancia ΔE)
+            const dL = labL[p] - meanL;
+            const dA = labA[p] - meanA;
+            const dB = labB[p] - meanB;
+            const s = Math.sqrt(dL * dL + dA * dA + dB * dB);
+            sal[p] = s;
+            if (s > maxSal) maxSal = s;
+        }
+    }
+
+    // Si la imagen es homogénea (sin bordes apreciables, ΔE < 1.0 imperceptible y sin piel),
+    // no hay ningún sujeto a encuadrar y el centro es la respuesta correcta.
+    const hasEdges = maxEdge > 0.005;
+    const hasSaliency = maxSal >= 1.0;
+    let hasSkin = false;
+    for (let p = 0; p < n; p++) {
+        if (skin[p] === 1) {
+            hasSkin = true;
+            break;
+        }
+    }
+    if (!hasEdges && !hasSaliency && !hasSkin) {
+        return null;
+    }
+
+    // Pasada 3: Fusión ponderada (55% bordes + 35% saliencia + 10% piel)
+    const combined = new Float32Array(n);
+    const invEdge = hasEdges ? 1 / maxEdge : 0;
+    const invSal = hasSaliency ? 1 / maxSal : 0;
+
+    for (let p = 0; p < n; p++) {
+        const normEdge = edge[p] * invEdge;
+        const normSal = sal[p] * invSal;
+        const normSkin = skin[p];
+        combined[p] = 0.55 * normEdge + 0.35 * normSal + 0.10 * normSkin;
+    }
+
+    // Pasada 4: Blur Gaussiano 5×5 separable (σ ≈ 1.0)
+    // 4a. Horizontal
+    const hBlur = new Float32Array(n);
+    for (let y = 0; y < h; y++) {
+        const row = y * w;
+        for (let x = 0; x < w; x++) {
+            let acc = 0;
+            for (let k = -2; k <= 2; k++) {
+                const kx = Math.min(w - 1, Math.max(0, x + k));
+                acc += combined[row + kx] * GAUSS_5[k + 2];
+            }
+            hBlur[row + x] = acc;
+        }
+    }
+
+    // 4b. Vertical + acumulación en energía por columna
+    const colEnergy = new Float32Array(w);
+    for (let x = 0; x < w; x++) {
+        let colSum = 0;
+        for (let y = 0; y < h; y++) {
+            let acc = 0;
+            for (let k = -2; k <= 2; k++) {
+                const ky = Math.min(h - 1, Math.max(0, y + k));
+                acc += hBlur[ky * w + x] * GAUSS_5[k + 2];
+            }
+            colSum += acc;
+        }
+        colEnergy[x] = colSum;
+    }
+
+    // Pasada 5: Regla de los tercios (boost suave ×1.08 en 1/3 y 2/3 con decaimiento lineal en ±15 columnas)
+    const t1 = w / 3;
+    const t2 = (2 * w) / 3;
     let total = 0;
-    for (let x = 0; x < w; x++) total += energy[x];
-    // Imagen plana (un color liso, o el canvas vacío de jsdom): no hay nada que
-    // encuadrar y el centro de siempre es la respuesta correcta.
+
+    for (let x = 0; x < w; x++) {
+        const dist = Math.min(Math.abs(x - t1), Math.abs(x - t2));
+        const boost = dist < 15 ? 1.0 + 0.08 * (1 - dist / 15) : 1.0;
+        colEnergy[x] *= boost;
+        total += colEnergy[x];
+    }
+
     if (total <= 0) return null;
 
+    // Pasada 6: Centroide sobre los picos que superan la media
     const mean = total / w;
     let weighted = 0;
     let mass = 0;
     for (let x = 0; x < w; x++) {
-        const peak = energy[x] - mean;
+        const peak = colEnergy[x] - mean;
         if (peak <= 0) continue;
         weighted += peak * (x + 0.5);
         mass += peak;

@@ -214,4 +214,51 @@ describe('dynamicColor: encuadre', () => {
     it('una imagen demasiado pequeña para tener vecinos no se mide', () => {
         expect(focusFromPixels(new Uint8ClampedArray(2 * 2 * 4), 2, 2)).toBeNull();
     });
+
+    it('la saliencia cromática CIELAB atrae el foco aunque no haya textura en blanco y negro', () => {
+        // Fondo gris medio uniforme
+        const data = new Uint8ClampedArray(W * H * 4);
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 120;
+            data[i + 1] = 120;
+            data[i + 2] = 120;
+            data[i + 3] = 255;
+        }
+        // Parche de color saturado (rojo vivo) a la izquierda (x entre 15 y 30)
+        for (let y = 15; y < 45; y++) {
+            for (let x = 15; x < 30; x++) {
+                const i = (y * W + x) * 4;
+                data[i] = 240;
+                data[i + 1] = 20;
+                data[i + 2] = 20;
+            }
+        }
+        const focus = focusFromPixels(data, W, H);
+        expect(focus).not.toBeNull();
+        expect(focus).toBeLessThan(40);
+    });
+
+    it('la detección de tonos de piel en YCbCr atrae el foco hacia rostros/sujetos', () => {
+        // Fondo frío/oscuro
+        const data = new Uint8ClampedArray(W * H * 4);
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 30;
+            data[i + 1] = 40;
+            data[i + 2] = 70;
+            data[i + 3] = 255;
+        }
+        // Parche con color de piel realista a la derecha (x entre 70 y 85)
+        // R=215, G=165, B=135 -> Cb ≈ 112 (rango 77..127), Cr ≈ 152 (rango 133..173)
+        for (let y = 15; y < 45; y++) {
+            for (let x = 70; x < 85; x++) {
+                const i = (y * W + x) * 4;
+                data[i] = 215;
+                data[i + 1] = 165;
+                data[i + 2] = 135;
+            }
+        }
+        const focus = focusFromPixels(data, W, H);
+        expect(focus).not.toBeNull();
+        expect(focus).toBeGreaterThan(60);
+    });
 });
