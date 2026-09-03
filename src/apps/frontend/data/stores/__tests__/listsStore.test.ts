@@ -21,16 +21,33 @@ const setImageByUrl = vi.fn();
 const uploadImageFile = vi.fn();
 const deleteImage = vi.fn();
 const updateItemMetadata = vi.fn();
+const deleteItem = vi.fn();
 
-vi.mock('../../api/metadata', () => ({
-    updateItemMetadata: (...a: unknown[]) => updateItemMetadata(...a)
-}));
+vi.mock('../../api/items', async (importActual) => {
+    const actual = await importActual<typeof import('../../api/items')>();
+    return {
+        ...actual,
+        deleteItem: (...a: unknown[]) => deleteItem(...a)
+    };
+});
 
-vi.mock('../../api/remote-images', () => ({
-    setImageByUrl: (...a: unknown[]) => setImageByUrl(...a),
-    uploadImageFile: (...a: unknown[]) => uploadImageFile(...a),
-    deleteImage: (...a: unknown[]) => deleteImage(...a)
-}));
+vi.mock('../../api/metadata', async (importActual) => {
+    const actual = await importActual<typeof import('../../api/metadata')>();
+    return {
+        ...actual,
+        updateItemMetadata: (...a: unknown[]) => updateItemMetadata(...a)
+    };
+});
+
+vi.mock('../../api/remote-images', async (importActual) => {
+    const actual = await importActual<typeof import('../../api/remote-images')>();
+    return {
+        ...actual,
+        setImageByUrl: (...a: unknown[]) => setImageByUrl(...a),
+        uploadImageFile: (...a: unknown[]) => uploadImageFile(...a),
+        deleteImage: (...a: unknown[]) => deleteImage(...a)
+    };
+});
 
 // La URL de la imagen propia se construye con `imageUrl`, que necesita sesión.
 vi.mock('../../api/images', () => ({
@@ -81,6 +98,7 @@ beforeEach(() => {
         m.mockResolvedValue(undefined);
     }
     for (const m of [setImageByUrl, uploadImageFile, deleteImage]) m.mockResolvedValue(undefined);
+    deleteItem.mockResolvedValue(undefined);
     updateItemMetadata.mockResolvedValue(undefined);
     createPlaylist.mockResolvedValue('p9');
     createCollection.mockResolvedValue('c9');
@@ -395,14 +413,94 @@ describe('create', () => {
         expect(createCollection).not.toHaveBeenCalled();
     });
 
+    test('crea una lista de reproducción vacía', async () => {
+        createPlaylist.mockResolvedValue('pl-empty');
+        const id = await LISTS.create('playlist', 'SoloPlaylist');
+        expect(createPlaylist).toHaveBeenCalledWith('SoloPlaylist', undefined);
+        expect(id).toBe('pl-empty');
+    });
+
     test('crea una colección', async () => {
         await LISTS.create('collection', 'Nueva', 'x');
-        expect(createCollection).toHaveBeenCalledWith('Nueva', 'x');
+        expect(createCollection).toHaveBeenCalledWith('Nueva', 'x', undefined);
         expect(createPlaylist).not.toHaveBeenCalled();
+    });
+
+    test('crea una colección vacía', async () => {
+        createCollection.mockResolvedValue('c-empty');
+        const id = await LISTS.create('collection', 'SoloNombre');
+        expect(createCollection).toHaveBeenCalledWith('SoloNombre', undefined, undefined);
+        expect(id).toBe('c-empty');
+    });
+
+    test('crea una subcolección vinculada al padre', async () => {
+        createCollection.mockResolvedValue('c-sub');
+        const id = await LISTS.create('collection', 'Hija', undefined, 'padre-123');
+        expect(createCollection).toHaveBeenCalledWith('Hija', undefined, 'padre-123');
+        expect(addToCollection).toHaveBeenCalledWith('padre-123', 'c-sub');
+        expect(id).toBe('c-sub');
     });
 
     test('un fallo al crear se propaga', async () => {
         createCollection.mockRejectedValue(new Error('sin permiso'));
         await expect(LISTS.create('collection', 'Nueva', 'x')).rejects.toThrow('sin permiso');
+    });
+});
+
+describe('isRoot y jerarquía de colecciones', () => {
+    test('una playlist siempre es raíz', async () => {
+        await LISTS.ensure();
+        const playlist = LISTS.ofKind('playlist')[0];
+        expect(LISTS.isRoot(playlist)).toBe(true);
+    });
+
+    test('una colección sin parentId o con parentId que no es colección es raíz', async () => {
+        getCollections.mockResolvedValue([
+            { id: 'c1', name: 'Colección Raíz', parentId: 'virtual-boxsets-library' }
+        ]);
+        await LISTS.ensure();
+        const c1 = LISTS.find('collection', 'c1');
+        expect(c1).toBeDefined();
+        expect(LISTS.isRoot(c1!)).toBe(true);
+    });
+
+    test('una colección con parentId perteneciente a otra colección no es raíz (es subcolección)', async () => {
+        getCollections.mockResolvedValue([
+            { id: 'c1', name: 'Universo Marvel', parentId: 'boxsets-root' },
+            { id: 'c2', name: 'Fase 1', parentId: 'c1' }
+        ]);
+        await LISTS.ensure();
+        const c1 = LISTS.find('collection', 'c1');
+        const c2 = LISTS.find('collection', 'c2');
+        expect(LISTS.isRoot(c1!)).toBe(true);
+        expect(LISTS.isRoot(c2!)).toBe(false);
+    });
+
+    test('una colección contenida en los items de otra colección se marca como subcolección aunque compartan parentId físico', async () => {
+        getCollections.mockResolvedValue([
+            { id: 'c-marvel', name: 'Marvel', parentId: 'boxsets-library' },
+            { id: 'c-ironman', name: 'Iron Man - Colección', parentId: 'boxsets-library' }
+        ]);
+        getCollectionItems.mockImplementation(async (id: string) => {
+            if (id === 'c-marvel') {
+                return [
+                    { id: 'c-ironman', title: 'Iron Man - Colección', kind: 'collection' }
+                ];
+            }
+            return [];
+        });
+        await LISTS.ensure();
+        const marvel = LISTS.find('collection', 'c-marvel');
+        const ironman = LISTS.find('collection', 'c-ironman');
+        expect(LISTS.isRoot(marvel!)).toBe(true);
+        expect(LISTS.isRoot(ironman!)).toBe(false);
+    });
+});
+
+describe('delete', () => {
+    test('elimina una lista o colección llamando a deleteItem', async () => {
+        await LISTS.ensure();
+        await LISTS.delete('collection', 'c1');
+        expect(deleteItem).toHaveBeenCalledWith('c1');
     });
 });

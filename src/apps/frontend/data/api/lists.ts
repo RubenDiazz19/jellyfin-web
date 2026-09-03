@@ -22,6 +22,9 @@ export type ListEntry = {
     name: string;
     count?: number;
     image?: string;
+    logo?: string | null;
+    backdrop?: string;
+    parentId?: string;
 };
 
 /** Campos que devuelve el listado de playlists/colecciones y aquí se usan. */
@@ -29,7 +32,9 @@ type JFListItem = {
     Id: string;
     Name: string;
     ChildCount?: number;
+    ParentId?: string;
     ImageTags?: Record<string, string>;
+    BackdropImageTags?: string[];
 };
 
 function mapEntry(i: JFListItem): ListEntry {
@@ -37,7 +42,10 @@ function mapEntry(i: JFListItem): ListEntry {
         id: i.Id,
         name: i.Name,
         count: i.ChildCount,
-        image: firstImageUrl([['Primary', i.Id, i.ImageTags?.Primary]], { maxHeight: 200 })
+        image: firstImageUrl([['Primary', i.Id, i.ImageTags?.Primary]], { maxHeight: 300 }),
+        logo: firstImageUrl([['Logo', i.Id, i.ImageTags?.Logo]], { maxHeight: LOGO_HEIGHT }) ?? null,
+        backdrop: firstImageUrl([['Backdrop', i.Id, i.BackdropImageTags?.[0]]], { maxWidth: 960 }),
+        parentId: i.ParentId
     };
 }
 
@@ -48,10 +56,11 @@ export async function getPlaylists(): Promise<ListEntry[]> {
     return items.map(mapEntry);
 }
 
-export async function addToPlaylist(playlistId: string, itemId: string): Promise<void> {
+export async function addToPlaylist(playlistId: string, itemIds: string | string[]): Promise<void> {
     const session = loadSession();
     if (!session?.userId) throw noSessionError();
-    await apiSend(`/Playlists/${playlistId}/Items?ids=${itemId}&userId=${session.userId}`, 'POST');
+    const ids = Array.isArray(itemIds) ? itemIds.join(',') : itemIds;
+    await apiSend(`/Playlists/${playlistId}/Items?ids=${ids}&userId=${session.userId}`, 'POST');
 }
 
 /**
@@ -129,7 +138,8 @@ export function collapseSeries(items: readonly PlaylistItem[]): PlaylistItem[] {
 export type PlaylistItem = {
     id: string;
     title: string;
-    kind: 'show' | 'movie' | 'episode';
+    kind: 'show' | 'movie' | 'episode' | 'collection';
+    childCount?: number;
     year?: number;
     poster?: string;
     /** Imagen apaisada, para las tarjetas 16/9 del índice de listas. */
@@ -157,6 +167,7 @@ type JFPlaylistItem = {
     Id: string;
     Name: string;
     Type?: string;
+    ChildCount?: number;
     ProductionYear?: number;
     ImageTags?: Record<string, string>;
     BackdropImageTags?: string[];
@@ -172,10 +183,12 @@ type JFPlaylistItem = {
 };
 
 function mapPlaylistItem(i: JFPlaylistItem): PlaylistItem {
+    const isCollection = i.Type === 'BoxSet';
     return {
         id: i.Id,
         title: i.Name,
-        kind: i.Type === 'Series' ? 'show' : i.Type === 'Episode' ? 'episode' : 'movie',
+        kind: isCollection ? 'collection' : i.Type === 'Series' ? 'show' : i.Type === 'Episode' ? 'episode' : 'movie',
+        childCount: i.ChildCount,
         year: i.ProductionYear,
         // Un episodio no suele traer carátula propia; se cae a la de su serie
         // para que la rejilla no quede con huecos grises.
@@ -236,13 +249,14 @@ export async function removeFromPlaylist(playlistId: string, entryId: string): P
     await apiSend(`/Playlists/${playlistId}/Items?entryIds=${entryId}`, 'DELETE');
 }
 
-/** Crea la lista con el item dentro y devuelve su id. */
-export async function createPlaylist(name: string, itemId: string): Promise<string> {
+/** Crea la lista con el item dentro (o vacía) y devuelve su id. */
+export async function createPlaylist(name: string, itemIds?: string | string[]): Promise<string> {
     const session = loadSession();
     if (!session?.userId) throw noSessionError();
+    const ids = Array.isArray(itemIds) ? itemIds : itemIds ? [itemIds] : [];
     const res = await apiSend('/Playlists', 'POST', {
         Name: name,
-        Ids: [itemId],
+        Ids: ids,
         UserId: session.userId,
         MediaType: 'Video'
     });
@@ -254,13 +268,14 @@ export async function createPlaylist(name: string, itemId: string): Promise<stri
 
 export async function getCollections(): Promise<ListEntry[]> {
     const items = await fetchUserItems<JFListItem>(
-        'IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&Fields=ChildCount'
+        'IncludeItemTypes=BoxSet&Recursive=true&SortBy=SortName&Fields=ChildCount,ParentId,ImageTags,BackdropImageTags&EnableImageTypes=Primary,Backdrop,Logo'
     );
     return items.map(mapEntry);
 }
 
-export async function addToCollection(collectionId: string, itemId: string): Promise<void> {
-    await apiSend(`/Collections/${collectionId}/Items?ids=${itemId}`, 'POST');
+export async function addToCollection(collectionId: string, itemIds: string | string[]): Promise<void> {
+    const ids = Array.isArray(itemIds) ? itemIds.join(',') : itemIds;
+    await apiSend(`/Collections/${collectionId}/Items?ids=${ids}`, 'POST');
 }
 
 /**
@@ -274,11 +289,19 @@ export async function removeFromCollection(collectionId: string, itemIds: string
     await apiSend(`/Collections/${collectionId}/Items?ids=${itemIds}`, 'DELETE');
 }
 
-/** Crea la colección con el item dentro y devuelve su id. */
-export async function createCollection(name: string, itemId: string): Promise<string> {
-    const res = await apiSend(
-        `/Collections?name=${encodeURIComponent(name)}&ids=${itemId}`, 'POST'
-    );
+/** Crea la colección con el item dentro (o vacía) y devuelve su id. */
+export async function createCollection(
+    name: string,
+    itemIds?: string | string[],
+    parentId?: string
+): Promise<string> {
+    const params = new URLSearchParams({ name });
+    if (itemIds) {
+        const ids = Array.isArray(itemIds) ? itemIds.join(',') : itemIds;
+        params.set('ids', ids);
+    }
+    if (parentId) params.set('parentId', parentId);
+    const res = await apiSend(`/Collections?${params.toString()}`, 'POST');
     const body = await res.json().catch(() => ({})) as { Id?: string };
     return body.Id ?? '';
 }
@@ -293,7 +316,36 @@ export async function createCollection(name: string, itemId: string): Promise<st
 export async function getCollectionItems(collectionId: string): Promise<PlaylistItem[]> {
     const items = await fetchUserItems<JFPlaylistItem>(
         `ParentId=${collectionId}&SortBy=SortName`
-            + '&Fields=ProductionYear,ImageTags,DateCreated&EnableImageTypes=Primary,Logo,Backdrop'
+            + '&Fields=ProductionYear,ImageTags,DateCreated,ChildCount&EnableImageTypes=Primary,Logo,Backdrop'
     );
     return items.map(mapPlaylistItem);
+}
+
+/**
+ * Ancestros de una colección (las colecciones padre hasta la raíz).
+ * Devuelve la lista en orden raíz → padre inmediato, lista para las migas de pan.
+ */
+export async function getCollectionAncestors(
+    collectionId: string
+): Promise<Array<{ id: string; name: string }>> {
+    const session = loadSession();
+    if (!session?.userId) return [];
+    try {
+        const ancestors = await apiFetch<Array<{ Id: string; Name: string; Type?: string }>>(
+            `/Items/${collectionId}/Ancestors?userId=${session.userId}`
+        );
+        // Jellyfin devuelve del padre inmediato hacia la raíz; invertimos para que
+        // la jerarquía en migas de pan se lea de izquierda a derecha (raíz -> padre).
+        return (ancestors ?? [])
+            .filter((a) => a.Type === 'BoxSet')
+            .reverse()
+            .map((a) => ({ id: a.Id, name: a.Name }));
+    } catch {
+        return [];
+    }
+}
+
+/** Borra una colección por completo. */
+export async function deleteCollection(collectionId: string): Promise<void> {
+    await apiSend(`/Items/${collectionId}`, 'DELETE');
 }

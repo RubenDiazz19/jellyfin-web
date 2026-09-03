@@ -31,7 +31,7 @@ import { useResponsive } from '../../theme/responsive';
 
 export type ItemMenuHandle = { openAt: (x: number, y: number) => void };
 
-type ItemKind = 'movie' | 'show' | 'season' | 'episode';
+type ItemKind = 'movie' | 'show' | 'season' | 'episode' | 'collection';
 
 type Props = {
     id: string;
@@ -304,6 +304,12 @@ export function MoreButton({
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
             ...editing({ identify: true, subtitles: true })
+        ],
+        collection: [
+            ...selectItem,
+            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
+            { isDivider: true },
+            ...editing({ identify: true, images: true })
         ]
     };
 

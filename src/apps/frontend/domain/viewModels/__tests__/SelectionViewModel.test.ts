@@ -16,17 +16,27 @@ vi.mock('lib/jellyfin-apiclient', () => ({
 import { SelectionViewModel, watchedKey, type SelectableItem } from '../SelectionViewModel';
 import { WATCHED } from '../../../data/stores/watchedStore';
 import { QUEUE } from '../../../data/stores/queueStore';
+import { FAVS } from '../../../data/stores/favsStore';
 import type { ApiService } from '../../../data/api/ApiService';
 
 const movie: SelectableItem = { id: 'm1', title: 'Peli', kind: 'movie', year: 2020 };
 const show: SelectableItem = { id: 's1', title: 'Serie', kind: 'show' };
+const collection: SelectableItem = { id: 'c1', title: 'Saga', kind: 'collection' };
 
 function makeVm(overrides: {
     markPlayed?: ReturnType<typeof vi.fn>;
     setItemsTags?: ReturnType<typeof vi.fn>;
+    toggleFavorite?: ReturnType<typeof vi.fn>;
+    favoriteServerId?: ReturnType<typeof vi.fn>;
+    deleteItem?: ReturnType<typeof vi.fn>;
 } = {}) {
     const api = {
-        items: { markPlayed: overrides.markPlayed ?? vi.fn(() => Promise.resolve()) },
+        items: {
+            markPlayed: overrides.markPlayed ?? vi.fn(() => Promise.resolve()),
+            toggleFavorite: overrides.toggleFavorite ?? vi.fn(() => Promise.resolve()),
+            favoriteServerId: overrides.favoriteServerId ?? vi.fn(() => Promise.resolve(null)),
+            deleteItem: overrides.deleteItem ?? vi.fn(() => Promise.resolve())
+        },
         metadata: { setItemsTags: overrides.setItemsTags ?? vi.fn(() => Promise.resolve()) }
     } as unknown as ApiService;
     return new SelectionViewModel(api);
@@ -34,7 +44,8 @@ function makeVm(overrides: {
 
 beforeEach(() => {
     localStorage.clear();
-    WATCHED.setMany([watchedKey(movie), watchedKey(show)], false);
+    WATCHED.setMany([watchedKey(movie), watchedKey(show), watchedKey(collection)], false);
+    FAVS.setMany([watchedKey(movie), watchedKey(show), watchedKey(collection)], false);
     QUEUE.clear();
 });
 
@@ -42,6 +53,10 @@ describe('watchedKey', () => {
     test('las películas van prefijadas y las series no', () => {
         expect(watchedKey(movie)).toBe('movie-m1');
         expect(watchedKey(show)).toBe('s1');
+    });
+
+    test('las colecciones usan su propio id como clave', () => {
+        expect(watchedKey(collection)).toBe('c1');
     });
 
     test('usa watchedKey explícito si está presente', () => {
@@ -132,6 +147,15 @@ describe('marcar como visto en lote', () => {
         expect(WATCHED.has('s1')).toBe(true);
     });
 
+    test('admite colecciones y llama a markPlayed con su id', async () => {
+        const markPlayed = vi.fn(() => Promise.resolve());
+        const vm = makeVm({ markPlayed });
+        vm.selectAll([collection]);
+        await vm.markWatched(true);
+        expect(markPlayed).toHaveBeenCalledWith('c1', true);
+        expect(WATCHED.has('c1')).toBe(true);
+    });
+
     test('sin selección no toca el servidor', async () => {
         const markPlayed = vi.fn(() => Promise.resolve());
         const vm = makeVm({ markPlayed });
@@ -172,5 +196,78 @@ describe('etiquetar en lote', () => {
         vm.selectAll([movie]);
         expect(await vm.addTags([])).toBe(0);
         expect(setItemsTags).not.toHaveBeenCalled();
+    });
+});
+
+describe('marcar como favorito en lote', () => {
+    test('actualiza FAVS y llama al servidor por cada item', async () => {
+        const toggleFavorite = vi.fn(() => Promise.resolve());
+        const vm = makeVm({ toggleFavorite });
+        vm.selectAll([movie, show, collection]);
+
+        await vm.markFavorite(true);
+
+        expect(FAVS.has('movie-m1')).toBe(true);
+        expect(FAVS.has('s1')).toBe(true);
+        expect(FAVS.has('c1')).toBe(true);
+        expect(toggleFavorite).toHaveBeenCalledWith('m1', true);
+        expect(toggleFavorite).toHaveBeenCalledWith('s1', true);
+        expect(toggleFavorite).toHaveBeenCalledWith('c1', true);
+    });
+
+    test('desmarca favoritos y llama al servidor', async () => {
+        FAVS.setMany(['movie-m1', 's1'], true);
+        const toggleFavorite = vi.fn(() => Promise.resolve());
+        const vm = makeVm({ toggleFavorite });
+        vm.selectAll([movie, show]);
+
+        await vm.markFavorite(false);
+
+        expect(FAVS.has('movie-m1')).toBe(false);
+        expect(FAVS.has('s1')).toBe(false);
+        expect(toggleFavorite).toHaveBeenCalledWith('m1', false);
+        expect(toggleFavorite).toHaveBeenCalledWith('s1', false);
+    });
+
+    test('revierte FAVS al estado previo exacto si el servidor falla', async () => {
+        FAVS.setMany(['s1'], true);
+        const toggleFavorite = vi.fn()
+            .mockResolvedValueOnce(undefined)
+            .mockRejectedValueOnce(new Error('Network error'));
+        const vm = makeVm({ toggleFavorite });
+        vm.selectAll([movie, show]);
+
+        await expect(vm.markFavorite(true)).rejects.toThrow('Network error');
+
+        expect(FAVS.has('movie-m1')).toBe(false);
+        expect(FAVS.has('s1')).toBe(true);
+    });
+
+    test('sin selección no toca el servidor', async () => {
+        const toggleFavorite = vi.fn(() => Promise.resolve());
+        const vm = makeVm({ toggleFavorite });
+        await vm.markFavorite(true);
+        expect(toggleFavorite).not.toHaveBeenCalled();
+    });
+});
+
+describe('borrar en lote', () => {
+    test('borra cada item del servidor y devuelve la cantidad', async () => {
+        const deleteItem = vi.fn(() => Promise.resolve());
+        const vm = makeVm({ deleteItem });
+        vm.selectAll([movie, show]);
+
+        const count = await vm.deleteSelected();
+        expect(count).toBe(2);
+        expect(deleteItem).toHaveBeenCalledWith('m1');
+        expect(deleteItem).toHaveBeenCalledWith('s1');
+    });
+
+    test('sin selección devuelve 0 y no llama al servidor', async () => {
+        const deleteItem = vi.fn(() => Promise.resolve());
+        const vm = makeVm({ deleteItem });
+        const count = await vm.deleteSelected();
+        expect(count).toBe(0);
+        expect(deleteItem).not.toHaveBeenCalled();
     });
 });

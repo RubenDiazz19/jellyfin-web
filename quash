@@ -1,0 +1,17 @@
+[1m[38;5;2m@[0m  [1m[38;5;13mmo[38;5;8muurpzy[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;14m2026-09-03 16:12:59[39m [38;5;12m09[38;5;8ma30fa4[39m[0m
+│  [1m[38;5;3m(no description set)[39m[0m
+○  [1m[38;5;5mo[0m[38;5;8mwurozwt[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;6m2026-09-03 15:52:59[39m [1m[38;5;4md[0m[38;5;8m34436d1[39m
+│  [38;5;3m(no description set)[39m
+○  [1m[38;5;5mzp[0m[38;5;8mtxmlnz[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;6m2026-09-03 15:43:58[39m [38;5;5mcolecciones[39m [1m[38;5;4m03[0m[38;5;8m2684da[39m
+│  feat(frontend): personalización y creación de colecciones y listas de reproducción
+○  [1m[38;5;5ms[0m[38;5;8mvsxzmrw[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;6m2026-09-01 15:18:16[39m [1m[38;5;4m5[0m[38;5;8m9d26ccd[39m
+│  feat(frontend): soporte para subcolecciones y jerarquía
+│ ○  [1m[38;5;5mzw[0m[38;5;8mltqzzm[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;6m2026-09-02 10:04:22[39m [1m[38;5;4m3[0m[38;5;8m74e81b6[39m
+│ │  [38;5;3m(no description set)[39m
+│ ○  [1m[38;5;5mmy[0m[38;5;8mxnvztt[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;6m2026-09-01 15:04:15[39m [1m[38;5;4me[0m[38;5;8m81ec856[39m
+├─╯  style(frontend): centrar hero de temporada y aumentar tamaño de textos
+○  [1m[38;5;5ml[0m[38;5;8mvtszxrx[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;6m2026-08-31 21:55:14[39m [1m[38;5;4m9[0m[38;5;8m53bbd56[39m
+│  chore: eliminar ReactQueryDevtools y limpiar dependencias de depuración
+[1m[38;5;14m◆[0m  [1m[38;5;5mn[0m[38;5;8mkzukxvx[39m [38;5;3mruben.castellano101@alu.ulpgc.es[39m [38;5;6m2026-08-31 21:29:12[39m [38;5;5mmaster[39m [1m[38;5;4m6[0m[38;5;8madbe0b8[39m
+│  refactor: optimización integral de rendimiento, estabilidad y calidad del frontend
+~

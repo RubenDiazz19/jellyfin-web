@@ -13,19 +13,23 @@ import { LoadState } from './LoadState';
 
 type Props = {
     kind: 'playlist' | 'collection';
-    itemId: string;
+    itemId?: string;
+    itemIds?: string[];
     itemTitle?: string;
     onClose: () => void;
+    onSuccess?: () => void;
 };
 
 // Diálogo "Añadir a lista de reproducción / colección": lista las existentes
 // y permite crear una nueva, todo contra la API (sin saltar al web nativo).
-export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
+export function AddToDialog({ kind, itemId, itemIds, itemTitle, onClose, onSuccess }: Props) {
     const toast = useToast();
     const [entries, setEntries] = useState<ListEntry[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
     const [busy, setBusy] = useState(false);
+
+    const ids = itemIds ?? (itemId ? [itemId] : []);
 
     const labels = kind === 'playlist' ?
         {
@@ -39,18 +43,26 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
             create: globalize.translate('HeaderNewCollection')
         };
 
+    const idKey = ids.join(',');
+
     useEffect(() => {
         const fetchEntries = kind === 'playlist' ? getPlaylists : getCollections;
-        fetchEntries().then(setEntries).catch((e) => setError((e as Error).message));
-    }, [kind]);
+        fetchEntries()
+            .then((list) => {
+                const excluded = new Set(idKey.split(','));
+                setEntries(list.filter((e) => !excluded.has(e.id)));
+            })
+            .catch((e) => setError((e as Error).message));
+    }, [kind, idKey]);
 
-    const suffix = itemTitle ? ` · ${itemTitle}` : '';
+    const suffix = itemTitle ? ` · ${itemTitle}` : (ids.length > 1 ? ` · ${ids.length}` : '');
 
     const doAdd = async (entry: ListEntry) => {
         setBusy(true);
         try {
-            await (kind === 'playlist' ? addToPlaylist : addToCollection)(entry.id, itemId);
+            await (kind === 'playlist' ? addToPlaylist : addToCollection)(entry.id, ids);
             toast(globalize.translate('MessageAddedTo', entry.name) + suffix, 'success');
+            onSuccess?.();
             onClose();
         } catch (e) {
             toast((e as Error).message, 'warn');
@@ -63,8 +75,9 @@ export function AddToDialog({ kind, itemId, itemTitle, onClose }: Props) {
         if (!name) return;
         setBusy(true);
         try {
-            await (kind === 'playlist' ? createPlaylist : createCollection)(name, itemId);
+            await (kind === 'playlist' ? createPlaylist : createCollection)(name, ids);
             toast(globalize.translate('MessageCreated', name) + suffix, 'success');
+            onSuccess?.();
             onClose();
         } catch (e) {
             toast((e as Error).message, 'warn');

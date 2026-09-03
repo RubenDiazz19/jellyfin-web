@@ -13,15 +13,18 @@ import { EditableTitle } from '../components/controls/EditableTitle';
 import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { PosterTile } from '../components/cards/PosterTile';
+import { CollectionCard } from '../components/collection/CollectionCard';
+import { CollectionHero } from '../components/collection/CollectionHero';
+import { PillButton } from '../components/controls/fields';
+import { CreateCollectionDialog } from '../components/controls/CreateCollectionDialog';
 import { CardGrid } from '../components/layout/CardGrid';
 import { LoadState } from '../components/controls/LoadState';
-import { getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
+import { getCollectionAncestors, getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';
 import { displayItems, LISTS, type ListKind, type ListRef } from '../../domain/stores';
 
 import { useListSync } from '../../domain/bridge/useLists';
-
 import { useResponsive } from '../theme/responsive';
-import type { Navigate } from '../../app/router';
+import type { Navigate, Route } from '../../app/router';
 import { useSelectionMode } from '../components/controls/useSelectionMode';
 import { selectionVM, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
 
@@ -42,6 +45,7 @@ type Props = { kind: ListKind; listId: string; navigate: Navigate };
 export function ListPage({ kind, listId, navigate }: Props) {
     const [items, setItems] = useState<PlaylistItem[] | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [ancestors, setAncestors] = useState<Array<{ id: string; name: string }>>([]);
     const { list, refresh } = useListSync(kind, listId);
 
     useEffect(() => {
@@ -51,6 +55,14 @@ export function ListPage({ kind, listId, navigate }: Props) {
         fetchItems(listId)
             .then((all) => setItems(displayItems(kind, all)))
             .catch((e) => setError((e as Error).message));
+
+        if (kind === 'collection') {
+            getCollectionAncestors(listId)
+                .then(setAncestors)
+                .catch(() => setAncestors([]));
+        } else {
+            setAncestors([]);
+        }
     }, [kind, listId]);
 
     useEffect(() => {
@@ -58,8 +70,8 @@ export function ListPage({ kind, listId, navigate }: Props) {
         const selectable: SelectableItem[] = items.map((item) => ({
             id: item.id,
             title: item.title,
-            kind: item.kind === 'movie' ? 'movie' : item.kind === 'episode' ? 'episode' : 'show',
-            poster: item.poster,
+            kind: item.kind,
+            poster: item.poster || item.backdrop || item.seriesPoster,
             year: item.year
         }));
         selectionVM.setVisibleItems(selectable);
@@ -70,12 +82,53 @@ export function ListPage({ kind, listId, navigate }: Props) {
 
     const kindLabel = globalize.translate(kind === 'playlist' ? 'Playlists' : 'Collections');
 
+    const collectionMenuRef = useRef<ListMenuHandle | null>(null);
+
+    if (kind === 'collection') {
+        const fallbackBackdrop = items?.find((i) => i.backdrop || i.heroBackdrop)?.backdrop
+            ?? items?.find((i) => i.backdrop || i.heroBackdrop)?.heroBackdrop
+            ?? items?.[0]?.poster;
+
+        const hasItems = !!(items && items.length > 0);
+
+        return (
+            <div
+                onContextMenu={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('.jfp-hoverlift') || target.closest('button')) return;
+                    e.preventDefault();
+                    collectionMenuRef.current?.openAt(e.clientX, e.clientY);
+                }}
+                style={{
+                    position: 'relative',
+                    width: '100vw',
+                    minHeight: hasItems ? '190vh' : '100vh',
+                    background: 'transparent'
+                }}
+            >
+                <Nav navigate={navigate} active='lists' />
+                <CollectionHero
+                    listId={listId}
+                    list={list}
+                    ancestors={ancestors}
+                    fallbackBackdrop={fallbackBackdrop}
+                    items={items}
+                    navigate={navigate}
+                    onChanged={refresh}
+                    menuRef={collectionMenuRef}
+                />
+                {hasItems && <div style={{ height: '190vh', pointerEvents: 'none' }} />}
+            </div>
+        );
+    }
+
     return (
         <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
             <ListHero
                 kind={kind}
                 listId={listId}
                 list={list}
+                ancestors={ancestors}
                 kindLabel={kindLabel}
                 navigate={navigate}
                 onCoverChanged={refresh}
@@ -85,6 +138,7 @@ export function ListPage({ kind, listId, navigate }: Props) {
                     kind={kind}
                     listId={listId}
                     list={list}
+                    ancestors={ancestors}
                     kindLabel={kindLabel}
                     count={items?.length}
                     navigate={navigate}
@@ -104,11 +158,12 @@ export function ListPage({ kind, listId, navigate }: Props) {
  * mano— se abre con el clic derecho, que es lo único que no ocupa sitio.
  */
 function ListHero({
-    kind, listId, list, kindLabel, navigate, onCoverChanged
+    kind, listId, list, ancestors, kindLabel, navigate, onCoverChanged
 }: {
     kind: ListKind;
     listId: string;
     list: ListRef | undefined;
+    ancestors: Array<{ id: string; name: string }>;
     kindLabel: string;
     navigate: Navigate;
     onCoverChanged: () => void;
@@ -123,6 +178,10 @@ function ListHero({
                     active='lists'
                     breadcrumb={[
                         { label: globalize.translate('Lists'), to: { page: 'lists' } },
+                        ...ancestors.map((a) => ({
+                            label: a.name,
+                            to: { page: 'list' as const, kind: 'collection' as const, listId: a.id }
+                        })),
                         { label: list?.name ?? kindLabel }
                     ]}
                 />
@@ -141,6 +200,7 @@ function ListHero({
                 kind={kind}
                 listId={listId}
                 onChanged={onCoverChanged}
+                onDeleted={() => navigate({ page: 'lists' })}
             />
         </HeroFrame>
     );
@@ -155,21 +215,30 @@ function ListHero({
  * puntos se quedan también aquí para el móvil, donde no hay clic derecho con
  * el que abrir el menú de la portada.
  */
-function ListInfoStrip({ kind, listId, list, kindLabel, count, navigate, onCoverChanged }: {
+function ListInfoStrip({
+    kind, listId, list, ancestors, kindLabel, count, navigate, onCoverChanged
+}: {
     kind: ListKind;
     listId: string;
     list: ListRef | undefined;
+    ancestors: Array<{ id: string; name: string }>;
     kindLabel: string;
     count: number | undefined;
     navigate: Navigate;
     onCoverChanged: () => void;
 }) {
     const r = useResponsive();
+    const [createSub, setCreateSub] = useState(false);
+    const parent = ancestors.length > 0 ? ancestors[ancestors.length - 1] : null;
+    const backTo: Route | undefined = parent ?
+        { page: 'list', kind: 'collection', listId: parent.id } :
+        undefined;
+    const backLabel: string | undefined = parent ? parent.name : undefined;
+
     return (
         <>
-            {/* La vuelta al índice, que en táctil no la pinta nadie más: la
-                barra de arriba no lleva migas de pan y el hero va desnudo. */}
-            {r.touch && <ListBackLink navigate={navigate} />}
+            {/* La vuelta al índice o a la colección padre en táctil */}
+            {r.touch && <ListBackLink navigate={navigate} to={backTo} label={backLabel} />}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 16,
                 paddingBottom: r.touch ? 22 : 30, marginBottom: r.touch ? 24 : 34,
@@ -192,15 +261,38 @@ function ListInfoStrip({ kind, listId, list, kindLabel, count, navigate, onCover
                         {count != null && ` · ${globalize.translate('ItemCount', count)}`}
                     </div>
                 </div>
-                <div style={{ marginLeft: 'auto' }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {kind === 'collection' && (
+                        <PillButton
+                            size='sm'
+                            variant='ghost'
+                            onClick={() => setCreateSub(true)}
+                        >
+                            + {globalize.translate('HeaderNewCollection')}
+                        </PillButton>
+                    )}
                     <ListCardMenu
                         kind={kind}
                         listId={listId}
+                        title={list?.name}
+                        logo={list?.logo}
                         onChanged={onCoverChanged}
+                        onDeleted={() => navigate({ page: 'lists' })}
                         size={32}
                     />
                 </div>
             </div>
+
+            {createSub && (
+                <CreateCollectionDialog
+                    parentId={listId}
+                    parentTitle={list?.name}
+                    onClose={() => setCreateSub(false)}
+                    onCreated={() => {
+                        onCoverChanged();
+                    }}
+                />
+            )}
         </>
     );
 }
@@ -239,10 +331,35 @@ function ListGrid({ items, error, navigate }: {
  * Un título de la lista.
  */
 function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
+    if (item.kind === 'collection') {
+        const selectable: SelectableItem = {
+            id: item.id,
+            title: item.title,
+            kind: 'collection',
+            poster: item.poster || item.backdrop,
+            year: item.year
+        };
+        return (
+            <CollectionCard
+                id={item.id}
+                title={item.title}
+                logo={item.logo}
+                backdrop={item.backdrop}
+                image={item.poster}
+                onClick={() => navigate({ page: 'list', kind: 'collection', listId: item.id })}
+                onChanged={() => {}}
+                selectable={selectable}
+            />
+        );
+    }
+    return <MediaItemCard item={item} navigate={navigate} />;
+}
+
+function MediaItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
     const selectable: SelectableItem = {
         id: item.id,
         title: item.title,
-        kind: item.kind === 'movie' ? 'movie' : item.kind === 'episode' ? 'episode' : 'show',
+        kind: item.kind,
         poster: item.poster,
         year: item.year
     };
@@ -268,9 +385,6 @@ function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Naviga
             cover={item.poster}
             logo={item.logo}
             interactions={{
-                // Un episodio suelto lleva a su serie: sin temporada ni número
-                // no se puede construir la ruta del episodio, y la ficha de la
-                // serie es el destino útil más cercano.
                 onClick: sel.onClick,
                 selecting: sel.selecting,
                 selected: sel.selected,
@@ -280,3 +394,4 @@ function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Naviga
         />
     );
 }
+

@@ -117,6 +117,8 @@ export {
     getPlaylistItems,
     getCollections,
     getCollectionItems,
+    getCollectionAncestors,
+    deleteCollection,
     addToCollection,
     createCollection,
     type ListEntry,

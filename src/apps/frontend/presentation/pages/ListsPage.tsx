@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -10,7 +10,10 @@ import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCa
 import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
 import { PageTitle, SectionTitle } from '../components/layout/Title';
-import { type ListKind, type ListRef } from '../../domain/stores';
+import { CollectionCard } from '../components/collection/CollectionCard';
+import { PillButton } from '../components/controls/fields';
+import { CreateCollectionDialog, CreatePlaylistDialog } from '../components/controls/CreateCollectionDialog';
+import { LISTS, type ListKind, type ListRef } from '../../domain/stores';
 import { useListsSync } from '../../domain/bridge/useLists';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate, Route } from '../../app/router';
@@ -28,9 +31,11 @@ type Props = { navigate: Navigate };
 export function ListsPage({ navigate }: Props) {
     const r = useResponsive();
     const { lists, loading, error, refresh } = useListsSync();
+    const [createOpen, setCreateOpen] = useState(false);
+    const [createPlaylistOpen, setCreatePlaylistOpen] = useState(false);
 
     const playlists = lists.filter((l) => l.kind === 'playlist');
-    const collections = lists.filter((l) => l.kind === 'collection');
+    const collections = lists.filter((l) => l.kind === 'collection' && LISTS.isRoot(l));
 
     return (
 
@@ -42,16 +47,10 @@ export function ListsPage({ navigate }: Props) {
                 {error ? (
                     <EmptyState title={globalize.translate('MessageNoPlaylistsYet')} hint={error} />
                 ) : (
-                    // Los tres bloques van EN COLUMNAS, no apilados: con una o
-                    // dos listas por bloque, apilarlos dejaba media pantalla en
-                    // blanco a la derecha y obligaba a bajar para ver las
-                    // colecciones. `auto-fit` los vuelve a apilar solo cuando
-                    // no caben, así que en móvil se comporta como antes.
                     <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                        gap: r.touch ? 32 : 44,
-                        alignItems: 'start'
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: r.touch ? 32 : 44
                     }}>
                         <Group title={globalize.translate('Favorites')}>
                             {/* Favoritos siempre: existe aunque esté vacío, así
@@ -65,7 +64,19 @@ export function ListsPage({ navigate }: Props) {
                             />
                         </Group>
 
-                        <Group title={globalize.translate('Playlists')} empty={playlists.length === 0}>
+                        <Group
+                            title={globalize.translate('Playlists')}
+                            empty={playlists.length === 0}
+                            action={
+                                <PillButton
+                                    size='sm'
+                                    variant='ghost'
+                                    onClick={() => setCreatePlaylistOpen(true)}
+                                >
+                                    + {globalize.translate('HeaderNewPlaylist')}
+                                </PillButton>
+                            }
+                        >
                             {playlists.map((l) => (
                                 <ListCard
                                     key={l.id}
@@ -77,14 +88,29 @@ export function ListsPage({ navigate }: Props) {
                             ))}
                         </Group>
 
-                        <Group title={globalize.translate('Collections')} empty={collections.length === 0}>
+                        <Group
+                            title={globalize.translate('Collections')}
+                            empty={collections.length === 0}
+                            action={
+                                <PillButton
+                                    size='sm'
+                                    variant='ghost'
+                                    onClick={() => setCreateOpen(true)}
+                                >
+                                    + {globalize.translate('HeaderNewCollection')}
+                                </PillButton>
+                            }
+                        >
                             {collections.map((l) => (
-                                <ListCard
+                                <CollectionCard
                                     key={l.id}
+                                    id={l.id}
                                     title={l.name}
+                                    logo={l.logo}
+                                    backdrop={l.backdrop}
                                     image={l.image}
-                                    cover={{ kind: l.kind, listId: l.id, onChanged: refresh }}
                                     onClick={() => navigate(routeFor(l))}
+                                    onChanged={refresh}
                                 />
                             ))}
                         </Group>
@@ -95,6 +121,26 @@ export function ListsPage({ navigate }: Props) {
                     <div style={{ marginTop: 28, color: T.dim, fontSize: 13 }}>
                         {globalize.translate('ListsEmpty')}
                     </div>
+                )}
+
+                {createPlaylistOpen && (
+                    <CreatePlaylistDialog
+                        onClose={() => setCreatePlaylistOpen(false)}
+                        onCreated={async (newId) => {
+                            await refresh();
+                            navigate({ page: 'list', kind: 'playlist', listId: newId });
+                        }}
+                    />
+                )}
+
+                {createOpen && (
+                    <CreateCollectionDialog
+                        onClose={() => setCreateOpen(false)}
+                        onCreated={async (newId) => {
+                            await refresh();
+                            navigate({ page: 'list', kind: 'collection', listId: newId });
+                        }}
+                    />
                 )}
             </PageSection>
         </>
@@ -112,13 +158,21 @@ const routeFor = (l: ListRef): Route => ({ page: 'list', kind: l.kind, listId: l
  * —con una sola lista la columna ocuparía todo el hueco disponible— pero con
  * un mínimo menor que el de la columna, para que no se estiren.
  */
-function Group({ title, empty, children }: {
-    title: string; empty?: boolean; children: React.ReactNode;
+function Group({ title, action, empty, children }: {
+    title: string; action?: React.ReactNode; empty?: boolean; children: React.ReactNode;
 }) {
     const r = useResponsive();
     return (
         <div>
-            <SectionTitle>{title}</SectionTitle>
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 20
+            }}>
+                <SectionTitle margin='0'>{title}</SectionTitle>
+                {action}
+            </div>
             {empty ? (
                 <div style={{ color: T.dim, fontSize: 13 }}>
                     {globalize.translate('ListsEmpty')}
@@ -218,12 +272,17 @@ function ListCard({ title, image, icon, cover, onClick }: {
     );
 }
 
-/** Cabecera compartida por Favoritos y las listas: vuelta atrás al índice. */
-export function ListBackLink({ navigate }: { navigate: Navigate }) {
-    const to: Route = { page: 'lists' };
+/** Cabecera compartida por Favoritos y las listas: vuelta atrás al índice o colección padre. */
+export function ListBackLink({ navigate, to, label }: {
+    navigate: Navigate;
+    to?: Route;
+    label?: string;
+}) {
+    const target: Route = to ?? { page: 'lists' };
+    const text = label ?? globalize.translate('Lists');
     return (
         <button
-            onClick={() => navigate(to)}
+            onClick={() => navigate(target)}
             onMouseDown={(e) => e.preventDefault()}
             style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -233,7 +292,7 @@ export function ListBackLink({ navigate }: { navigate: Navigate }) {
             onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
             onMouseLeave={(e) => (e.currentTarget.style.color = T.dim)}
         >
-            <Ic.Arrow size={14} /> {globalize.translate('Lists')}
+            <Ic.Arrow size={14} /> {text}
         </button>
     );
 }

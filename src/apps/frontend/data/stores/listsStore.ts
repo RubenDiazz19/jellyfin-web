@@ -24,6 +24,7 @@ import {
     removeFromCollection, removeFromPlaylist, type ListEntry, type PlaylistItem
 } from '../api/lists';
 import { updateItemMetadata } from '../api/metadata';
+import { deleteItem } from '../api/items';
 import { deleteImage, setImageByUrl, uploadImageFile } from '../api/remote-images';
 import { LIST_COVERS } from './listCoversStore';
 
@@ -73,6 +74,8 @@ type Loaded = {
     entries: Map<string, Map<string, string[]>>;
     /** clave de lista → imágenes heredadas del último título añadido. */
     covers: Map<string, InheritedCover>;
+    /** Ids de colecciones que están contenidas dentro de otra colección (subcolecciones). */
+    childCollectionIds: Set<string>;
 };
 
 /** Portada automática: la misma imagen en tamaño tarjeta y en tamaño hero. */
@@ -133,6 +136,13 @@ async function fetchKind(kind: ListKind, loaded: Loaded): Promise<void> {
         loaded.lists.push({ ...list, kind });
         try {
             const items = await fetchItems(list.id);
+            if (kind === 'collection') {
+                for (const item of items) {
+                    if (item.kind === 'collection') {
+                        loaded.childCollectionIds.add(item.id);
+                    }
+                }
+            }
             loaded.entries.set(key, removalIndex(kind, items));
             loaded.covers.set(key, coverOf(displayItems(kind, items)));
         } catch {
@@ -143,7 +153,12 @@ async function fetchKind(kind: ListKind, loaded: Loaded): Promise<void> {
 }
 
 async function fetchAll(): Promise<Loaded> {
-    const loaded: Loaded = { lists: [], entries: new Map(), covers: new Map() };
+    const loaded: Loaded = {
+        lists: [],
+        entries: new Map(),
+        covers: new Map(),
+        childCollectionIds: new Set()
+    };
     // Si un tipo falla entero (por permisos, por ejemplo) el otro se sigue
     // pudiendo usar.
     await Promise.allSettled([fetchKind('playlist', loaded), fetchKind('collection', loaded)]);
@@ -284,11 +299,23 @@ export const LISTS = {
         await reload();
     },
 
-    /** Crea una lista del tipo pedido con el título dentro. */
-    async create(kind: ListKind, name: string, itemId: string): Promise<void> {
-        if (kind === 'playlist') await createPlaylist(name, itemId);
-        else await createCollection(name, itemId);
+    /** Crea una lista del tipo pedido con el título dentro (o vacía). */
+    async create(kind: ListKind, name: string, itemId?: string, parentId?: string): Promise<string> {
+        let id = '';
+        if (kind === 'playlist') {
+            id = await createPlaylist(name, itemId);
+        } else {
+            id = await createCollection(name, itemId, parentId);
+            if (parentId && id) {
+                try {
+                    await addToCollection(parentId, id);
+                } catch {
+                    // Tolerante si parentId ya lo enlazó en la llamada a /Collections
+                }
+            }
+        }
         await reload();
+        return id;
     },
 
     /**
@@ -326,6 +353,11 @@ export const LISTS = {
         return LIST_COVERS.has(keyOf(kind, listId));
     },
 
+    /** Anota que esa lista tiene un fondo puesto a mano. */
+    markCustomCover(kind: ListKind, listId: string): void {
+        LIST_COVERS.mark(keyOf(kind, listId));
+    },
+
     /**
      * Renombra la lista. Vale igual para los dos tipos: por dentro una lista
      * de reproducción y una colección son items del servidor, y renombrarlos
@@ -348,6 +380,28 @@ export const LISTS = {
             emit();
             throw e;
         }
+        await reload();
+    },
+
+    /**
+     * Comprueba si una lista es raíz (no es subcolección de otra).
+     * Las playlists siempre son raíz; una colección es raíz si no está
+     * contenida dentro de ninguna otra colección (ni por jerarquía de items ni por parentId).
+     */
+    isRoot(list: ListRef): boolean {
+        if (list.kind === 'playlist') return true;
+        if (!cache) return true;
+        if (cache.childCollectionIds.has(list.id)) return false;
+        if (list.parentId && cache.lists.some((other) => other.kind === 'collection' && other.id === list.parentId)) {
+            return false;
+        }
+        return true;
+    },
+
+    /** Borra una lista o colección por completo del servidor. */
+    async delete(kind: ListKind, listId: string): Promise<void> {
+        await deleteItem(listId);
+        LIST_COVERS.unmark(keyOf(kind, listId));
         await reload();
     },
 

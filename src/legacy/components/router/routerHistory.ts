@@ -14,7 +14,9 @@ export class RouterHistory implements History {
 
         this._router.subscribe(state => {
             console.debug('[RouterHistory] history update', state);
-            Events.trigger(document, HISTORY_UPDATE_EVENT, [ state ]);
+            if (typeof document !== 'undefined') {
+                Events.trigger(document, HISTORY_UPDATE_EVENT, [ state ]);
+            }
         });
 
         this.createHref = router.createHref;

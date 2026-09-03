@@ -10,12 +10,13 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import { movieKey } from '../../data/stores/itemKeys';
 import { QUEUE } from '../../data/stores/queueStore';
 import { WATCHED } from '../../data/stores/watchedStore';
+import { FAVS } from '../../data/stores/favsStore';
 
 /** Lo mínimo que la selección necesita saber de un item. */
 export type SelectableItem = {
     id: string;
     title: string;
-    kind: 'show' | 'movie' | 'season' | 'episode';
+    kind: 'show' | 'movie' | 'season' | 'episode' | 'collection';
     poster?: string;
     year?: number | string;
     watchedKey?: string;
@@ -147,6 +148,52 @@ export class SelectionViewModel {
         this.busy.value = true;
         try {
             await this.api.metadata.setItemsTags(items.map((i) => i.id), tags);
+            return items.length;
+        } finally {
+            this.busy.value = false;
+        }
+    }
+
+    /**
+     * Marca (o desmarca) como favorito todo lo seleccionado.
+     *
+     * El store local FAVS se actualiza primero para que la interfaz responda al
+     * instante, y se revierte si el servidor falla.
+     */
+    async markFavorite(favorite: boolean): Promise<void> {
+        const items = this.selected.value;
+        if (items.length === 0) return;
+        const keys = items.map(watchedKey);
+        const before = keys.filter((key) => FAVS.has(key));
+        this.busy.value = true;
+        FAVS.setMany(keys, favorite);
+        try {
+            for (const item of items) {
+                const key = watchedKey(item);
+                const serverId = (await this.api.items.favoriteServerId(key)) ?? item.id;
+                await this.api.items.toggleFavorite(serverId, favorite);
+            }
+        } catch (e) {
+            FAVS.setMany(keys, false);
+            FAVS.setMany(before, true);
+            throw e;
+        } finally {
+            this.busy.value = false;
+        }
+    }
+
+    /**
+     * Borra del servidor todos los items seleccionados.
+     * Devuelve cuántos se borraron.
+     */
+    async deleteSelected(): Promise<number> {
+        const items = this.selected.value;
+        if (items.length === 0) return 0;
+        this.busy.value = true;
+        try {
+            for (const item of items) {
+                await this.api.items.deleteItem(item.id);
+            }
             return items.length;
         } finally {
             this.busy.value = false;

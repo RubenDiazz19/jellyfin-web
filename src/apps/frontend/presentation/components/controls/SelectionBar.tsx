@@ -5,10 +5,14 @@ import ReactDOM from 'react-dom';
 import { T } from '../../theme/tokens';
 import { useToast } from '../toast/ToastProvider';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
-import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
+import { useFavListener } from '../../../domain/bridge/useFav';
+import { FAVS } from '../../../domain/stores';
+import { selectionVM, watchedKey, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { knownTags } from '../../../domain/viewModels/knownTags';
 import { aboveNav } from '../nav/navMetrics';
 import { BulkTagsDialog } from './BulkTagsDialog';
+import { AddToDialog } from './AddToDialog';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type Props = {
     /** Todo lo visible ahora mismo, para «seleccionar todo». Opcional si se resuelve desde SelectionViewModel. */
@@ -23,6 +27,11 @@ type Props = {
 export function SelectionBar({ items: propItems }: Props = {}) {
     const toast = useToast();
     const [tagsOpen, setTagsOpen] = useState(false);
+    const [collectionOpen, setCollectionOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [, setFavTick] = useState(0);
+    useFavListener(() => setFavTick((t) => t + 1));
+
     useVmSignals(selectionVM, (vm) => [vm.selecting, vm.selected, vm.busy, vm.visibleItems]);
 
     if (!selectionVM.selecting.value) return null;
@@ -32,6 +41,10 @@ export function SelectionBar({ items: propItems }: Props = {}) {
     const busy = selectionVM.busy.value;
     const disabled = busy || count === 0;
     const hasItems = items.length > 0;
+
+    const allFav = count > 0 && selectionVM.selected.value.every((i) =>
+        FAVS.has(watchedKey(i))
+    );
 
     const doWatched = async (watched: boolean) => {
         try {
@@ -43,10 +56,35 @@ export function SelectionBar({ items: propItems }: Props = {}) {
         }
     };
 
+    const doFavorite = async () => {
+        const next = !allFav;
+        try {
+            await selectionVM.markFavorite(next);
+            toast(
+                globalize.translate(next ? 'MessageAddedToFavorites' : 'MessageRemovedFromFavorites') + ` · ${count}`,
+                'success'
+            );
+            selectionVM.stop();
+        } catch (e) {
+            toast((e as Error).message, 'warn');
+        }
+    };
+
     const doQueue = () => {
         const n = selectionVM.enqueue();
         toast(globalize.translate('MessageAddedToQueue') + ` · ${n}`, 'success');
         selectionVM.stop();
+    };
+
+    const doDelete = async () => {
+        try {
+            const n = await selectionVM.deleteSelected();
+            toast(globalize.translate('MessageItemDeleted') + ` · ${n}`, 'success');
+            selectionVM.stop();
+        } catch (e) {
+            toast((e as Error).message, 'warn');
+            throw e;
+        }
     };
 
     return ReactDOM.createPortal(
@@ -84,11 +122,20 @@ export function SelectionBar({ items: propItems }: Props = {}) {
                 <BarButton onClick={() => doWatched(false)} disabled={disabled}>
                     {globalize.translate('MarkUnplayed')}
                 </BarButton>
+                <BarButton onClick={doFavorite} disabled={disabled}>
+                    {globalize.translate(allFav ? 'RemoveFromFavorites' : 'AddToFavorites')}
+                </BarButton>
                 <BarButton onClick={doQueue} disabled={disabled}>
                     {globalize.translate('AddToQueue')}
                 </BarButton>
+                <BarButton onClick={() => setCollectionOpen(true)} disabled={disabled}>
+                    {globalize.translate('AddToCollection')}
+                </BarButton>
                 <BarButton onClick={() => setTagsOpen(true)} disabled={disabled}>
                     {globalize.translate('Tags')}
+                </BarButton>
+                <BarButton onClick={() => setConfirmDelete(true)} disabled={disabled} danger>
+                    {globalize.translate('Delete')}
                 </BarButton>
 
                 <button
@@ -101,6 +148,25 @@ export function SelectionBar({ items: propItems }: Props = {}) {
                     }}
                 >×</button>
             </div>
+
+            {collectionOpen && (
+                <AddToDialog
+                    kind='collection'
+                    itemIds={selectionVM.selected.value.map((i) => i.id)}
+                    onClose={() => setCollectionOpen(false)}
+                    onSuccess={() => selectionVM.stop()}
+                />
+            )}
+
+            {confirmDelete && (
+                <ConfirmDialog
+                    title={globalize.translate('HeaderDeleteItems')}
+                    message={globalize.translate('ConfirmDeleteItems')}
+                    confirmLabel={globalize.translate('Delete')}
+                    onConfirm={doDelete}
+                    onClose={() => setConfirmDelete(false)}
+                />
+            )}
 
             {tagsOpen && (
                 <BulkTagsDialog
@@ -125,18 +191,24 @@ export function SelectionBar({ items: propItems }: Props = {}) {
 }
 
 function BarButton({
-    onClick, disabled, children
+    onClick, disabled, danger, children
 }: {
-    onClick: () => void; disabled?: boolean; children: React.ReactNode;
+    onClick: () => void; disabled?: boolean; danger?: boolean; children: React.ReactNode;
 }) {
+    let bg = disabled ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)';
+    let color = disabled ? T.dim : '#fff';
+    if (danger && !disabled) {
+        bg = 'rgba(239,68,68,0.2)';
+        color = '#ff6b6b';
+    }
     return (
         <button
             onClick={onClick}
             disabled={disabled}
             style={{
                 padding: '7px 14px', borderRadius: 999, border: 'none',
-                background: disabled ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)',
-                color: disabled ? T.dim : '#fff',
+                background: bg,
+                color,
                 fontFamily: T.ui, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
                 cursor: disabled ? 'default' : 'pointer'
             }}
