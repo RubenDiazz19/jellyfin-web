@@ -353,6 +353,11 @@ export const LISTS = {
         return LIST_COVERS.has(keyOf(kind, listId));
     },
 
+    /** Anota que esa lista tiene un fondo puesto a mano. */
+    markCustomCover(kind: ListKind, listId: string): void {
+        LIST_COVERS.mark(keyOf(kind, listId));
+    },
+
     /**
      * Renombra la lista. Vale igual para los dos tipos: por dentro una lista
      * de reproducción y una colección son items del servidor, y renombrarlos

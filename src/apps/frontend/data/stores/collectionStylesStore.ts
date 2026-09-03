@@ -13,6 +13,7 @@ export type CollectionStyle = {
     customBackdrop?: string;
     customLogo?: string;
     imageVersion?: number;
+    itemOrder?: string[];
 };
 
 type StylesMap = Record<string, CollectionStyle>;
@@ -112,6 +113,16 @@ export const COLLECTION_STYLES = {
 
     getVersion(collectionId: string): number {
         return read()[collectionId]?.imageVersion ?? 0;
+    },
+
+    getOrder(collectionId: string): string[] | undefined {
+        return read()[collectionId]?.itemOrder;
+    },
+
+    setOrder(collectionId: string, order: string[]): void {
+        const map = read();
+        map[collectionId] = { ...map[collectionId], itemOrder: order };
+        write(map);
     },
 
     clear(collectionId: string): void {

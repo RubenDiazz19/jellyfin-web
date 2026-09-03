@@ -73,29 +73,35 @@ export function ListPage({ kind, listId, navigate }: Props) {
             ?? items?.find((i) => i.backdrop || i.heroBackdrop)?.heroBackdrop
             ?? items?.[0]?.poster;
 
+        const hasItems = !!(items && items.length > 0);
+
         return (
             <div
                 onContextMenu={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('.jfp-hoverlift') || target.closest('button')) return;
                     e.preventDefault();
                     collectionMenuRef.current?.openAt(e.clientX, e.clientY);
                 }}
                 style={{
                     position: 'relative',
                     width: '100vw',
-                    height: '100vh',
-                    overflow: 'hidden',
+                    minHeight: hasItems ? '190vh' : '100vh',
                     background: 'transparent'
                 }}
             >
+                <Nav navigate={navigate} active='lists' />
                 <CollectionHero
                     listId={listId}
                     list={list}
                     ancestors={ancestors}
                     fallbackBackdrop={fallbackBackdrop}
+                    items={items}
                     navigate={navigate}
                     onChanged={refresh}
                     menuRef={collectionMenuRef}
                 />
+                {hasItems && <div style={{ height: '190vh', pointerEvents: 'none' }} />}
             </div>
         );
     }

@@ -134,10 +134,15 @@ export function ListCardMenu({
             await apply(
                 async () => {
                     await uploadImageFile(listId, target, file);
+                    if (target === 'Backdrop') {
+                        await uploadImageFile(listId, 'Primary', file).catch(() => {});
+                    }
                     if (kind === 'collection') {
+                        LISTS.markCustomCover(kind, listId);
                         COLLECTION_STYLES.touch(listId);
                     }
                     await LISTS.refresh();
+                    onChanged();
                 },
                 globalize.translate('MessageCoverUpdated')
             );
@@ -149,6 +154,7 @@ export function ListCardMenu({
                 if (kind === 'collection') {
                     COLLECTION_STYLES.touch(listId);
                 }
+                onChanged();
             },
             globalize.translate('MessageCoverUpdated')
         );
@@ -169,10 +175,15 @@ export function ListCardMenu({
             void apply(
                 async () => {
                     await setImageByUrl(listId, target, clean);
+                    if (target === 'Backdrop') {
+                        await setImageByUrl(listId, 'Primary', clean).catch(() => {});
+                    }
                     if (kind === 'collection') {
+                        LISTS.markCustomCover(kind, listId);
                         COLLECTION_STYLES.touch(listId);
                     }
                     await LISTS.refresh();
+                    onChanged();
                 },
                 globalize.translate('MessageCoverUpdated')
             );
@@ -391,6 +402,10 @@ export function ListCardMenu({
                         type={remoteSearch}
                         onClose={() => setRemoteSearch(null)}
                         onApplied={async () => {
+                            if (kind === 'collection') {
+                                LISTS.markCustomCover(kind, listId);
+                                COLLECTION_STYLES.touch(listId);
+                            }
                             await LISTS.refresh();
                             onChanged();
                         }}
