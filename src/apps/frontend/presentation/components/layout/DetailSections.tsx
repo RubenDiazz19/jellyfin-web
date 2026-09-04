@@ -10,7 +10,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { C, T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
-import { translateGenre } from '../../../domain/genres';
+import { expandGenre } from '../../../domain/genres';
 
 const FULL_SCREEN: CSSProperties = {
     minHeight: '100vh', background: '#000', fontFamily: T.ui,
@@ -173,9 +173,10 @@ export function GenreLinks({
     genres: string[];
     navigate: Navigate;
 }) {
+    const cleanList = Array.from(new Set(genres.flatMap((g) => expandGenre(g))));
     return (
         <>
-            {genres.map((label, i) => {
+            {cleanList.map((label, i) => {
                 return (
                     <span key={label}>
                         <button
@@ -185,8 +186,8 @@ export function GenreLinks({
                                 font: 'inherit', color: 'inherit', cursor: 'pointer',
                                 textDecoration: 'underline dotted', textUnderlineOffset: 3
                             }}
-                        >{translateGenre(label)}</button>
-                        {i < genres.length - 1 && ', '}
+                        >{label}</button>
+                        {i < cleanList.length - 1 && ', '}
                     </span>
                 );
             })}

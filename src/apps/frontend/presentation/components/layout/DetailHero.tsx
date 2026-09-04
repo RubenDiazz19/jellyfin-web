@@ -11,7 +11,7 @@ import { useResponsive, useShortViewport } from '../../theme/responsive';
 import { Backdrop } from './Backdrop';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
-import { translateGenre } from '../../../domain/genres';
+import { expandGenre } from '../../../domain/genres';
 import { MediaBadges } from '../media/MediaBadges';
 
 import { useHomeScrollTransition } from '../../pages/useHomeScrollTransition';
@@ -194,13 +194,14 @@ type GenresProps = {
 
 /** Géneros del item, cada uno navegable a su listado. */
 export function HeroGenres({ genres, navigate, fontSize, marginBottom, justifyContent }: GenresProps) {
+    const cleanList = Array.from(new Set(genres.flatMap((g) => expandGenre(g))));
     return (
         <div style={{
             fontFamily: T.ui, fontSize, letterSpacing: 4, textTransform: 'uppercase',
             color: 'rgba(255,255,255,0.7)', marginBottom,
             display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent
         }}>
-            {genres.map((g, i) => (
+            {cleanList.map((g, i) => (
                 <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <button
                         onClick={(e) => { e.stopPropagation(); navigate({ page: 'genre', genre: g }); }}
@@ -213,9 +214,9 @@ export function HeroGenres({ genres, navigate, fontSize, marginBottom, justifyCo
                         onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
                         onMouseLeave={(e) => (e.currentTarget.style.color = '')}
                     >
-                        {translateGenre(g)}
+                        {g}
                     </button>
-                    {i < genres.length - 1 && <span style={{ opacity: 0.5 }}>·</span>}
+                    {i < cleanList.length - 1 && <span style={{ opacity: 0.5 }}>·</span>}
                 </span>
             ))}
         </div>

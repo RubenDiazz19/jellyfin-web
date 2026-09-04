@@ -5,7 +5,6 @@
 
 export const GENRE_TRANSLATIONS = new Map<string, string>([
     // Géneros principales TMDB / TVDB / IMDb
-    ['action & adventure', 'Acción y Aventura'],
     ['action', 'Acción'],
     ['adventure', 'Aventura'],
     ['animation', 'Animación'],
@@ -25,13 +24,14 @@ export const GENRE_TRANSLATIONS = new Map<string, string>([
     ['news', 'Noticias'],
     ['reality', 'Telerrealidad'],
     ['romance', 'Romance'],
-    ['sci-fi & fantasy', 'Ciencia ficción y Fantasía'],
+    ['sci-fi', 'Ciencia ficción'],
+    ['sci fi', 'Ciencia ficción'],
+    ['scifi', 'Ciencia ficción'],
     ['science fiction', 'Ciencia ficción'],
     ['soap', 'Telenovela'],
     ['talk', 'Entrevistas'],
     ['thriller', 'Suspense'],
     ['tv movie', 'Película de TV'],
-    ['war & politics', 'Bélico y Política'],
     ['war', 'Bélico'],
     ['western', 'Western'],
 
@@ -145,7 +145,40 @@ export const GENRE_TRANSLATIONS = new Map<string, string>([
 export function translateGenre(genre: string | undefined | null): string {
     if (!genre) return '';
     const trimmed = genre.trim();
-    const translation = GENRE_TRANSLATIONS.get(trimmed.toLowerCase());
+    const lower = trimmed.toLowerCase();
+
+    // Normalización de géneros compuestos si se pasan como término único
+    if (
+        lower === 'sci-fi & fantasy'
+        || lower === 'sci fi & fantasy'
+        || lower === 'scifi & fantasy'
+        || lower === 'sci-fi/fantasy'
+        || lower === 'science fiction & fantasy'
+        || lower === 'ciencia ficción y fantasía'
+        || lower === 'ciencia ficcion y fantasia'
+    ) {
+        return 'Ciencia ficción';
+    }
+    if (
+        lower === 'action & adventure'
+        || lower === 'action and adventure'
+        || lower === 'action/adventure'
+        || lower === 'acción y aventura'
+        || lower === 'accion y aventura'
+    ) {
+        return 'Acción';
+    }
+    if (
+        lower === 'war & politics'
+        || lower === 'war and politics'
+        || lower === 'war/politics'
+        || lower === 'bélico y política'
+        || lower === 'belico y politica'
+    ) {
+        return 'Bélico';
+    }
+
+    const translation = GENRE_TRANSLATIONS.get(lower);
     if (translation) return translation;
     return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
 }
@@ -176,21 +209,102 @@ export function getGenreVariants(subject: string | undefined | null): string[] {
         variants.add(capitalized);
     }
 
+    // Variantes cruzadas para que buscar por un género individual encuentre
+    // también los items etiquetados con géneros conjuntos del servidor (TMDB/TVDB).
+    if (
+        lower === 'acción'
+        || lower === 'action'
+        || lower === 'aventura'
+        || lower === 'adventure'
+    ) {
+        variants.add('Action & Adventure');
+        variants.add('Action and Adventure');
+        variants.add('Acción y Aventura');
+    } else if (
+        lower === 'ciencia ficción'
+        || lower === 'ciencia ficcion'
+        || lower === 'science fiction'
+        || lower === 'sci-fi'
+        || lower === 'scifi'
+    ) {
+        variants.add('Sci-Fi & Fantasy');
+        variants.add('Science Fiction');
+        variants.add('Sci-Fi');
+        variants.add('Ciencia ficción y Fantasía');
+    } else if (lower === 'fantasía' || lower === 'fantasia' || lower === 'fantasy') {
+        variants.add('Sci-Fi & Fantasy');
+        variants.add('Fantasy');
+        variants.add('Ciencia ficción y Fantasía');
+    } else if (lower === 'bélico' || lower === 'belico' || lower === 'war') {
+        variants.add('War & Politics');
+        variants.add('War');
+        variants.add('Bélico y Política');
+    }
+
     return [...variants];
 }
 
 /** Item con campo de géneros. */
 export type GenresItem = { genres?: string[] };
 
+/**
+ * Descompone géneros compuestos (de TMDB / TVDB como 'Action & Adventure' o
+ * 'Sci-Fi & Fantasy') en sus opciones individuales en español.
+ */
+export function expandGenre(genre: string | undefined | null): string[] {
+    if (!genre) return [];
+    const trimmed = genre.trim();
+    const lower = trimmed.toLowerCase();
+
+    // Acción y Aventura -> Acción, Aventura
+    if (
+        lower === 'action & adventure'
+        || lower === 'action and adventure'
+        || lower === 'action/adventure'
+        || lower === 'acción y aventura'
+        || lower === 'accion y aventura'
+    ) {
+        return ['Acción', 'Aventura'];
+    }
+
+    // Ciencia ficción y Fantasía -> Ciencia ficción, Fantasía
+    if (
+        lower === 'sci-fi & fantasy'
+        || lower === 'sci fi & fantasy'
+        || lower === 'scifi & fantasy'
+        || lower === 'sci-fi/fantasy'
+        || lower === 'science fiction & fantasy'
+        || lower === 'ciencia ficción y fantasía'
+        || lower === 'ciencia ficcion y fantasia'
+    ) {
+        return ['Ciencia ficción', 'Fantasía'];
+    }
+
+    // Bélico y Política -> Bélico
+    if (
+        lower === 'war & politics'
+        || lower === 'war and politics'
+        || lower === 'war/politics'
+        || lower === 'bélico y política'
+        || lower === 'belico y politica'
+    ) {
+        return ['Bélico'];
+    }
+
+    const clean = translateGenre(trimmed);
+    return clean ? [clean] : [];
+}
+
 /** Devuelve los géneros del item traducidos al español, deduplicados y ordenados. */
 export function getItemGenres(item: GenresItem | null | undefined): string[] {
     if (!item) return [];
     const seen = new Map<string, string>();
     for (const g of item.genres ?? []) {
-        const clean = translateGenre(g);
-        if (clean) {
-            const key = clean.toLowerCase();
-            if (!seen.has(key)) seen.set(key, clean);
+        for (const clean of expandGenre(g)) {
+            if (clean) {
+                const key = clean.toLowerCase();
+                if (!seen.has(key)) seen.set(key, clean);
+            }
         }
     }
     return [...seen.values()];
@@ -200,3 +314,47 @@ export function getItemGenres(item: GenresItem | null | undefined): string[] {
 export function getHeroGenres(item: GenresItem | null | undefined, limit = 3): string[] {
     return getItemGenres(item).slice(0, limit);
 }
+
+/**
+ * Géneros principales y más frecuentes para sugerencias iniciales en la UI.
+ * Ordenados según la relevancia típica de catálogo.
+ */
+export const PRIMARY_GENRES: readonly string[] = [
+    'Acción',
+    'Aventura',
+    'Animación',
+    'Anime',
+    'Ciencia ficción',
+    'Comedia',
+    'Crimen',
+    'Documental',
+    'Drama',
+    'Familiar',
+    'Fantasía',
+    'Historia',
+    'Misterio',
+    'Romance',
+    'Suspense',
+    'Terror',
+    'Bélico',
+    'Música',
+    'Western',
+    'Infantil'
+];
+
+const COMPOSITE_GENRES = new Set([
+    'Acción y Aventura',
+    'Ciencia ficción y Fantasía',
+    'Bélico y Política'
+]);
+
+/**
+ * Lista completa de todos los géneros y temáticas conocidos en español,
+ * deduplicados y ordenados alfabéticamente para búsqueda en autocompletado.
+ */
+export const ALL_GENRES: readonly string[] = Array.from(
+    new Set(GENRE_TRANSLATIONS.values())
+)
+    .filter((g) => !COMPOSITE_GENRES.has(g))
+    .sort((a, b) => a.localeCompare(b, 'es'));
+

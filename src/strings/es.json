@@ -2207,6 +2207,7 @@
     "EditTags": "Editar etiquetas",
     "LabelNewTag": "Nueva etiqueta…",
     "LabelSearchTags": "Buscar o añadir etiqueta…",
+    "LabelSearchGenres": "Buscar o añadir género…",
     "MessageNoTagsYet": "Todavía no hay etiquetas. Añade la primera abajo.",
     "MessageTagsSaved": "Etiquetas guardadas",
     "MessageTagsAddedToCount": "Etiquetas añadidas a {0} elementos",

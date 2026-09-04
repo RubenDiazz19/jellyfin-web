@@ -5,9 +5,10 @@ import { T } from '../theme/tokens';
 import { Nav } from '../components/layout/Nav';
 import { PageTitle } from '../components/layout/Title';
 import { CatalogPage } from './CatalogPage';
+import { useEffect } from 'react';
 import { genreVM } from '../../domain/viewModels/DiscoverViewModel';
 import { useViewModelLoad } from '../../domain/bridge/useViewModel';
-import { translateGenre } from '../../domain/genres';
+import { expandGenre, translateGenre } from '../../domain/genres';
 import type { Navigate } from '../../app/router';
 
 type Props = { genre: string; navigate: Navigate };
@@ -17,12 +18,22 @@ type Props = { genre: string; navigate: Navigate };
 // haberse cargado —se llega aquí desde el chip de género de una ficha, sin
 // pasar por la biblioteca— y porque así se ve la biblioteca entera.
 export function GenrePage({ genre, navigate }: Props) {
-    useViewModelLoad(genreVM, (vm) => vm.load(genre), [genre]);
+    // Si la URL trae un género compuesto o en inglés (ej: 'Sci-Fi & Fantasy' o 'Action & Adventure'),
+    // lo normalizamos a su género canónico en español y navegamos para corregir la URL.
+    const cleanGenres = expandGenre(genre);
+    const canonicalGenre = cleanGenres[0] ?? translateGenre(genre);
+
+    useEffect(() => {
+        if (canonicalGenre && canonicalGenre !== genre) {
+            navigate({ page: 'genre', genre: canonicalGenre });
+        }
+    }, [canonicalGenre, genre, navigate]);
+
+    useViewModelLoad(genreVM, (vm) => vm.load(canonicalGenre), [canonicalGenre]);
 
     const shows = genreVM.shows.value;
-
     const movies = genreVM.movies.value;
-    const label = translateGenre(genre);
+    const label = canonicalGenre;
 
     return (
         <CatalogPage

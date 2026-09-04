@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    expandGenre,
     getGenreVariants,
     getHeroGenres,
     getItemGenres,
@@ -10,7 +11,8 @@ describe('translateGenre', () => {
     it('traduce géneros y etiquetas conocidas al español', () => {
         expect(translateGenre('Romance')).toBe('Romance');
         expect(translateGenre('Action')).toBe('Acción');
-        expect(translateGenre('Action & Adventure')).toBe('Acción y Aventura');
+        expect(translateGenre('Action & Adventure')).toBe('Acción');
+        expect(translateGenre('Sci-Fi & Fantasy')).toBe('Ciencia ficción');
         expect(translateGenre('Science Fiction')).toBe('Ciencia ficción');
         expect(translateGenre('Animation')).toBe('Animación');
         expect(translateGenre('Magic')).toBe('Magia');
@@ -24,6 +26,24 @@ describe('translateGenre', () => {
         expect(translateGenre('etiquetaInventada')).toBe('EtiquetaInventada');
         expect(translateGenre('')).toBe('');
         expect(translateGenre(null)).toBe('');
+    });
+});
+
+describe('expandGenre', () => {
+    it('descompone géneros compuestos en sus partes individuales en español', () => {
+        expect(expandGenre('Action & Adventure')).toEqual(['Acción', 'Aventura']);
+        expect(expandGenre('Acción y Aventura')).toEqual(['Acción', 'Aventura']);
+        expect(expandGenre('Sci-Fi & Fantasy')).toEqual(['Ciencia ficción', 'Fantasía']);
+        expect(expandGenre('Ciencia ficción y Fantasía')).toEqual(['Ciencia ficción', 'Fantasía']);
+        expect(expandGenre('War & Politics')).toEqual(['Bélico']);
+        expect(expandGenre('Bélico y Política')).toEqual(['Bélico']);
+    });
+
+    it('traduce géneros simples al español', () => {
+        expect(expandGenre('Animation')).toEqual(['Animación']);
+        expect(expandGenre('Comedy')).toEqual(['Comedia']);
+        expect(expandGenre('')).toEqual([]);
+        expect(expandGenre(null)).toEqual([]);
     });
 });
 
@@ -45,12 +65,15 @@ describe('getGenreVariants', () => {
 });
 
 describe('getItemGenres', () => {
-    it('traduce géneros del servidor al español', () => {
-        const item = { genres: ['Romance', 'Comedy', 'Animation'] };
+    it('traduce géneros del servidor al español y descompone Acción y Aventura', () => {
+        const item = { genres: ['Romance', 'Comedy', 'Animation', 'Action & Adventure'] };
         const genres = getItemGenres(item);
         expect(genres).toContain('Romance');
         expect(genres).toContain('Comedia');
         expect(genres).toContain('Animación');
+        expect(genres).toContain('Acción');
+        expect(genres).toContain('Aventura');
+        expect(genres).not.toContain('Acción y Aventura');
     });
 
     it('deduplica insensible a mayúsculas', () => {

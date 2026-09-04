@@ -1,6 +1,6 @@
 {
   "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
-  "_generatedAt": "2026-09-04T09:25:22.282Z",
+  "_generatedAt": "2026-09-04T17:50:55.255Z",
   "items": {
     "2581c8f29f2043730ea7921e9103ff09": [
       "Crimen",
@@ -47,69 +47,64 @@
       "Mayoría de edad"
     ],
     "1d41dc84d2f39f97e3f69ae5a013d74e": [
-      "Anime",
       "Comedia",
+      "Anime",
       "Romance",
-      "Instituto"
+      "Recuentos de la vida"
     ],
     "f708e9f991d1f3a8cae182e83358da1b": [
       "Anime",
-      "Aventura",
-      "Fantasía",
       "Drama",
-      "Melancólica"
+      "Aventura",
+      "Fantasía"
     ],
     "9d128f24a3cb664570318cf06e81e050": [
-      "Anime",
       "Comedia",
+      "Anime",
       "Recuentos de la vida",
-      "Deportes",
-      "Instituto"
+      "Amistad"
     ],
     "b335f98c16c3428f2fc0d9f7d51eee2c": [
-      "Anime",
       "Acción",
-      "Fantasía"
+      "Fantasía",
+      "Anime"
     ],
     "8264ceb162619612c34cda6c71ae29d7": [
       "Anime",
       "Acción",
-      "Aventura",
       "Fantasía",
       "Venganza"
     ],
     "a01def85644908f7cbcd97389af7f162": [
-      "Anime",
       "Aventura",
-      "Fantasía"
+      "Fantasía",
+      "Anime",
+      "Época histórica"
     ],
     "fb1a9f122c94ea0a4ce8e87e05e7246a": [
       "Anime",
       "Drama",
-      "Fantasía",
-      "Familia disfuncional",
-      "Romance"
+      "Romance",
+      "Familia disfuncional"
     ],
     "eb7209598370f44313250e623dcd2b0f": [
       "Anime",
       "Acción",
       "Drama",
-      "Ciencia ficción",
-      "Venganza"
+      "Ciencia ficción"
     ],
     "a6469228e7905289c61afbb4305e6348": [
       "Anime",
       "Comedia",
       "Romance",
-      "Instituto",
-      "Recuentos de la vida"
+      "Instituto"
     ],
     "b14b9360520538bc3a20fb4108354c83": [
       "Drama",
-      "Bélico",
       "Hechos reales",
-      "Época histórica",
-      "Corrupción y poder"
+      "Bélico",
+      "Corrupción y poder",
+      "Época histórica"
     ]
   }
 }
