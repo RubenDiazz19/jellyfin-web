@@ -113,36 +113,11 @@ export const VOCABULARY: readonly VocabularyEntry[] = [
     { tag: 'Espacio exterior', hint: 'naves, estaciones u otros planetas' }
 ] as const;
 
-export const ENGLISH_TO_SPANISH = new Map<string, string>([
-    ['action', 'Acción'],
-    ['adventure', 'Aventura'],
-    ['comedy', 'Comedia'],
-    ['drama', 'Drama'],
-    ['horror', 'Terror'],
-    ['thriller', 'Suspense'],
-    ['mystery', 'Misterio'],
-    ['crime', 'Crimen'],
-    ['science fiction', 'Ciencia ficción'],
-    ['fantasy', 'Fantasía'],
-    ['romance', 'Romance'],
-    ['family', 'Familiar'],
-    ['anime', 'Anime'],
-    ['animation', 'Animación'],
-    ['documentary', 'Documental'],
-    ['real life', 'Hechos reales'],
-    ['black humor', 'Humor negro'],
-    ['surreal', 'Surrealista'],
-    ['feel-good', 'Feelgood'],
-    ['feelgood', 'Feelgood'],
-    ['disturbing', 'Perturbadora'],
-    ['violent', 'Violenta'],
-    ['melancholy', 'Melancólica'],
-    ['thrilling', 'Trepidante']
-]);
+import { GENRE_TRANSLATIONS } from '../../domain/genres';
 
 /** Returns the Spanish tag for a known English synonym, or undefined if none */
 export function translateEnglishTag(tag: string): string | undefined {
-    return ENGLISH_TO_SPANISH.get(tag.trim().toLowerCase());
+    return GENRE_TRANSLATIONS.get(tag.trim().toLowerCase());
 }
 
 export const VOCABULARY_TAGS: readonly string[] = VOCABULARY.map((e) => e.tag);

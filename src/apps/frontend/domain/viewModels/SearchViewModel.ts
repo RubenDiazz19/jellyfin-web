@@ -15,14 +15,14 @@ import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey } from '../../data/stores/itemKeys';
-import { MANUAL_TAGS } from '../../data/stores/manualTagsStore';
 import { WATCHED } from '../../data/stores/watchedStore';
 import type { RatingOperator, SavedView } from '../../data/stores/viewsStore';
 import { MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
 import { guardedLoad } from './guardedLoad';
 import { LoadGuard } from './loadGuard';
-import { translateGenre } from '../genres';
+import { getItemGenres } from '../genres';
+import { canonicalTag, getItemTags, normalizeTagForSearch } from '../tags';
 
 export type { RatingOperator };
 export type TypeFilter = 'todo' | 'series' | 'peliculas';
@@ -71,18 +71,6 @@ export function parseQuery(raw: string): { text: string; tags: string[] } {
         words.push(word);
     }
     return { text: words.join(' ').toLowerCase(), tags };
-}
-
-/**
- * Todas las etiquetas por las que se puede filtrar un item: las del servidor
- * (donde conviven los keywords de TMDB y lo que ha escrito el usuario) más las
- * automáticas del vocabulario. La búsqueda mira las dos fuentes aunque la fila
- * de chips solo enseñe unas pocas: escribir `#slasher` tiene que encontrar
- * tanto lo etiquetado a mano como lo que dedujo el script.
- */
-function tagsOf(item: SearchResult): string[] {
-    const translatedGenres = (item.genres ?? []).map((g) => translateGenre(g));
-    return [...(item.tags ?? []), ...(item.autoTags ?? []), ...translatedGenres];
 }
 
 function isSeriesWatched(show: Show): boolean {
@@ -226,16 +214,8 @@ export class SearchViewModel {
         const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies];
 
         return all.map((item) => {
-            const rawGenres = item.genres ?? [];
-            const translatedGenres = rawGenres.map((g) => {
-                const tr = translateGenre(g);
-                return (tr || g).toLowerCase();
-            });
-            const ownTags = [
-                ...(item.tags ?? []).map((t) => t.toLowerCase()),
-                ...(item.autoTags ?? []).map((t) => t.toLowerCase()),
-                ...translatedGenres
-            ];
+            const genres = getItemGenres(item).map((g) => normalizeTagForSearch(g));
+            const tags = getItemTags(item).map((t) => normalizeTagForSearch(t));
             const seriesEpisodeKeys = item.kind === 'show' ?
                 (item.seasons || []).flatMap((s) => (s.episodes || []).map((e) => episodeKey(item.id, s.n, e.n))) :
                 undefined;
@@ -246,9 +226,9 @@ export class SearchViewModel {
                 kind: item.kind,
                 lowerTitle: (item.title ?? '').toLowerCase(),
                 lowerSynopsis: (item.synopsis ?? '').toLowerCase(),
-                genres: translatedGenres,
+                genres,
                 cast: (item.cast ?? []).map((c) => (c.name ?? '').toLowerCase()),
-                tags: ownTags,
+                tags,
                 imdb: item.rating?.imdb ?? 0,
                 seriesEpisodeKeys
             };
@@ -331,7 +311,7 @@ export class SearchViewModel {
             }
 
             if (hasTags) {
-                const itemTags = tagsOf(item).map((t) => t.toLowerCase());
+                const itemTags = getItemTags(item).map((t) => t.toLowerCase());
                 if (!requiredTags.every((t) => itemTags.includes(t))) continue;
             }
 
@@ -370,22 +350,83 @@ export class SearchViewModel {
         this.mutationVersion.value;
         const seen = new Map<string, string>();
         for (const item of [...this.shows.value, ...this.movies.value]) {
-            for (const tag of item.autoTags ?? []) {
-                const key = tag.toLowerCase();
+            for (const tag of getItemTags(item)) {
+                const key = normalizeTagForSearch(tag);
                 if (!seen.has(key)) seen.set(key, tag);
             }
-            for (const tag of item.tags ?? []) {
-                const key = tag.toLowerCase();
-                if (!seen.has(key) && MANUAL_TAGS.has(tag)) seen.set(key, tag);
+        }
+        return [...seen.values()].sort((a, b) => a.localeCompare(b));
+    });
+
+    /**
+     * Etiquetas disponibles según los resultados actuales de la búsqueda.
+     * Si no hay filtros activos que acoten, devuelve todas las etiquetas (allTags).
+     * Si hay filtros activos, solo devuelve las etiquetas que tienen las obras
+     * resultantes (más las etiquetas ya seleccionadas, para poder desmarcarlas).
+     */
+    availableTags = computed<string[]>(() => {
+        const active = this.tagFilters.value;
+        const hasActiveTags = active.length > 0;
+        const hasOtherFilters = this.typeFilters.value.length > 0
+            || this.stateFilters.value.length > 0
+            || this.ratingFilters.value.length > 0
+            || !!this.query.value.trim();
+
+        if (!hasActiveTags && !hasOtherFilters) {
+            return this.allTags.value;
+        }
+
+        const seen = new Map<string, string>();
+
+        // 1. Siempre incluir las etiquetas activas para que sigan visibles y desmarcables
+        for (const tag of active) {
+            const canon = canonicalTag(tag);
+            if (canon) {
+                const key = normalizeTagForSearch(canon);
+                if (!seen.has(key)) seen.set(key, canon);
             }
-            for (const g of item.genres ?? []) {
-                const translated = translateGenre(g);
-                if (translated) {
-                    const key = translated.toLowerCase();
-                    if (!seen.has(key)) seen.set(key, translated);
+        }
+
+        const currentResults = this.results.value;
+        const totalResults = currentResults.length;
+
+        // 2. Extraer etiquetas de las obras que coinciden con los filtros actuales
+        if (hasActiveTags) {
+            // Con etiquetas ya activas:
+            // - Si solo queda 1 resultado (o ninguno), las demás opciones son irrelevantes.
+            // - Si quedan varios resultados, solo ofrecemos etiquetas que realmente discriminen
+            //   (si una etiqueta está en el 100% de los resultados, seleccionarla no acotaría nada).
+            if (totalResults > 1) {
+                const tagFrequency = new Map<string, { canon: string; count: number }>();
+                for (const item of currentResults) {
+                    for (const tag of getItemTags(item)) {
+                        const key = normalizeTagForSearch(tag);
+                        const entry = tagFrequency.get(key);
+                        if (entry) {
+                            entry.count++;
+                        } else {
+                            tagFrequency.set(key, { canon: tag, count: 1 });
+                        }
+                    }
+                }
+
+                for (const [key, { canon, count }] of tagFrequency) {
+                    if (count < totalResults && !seen.has(key)) {
+                        seen.set(key, canon);
+                    }
+                }
+            }
+        } else {
+            // Sin etiquetas activas aún (solo filtros de tipo/estado/valoración/búsqueda):
+            // Extraer todas las etiquetas presentes en las obras resultantes.
+            for (const item of currentResults) {
+                for (const tag of getItemTags(item)) {
+                    const key = normalizeTagForSearch(tag);
+                    if (!seen.has(key)) seen.set(key, tag);
                 }
             }
         }
+
         return [...seen.values()].sort((a, b) => a.localeCompare(b));
     });
 
@@ -446,15 +487,17 @@ export class SearchViewModel {
     };
 
     /** True si esa etiqueta está entre los filtros activos. */
-    hasTagFilter = (tag: string): boolean =>
-        this.tagFilters.value.some((t) => t.toLowerCase() === tag.toLowerCase());
+    hasTagFilter = (tag: string): boolean => {
+        const key = normalizeTagForSearch(tag);
+        return this.tagFilters.value.some((t) => normalizeTagForSearch(t) === key);
+    };
 
     /** Añade o quita una etiqueta del filtro. */
     toggleTagFilter = (tag: string) => {
-        const key = tag.toLowerCase();
+        const key = normalizeTagForSearch(tag);
         const current = this.tagFilters.value;
-        this.tagFilters.value = current.some((t) => t.toLowerCase() === key) ?
-            current.filter((t) => t.toLowerCase() !== key) :
+        this.tagFilters.value = current.some((t) => normalizeTagForSearch(t) === key) ?
+            current.filter((t) => normalizeTagForSearch(t) !== key) :
             [...current, tag];
     };
 

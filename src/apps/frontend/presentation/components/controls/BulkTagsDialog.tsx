@@ -8,7 +8,6 @@ import { TagChips, TagSuggestions, useTagDraft } from './TagEditor';
 type Props = {
     /** Cuántos items recibirán las etiquetas; solo para el encabezado. */
     count: number;
-    suggestions?: string[];
     onApply: (tags: string[]) => void | Promise<void>;
     onClose: () => void;
 };
@@ -18,14 +17,15 @@ type Props = {
  * etiquetas actuales: los items seleccionados tienen cada uno las suyas y
  * enseñar una lista combinada invitaría a creer que se van a reemplazar.
  * Lo que se hace es SUMAR: nadie pierde las que ya tenía.
+ *
+ * Solo se puede elegir del vocabulario cerrado.
  */
-export function BulkTagsDialog({ count, suggestions = [], onApply, onClose }: Props) {
+export function BulkTagsDialog({ count, onApply, onClose }: Props) {
     const [tags, setTags] = useState<string[]>([]);
     const [busy, setBusy] = useState(false);
 
     const { draft, setDraft, matches, add } = useTagDraft({
         tags,
-        suggestions,
         onAdd: (tag) => setTags((prev) => [...prev, tag])
     });
 
@@ -63,7 +63,7 @@ export function BulkTagsDialog({ count, suggestions = [], onApply, onClose }: Pr
                             value={draft}
                             onChange={setDraft}
                             onEnter={() => add(draft)}
-                            placeholder={globalize.translate('LabelNewTag')}
+                            placeholder={globalize.translate('LabelSearchTags')}
                         />
                     }
                     action={

@@ -2,38 +2,38 @@ import { describe, expect, it } from 'vitest';
 import { knownTags, registerTagSource } from '../knownTags';
 
 describe('knownTags', () => {
-    it('unifica géneros traducidos, etiquetas y autotags de fuentes registradas sin duplicados', () => {
+    it('solo incluye tags del vocabulario cerrado, no géneros traducidos', () => {
         registerTagSource(() => [
             {
-                genres: ['Comedy', 'Romance'],
-                tags: ['romance', 'anime', 'university'],
-                autoTags: ['slice of life']
+                tags: ['Anime', 'aftercreditsstinger', 'blind girl'],
+                autoTags: ['Terror', 'Suspense']
             },
             {
-                genres: ['Action'],
-                tags: ['University', 'amnesia']
+                tags: ['anime', 'Comedia'],
+                autoTags: ['Bélico']
             }
         ]);
 
         const tags = knownTags();
 
-        // Debe incluir los géneros traducidos al español
+        // Tags del vocabulario que pasan canonicalTag()
+        expect(tags).toContain('Anime');
+        expect(tags).toContain('Terror');
+        expect(tags).toContain('Suspense');
         expect(tags).toContain('Comedia');
-        expect(tags).toContain('Romance');
-        expect(tags).toContain('Acción');
+        expect(tags).toContain('Bélico');
 
-        // Debe incluir las etiquetas y autotags
-        expect(tags).toContain('anime');
-        expect(tags).toContain('university');
-        expect(tags).toContain('slice of life');
-        expect(tags).toContain('amnesia');
+        // Keywords basura de TMDB se descartan
+        expect(tags).not.toContain('aftercreditsstinger');
+        expect(tags).not.toContain('Aftercreditsstinger');
+        expect(tags).not.toContain('blind girl');
+        expect(tags).not.toContain('Blind girl');
 
-        // Debe estar ordenado alfabéticamente
+        // Ordenado alfabéticamente
         const sorted = [...tags].sort((a, b) => a.localeCompare(b));
         expect(tags).toEqual(sorted);
 
         // Sin duplicados insensibles a mayúsculas
-        expect(tags.filter((t) => t.toLowerCase() === 'romance')).toHaveLength(1);
-        expect(tags.filter((t) => t.toLowerCase() === 'university')).toHaveLength(1);
+        expect(tags.filter((t) => t.toLowerCase() === 'anime')).toHaveLength(1);
     });
 });

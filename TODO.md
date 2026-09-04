@@ -6,35 +6,91 @@ lo vigila), los comentarios van en español y el cierre de cada fase es
 
 ---
 
-## Fase 1 — Detección de foco del backdrop: mejoras al algoritmo
+## Unificación total del sistema de tags
 
-### Completadas (2026-08-31 / 2026-09-03)
+El sistema actual tiene 3 fuentes de etiquetas que la UI consume por separado:
+genres (del servidor, en inglés), server tags (mezcla de keywords de TMDB en
+inglés + lo que escribe el usuario) y autoTags (vocabulario cerrado en
+español). La consecuencia es una lógica fragmentada, chips con keywords basura
+y traducciones duplicadas.
 
-- **1.1** Saliencia CIELAB con blur gausiano 5×5 separable (σ≈1.0). ✅
-- **1.2** Detección de piel YCbCr (Cb∈[77,127] AND Cr∈[133,173]) como
-  proxy de cara, integrada en la señal combinada. ✅
-- **1.3** Energía combinada: 35% salencia cromática + 55% bordes (luma
-  linealizada) + 10% piel. Las tres señales se fusionan antes del
-  suavizado. ✅
-- **1.4** Peso de regla de tercios: boost ×1.08 suave en 1/3 y 2/3 del
-  ancho, decae linealmente en ±15 columnas. ✅
-- **1.5** Cache persistente en IndexedDB (`presentation/theme/dynamicColor.ts`):
-  L2 async con TTL de 90 días usando IndexedDB nativa sin dependencias externas.
-  El cache LRU en memoria se mantiene como L1 rápido. ✅
+**Objetivo**: un solo tipo de tag, todo en español, vocabulario cerrado,
+misma lógica en toda la app.
+
+### Fase A — Consolidar la fuente de tags
+
+| # | Archivo | Cambio |
+|---|---------|--------|
+| **A1** | `domain/tags.ts` | Reescribir `getItemTags()` para que devuelva SOLO tags del vocabulario cerrado: autoTags + server tags que pasen por `canonicalTag()`. Eliminar genres del resultado. La función es la única puerta de entrada a etiquetas para toda la app. |
+| **A2** | `domain/tags.ts` | Importar `VOCABULARY_TAGS` y `canonicalTag` desde `data/autotag/vocabulary.ts`. Server tags que no estén en el vocabulario se descartan (son keywords de TMDB). |
+| **A3** | `domain/tags.ts` | Eliminar el tipo `source` del `Tag` — ya no hace falta distinguir la fuente porque todo pasa por el mismo filtro. Queda `{ label: string }`. |
+| **A4** | `domain/tags.ts` | Eliminar `CategorizableItem`, `getItemCategories`, `getHeroCategories` de este módulo. Los genres se gestionan por separado (son otro concepto). |
+
+### Fase B — Separar genres de tags
+
+| # | Archivo | Cambio |
+|---|---------|--------|
+| **B1** | `domain/genres.ts` | Restaurar `getItemCategories` y `getHeroCategories` aquí (gestionan genres, no tags). Usan `translateGenre` para traducir los genres del servidor. |
+| **B2** | `domain/genres.ts` | Eliminar re-exportaciones de `tags.ts`. Los dos conceptos (genres y tags) son independientes. |
+| **B3** | `domain/tags.ts` | Eliminar `getItemCategories` / `getHeroCategories` / `CategorizableItem` — se mudan a `genres.ts`. |
+
+### Fase C — Descontaminar server tags
+
+| # | Archivo | Cambio |
+|---|---------|--------|
+| **C1** | `domain/tags.ts` | En `getItemTags()`, server tags se filtran con `canonicalTag()`: lo que no esté en el vocabulario se descarta. Esto elimina `aftercreditsstinger`, `blind girl`, etc. |
+| **C2** | `data/api/metadata.ts` | `setItemTags` y `setItemsTags` siguen guardando lo que el usuario escriba en el servidor — el vocabulario cerrado se aplica al LEER, no al escribir. No tocar. |
+
+### Fase D — Actualizar consumidores
+
+| # | Archivo | Cambio |
+|---|---------|--------|
+| **D1** | `SearchViewModel.ts` | `allTags`: usar `getItemTags()` directamente (ya no filtra por `source`). Los chips muestran solo tags del vocabulario. |
+| **D2** | `SearchViewModel.ts` | `catalog` computed: los tags indexados salen de `getItemTags()` (sin genres). |
+| **D3** | `SearchViewModel.ts` | `tagsOf()`: eliminar — reemplazar por `getItemTags()` + `.map(t => t.label)`. |
+| **D4** | `knownTags.ts` | Usar `getItemTags()` en vez de iterar genres+tags+autoTags por separado. |
+| **D5** | `ShowPage.tsx` |Breadcrumb usa `getItemTags(show)[0]?.label`. HeroGenres sigue usando genres (`getHeroTags` → ahora es `getHeroCategories`). Sección de detalle: GenreLinks para genres, chips de tags para etiquetas del vocabulario. |
+| **D6** | `MoviePage.tsx` | Mismo tratamiento que ShowPage. |
+| **D7** | `DetailSections.tsx` | `GenreLinks`: acepta `string[]` (genres). Nuevo componente `TagLinks` o similar para tags del vocabulario. |
+| **D8** | `DetailHero.tsx` | `HeroGenres`: recibe genres (string[]), no tags. |
+
+### Fase E — Limpiar traducciones
+
+| # | Archivo | Cambio |
+|---|---------|--------|
+| **E1** | `data/autotag/genreTranslations.ts` | **Eliminar**. La traducción de genres se queda en `genres.ts` con `GENRE_TRANSLATIONS` (ya lo es). |
+| **E2** | `data/autotag/vocabulary.ts` | Eliminar `ENGLISH_TO_SPANISH` y `translateEnglishTag` — no se necesitan porque el vocabulario ya está en español. |
+| **E3** | `domain/genres.ts` | Restaurar `GENRE_TRANSLATIONS` inline (como estaba antes). Solo se usa para traducir genres del servidor, no tags. |
+
+### Fase F — Tests
+
+| # | Archivo | Cambio |
+|---|---------|--------|
+| **F1** | `domain/__tests__/tags.test.ts` | Reescribir: probar que `getItemTags` solo devuelve tags del vocabulario, que server tags basura se descartan, que no hay genres en el resultado. |
+| **F2** | `domain/__tests__/genres.test.ts` | Verificar que `getItemCategories` sigue funcionando con genres. |
+| **F3** | `domain/viewModels/__tests__/knownTags.test.ts` | Verificar que `knownTags` devuelve tags unificados sin genres. |
+| **F4** | `domain/viewModels/__tests__/SearchViewModel.test.ts` | Verificar que chips y filtrado usan tags del vocabulario. |
+
+### Archivos afectados (resumen)
+
+| Archivo | Acción |
+|---|---|
+| `domain/tags.ts` | Reescribir: solo vocabulario cerrado |
+| `domain/genres.ts` | Restaurar `getItemCategories`/`getHeroCategories` inline |
+| `domain/viewModels/knownTags.ts` | Simplificar con `getItemTags` |
+| `domain/viewModels/SearchViewModel.ts` | Simplificar `allTags`, `tagsOf`, `catalog` |
+| `data/autotag/genreTranslations.ts` | Eliminar |
+| `data/autotag/vocabulary.ts` | Limpiar `ENGLISH_TO_SPANISH` |
+| `data/api/metadata.ts` | Sin cambios (guardado sigue igual) |
+| `presentation/pages/ShowPage.tsx` | Separar genres y tags en la vista |
+| `presentation/pages/MoviePage.tsx` | Separar genres y tags en la vista |
+| `presentation/components/layout/DetailSections.tsx` | Adaptar GenreLinks a genres |
+| `presentation/components/layout/DetailHero.tsx` | HeroGenres usa genres |
+| Tests (4 archivos) | Actualizar |
 
 ---
 
-## Fase 2 — Pendientes de la auditoría
-
-### Completadas (2026-08-31)
-
-| # | Archivo | Problema | Estado |
-|---|---------|----------|--------|
-| **D1** | `data/session/session.ts` | `createdAt: 0` hardcodeado — campo vestigial | ✅ eliminado |
-| **D2** | `data/api/http.ts` | `res.json()` sin validar content-type | ✅ validación añadida |
-| **D3** | `data/api/playback.ts` | Reporting functions tragan errores silenciosamente | ✅ `console.warn` añadido |
-
-### Pendientes
+## Pendientes de la auditoría
 
 | # | Archivo | Línea | Problema |
 |---|---------|-------|----------|
@@ -54,116 +110,57 @@ lo vigila), los comentarios van en español y el cierre de cada fase es
 
 ---
 
-# Pendiente (features)
+# Completado (histórico, ir a git log)
+
+## Fase 1 — Detección de foco del backdrop (2026-08-31 / 2026-09-03)
+
+- **1.1** Saliencia CIELAB con blur gausiano 5×5 separable (σ≈1.0). ✅
+- **1.2** Detección de piel YCbCr (Cb∈[77,127] AND Cr∈[133,173]) como proxy de cara. ✅
+- **1.3** Energía combinada: 35% salencia cromática + 55% bordes + 10% piel. ✅
+- **1.4** Peso de regla de tercios: boost ×1.08 suave en 1/3 y 2/3. ✅
+- **1.5** Cache persistente en IndexedDB (`presentation/theme/dynamicColor.ts`). ✅
+
+## Fase 2 — Pendientes de la auditoría (2026-08-31)
+
+| # | Archivo | Problema | Estado |
+|---|---------|----------|--------|
+| **D1** | `data/session/session.ts` | `createdAt: 0` hardcodeado | ✅ eliminado |
+| **D2** | `data/api/http.ts` | `res.json()` sin validar content-type | ✅ validación añadida |
+| **D3** | `data/api/playback.ts` | Reporting functions tragan errores silenciosamente | ✅ `console.warn` añadido |
 
 ## Selector de avatar a pantalla completa estilo Crunchyroll
 
-El Plan A ya resuelve el arte del personaje desde AniList y la rejilla lo
-pinta. Lo que falta es cambiar el formato del diálogo, de modal de 560px a
-pantalla completa con todas las opciones a la vista:
-
-- **Primitiva fullscreen en `Dialog`**: `variant?: 'modal' | 'fullscreen'`
-  (por defecto `'modal'`, nada de lo existente cambia). El fullscreen ocupa
-  `inset: 0`, panel al 100%, `borderRadius: 0`, fondo negro; portal, Escape y
-  `stopPropagation` compartidos con el modal.
-- **Catálogo completo de la biblioteca** en `avatars.ts`:
-  `browseLibraryCharacters({ startIndex })` pagina todos los items
-  `Movie,Series` con `Fields=People` (chunks con `StartIndex`), dedupe por
-  `Id:Role` y **agrupado por serie**. Requiere refactor de
-  `charactersFromItems` para compartir el `seen` entre páginas.
-- **Fuentes**: la búsqueda pasa a ser SOLO de la biblioteca local
-  (`searchLibraryCharacters`); se quitan AniList y TMDB como fuentes de
-  candidatos. AniList queda únicamente como proveedor de arte (ya integrado en
-  el Plan A).
-- **ViewModel**: `groups` (serie → candidatos), `seriesFilter`, `hasMore` /
-  `loadMore`; filtrar selecciona el grupo cargado; el arte se resuelve por
-  serie cuando el grupo está a la vista.
-- **Vista**: cabecera + búsqueda ancha + chips de serie (scroll horizontal) +
-  rejilla grande `repeat(auto-fill, minmax(140px, 1fr))` + «Cargar más» +
-  barra inferior con la composición actual (vista previa + Guardar).
-- **Strings**: `AvatarPickerAllSeries` («Todas») y `AvatarPickerLoadMore`
-  («Cargar más») en `en-us.json` / `es.json`.
-- **Tests**: paginación/agrupación/dedupe de `browseLibraryCharacters`; chips
-  y filtro en `AvatarPickerDialog.test.tsx`; VM con catálogo agrupado.
-
----
-
-# Completado (histórico, ir a git log)
+- **Primitiva fullscreen en `Dialog`**: `variant?: 'modal' | 'fullscreen'`. ✅
+- **Catálogo completo de la biblioteca** en `avatars.ts`. ✅
+- **Fuentes**: búsqueda SOLO de la biblioteca local. ✅
+- **ViewModel**: `groups`, `seriesFilter`, `hasMore`/`loadMore`. ✅
+- **Vista**: cabecera + búsqueda + chips + rejilla + barra inferior. ✅
+- **Strings**: `AvatarPickerAllSeries` y `AvatarPickerLoadMore`. ✅
+- **Tests**: paginación/agrupación/dedupe. ✅
 
 ## Auditoría de código (2026-08-31)
 
 Se realizó una auditoría profunda del proyecto que identificó ~45 items en
-18 fases. Se verificó que **~40 de ~45 items ya habían sido corregidos**
-en el código. Los items pendientes quedan en la Fase 2 de este archivo.
+18 fases. Se verificó que **~40 de ~45 items ya habían sido corregidos**.
 
 ## Ronda de optimización (2026-08-06)
 
-**Rendimiento interactivo**
+**Rendimiento interactivo**: `SelectionViewModel.selectedIds` con `computed`+`Set`,
+eventos `CustomEvent` con `StoreChange`, reproductor con `setPositionState` a ~1 Hz.
 
-- `SelectionViewModel` publica `selectedIds` (un `computed` con un `Set`) y las
-  tarjetas se suscriben con `useSignalSelector`: marcar una ya no repinta la
-  rejilla entera, y `has()` pasó de `.some()` a O(1).
-- Los eventos de store viajan como `CustomEvent` con los ids que han cambiado
-  (`StoreChange`), y `useStoreValue`/`useStoreVersion` filtran por ámbito
-  (prefijo de clave, ver `itemKeys`). Marcar un episodio ya no repinta las
-  decenas de tarjetas de la Home. Cubierto en `bridge/__tests__/useStore`.
-- Reproductor: `setPositionState` limitado a ~1 Hz (el spec lo pide y los
-  navegadores descartaban el resto), `currentTime` publicado cuantizado al
-  segundo, el timer de progreso arranca en `play` y para en `pause`/`ended`, y
-  el `loadedmetadata` de cada carga sustituye al anterior en vez de apilarse.
+**Bundle / build**: `manualChunks` para `vendor-react` y `vendor-color`,
+`optimizeDeps` para `@mui/icons-material`, lazy loading con `prefetchTabs`.
 
-**Bundle / build**
+**Persistencia / estado**: Escrituras a `localStorage` por lotes, React Query
+con `maxAge` explícito.
 
-- `vite.config.ts`: `manualChunks`, `build.target` explícito y
-  `chunkSizeWarningLimit` como trinquete. **Solo se agrupan `vendor-react` y
-  `vendor-color`**: agrupar `@mui` subía la carga inicial de 937 KB a 1 157 KB
-  porque casi todo MUI vive hoy en los chunks diferidos del dashboard.
-- `optimizeDeps` ya no pre-empaqueta los ~10 600 módulos de
-  `@mui/icons-material`: se escanean las fuentes y salen los ~140 que se usan
-  de verdad.
-- `@material/material-color-utilities` (~100 KB) salió del arranque: la
-  derivación de paleta vive en `theme/colorScheme.ts` y se carga con
-  `import()`; `dynamicColor` hace lo propio.
-- `LibraryPage` y `SearchPage` son `React.lazy`, pero se **precargan** en
-  cuanto el hilo queda libre (`prefetchTabs`).
+**Deuda / duplicación**: `VideoPlayerViewModel` repartido en 3 colaboradores,
+`createTtlCache` unificado, `CatalogViewModel` como base, `TICKS_PER_SECOND`
+con única definición, componentes compartidos (`SelectToggle`, `PageSection`,
+`CardGrid`).
 
-**Persistencia / estado**
+## Decisiones tomadas
 
-- Las escrituras a `localStorage` de los stores van por lotes (200 ms) con
-  volcado al ocultar la página; la caché en memoria y el evento siguen siendo
-  síncronos. `setMany` además solo notifica si algo cambia de verdad.
-- React Query: `maxAge` y `dehydrateOptions.shouldDehydrateQuery` explícitos —
-  no se persisten consultas fallidas, pendientes ni ya caducadas.
-
-**Deuda / duplicación**
-
-- `VideoPlayerViewModel` bajó de 1 022 a ~905 líneas repartiendo estado en tres
-  colaboradores de `domain/player/`: `SegmentTracker`, `TitlePreferences` y
-  `AutoNextTracker`.
-- `createTtlCache` (`data/api/ttlCache.ts`) unifica el `Map` + clave por
-  usuario + TTL + comprobación de identidad de los tres cachés.
-- `CatalogViewModel` es la base de Library / Discover / Favorites.
-- `TICKS_PER_SECOND` tiene una única definición (`data/api/types.ts`), con
-  `domain/player/format.ts` de puerta para la vista.
-- Componentes compartidos: `controls/SelectToggle`, `layout/PageSection` (cinco
-  páginas) y `layout/CardGrid` (cuatro).
-
-**Corregido de paso**
-
-- **«Visto» de serie incoherente entre pantallas.** Tenía DOS representaciones
-  locales que nadie reconciliaba. Ahora `mapShow` lee el agregado del servidor,
-  `fetchShows` hidrata la clave de serie, `hydrateWatched` la deriva de los
-  episodios en la ficha, y el botón escribe las dos caras a la vez.
-- `SelectionViewModel.markWatched` revertía poniendo TODO a `!watched`.
-- El provider del tema emitía `--md-sys-color-scheme: light` sobre una paleta
-  oscura durante el frame en que el scheme ya había cambiado y la paleta no.
-
-## Decisiones tomadas (no son deuda pendiente)
-
-- **`imageStorage` NO se migró a IndexedDB.** `setImage` no tiene ni un
-  llamador: los fondos que sube el usuario van al servidor
-  (`listsStore.setCover`).
+- **`imageStorage` NO se migró a IndexedDB** — los fondos van al servidor.
 - **`HomeViewModel`, `ShowViewModel` y `MovieViewModel` se quedan fuera de
-  `CatalogViewModel`.** El primero tiene dos cargas independientes con su
-  propio par `loading`/`ready`; los otros dos no son catálogos sino una entidad
-  suelta con su propio ciclo (`gone`, atajos por caché).
+  `CatalogViewModel`** — tienen ciclos propios.

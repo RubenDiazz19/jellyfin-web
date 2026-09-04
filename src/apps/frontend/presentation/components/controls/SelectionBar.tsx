@@ -8,7 +8,7 @@ import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { useFavListener } from '../../../domain/bridge/useFav';
 import { FAVS } from '../../../domain/stores';
 import { selectionVM, watchedKey, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
-import { knownTags } from '../../../domain/viewModels/knownTags';
+
 import { aboveNav } from '../nav/navMetrics';
 import { BulkTagsDialog } from './BulkTagsDialog';
 import { AddToDialog } from './AddToDialog';
@@ -171,7 +171,6 @@ export function SelectionBar({ items: propItems }: Props = {}) {
             {tagsOpen && (
                 <BulkTagsDialog
                     count={count}
-                    suggestions={knownTags()}
                     onClose={() => setTagsOpen(false)}
                     onApply={async (tags) => {
                         try {

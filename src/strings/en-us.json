@@ -2199,6 +2199,7 @@
     "LabelPlaybackQuality": "Frame dropped / corrupted",
     "EditTags": "Edit tags",
     "LabelNewTag": "New tag…",
+    "LabelSearchTags": "Search or add tag…",
     "MessageNoTagsYet": "No tags yet. Add the first one below.",
     "MessageTagsSaved": "Tags saved",
     "MessageTagsAddedToCount": "Tags added to {0} items",

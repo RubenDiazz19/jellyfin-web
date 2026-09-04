@@ -1,53 +1,50 @@
 // Las etiquetas se editan en dos sitios —las de un item y las de un lote— y
-// las dos cajas hacían exactamente lo mismo con ellas: enseñarlas como
-// píldoras quitables, sugerir las que ya existen en la biblioteca según lo
-// tecleado, y no dejar que entre dos veces la misma escrita con otras
-// mayúsculas. Eso último es lo que importa que esté en un solo sitio: es la
-// diferencia entre tener una etiqueta «anime» y tener «anime» y «Anime».
+// las dos cajas hacen lo mismo: enseñarlas como píldoras quitables y dejar
+// buscar en el vocabulario cerrado para añadir nuevas. No hay texto libre:
+// el usuario elige del vocabulario y de ninguna otra fuente.
 
 import { useMemo, useState } from 'react';
 import globalize from 'lib/globalize';
 
 import { T } from '../../theme/tokens';
+import { VOCABULARY_TAGS, canonicalTag } from '../../../domain/tags';
 
 /** Cuántas sugerencias caben sin que la caja se convierta en una lista. */
-const MAX_SUGGESTIONS = 8;
+const MAX_SUGGESTIONS = 12;
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 /**
- * Lo que se está tecleando y qué etiquetas ya existentes encajan con ello.
+ * Lo que se está buscando en el vocabulario y qué etiquetas encajan.
  *
  * `tags` a `null` es «todavía no se sabe» (se están leyendo del servidor):
  * entonces no se puede añadir nada, porque añadir sobre una lista que aún no
  * ha llegado la borraría al guardar.
  */
 export function useTagDraft({
-    tags, suggestions, onAdd
+    tags, onAdd
 }: {
     tags: string[] | null;
-    suggestions: string[];
     onAdd: (tag: string) => void;
 }) {
     const [draft, setDraft] = useState('');
 
-    // Las que ya usa la biblioteca, que este item aún no tiene y que encajan
-    // con lo tecleado: sirven para no volver a escribir a mano una que ya está.
+    // Vocabulario completo filtrado: las que el item ya tiene se ocultan, y se
+    // busca por lo tecleado. El usuario elige de aquí, no escribe texto libre.
     const matches = useMemo(() => {
         const assigned = tags ?? [];
         const needle = draft.trim().toLowerCase();
-        return suggestions
+        return VOCABULARY_TAGS
             .filter((s) => !assigned.some((t) => same(t, s)))
             .filter((s) => !needle || s.toLowerCase().includes(needle))
             .slice(0, MAX_SUGGESTIONS);
-    }, [suggestions, tags, draft]);
+    }, [tags, draft]);
 
     const add = (tag: string) => {
-        const clean = tag.trim();
-        if (!clean || !tags) return;
-        // Repetida: no se añade, pero el campo se vacía igual — para quien
-        // escribe, el trabajo está hecho.
-        if (!tags.some((t) => same(t, clean))) onAdd(clean);
+        const canon = canonicalTag(tag);
+        if (!canon || !tags) return;
+        // Repetida: no se añade, pero el campo se vacía igual.
+        if (!tags.some((t) => same(t, canon))) onAdd(canon);
         setDraft('');
     };
 
@@ -84,7 +81,7 @@ export function TagChips({ tags, onRemove }: { tags: string[]; onRemove: (tag: s
     );
 }
 
-/** Las que ya existen en la biblioteca: se ponen de un toque, sin teclearlas. */
+/** Las que están en el vocabulario y encajan con la búsqueda: se ponen de un toque. */
 export function TagSuggestions({
     suggestions, onAdd
 }: {

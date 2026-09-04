@@ -13,14 +13,10 @@
 // Se lee con `peek()` desde el ViewModel: es un dato de apoyo para un diálogo
 // que se abre puntualmente, no algo a lo que la vista deba re-suscribirse.
 
-import { translateGenre } from '../genres';
+import { getItemTags, normalizeTagForSearch, type TaggableItem } from '../tags';
 
-/** Items etiquetables y categorizables de un catálogo cargado. */
-export type TagSource = () => readonly {
-    tags?: string[];
-    genres?: string[];
-    autoTags?: string[];
-}[];
+/** Items etiquetables de un catálogo cargado. */
+export type TagSource = () => readonly TaggableItem[];
 
 const sources = new Set<TagSource>();
 
@@ -28,35 +24,18 @@ export function registerTagSource(source: TagSource): void {
     sources.add(source);
 }
 
-/** Todas las etiquetas y géneros vistos, sin repetir y en orden alfabético. */
+/** Todas las etiquetas del vocabulario vistas en la biblioteca, sin repetir y en orden alfabético. */
 export function knownTags(): string[] {
-    // Agrupadas ignorando mayúsculas; se enseña la primera grafía vista o el género traducido.
     const seen = new Map<string, string>();
     for (const source of sources) {
         for (const item of source()) {
-            for (const g of item.genres ?? []) {
-                const translated = translateGenre(g);
-                if (translated) {
-                    const key = translated.toLowerCase();
-                    if (!seen.has(key)) seen.set(key, translated);
-                }
-            }
-            for (const tag of item.tags ?? []) {
-                const clean = tag.trim();
-                if (clean) {
-                    const key = clean.toLowerCase();
-                    if (!seen.has(key)) seen.set(key, clean);
-                }
-            }
-            for (const tag of item.autoTags ?? []) {
-                const clean = tag.trim();
-                if (clean) {
-                    const key = clean.toLowerCase();
-                    if (!seen.has(key)) seen.set(key, clean);
+            for (const tag of getItemTags(item)) {
+                const key = normalizeTagForSearch(tag);
+                if (key && !seen.has(key)) {
+                    seen.set(key, tag);
                 }
             }
         }
     }
     return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
-

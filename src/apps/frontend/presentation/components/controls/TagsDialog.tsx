@@ -7,24 +7,26 @@ import { Dialog, DialogFooter, DialogHeader, DialogInputRow } from './Dialog';
 import { PillButton, TextField } from './fields';
 import { LoadState } from './LoadState';
 import { TagChips, TagSuggestions, useTagDraft } from './TagEditor';
+import { autoTagsFor, getItemTags } from '../../../domain/tags';
 
 type Props = {
     itemId: string;
     itemTitle?: string;
-    /** Etiquetas de toda la biblioteca, para autosugerir en vez de teclear. */
-    suggestions?: string[];
     onClose: () => void;
 };
 
 /**
- * Editor de etiquetas de un item. Las etiquetas van al servidor (metadatos),
- * así que se leen frescas al abrir: otro cliente pudo cambiarlas.
+ * Editor de etiquetas de un item. Solo gestiona tags del vocabulario cerrado.
+ *
+ * Al abrir se combinan los tags del servidor con las autoTags locales y se
+ * filtran contra el vocabulario cerrado (descartando keywords basura).
+ * El usuario busca y selecciona del vocabulario, no escribe texto libre.
  *
  * Guardar necesita permiso de edición de metadatos — `POST /Items/{id}` es la
  * misma puerta que el editor del admin. Sin permiso el servidor responde 403 y
  * se avisa por toast; leer y filtrar por etiquetas funciona para cualquiera.
  */
-export function TagsDialog({ itemId, itemTitle, suggestions = [], onClose }: Props) {
+export function TagsDialog({ itemId, itemTitle, onClose }: Props) {
     const toast = useToast();
     const [tags, setTags] = useState<string[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -33,14 +35,22 @@ export function TagsDialog({ itemId, itemTitle, suggestions = [], onClose }: Pro
     useEffect(() => {
         let alive = true;
         getItemRaw(itemId)
-            .then((raw) => { if (alive) setTags(raw.Tags ?? []); })
+            .then((raw) => {
+                if (!alive) return;
+                // Combinar tags del servidor con autoTags y filtrar con el vocabulario cerrado
+                const serverTags = (raw.Tags ?? []) as string[];
+                const valid = getItemTags({
+                    tags: serverTags,
+                    autoTags: autoTagsFor(itemId)
+                });
+                setTags(valid);
+            })
             .catch((e) => { if (alive) setError((e as Error).message); });
         return () => { alive = false; };
     }, [itemId]);
 
     const { draft, setDraft, matches, add } = useTagDraft({
         tags,
-        suggestions,
         onAdd: (tag) => setTags([...(tags ?? []), tag])
     });
 
@@ -92,7 +102,7 @@ export function TagsDialog({ itemId, itemTitle, suggestions = [], onClose }: Pro
                                         value={draft}
                                         onChange={setDraft}
                                         onEnter={() => add(draft)}
-                                        placeholder={globalize.translate('LabelNewTag')}
+                                        placeholder={globalize.translate('LabelSearchTags')}
                                     />
                                 }
                                 action={
@@ -108,4 +118,3 @@ export function TagsDialog({ itemId, itemTitle, suggestions = [], onClose }: Pro
         </Dialog>
     );
 }
-

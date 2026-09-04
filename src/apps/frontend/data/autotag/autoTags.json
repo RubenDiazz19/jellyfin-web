@@ -1,6 +1,6 @@
 {
   "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
-  "_generatedAt": "2026-07-31T20:51:11.240Z",
+  "_generatedAt": "2026-09-04T09:25:22.282Z",
   "items": {
     "2581c8f29f2043730ea7921e9103ff09": [
       "Crimen",
@@ -45,6 +45,71 @@
       "Anime",
       "Romance",
       "Mayoría de edad"
+    ],
+    "1d41dc84d2f39f97e3f69ae5a013d74e": [
+      "Anime",
+      "Comedia",
+      "Romance",
+      "Instituto"
+    ],
+    "f708e9f991d1f3a8cae182e83358da1b": [
+      "Anime",
+      "Aventura",
+      "Fantasía",
+      "Drama",
+      "Melancólica"
+    ],
+    "9d128f24a3cb664570318cf06e81e050": [
+      "Anime",
+      "Comedia",
+      "Recuentos de la vida",
+      "Deportes",
+      "Instituto"
+    ],
+    "b335f98c16c3428f2fc0d9f7d51eee2c": [
+      "Anime",
+      "Acción",
+      "Fantasía"
+    ],
+    "8264ceb162619612c34cda6c71ae29d7": [
+      "Anime",
+      "Acción",
+      "Aventura",
+      "Fantasía",
+      "Venganza"
+    ],
+    "a01def85644908f7cbcd97389af7f162": [
+      "Anime",
+      "Aventura",
+      "Fantasía"
+    ],
+    "fb1a9f122c94ea0a4ce8e87e05e7246a": [
+      "Anime",
+      "Drama",
+      "Fantasía",
+      "Familia disfuncional",
+      "Romance"
+    ],
+    "eb7209598370f44313250e623dcd2b0f": [
+      "Anime",
+      "Acción",
+      "Drama",
+      "Ciencia ficción",
+      "Venganza"
+    ],
+    "a6469228e7905289c61afbb4305e6348": [
+      "Anime",
+      "Comedia",
+      "Romance",
+      "Instituto",
+      "Recuentos de la vida"
+    ],
+    "b14b9360520538bc3a20fb4108354c83": [
+      "Drama",
+      "Bélico",
+      "Hechos reales",
+      "Época histórica",
+      "Corrupción y poder"
     ]
   }
 }

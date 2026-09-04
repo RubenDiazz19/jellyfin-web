@@ -1,7 +1,6 @@
 // Metadata editing + remote provider search (TMDB/TVDB "Identify…").
 
 import { loadSession } from '../session/session';
-import { MANUAL_TAGS } from '../stores/manualTagsStore';
 import { clearShowCache } from './cache';
 import { apiFetch, apiSend, noSessionError } from './http';
 import { emitItemMutated } from './mutations';
@@ -92,12 +91,6 @@ export function normalizeTags(tags: string[]): string[] {
 export async function setItemTags(itemId: string, tags: string[]): Promise<void> {
     const current = await getItemRaw(itemId);
     const next = normalizeTags(tags);
-    // El diálogo manda la lista entera, y ahí van mezclados los keywords que
-    // ya traía el item de TMDB con lo que acaba de teclear el usuario. Lo que
-    // no estuviera antes es lo escrito ahora: solo eso se registra como
-    // manual, que es lo que decide qué se ve en la fila de chips.
-    const before = new Set((current.Tags ?? []).map((t) => t.toLowerCase()));
-    MANUAL_TAGS.add(next.filter((t) => !before.has(t.toLowerCase())));
     await applyPatch(itemId, current, { Tags: next });
 }
 
@@ -113,9 +106,6 @@ export async function setItemTags(itemId: string, tags: string[]): Promise<void>
 export async function setItemsTags(itemIds: string[], tags: string[]): Promise<void> {
     const added = normalizeTags(tags);
     if (added.length === 0 || itemIds.length === 0) return;
-    // En el lote no hay ambigüedad: lo que se pasa es exactamente lo que el
-    // usuario ha escrito en el diálogo.
-    MANUAL_TAGS.add(added);
     for (const itemId of itemIds) {
         const current = await getItemRaw(itemId);
         const merged = {

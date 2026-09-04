@@ -8,7 +8,7 @@
 // superposición que abre la lupa— y son exactamente los mismos filtros sobre
 // el mismo ViewModel.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -40,20 +40,22 @@ export function SearchFilters() {
         vm.stateFilters,
         vm.tagFilters,
         vm.ratingFilters,
-        vm.allTags,
+        vm.availableTags,
         vm.anyFilterActive
     ]);
     const r = useResponsive();
     const categoryMode = searchVM.categoryMode.value;
     const categoryQuery = searchVM.categoryQuery.value.trim().toLowerCase();
     const [isPickingCategory, setIsPickingCategory] = useState(false);
+    const scrollRowRef = useRef<HTMLDivElement>(null);
 
     const typeCount = searchVM.typeFilters.value.length;
     const stateCount = searchVM.stateFilters.value.length;
     const tagCount = searchVM.tagFilters.value.length;
     const ratingFilters = searchVM.ratingFilters.value;
     const ratingCount = ratingFilters.length;
-    const allTags = searchVM.allTags.value;
+    const availableTags = searchVM.availableTags.value;
+    const activeTags = searchVM.tagFilters.value;
 
     const filteredTypeOptions = TYPE_OPTIONS.filter((opt) =>
         !categoryQuery || globalize.translate(opt.key).toLowerCase().includes(categoryQuery)
@@ -63,24 +65,40 @@ export function SearchFilters() {
         !categoryQuery || globalize.translate(opt.key).toLowerCase().includes(categoryQuery)
     );
 
-    const filteredTags = allTags.filter((tag) =>
-        !categoryQuery || tag.toLowerCase().includes(categoryQuery)
-    );
+    // Las etiquetas seleccionadas van primero para facilitar desmarcarlas;
+    // al desmarcarse vuelven a su orden alfabético natural.
+    // Solo se muestran las etiquetas disponibles en los resultados actuales (evita 0 resultados).
+    const filteredTags = useMemo(() => {
+        const activeSet = new Set(activeTags.map((t) => t.toLowerCase()));
+        const matching = availableTags.filter((tag) =>
+            activeSet.has(tag.toLowerCase()) || !categoryQuery || tag.toLowerCase().includes(categoryQuery)
+        );
+        return [...matching].sort((a, b) => {
+            const aSelected = activeSet.has(a.toLowerCase());
+            const bSelected = activeSet.has(b.toLowerCase());
+            if (aSelected && !bSelected) return -1;
+            if (!aSelected && bSelected) return 1;
+            return a.localeCompare(b);
+        });
+    }, [availableTags, categoryQuery, activeTags]);
 
     return (
         <div style={{ marginTop: r.touch ? 14 : 20 }}>
 
             {/* Fila principal en una sola línea */}
-            <div style={{
-                display: 'flex',
-                gap: 10,
-                alignItems: 'center',
-                flexWrap: 'nowrap',
-                overflowX: 'auto',
-                scrollbarWidth: 'none',
-                WebkitOverflowScrolling: 'touch',
-                paddingBottom: 2
-            }}>
+            <div
+                ref={scrollRowRef}
+                style={{
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'center',
+                    flexWrap: 'nowrap',
+                    overflowX: 'auto',
+                    scrollbarWidth: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                    paddingBottom: 2
+                }}
+            >
                 {/* Caso A: Ninguna categoría abierta -> Mostrar las 4 píldoras principales */}
                 {categoryMode === null && (
                     <div style={{
@@ -251,7 +269,13 @@ export function SearchFilters() {
                                                 index={index}
                                                 label={tag}
                                                 selected={selected}
-                                                onClick={() => searchVM.toggleTagFilter(tag)}
+                                                onClick={() => {
+                                                    const isSelecting = !searchVM.hasTagFilter(tag);
+                                                    searchVM.toggleTagFilter(tag);
+                                                    if (isSelecting) {
+                                                        scrollRowRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                                                    }
+                                                }}
                                             />
                                         );
                                     })

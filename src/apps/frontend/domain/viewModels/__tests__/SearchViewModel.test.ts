@@ -19,7 +19,6 @@ vi.mock('lib/jellyfin-apiclient', () => ({
 import { parseQuery, SearchViewModel } from '../SearchViewModel';
 import type { ApiService } from '../../../data/api/ApiService';
 import type { Movie, Show } from '../../../data/models';
-import { MANUAL_TAGS } from '../../../data/stores/manualTagsStore';
 
 function show(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = [], rating?: { imdb: number; age: string }): Show {
     return { id, title, tags, autoTags, genres, rating: rating ?? { imdb: 0, age: 'N/A' }, seasons: [] } as unknown as Show;
@@ -66,7 +65,7 @@ describe('parseQuery', () => {
 describe('filtro por etiqueta', () => {
     const vm = () => makeVm(
         [show('s1', 'Serie A', ['anime']), show('s2', 'Serie B')],
-        [movie('m1', 'Peli', ['anime', 'cine'])]
+        [movie('m1', 'Peli', ['anime', 'comedia'])]
     );
 
     test('sin filtro salen todos', () => {
@@ -87,7 +86,7 @@ describe('filtro por etiqueta', () => {
 
     test('`#tag` en la caja filtra igual que el chip', () => {
         const v = vm();
-        v.setQuery('#cine');
+        v.setQuery('#comedia');
         expect(ids(v)).toEqual(['m1']);
     });
 
@@ -99,7 +98,7 @@ describe('filtro por etiqueta', () => {
 
     test('chip y `#tag` se acumulan: hacen falta las dos etiquetas', () => {
         const v = vm();
-        v.toggleTagFilter('cine');
+        v.toggleTagFilter('comedia');
         v.setQuery('#anime');
         expect(ids(v)).toEqual(['m1']);
     });
@@ -137,7 +136,6 @@ describe('filtro por etiqueta', () => {
 describe('allTags (los chips que se pintan)', () => {
     beforeEach(() => {
         localStorage.clear();
-        MANUAL_TAGS._reset();
     });
 
     test('une las automáticas de series y películas, ordenadas', () => {
@@ -156,43 +154,96 @@ describe('allTags (los chips que se pintan)', () => {
         expect(v.allTags.value).toEqual(['Anime']);
     });
 
-    test('los keywords crudos de TMDB no salen: son los que llenaban la fila', () => {
-        const v = makeVm([show('s1', 'A', ['aftercreditsstinger', 'blind girl'])]);
-        expect(v.allTags.value).toEqual([]);
+    test('las etiquetas de servidor y automáticas conviven en la lista', () => {
+        const v = makeVm([show('s1', 'A', ['Comedia'], ['Anime'])]);
+        expect(v.allTags.value).toEqual(['Anime', 'Comedia']);
     });
 
-    test('las etiquetas escritas a mano sí salen, aunque no sean del vocabulario', () => {
-        MANUAL_TAGS.add(['Para ver']);
-        const v = makeVm([show('s1', 'A', ['Para ver', 'blind girl'])]);
-        expect(v.allTags.value).toEqual(['Para ver']);
-    });
-
-    test('automáticas y manuales conviven en la misma fila', () => {
-        MANUAL_TAGS.add(['Pendiente']);
-        const v = makeVm([show('s1', 'A', ['Pendiente', 'college'], ['Anime'])]);
-        expect(v.allTags.value).toEqual(['Anime', 'Pendiente']);
-    });
-
-    test('los géneros de las películas y series se traducen y aparecen como chips', () => {
+    test('los géneros no se incluyen como chips de etiquetas ya que pertenecen a la categoría de géneros', () => {
         const v = makeVm(
             [show('s1', 'A', [], [], ['War & Politics', 'Drama'])],
             [movie('m1', 'B', [], [], ['Action & Adventure'])]
         );
-        expect(v.allTags.value).toEqual(['Acción y Aventura', 'Bélico y Política', 'Drama']);
+        expect(v.allTags.value).toEqual([]);
     });
 
-    test('sin etiquetas ni géneros devuelve lista vacía (la fila de chips se oculta)', () => {
+    test('sin etiquetas devuelve lista vacía (la fila de chips se oculta)', () => {
         expect(makeVm([show('s1', 'A')]).allTags.value).toEqual([]);
     });
 });
 
+describe('availableTags (filtrado dinámico por facetas)', () => {
+    test('sin filtros activos devuelve todas las etiquetas', () => {
+        const v = makeVm(
+            [show('s1', 'A', ['Acción', 'Superhéroes'])],
+            [movie('m1', 'B', ['Comedia', 'Romance'])]
+        );
+        expect(v.availableTags.value).toEqual(['Acción', 'Comedia', 'Romance', 'Superhéroes']);
+    });
+
+    test('con varios resultados muestra las etiquetas conjuntas que permiten refinar', () => {
+        const v = makeVm(
+            [
+                show('s1', 'A', ['Acción', 'Superhéroes']),
+                show('s2', 'B', ['Acción', 'Comedia'])
+            ],
+            [movie('m1', 'C', ['Romance'])]
+        );
+        v.toggleTagFilter('Acción');
+        // Hay 2 resultados (s1 y s2): se muestran las etiquetas conjuntas para poder seguir refinando
+        expect(v.availableTags.value).toEqual(['Acción', 'Comedia', 'Superhéroes']);
+    });
+
+    test('si todos los resultados filtrados comparten una etiqueta, no se ofrece por no discriminar', () => {
+        const v = makeVm([
+            show('s1', 'Amagami', ['Comedia', 'Anime', 'Romance']),
+            show('s2', 'Grand Blue', ['Comedia', 'Anime', 'Deportes']),
+            show('s3', 'Polar Opposites', ['Comedia', 'Anime', 'Instituto'])
+        ]);
+        v.toggleTagFilter('Comedia');
+        // Los 3 resultados tienen 'Anime': seleccionar 'Anime' no acotaría nada,
+        // por lo que no se ofrece. 'Deportes', 'Instituto' y 'Romance' sí acotan.
+        expect(v.availableTags.value).toEqual(['Comedia', 'Deportes', 'Instituto', 'Romance']);
+    });
+
+    test('si al filtrar solo queda 1 resultado, desaparecen las demás opciones irrelevantes', () => {
+        const v = makeVm(
+            [show('s1', 'A', ['Acción', 'Superhéroes'])],
+            [movie('m1', 'B', ['Comedia', 'Romance'])]
+        );
+        v.toggleTagFilter('Acción');
+        // Solo queda s1: 'Superhéroes' daría el mismo contenido, así que desaparece y solo queda la activa
+        expect(v.availableTags.value).toEqual(['Acción']);
+    });
+
+    test('al desmarcar la etiqueta se restaura la lista completa de opciones', () => {
+        const v = makeVm(
+            [show('s1', 'A', ['Acción', 'Superhéroes'])],
+            [movie('m1', 'B', ['Comedia', 'Romance'])]
+        );
+        v.toggleTagFilter('Acción');
+        expect(v.availableTags.value).toEqual(['Acción']);
+        v.toggleTagFilter('Acción');
+        expect(v.availableTags.value).toEqual(['Acción', 'Comedia', 'Romance', 'Superhéroes']);
+    });
+
+    test('al filtrar por tipo (ej. películas) solo muestra etiquetas presentes en películas', () => {
+        const v = makeVm(
+            [show('s1', 'A', ['Acción', 'Superhéroes'])],
+            [movie('m1', 'B', ['Comedia', 'Romance'])]
+        );
+        v.toggleTypeFilter('peliculas');
+        expect(v.availableTags.value).toEqual(['Comedia', 'Romance']);
+    });
+});
+
 describe('etiquetas y géneros: filtrado', () => {
-    test('el chip de un género traducido filtra correctamente', () => {
+    test('la búsqueda por texto encuentra por género traducido', () => {
         const v = makeVm(
             [show('s1', 'A', [], [], ['War & Politics'])],
             [movie('m1', 'B', [], [], ['Comedy'])]
         );
-        v.toggleTagFilter('Bélico y Política');
+        v.setQuery('bélico');
         expect(ids(v)).toEqual(['s1']);
     });
     test('el chip de una automática filtra', () => {
@@ -230,13 +281,13 @@ describe('etiquetas y géneros: filtrado', () => {
         expect(ids(v)).toEqual(['s1']);
     });
 
-    test('una automática y una manual se acumulan', () => {
+    test('una automática y una del servidor se acumulan', () => {
         const v = makeVm([
-            show('s1', 'A', ['Pendiente'], ['Anime']),
+            show('s1', 'A', ['Comedia'], ['Anime']),
             show('s2', 'B', [], ['Anime'])
         ]);
         v.toggleTagFilter('Anime');
-        v.setQuery('#pendiente');
+        v.setQuery('#comedia');
         expect(ids(v)).toEqual(['s1']);
     });
 });

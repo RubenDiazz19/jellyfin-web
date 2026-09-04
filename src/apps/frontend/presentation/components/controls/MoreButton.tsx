@@ -17,10 +17,12 @@ import { MetadataEditor, type EditorKind } from '../admin/editor';
 import { RefreshDialog } from '../admin/RefreshDialog';
 import { AddToDialog } from './AddToDialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { TagsDialog } from './TagsDialog';
 import { ItemMenuList, type MenuItem } from './ItemMenuList';
 import { PopupPanel } from './PopupPanel';
 import { queueVM } from '../../../domain/viewModels/QueueViewModel';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
+
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useSignalSelector } from '../../../domain/bridge/useViewModel';
 import { usePlayer } from '../player/PlayerProvider';
@@ -81,6 +83,7 @@ export function MoreButton({
     const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
     const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
     const [refreshOpen, setRefreshOpen] = useState(false);
+    const [tagsOpen, setTagsOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
     const ref = useRef<HTMLDivElement>(null);
@@ -222,10 +225,11 @@ export function MoreButton({
      * por sí sola (se hace desde la serie) y un episodio no tiene imágenes
      * propias que valga la pena editar aquí.
      */
-    const editing = (has: { identify?: boolean; images?: boolean; subtitles?: boolean }): MenuItem[] => [
+    const editing = (has: { identify?: boolean; images?: boolean; subtitles?: boolean; tags?: boolean }): MenuItem[] => [
         ...(has.identify ? [{ label: t('Identify'), fn: () => setEditor('identify') }] : []),
         { label: t('RefreshMetadata'), fn: () => setRefreshOpen(true) },
         { label: t('EditMetadata'), fn: () => setEditor('metadata') },
+        ...(has.tags !== false ? [{ label: t('EditTags'), fn: () => setTagsOpen(true) }] : []),
         ...(has.images ? [{ label: t('EditImages'), fn: () => setEditor('images') }] : []),
         ...(has.subtitles ? [{ label: t('EditSubtitles'), fn: () => setEditor('subtitles') }] : []),
         { isDivider: true },
@@ -293,7 +297,7 @@ export function MoreButton({
             { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
             { label: t('AddToCollection'), fn: () => setAddTo('collection') },
             { isDivider: true },
-            ...editing({ images: true })
+            ...editing({ images: true, tags: false })
         ],
         episode: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
@@ -362,6 +366,13 @@ export function MoreButton({
                     subject={itemTitle ?? ''}
                     onRefresh={doRefresh}
                     onClose={() => setRefreshOpen(false)}
+                />
+            )}
+            {tagsOpen && (
+                <TagsDialog
+                    itemId={id}
+                    itemTitle={itemTitle}
+                    onClose={() => setTagsOpen(false)}
                 />
             )}
             {confirmDelete && (

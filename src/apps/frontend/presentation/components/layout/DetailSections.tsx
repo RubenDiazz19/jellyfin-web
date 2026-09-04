@@ -166,22 +166,30 @@ export function DetailRow({ label, children }: { label: string; children: ReactN
 }
 
 /** Los géneros del item como enlaces a su listado, separados por comas. */
-export function GenreLinks({ genres, navigate }: { genres: string[]; navigate: Navigate }) {
+export function GenreLinks({
+    genres,
+    navigate
+}: {
+    genres: string[];
+    navigate: Navigate;
+}) {
     return (
         <>
-            {genres.map((g, i) => (
-                <span key={g}>
-                    <button
-                        onClick={() => navigate({ page: 'genre', genre: g })}
-                        style={{
-                            background: 'none', border: 'none', padding: 0,
-                            font: 'inherit', color: 'inherit', cursor: 'pointer',
-                            textDecoration: 'underline dotted', textUnderlineOffset: 3
-                        }}
-                    >{translateGenre(g)}</button>
-                    {i < genres.length - 1 && ', '}
-                </span>
-            ))}
+            {genres.map((label, i) => {
+                return (
+                    <span key={label}>
+                        <button
+                            onClick={() => navigate({ page: 'genre', genre: label })}
+                            style={{
+                                background: 'none', border: 'none', padding: 0,
+                                font: 'inherit', color: 'inherit', cursor: 'pointer',
+                                textDecoration: 'underline dotted', textUnderlineOffset: 3
+                            }}
+                        >{translateGenre(label)}</button>
+                        {i < genres.length - 1 && ', '}
+                    </span>
+                );
+            })}
         </>
     );
 }
