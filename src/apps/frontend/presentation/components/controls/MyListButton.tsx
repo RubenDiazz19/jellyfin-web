@@ -3,6 +3,7 @@ import globalize from 'lib/globalize';
 import { useState } from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
+import { preventMouseDown } from '../../hooks/useStableClick';
 import { useToast } from '../toast/ToastProvider';
 import { useInLists, useListsSync } from '../../../domain/bridge/useLists';
 import { LISTS, type ListKind, type ListRef } from '../../../domain/stores';
@@ -42,7 +43,7 @@ export function MyListButton({ itemId, itemTitle, size = 'md' }: Props) {
                 // píxeles entre el mousedown y el mouseup. Mismo fix que el
                 // resto de botones del hero; el onClick sigue disparando y el
                 // Tab conserva la accesibilidad.
-                onMouseDown={(e) => e.preventDefault()}
+                onMouseDown={preventMouseDown}
                 aria-haspopup='dialog'
                 aria-label={`${globalize.translate('MyList')} · ${itemTitle}`}
                 style={{

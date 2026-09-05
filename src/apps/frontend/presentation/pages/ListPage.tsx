@@ -110,7 +110,6 @@ export function ListPage({ kind, listId, navigate }: Props) {
                 <CollectionHero
                     listId={listId}
                     list={list}
-                    ancestors={ancestors}
                     fallbackBackdrop={fallbackBackdrop}
                     items={items}
                     navigate={navigate}

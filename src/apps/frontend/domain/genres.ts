@@ -310,6 +310,14 @@ export function getItemGenres(item: GenresItem | null | undefined): string[] {
     return [...seen.values()];
 }
 
+/**
+ * Traduce, expande géneros compuestos y deduplica una lista de géneros al español.
+ */
+export function cleanGenres(genres: readonly string[] | null | undefined): string[] {
+    if (!genres || genres.length === 0) return [];
+    return getItemGenres({ genres: [...genres] });
+}
+
 /** Las primeras N genres (por defecto 3) para el hero de la ficha. */
 export function getHeroGenres(item: GenresItem | null | undefined, limit = 3): string[] {
     return getItemGenres(item).slice(0, limit);

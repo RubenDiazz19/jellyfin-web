@@ -6,7 +6,7 @@ import { useToast } from '../../toast/ToastProvider';
 import { ErrText, Muted, PillButton, TextArea, TextField } from '../../controls/fields';
 import { Field, FooterRow } from './primitives';
 import { GenreEditor } from './GenreEditor';
-import { getItemGenres } from '../../../../domain/genres';
+import { cleanGenres } from '../../../../domain/genres';
 
 export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () => void }) {
     const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export function MetadataTab({ itemId, onClose }: { itemId: string; onClose: () =
             setYear(it.ProductionYear ? String(it.ProductionYear) : '');
             setOverview(it.Overview ?? '');
             setTaglines((it.Taglines ?? []).join('\n'));
-            setGenres(getItemGenres({ genres: it.Genres ?? [] }));
+            setGenres(cleanGenres(it.Genres));
             setOfficialRating(it.OfficialRating ?? '');
             setLoading(false);
         }).catch((e: Error) => {

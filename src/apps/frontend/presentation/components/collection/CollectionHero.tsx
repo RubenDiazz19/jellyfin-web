@@ -10,7 +10,6 @@ import type { Navigate } from '../../../app/router';
 type Props = {
     listId: string;
     list: ListRef | undefined;
-    ancestors?: Array<{ id: string; name: string }>;
     fallbackBackdrop?: string;
     items?: PlaylistItem[] | null;
     navigate: Navigate;

@@ -1,4 +1,5 @@
-import { episodeKey, WATCHED } from '../../../domain/stores';
+import { WATCHED } from '../../../domain/stores';
+import { getShowEpisodeKeys, isShowFullyWatched } from '../../../domain/showWatched';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { useViewModel } from '../../../domain/bridge/useViewModel';
 import { showVM } from '../../../domain/viewModels/ShowViewModel';
@@ -25,16 +26,10 @@ export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props
     useViewModel(showVM);
     const proto = PROTO_DATA.shows[showId];
     const show = proto ?? showVM.showFor(showId);
-    const allEpIds = show ?
-        (show.seasons || []).flatMap((season) =>
-            (season.episodes || []).map((ep) => episodeKey(showId, season.n, ep.n))
-        ) :
-        [];
+    const allEpIds = getShowEpisodeKeys(show);
     // Con los episodios cargados manda el agregado real —es lo que refleja
     // haberlos ido marcando uno a uno—; sin ellos, la clave de la serie.
-    const allWatched = allEpIds.length > 0 ?
-        allEpIds.every((id) => WATCHED.has(id)) :
-        WATCHED.has(showId);
+    const allWatched = show ? isShowFullyWatched(show) : WATCHED.has(showId);
 
     return (
         <WatchedToggle

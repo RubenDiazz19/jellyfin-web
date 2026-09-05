@@ -3,6 +3,7 @@ import { useState } from 'react';
 import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
+import { preventMouseDown } from '../../hooks/useStableClick';
 
 type Props = {
     size?: number;
@@ -76,7 +77,7 @@ export function PlayBtn({
                 // dos veces. El monkey-patch de HTMLElement.prototype.focus fuerza
                 // preventScroll:true pero SÓLO en llamadas explícitas .focus() — el
                 // focus nativo del navegador durante mousedown no pasa por él.
-                onMouseDown={(e) => e.preventDefault()}
+                onMouseDown={preventMouseDown}
                 // También al llegar con el teclado: quien navega con Tab
                 // merece el mismo adelanto que quien llega con el ratón.
                 onFocus={() => onHover?.()}

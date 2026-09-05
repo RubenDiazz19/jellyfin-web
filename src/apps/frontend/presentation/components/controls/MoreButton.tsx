@@ -6,34 +6,17 @@ import globalize from 'lib/globalize';
 
 import { Ic } from '../../theme/icons';
 import { IconButton } from './IconButton';
-import { useToast } from '../toast/ToastProvider';
-import { useSession } from '../../../domain/bridge/useSession';
-import {
-    refreshItemMetadata, deleteItem,
-    downloadUrl, nativeItemUrl,
-    type RefreshOptions
-} from '../../../domain/api';
-import { MetadataEditor, type EditorKind } from '../admin/editor';
-import { RefreshDialog } from '../admin/RefreshDialog';
-import { AddToDialog } from './AddToDialog';
-import { ConfirmDialog } from './ConfirmDialog';
-import { TagsDialog } from './TagsDialog';
 import { ItemMenuList, type MenuItem } from './ItemMenuList';
 import { PopupPanel } from './PopupPanel';
-import { queueVM } from '../../../domain/viewModels/QueueViewModel';
-import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
-
-import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
-import { useSignalSelector } from '../../../domain/bridge/useViewModel';
-import { usePlayer } from '../player/PlayerProvider';
 import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
+import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
+import { useItemActions, type ItemKind } from './useItemActions';
+import { buildMoreMenuItems } from './moreMenuBuilder';
+import { MoreDialogs } from './MoreDialogs';
 
 /** Permite abrir el menú desde fuera, en un punto: el clic derecho. */
-
 export type ItemMenuHandle = { openAt: (x: number, y: number) => void };
-
-type ItemKind = 'movie' | 'show' | 'season' | 'episode' | 'collection';
 
 type Props = {
     id: string;
@@ -80,50 +63,20 @@ export function MoreButton({
     selectable, onSelect
 }: Props) {
     const [open, setOpen] = useState(false);
-    const [editor, setEditor] = useState<null | 'metadata' | 'identify' | 'images' | 'subtitles'>(null);
-    const [addTo, setAddTo] = useState<null | 'playlist' | 'collection'>(null);
-    const [refreshOpen, setRefreshOpen] = useState(false);
-    const [tagsOpen, setTagsOpen] = useState(false);
-    const [confirmDelete, setConfirmDelete] = useState(false);
     const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
     const ref = useRef<HTMLDivElement>(null);
-    const toast = useToast();
-    const { session } = useSession();
-    const { play } = usePlayer();
     const r = useResponsive();
-    const isReal = !!session?.accessToken;
 
-    const doPlay = (opts: { fromStart?: boolean } = {}) => {
-        play({
-            itemId: id,
-            title: itemTitle,
-            startTicks: opts.fromStart ? 0 : undefined
-        });
-    };
-
-    const doPlayNextEpisode = () => {
-        if (!nextEpisodeId) return;
-        play({ itemId: nextEpisodeId, title: itemTitle });
-    };
-
-    // Series y temporadas no son reproducibles por sí mismas: se encola el
-    // episodio con el que arrancarían.
-    const queueableId = type === 'show' || type === 'season' ? nextEpisodeId : id;
-
-    const doQueue = (position: 'next' | 'last') => {
-        if (!queueableId || !itemTitle) return;
-        const entry = {
-            itemId: queueableId,
-            title: itemTitle,
-            subtitle: queueSubtitle,
-            poster: queuePoster
-        };
-        if (position === 'next') queueVM.playNext(entry);
-        else queueVM.enqueue(entry);
-        toast(globalize.translate(
-            position === 'next' ? 'MessageAddedToQueueNext' : 'MessageAddedToQueue'
-        ), 'success');
-    };
+    const actions = useItemActions({
+        id,
+        type,
+        itemTitle,
+        queueSubtitle,
+        queuePoster,
+        nextEpisodeId,
+        selectable,
+        onSelect
+    });
 
     const openMenu = () => {
         if (open) { setOpen(false); return; }
@@ -160,164 +113,29 @@ export function MoreButton({
 
     useImperativeHandle(handle, () => ({ openAt }));
 
-    // -------- handlers reales --------
-    const label = itemTitle ? ` · ${itemTitle}` : '';
+    const menu = buildMoreMenuItems({
+        type,
+        isReal: actions.isReal,
+        items,
+        selectable,
+        isSelected: actions.isSelected,
+        canQueue: actions.canQueue,
+        nextEpisodeId,
+        onShuffle,
+        toast: actions.toast,
+        doPlay: actions.doPlay,
+        doPlayNextEpisode: actions.doPlayNextEpisode,
+        doQueue: actions.doQueue,
+        openNative: actions.openNative,
+        doDownload: actions.doDownload,
+        doSelect: actions.doSelect,
+        setEditor: actions.setEditor,
+        setAddTo: actions.setAddTo,
+        setRefreshOpen: actions.setRefreshOpen,
+        setTagsOpen: actions.setTagsOpen,
+        setConfirmDelete: actions.setConfirmDelete
+    });
 
-    const doRefresh = async (options: RefreshOptions) => {
-        try {
-            await refreshItemMetadata(id, options);
-            // Refrescar una serie entera tarda; sin esto el aviso era todo lo
-            // que el usuario llegaba a ver del proceso.
-            tasksVM.expect(id, itemTitle ?? '');
-            toast(globalize.translate('MessageRefreshQueued'), 'success');
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-            // Que la caja siga abierta: no se ha llegado a lanzar nada.
-            throw e;
-        }
-    };
-
-    // La confirmación la lleva el diálogo (ver ConfirmDialog): aquí solo se
-    // borra. Se relanza el error para que el diálogo sepa que no debe cerrarse
-    // sobre un item que sigue existiendo.
-    const doDelete = async () => {
-        try {
-            await deleteItem(id);
-            toast(globalize.translate('Deleted') + label, 'success');
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-            throw e;
-        }
-    };
-
-    const openNative = (targetId?: string, extra = '') => {
-        const url = nativeItemUrl(targetId ?? id) + extra;
-        if (!url) return toast(globalize.translate('MessageServerUrlUnavailable'), 'warn');
-        window.open(url, '_blank', 'noopener');
-    };
-
-    const doDownload = () => {
-        const url = downloadUrl(id);
-        if (!url) return toast(globalize.translate('MessageDownloadUrlUnavailable'), 'warn');
-        // Un <a download> es más fiable que window.open (fuerza el guardado en
-        // vez de que el browser abra el mkv como reproducción inline).
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = '';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    };
-
-    // -------- construcción de menús --------
-    const t = (key: string) => globalize.translate(key);
-    const canQueue = !!queueableId && !!itemTitle;
-
-    /** Mandar a la cola: idéntico para los cuatro tipos. */
-    const queueing: MenuItem[] = [
-        { label: t('PlayNextInQueue'), fn: () => doQueue('next'), disabled: !canQueue },
-        { label: t('AddToQueue'), fn: () => doQueue('last'), disabled: !canQueue }
-    ];
-
-    /**
-     * El bloque de edición, que cierra los cuatro menús. Lo que cambia entre
-     * tipos es solo qué existe para cada uno: una temporada no se identifica
-     * por sí sola (se hace desde la serie) y un episodio no tiene imágenes
-     * propias que valga la pena editar aquí.
-     */
-    const editing = (has: { identify?: boolean; images?: boolean; subtitles?: boolean; tags?: boolean }): MenuItem[] => [
-        ...(has.identify ? [{ label: t('Identify'), fn: () => setEditor('identify') }] : []),
-        { label: t('RefreshMetadata'), fn: () => setRefreshOpen(true) },
-        { label: t('EditMetadata'), fn: () => setEditor('metadata') },
-        ...(has.tags !== false ? [{ label: t('EditTags'), fn: () => setTagsOpen(true) }] : []),
-        ...(has.images ? [{ label: t('EditImages'), fn: () => setEditor('images') }] : []),
-        ...(has.subtitles ? [{ label: t('EditSubtitles'), fn: () => setEditor('subtitles') }] : []),
-        { isDivider: true },
-        { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
-    ];
-
-    /** Series y temporadas arrancan por el episodio que toca, no por sí mismas. */
-    const continueEntries: MenuItem[] = nextEpisodeId ? [
-        { label: t('PlayNextEpisode'), fn: doPlayNextEpisode },
-        { label: t('HeaderPlayAll'), fn: doPlayNextEpisode }
-    ] : [];
-
-    const isSelected = useSignalSelector(
-        selectionVM.selectedIds,
-        (ids) => (selectable ? ids.has(selectable.id) : false)
-    );
-
-    const doSelect = () => {
-        if (!selectable) return;
-        if (onSelect) {
-            onSelect();
-        } else if (!selectionVM.selecting.value) {
-            selectionVM.start(selectable);
-        } else {
-            selectionVM.toggle(selectable);
-        }
-    };
-
-    const selectItem: MenuItem[] = selectable ? [
-        {
-            label: t(isSelected ? 'ClearSelection' : 'Select'),
-            fn: doSelect
-        }
-    ] : [];
-
-    const menuByType: Record<ItemKind, MenuItem[]> = {
-        movie: [
-            { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
-            ...selectItem,
-            ...queueing,
-            // Sin «añadir a lista/colección»: de eso se encarga el botón
-            // «Mi lista» de la ficha, que además enseña de un vistazo si el
-            // título ya está en alguna y permite marcar varias a la vez.
-            { isDivider: true },
-            { label: t('Download'), fn: doDownload },
-            { isDivider: true },
-            ...editing({ identify: true, images: true, subtitles: true })
-        ],
-        show: [
-            ...continueEntries,
-            ...(onShuffle ?
-                [{ label: t('ShufflePlay') || t('Shuffle'), fn: onShuffle }] :
-                [{ label: t('Shuffle'), fn: () => openNative(undefined, '&shuffle=true') }]),
-            { isDivider: true },
-            ...selectItem,
-            ...queueing,
-            { isDivider: true },
-            ...editing({ identify: true, images: true })
-        ],
-        season: [
-            ...continueEntries,
-            { isDivider: true },
-            ...selectItem,
-            ...queueing,
-            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
-            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
-            { isDivider: true },
-            ...editing({ images: true, tags: false })
-        ],
-        episode: [
-            { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
-            ...selectItem,
-            ...queueing,
-            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
-            { isDivider: true },
-            { label: t('Download'), fn: doDownload },
-            { isDivider: true },
-            ...editing({ identify: true, subtitles: true })
-        ],
-        collection: [
-            ...selectItem,
-            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
-            { isDivider: true },
-            ...editing({ identify: true, images: true })
-        ]
-    };
-
-    const menu = items ?? (isReal ? menuByType[type] : [...selectItem, ...legacyMenu(toast)]);
     const close = () => setOpen(false);
 
     return (
@@ -344,48 +162,23 @@ export function MoreButton({
                 </PopupPanel>
             )}
 
-            {editor && (
-
-                <MetadataEditor
-                    itemId={id}
-                    kind={type as EditorKind}
-                    initialTab={editor}
-                    onClose={() => setEditor(null)}
-                />
-            )}
-            {addTo && (
-                <AddToDialog
-                    kind={addTo}
-                    itemId={id}
-                    itemTitle={itemTitle}
-                    onClose={() => setAddTo(null)}
-                />
-            )}
-            {refreshOpen && (
-                <RefreshDialog
-                    subject={itemTitle ?? ''}
-                    onRefresh={doRefresh}
-                    onClose={() => setRefreshOpen(false)}
-                />
-            )}
-            {tagsOpen && (
-                <TagsDialog
-                    itemId={id}
-                    itemTitle={itemTitle}
-                    onClose={() => setTagsOpen(false)}
-                />
-            )}
-            {confirmDelete && (
-                <ConfirmDialog
-                    title={itemTitle ?
-                        globalize.translate('ConfirmDeleteTitle', itemTitle) :
-                        globalize.translate('HeaderDeleteItem')}
-                    message={globalize.translate('ConfirmDeleteItem')}
-                    confirmLabel={globalize.translate('Delete')}
-                    onConfirm={doDelete}
-                    onClose={() => setConfirmDelete(false)}
-                />
-            )}
+            <MoreDialogs
+                id={id}
+                type={type}
+                itemTitle={itemTitle}
+                editor={actions.editor}
+                onCloseEditor={() => actions.setEditor(null)}
+                addTo={actions.addTo}
+                onCloseAddTo={() => actions.setAddTo(null)}
+                refreshOpen={actions.refreshOpen}
+                onCloseRefresh={() => actions.setRefreshOpen(false)}
+                onRefresh={actions.doRefresh}
+                tagsOpen={actions.tagsOpen}
+                onCloseTags={() => actions.setTagsOpen(false)}
+                confirmDelete={actions.confirmDelete}
+                onCloseConfirmDelete={() => actions.setConfirmDelete(false)}
+                onDelete={actions.doDelete}
+            />
         </div>
     );
 }
@@ -403,13 +196,4 @@ function verticalPlacement(below: number, above: number, gap: number): Omit<Menu
         bottom: dropUp ? window.innerHeight - above + gap : undefined,
         maxHeight: dropUp ? above - gap - 12 : window.innerHeight - below - gap - 12
     };
-}
-
-// Menú antiguo (modo prototipo sin sesión Jellyfin) — solo toasts. Se
-// mantiene para no romper demos sin backend.
-function legacyMenu(toast: ReturnType<typeof useToast>): MenuItem[] {
-    const label = globalize.translate('Download');
-    return [
-        { label, fn: () => toast(globalize.translate('MessageNotConnected', label), 'info') }
-    ];
 }

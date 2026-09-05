@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    cleanGenres,
     expandGenre,
     getGenreVariants,
     getHeroGenres,
@@ -118,3 +119,22 @@ describe('getHeroGenres', () => {
         expect(getHeroGenres({})).toEqual([]);
     });
 });
+
+describe('cleanGenres', () => {
+    it('traduce, expande y deduplica una lista directa de cadenas', () => {
+        expect(cleanGenres(['Action & Adventure', 'Sci-Fi & Fantasy', 'comedy', 'COMEDY'])).toEqual([
+            'Acción',
+            'Aventura',
+            'Ciencia ficción',
+            'Fantasía',
+            'Comedia'
+        ]);
+    });
+
+    it('maneja valores nulos o vacíos', () => {
+        expect(cleanGenres(null)).toEqual([]);
+        expect(cleanGenres(undefined)).toEqual([]);
+        expect(cleanGenres([])).toEqual([]);
+    });
+});
+

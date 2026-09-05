@@ -10,6 +10,8 @@ import {
 import { DetailPageShell } from '../components/layout/DetailPageShell';
 import { SynopsisText } from '../components/layout/SynopsisText';
 import { Nav } from '../components/layout/Nav';
+import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
+import { ShowMetadataRows } from '../components/layout/ShowMetadataRows';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { MoreButton } from '../components/controls/MoreButton';
@@ -86,11 +88,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
             nav={
                 <Nav
                     navigate={navigate}
-                    breadcrumb={[
-                        { label: globalize.translate('Shows'), to: { page: 'home' } },
-                        { label: show.title, to: { page: 'show', showId: show.id } },
-                        { label: `Temporada ${season.n}` }
-                    ]}
+                    breadcrumb={buildShowBreadcrumbs(show, season)}
                 />
             }
             footer={<ScrollHint label={globalize.translate('Episodes')} />}
@@ -287,18 +285,7 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                                     {season.watched} · {Math.round((season.watched / season.total) * 100)}%
                                 </DetailRow>
                             )}
-                            {show.creator && (
-                                <DetailRow label={globalize.translate('Creator')}>{show.creator}</DetailRow>
-                            )}
-                            {show.directors && (
-                                <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
-                            )}
-                            {show.studio && (
-                                <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
-                            )}
-                            {show.country && (
-                                <DetailRow label={globalize.translate('Country')}>{show.country}</DetailRow>
-                            )}
+                            <ShowMetadataRows show={show} />
                         </DetailTable>
                     </div>
                 </DetailColumns>

@@ -9,6 +9,7 @@ import {
     DetailBody, DetailColumns, DetailRow, DetailStatus, DetailTable, SectionLabel
 } from '../components/layout/DetailSections';
 import { Nav } from '../components/layout/Nav';
+import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { usePlayer } from '../components/player/PlayerProvider';
@@ -99,12 +100,7 @@ function EpisodeHero({
             nav={
                 <Nav
                     navigate={navigate}
-                    breadcrumb={[
-                        { label: globalize.translate('Shows'), to: { page: 'home' } },
-                        { label: show.title, to: { page: 'show', showId: show.id } },
-                        { label: `Temporada ${season.n}`, to: { page: 'season', showId: show.id, seasonN: season.n } },
-                        { label: `Episodio ${ep.n}` }
-                    ]}
+                    breadcrumb={buildShowBreadcrumbs(show, season, ep)}
                     actionId={episodeKey(show.id, season.n, ep.n)}
                     actionData={ep.jfId ? { type: 'episode', id: ep.jfId } : undefined}
                 />

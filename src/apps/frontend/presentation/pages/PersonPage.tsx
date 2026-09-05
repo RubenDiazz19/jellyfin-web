@@ -1,48 +1,23 @@
-import { useState } from 'react';
 import globalize from 'lib/globalize';
 import { T } from '../theme/tokens';
 import { personVM } from '../../domain/viewModels/PersonViewModel';
 import { useViewModelLoad, useVmSignals } from '../../domain/bridge/useViewModel';
 import type { CastMember } from '../../domain/models';
 import type { Navigate } from '../../app/router';
-import { MovieCard } from '../components/cards/MovieCard';
-import { PosterCard } from '../components/cards/PosterCard';
 import { LoadState } from '../components/controls/LoadState';
 import { Nav } from '../components/layout/Nav';
-import { FilmographyRow } from '../components/layout/FilmographyRow';
 import { useWidescreen } from '../theme/responsive';
+import { PersonStats } from '../components/person/PersonStats';
+import { PersonBio } from '../components/person/PersonBio';
+import { PersonFilmography } from '../components/person/PersonFilmography';
 
 type Props = { name: string; navigate: Navigate };
-
-function getFlagFallback(location: string): string {
-    const loc = location.toLowerCase();
-    if (loc.includes('united states') || loc.includes('usa') || loc.includes('ee. uu.')) return '🇺🇸';
-    if (loc.includes('uk') || loc.includes('united kingdom') || loc.includes('reino unido') || loc.includes('england')) return '🇬🇧';
-    if (loc.includes('spain') || loc.includes('españa')) return '🇪🇸';
-    if (loc.includes('france') || loc.includes('francia')) return '🇫🇷';
-    if (loc.includes('italy') || loc.includes('italia')) return '🇮🇹';
-    if (loc.includes('germany') || loc.includes('alemania')) return '🇩🇪';
-    if (loc.includes('canada') || loc.includes('canadá')) return '🇨🇦';
-    if (loc.includes('australia')) return '🇦🇺';
-    if (loc.includes('japan') || loc.includes('japon') || loc.includes('japón')) return '🇯🇵';
-    if (loc.includes('korea') || loc.includes('corea')) return '🇰🇷';
-    if (loc.includes('mexico') || loc.includes('méxico')) return '🇲🇽';
-    if (loc.includes('brazil') || loc.includes('brasil')) return '🇧🇷';
-    if (loc.includes('india')) return '🇮🇳';
-    if (loc.includes('china')) return '🇨🇳';
-    if (loc.includes('russia') || loc.includes('rusia')) return '🇷🇺';
-    if (loc.includes('argentina')) return '🇦🇷';
-    if (loc.includes('colombia')) return '🇨🇴';
-    if (loc.includes('chile')) return '🇨🇱';
-    return '🏳️';
-}
 
 export function PersonPage({ name, navigate }: Props) {
     useViewModelLoad(personVM, (vm) => vm.load(name), [name]);
     useVmSignals(personVM, (vm) => [vm.shows, vm.movies, vm.details, vm.loading, vm.error]);
 
     const isWidescreen = useWidescreen();
-    const [bioExpanded, setBioExpanded] = useState(false);
 
     const shows = personVM.shows.value;
     const movies = personVM.movies.value;
@@ -81,9 +56,6 @@ export function PersonPage({ name, navigate }: Props) {
     if (birthCity && country && birthCity.toLowerCase() === country.toLowerCase()) {
         birthCity = null;
     }
-
-    const moviesWatched = movies.filter((m) => m.watched).length;
-    const showsWatched = shows.filter((s) => s.watched).length;
 
     // Formatear nombre: First Name en pequeño, Last Name en grande
     const nameParts = name.split(' ');
@@ -128,141 +100,23 @@ export function PersonPage({ name, navigate }: Props) {
     }
 
     const statsBlock = (
-        <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 28,
-            justifyContent: isWidescreen ? 'flex-start' : 'center',
-            textAlign: 'center'
-        }}>
-            {/* Género */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 84 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 32 }}>
-                    <span style={{ fontSize: 20, fontWeight: 700, fontFamily: T.ui }}>
-                        {gender || '—'}
-                    </span>
-                </div>
-                <div style={{ fontSize: 13, color: T.dim, marginTop: 1, fontFamily: T.ui }}>Género</div>
-            </div>
-
-            {/* Edad */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 84 }}>
-                <div style={{ fontFamily: T.ui, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 32 }}>
-                    <span style={{ fontSize: 28, fontWeight: 700 }}>
-                        {(age !== null && age !== undefined) ? age : '—'}
-                    </span>
-                </div>
-                <div style={{ fontSize: 13, color: T.dim, marginTop: 1, fontFamily: T.ui }}>Años</div>
-            </div>
-
-            {/* Nacionalidad / Bandera — proporción 3:2 */}
-            <div style={{
-                position: 'relative',
-                width: 78,
-                height: 52,
-                aspectRatio: '3 / 2',
-                borderRadius: 6,
-                overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                background: '#1a1a1a',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-            }}>
-                {countryCode ? (
-                    <img
-                        src={`https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`}
-                        alt={country || ''}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                ) : (
-                    <span style={{ fontSize: 24 }}>{getFlagFallback(country || '')}</span>
-                )}
-
-                {/* Degradado suave sólo en el tercio inferior */}
-                <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.35) 36%, rgba(0,0,0,0) 65%)'
-                }} />
-
-                {/* Texto en letrita pequeña abajo del todo dentro de la bandera */}
-                <div style={{
-                    position: 'absolute',
-                    bottom: 3,
-                    left: 3,
-                    right: 3,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    pointerEvents: 'none'
-                }}>
-                    <span style={{
-                        fontSize: 9.5,
-                        fontWeight: 700,
-                        color: '#fff',
-                        fontFamily: T.ui,
-                        lineHeight: 1.15,
-                        textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '100%'
-                    }}>
-                        {country || '—'}
-                    </span>
-                    {birthCity && (
-                        <span style={{
-                            fontSize: 8,
-                            fontWeight: 500,
-                            color: 'rgba(255,255,255,0.9)',
-                            fontFamily: T.ui,
-                            lineHeight: 1.1,
-                            textShadow: '0 1px 2px rgba(0,0,0,0.95)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '100%'
-                        }}>
-                            {birthCity}
-                        </span>
-                    )}
-                </div>
-            </div>
-        </div>
+        <PersonStats
+            gender={gender}
+            age={age}
+            country={country}
+            countryCode={countryCode}
+            birthCity={birthCity}
+            isWidescreen={isWidescreen}
+        />
     );
 
-    const filmographyContent = totalCount > 0 ? (
-        <div>
-            <FilmographyRow
-                title='Películas'
-                items={movies}
-                watchedCount={moviesWatched}
-                renderCard={(m) => <MovieCard movie={m} navigate={navigate} />}
-                marginBottom={40}
-            />
-            <FilmographyRow
-                title='Series'
-                items={shows}
-                watchedCount={showsWatched}
-                renderCard={(s) => <PosterCard slide={s} navigate={navigate} />}
-            />
-        </div>
-    ) : (
-        <div style={{ marginTop: 40 }}>
-            <LoadState
-                variant='page'
-                loading={false}
-                count={0}
-                emptyTitle={globalize.translate('MessageNoAppearancesFor', name)}
-                emptyHint={globalize.translate('MessageNoAppearancesForHelp')}
-            >
-                <div />
-            </LoadState>
-        </div>
+    const filmographyContent = (
+        <PersonFilmography
+            movies={movies}
+            shows={shows}
+            name={name}
+            navigate={navigate}
+        />
     );
 
     // Modo 16:9 / Widescreen: Columna izquierda (foto 100vh) y Columna derecha (Fila 1: datos, Fila 2: filmografía)
@@ -338,26 +192,7 @@ export function PersonPage({ name, navigate }: Props) {
                             {statsBlock}
                         </div>
 
-                        {bio && (
-                            <div
-                                onClick={() => setBioExpanded(!bioExpanded)}
-                                style={{ maxWidth: 780, cursor: 'pointer', userSelect: 'none' }}
-                            >
-                                <p style={{
-                                    fontSize: 14,
-                                    lineHeight: 1.65,
-                                    color: 'rgba(255, 255, 255, 0.72)',
-                                    fontFamily: T.ui,
-                                    margin: 0,
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: bioExpanded ? 'unset' : 4,
-                                    WebkitBoxOrient: 'vertical',
-                                    overflow: bioExpanded ? 'visible' : 'hidden'
-                                }}>
-                                    {bio}
-                                </p>
-                            </div>
-                        )}
+                        {bio && <PersonBio bio={bio} isWidescreen={true} />}
                     </div>
 
                     {/* Fila 2: Películas / Series */}
@@ -416,33 +251,7 @@ export function PersonPage({ name, navigate }: Props) {
             </div>
 
             {/* Description / Bio */}
-            {bio && (
-                <div
-                    onClick={() => setBioExpanded(!bioExpanded)}
-                    style={{
-                        maxWidth: 720,
-                        margin: '28px auto 0',
-                        padding: '0 24px',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        userSelect: 'none'
-                    }}
-                >
-                    <p style={{
-                        fontSize: 14,
-                        lineHeight: 1.6,
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        fontFamily: T.ui,
-                        margin: 0,
-                        display: '-webkit-box',
-                        WebkitLineClamp: bioExpanded ? 'unset' : 3,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: bioExpanded ? 'visible' : 'hidden'
-                    }}>
-                        {bio}
-                    </p>
-                </div>
-            )}
+            {bio && <PersonBio bio={bio} isWidescreen={false} />}
 
             {/* Known For */}
             <div style={{ padding: '40px 30px 60px', overflow: 'hidden' }}>

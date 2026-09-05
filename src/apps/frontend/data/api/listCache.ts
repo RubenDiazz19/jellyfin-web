@@ -20,6 +20,7 @@
 // (marcar visto, editar metadatos, borrar…) invalida todo esto — ver
 // `invalidateLists` y quién la llama.
 
+import { fnv1a } from 'utils/hash';
 import { createTtlCache, type Stamped } from './ttlCache';
 
 /**
@@ -48,12 +49,7 @@ const cache = createTtlCache<Entry>({ ttlMs: 60_000, userScoped: true });
 // dos listas de mil items no debe costar otro megabyte de memoria.
 function signatureOf(value: unknown): string {
     const json = JSON.stringify(value) ?? '';
-    let h = 2166136261;
-    for (let i = 0; i < json.length; i++) {
-        h ^= json.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-    }
-    return `${json.length}:${h >>> 0}`;
+    return `${json.length}:${fnv1a(json)}`;
 }
 
 /**

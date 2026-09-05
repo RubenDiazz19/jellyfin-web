@@ -1,8 +1,9 @@
 import globalize from 'lib/globalize';
 
 import { formatDateLong, formatRemaining } from '../utils/format';
+import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
 import { translateStatus } from '../../domain/status';
-import { episodeKey, WATCHED } from '../../domain/stores';
+import { isShowFullyWatched } from '../../domain/showWatched';
 import { useWatchedVersion } from '../../domain/bridge/useWatched';
 import type { Show } from '../../domain/models';
 import { getHeroGenres, getItemGenres } from '../../domain/genres';
@@ -15,6 +16,7 @@ import {
     GenreLinks, SectionLabel
 } from '../components/layout/DetailSections';
 import { SeasonsHeading } from '../components/layout/SeasonsHeading';
+import { ShowMetadataRows } from '../components/layout/ShowMetadataRows';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
@@ -50,10 +52,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
         { seasonN: show.seasons[0].n, epN: 1 };
     const label = `T${target.seasonN}:E${String(target.epN).padStart(2, '0')}`;
     useWatchedVersion(show.id);
-    const allEpIds = (show.seasons || []).flatMap((s) =>
-        (s.episodes || []).map((ep) => episodeKey(show.id, s.n, ep.n))
-    );
-    const complete = allEpIds.length > 0 && allEpIds.every((id) => WATCHED.has(id));
+    const complete = isShowFullyWatched(show);
     const progress = complete ? 0 : cont ? cont.progress : 0;
     const inProgress = !complete && !!cont && progress > 0;
     const epLabel = `T${target.seasonN} E${String(target.epN).padStart(2, '0')}`;
@@ -127,11 +126,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             nav={
                 <Nav
                     navigate={navigate}
-                    breadcrumb={[
-                        { label: globalize.translate('Shows'), to: { page: 'home' } },
-                        { label: getItemGenres(show)[0] ?? 'General' },
-                        { label: show.title }
-                    ]}
+                    breadcrumb={buildShowBreadcrumbs(show)}
                     actionId={show.id}
                     actionData={{ type: 'show', id: show.id }}
                 />
@@ -231,18 +226,7 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                 <div>
                     <SectionLabel>{globalize.translate('HeaderDetails')}</SectionLabel>
                     <DetailTable>
-                        {show.creator && (
-                            <DetailRow label={globalize.translate('Creator')}>{show.creator}</DetailRow>
-                        )}
-                        {show.directors && (
-                            <DetailRow label={globalize.translate('Director')}>{show.directors}</DetailRow>
-                        )}
-                        {show.studio && (
-                            <DetailRow label={globalize.translate('Studio')}>{show.studio}</DetailRow>
-                        )}
-                        {show.country && (
-                            <DetailRow label={globalize.translate('Country')}>{show.country}</DetailRow>
-                        )}
+                        <ShowMetadataRows show={show} />
                         {getItemGenres(show).length > 0 && (
                             <DetailRow label={globalize.translate('Genres')}>
                                 <GenreLinks genres={getItemGenres(show)} navigate={navigate} />

@@ -1,4 +1,5 @@
-import { episodeKey, seasonKey, WATCHED } from '../../../domain/stores';
+import { seasonKey, WATCHED } from '../../../domain/stores';
+import { getSeasonEpisodeKeys, isSeasonFullyWatched } from '../../../domain/showWatched';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { WatchedToggle } from './WatchedToggle';
 import type { Show, Season } from '../../../domain/models';
@@ -9,9 +10,9 @@ type Props = { show: Show; season: Season; size?: number };
 // sesión real, marca a nivel de temporada en el server (propaga a
 // episodios) y actualiza el store local para feedback instantáneo.
 export function SeasonWatchedButton({ show, season, size = 15 }: Props) {
-    const epIds = season.episodes.map((e) => episodeKey(show.id, season.n, e.n));
+    const epIds = getSeasonEpisodeKeys(show.id, season);
     useWatchedVersion(seasonKey(show.id, season.n));
-    const all = epIds.length > 0 && epIds.every((id) => WATCHED.has(id));
+    const all = isSeasonFullyWatched(show.id, season);
     return (
         <WatchedToggle
             active={all}

@@ -16,29 +16,32 @@ import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { WATCHED } from '../../data/stores/watchedStore';
-import type { RatingOperator, SavedView } from '../../data/stores/viewsStore';
+import type { SavedView } from '../../data/stores/viewsStore';
 import { MUTATION_DEBOUNCE_MS } from './itemMutations';
 import { registerTagSource } from './knownTags';
 import { guardedLoad } from './guardedLoad';
 import { LoadGuard } from './loadGuard';
 import { getItemGenres } from '../genres';
-import { canonicalTag, getItemTags, normalizeTagForSearch } from '../tags';
+import { isShowFullyWatched } from '../showWatched';
+import { getItemTags, normalizeTagForSearch } from '../tags';
+import {
+    buildCurrentView,
+    extractAppliedViewFilters,
+    type FilterCategory,
+    type RatingFilter,
+    type RatingOperator,
+    type StateFilter,
+    type TypeFilter
+} from './searchViews';
+import { computeAllTags, computeAvailableTags } from './searchTags';
 
-export type { RatingOperator };
-export type TypeFilter = 'todo' | 'series' | 'peliculas';
-export type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
-export type FilterCategory = 'tipo' | 'estado' | 'generos' | 'valoracion';
-export type RatingFilter = { operator: RatingOperator; value: number };
-
-const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas'];
-const STATE_FILTERS: readonly string[] = ['todo', 'favs', 'vistos', 'no-vistos'];
-
-function isTypeFilter(v: string): v is TypeFilter {
-    return TYPE_FILTERS.includes(v);
-}
-function isStateFilter(v: string): v is StateFilter {
-    return STATE_FILTERS.includes(v);
-}
+export type {
+    FilterCategory,
+    RatingFilter,
+    RatingOperator,
+    StateFilter,
+    TypeFilter
+};
 
 /**
  * Un título del catálogo con la marca de qué es. `kind` y no `_type`: así el
@@ -74,10 +77,7 @@ export function parseQuery(raw: string): { text: string; tags: string[] } {
 }
 
 function isSeriesWatched(show: Show): boolean {
-    const ids = (show.seasons || []).flatMap((s) =>
-        (s.episodes || []).map((e) => episodeKey(show.id, s.n, e.n))
-    );
-    return ids.length > 0 && ids.every((id) => WATCHED.has(id));
+    return isShowFullyWatched(show);
 }
 
 function isMovieWatched(movie: Movie): boolean {
@@ -348,14 +348,7 @@ export class SearchViewModel {
         // tiene que incluir la etiqueta nueva.
         // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         this.mutationVersion.value;
-        const seen = new Map<string, string>();
-        for (const item of [...this.shows.value, ...this.movies.value]) {
-            for (const tag of getItemTags(item)) {
-                const key = normalizeTagForSearch(tag);
-                if (!seen.has(key)) seen.set(key, tag);
-            }
-        }
-        return [...seen.values()].sort((a, b) => a.localeCompare(b));
+        return computeAllTags([...this.shows.value, ...this.movies.value]);
     });
 
     /**
@@ -365,69 +358,17 @@ export class SearchViewModel {
      * resultantes (más las etiquetas ya seleccionadas, para poder desmarcarlas).
      */
     availableTags = computed<string[]>(() => {
-        const active = this.tagFilters.value;
-        const hasActiveTags = active.length > 0;
         const hasOtherFilters = this.typeFilters.value.length > 0
             || this.stateFilters.value.length > 0
             || this.ratingFilters.value.length > 0
             || !!this.query.value.trim();
 
-        if (!hasActiveTags && !hasOtherFilters) {
-            return this.allTags.value;
-        }
-
-        const seen = new Map<string, string>();
-
-        // 1. Siempre incluir las etiquetas activas para que sigan visibles y desmarcables
-        for (const tag of active) {
-            const canon = canonicalTag(tag);
-            if (canon) {
-                const key = normalizeTagForSearch(canon);
-                if (!seen.has(key)) seen.set(key, canon);
-            }
-        }
-
-        const currentResults = this.results.value;
-        const totalResults = currentResults.length;
-
-        // 2. Extraer etiquetas de las obras que coinciden con los filtros actuales
-        if (hasActiveTags) {
-            // Con etiquetas ya activas:
-            // - Si solo queda 1 resultado (o ninguno), las demás opciones son irrelevantes.
-            // - Si quedan varios resultados, solo ofrecemos etiquetas que realmente discriminen
-            //   (si una etiqueta está en el 100% de los resultados, seleccionarla no acotaría nada).
-            if (totalResults > 1) {
-                const tagFrequency = new Map<string, { canon: string; count: number }>();
-                for (const item of currentResults) {
-                    for (const tag of getItemTags(item)) {
-                        const key = normalizeTagForSearch(tag);
-                        const entry = tagFrequency.get(key);
-                        if (entry) {
-                            entry.count++;
-                        } else {
-                            tagFrequency.set(key, { canon: tag, count: 1 });
-                        }
-                    }
-                }
-
-                for (const [key, { canon, count }] of tagFrequency) {
-                    if (count < totalResults && !seen.has(key)) {
-                        seen.set(key, canon);
-                    }
-                }
-            }
-        } else {
-            // Sin etiquetas activas aún (solo filtros de tipo/estado/valoración/búsqueda):
-            // Extraer todas las etiquetas presentes en las obras resultantes.
-            for (const item of currentResults) {
-                for (const tag of getItemTags(item)) {
-                    const key = normalizeTagForSearch(tag);
-                    if (!seen.has(key)) seen.set(key, tag);
-                }
-            }
-        }
-
-        return [...seen.values()].sort((a, b) => a.localeCompare(b));
+        return computeAvailableTags({
+            allTags: this.allTags.value,
+            activeTags: this.tagFilters.value,
+            currentResults: this.results.value,
+            hasOtherFilters
+        });
     });
 
     anyFilterActive = computed(() =>
@@ -555,17 +496,13 @@ export class SearchViewModel {
 
     /** Los filtros actuales, listos para guardarlos como vista. */
     currentView(name: string): Omit<SavedView, 'id'> {
-        const tags = this.tagFilters.value;
-        const rFilters = this.ratingFilters.value;
-        return {
-            name,
-            typeFilter: this.typeFilters.value[0] ?? 'todo',
-            stateFilter: this.stateFilters.value[0] ?? 'todo',
-            tags: tags.length > 0 ? [...tags] : undefined,
-            query: this.query.value.trim() || undefined,
-            ratingFilter: rFilters[0] ?? undefined,
-            ratingFilters: rFilters.length > 0 ? rFilters : undefined
-        };
+        return buildCurrentView(name, {
+            typeFilters: this.typeFilters.value,
+            stateFilters: this.stateFilters.value,
+            tagFilters: this.tagFilters.value,
+            query: this.query.value,
+            ratingFilters: this.ratingFilters.value
+        });
     }
 
     /**
@@ -574,27 +511,12 @@ export class SearchViewModel {
      * existe, y aplicarla a ciegas dejaría la búsqueda en un estado imposible.
      */
     applyView(view: SavedView) {
-        const type = isTypeFilter(view.typeFilter) ? view.typeFilter : 'todo';
-        this.typeFilters.value = type === 'todo' ? [] : [type];
-        const state = isStateFilter(view.stateFilter) ? view.stateFilter : 'todo';
-        this.stateFilters.value = state === 'todo' ? [] : [state];
-        // `tag` en singular es el formato viejo, de cuando solo se podía
-        // filtrar por una: las vistas guardadas entonces siguen funcionando.
-        this.tagFilters.value = view.tags ?? (view.tag ? [view.tag] : []);
-        this.query.value = view.query ?? '';
-        if (view.ratingFilters && Array.isArray(view.ratingFilters) && view.ratingFilters.length > 0) {
-            this.ratingFilters.value = view.ratingFilters.map((rf) => ({
-                operator: rf.operator,
-                value: rf.value
-            }));
-        } else if (view.ratingFilter) {
-            this.ratingFilters.value = [{
-                operator: view.ratingFilter.operator,
-                value: view.ratingFilter.value
-            }];
-        } else {
-            this.ratingFilters.value = [];
-        }
+        const state = extractAppliedViewFilters(view);
+        this.typeFilters.value = state.typeFilters;
+        this.stateFilters.value = state.stateFilters;
+        this.tagFilters.value = state.tagFilters;
+        this.query.value = state.query;
+        this.ratingFilters.value = state.ratingFilters;
     }
 
     private guarded = guardedLoad(this.loading, undefined, this.loads).guarded;

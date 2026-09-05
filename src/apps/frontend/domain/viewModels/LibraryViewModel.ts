@@ -9,6 +9,7 @@ import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/libr
 import { mutationOnLoad } from './mutationSubscription';
 import { registerTagSource } from './knownTags';
 
+import { fnv1a } from 'utils/hash';
 import { CatalogViewModel } from './CatalogViewModel';
 
 export type LibraryKind = 'series' | 'movies';
@@ -26,18 +27,6 @@ function runtimeMinutes(item: Sortable): number {
     return parseInt(item.runtime, 10) || 0;
 }
 
-// Hash estable (FNV-1a) del id + semilla. El orden aleatorio tiene que
-// sobrevivir a los re-renders: barajar dentro del computed reordenaría la
-// rejilla en cada pintada.
-function hash(str: string): number {
-    let h = 2166136261;
-    for (let i = 0; i < str.length; i++) {
-        h ^= str.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-}
-
 function compareBy(key: SortKey, seed: number) {
     return (a: Sortable, b: Sortable): number => {
         switch (key) {
@@ -49,7 +38,7 @@ function compareBy(key: SortKey, seed: number) {
                     || COLLATOR.compare(a.title, b.title);
             case 'runtime':
                 return runtimeMinutes(a) - runtimeMinutes(b) || COLLATOR.compare(a.title, b.title);
-            case 'random': return hash(a.id + seed) - hash(b.id + seed);
+            case 'random': return fnv1a(a.id + seed) - fnv1a(b.id + seed);
             default: return COLLATOR.compare(a.title, b.title);
         }
     };

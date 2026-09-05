@@ -10,7 +10,7 @@ import globalize from 'lib/globalize';
 import React, { useMemo, useRef, useState } from 'react';
 import { T } from '../../../theme/tokens';
 import { Ic } from '../../../theme/icons';
-import { ALL_GENRES, PRIMARY_GENRES, expandGenre, translateGenre } from '../../../../domain/genres';
+import { ALL_GENRES, PRIMARY_GENRES, cleanGenres, expandGenre, translateGenre } from '../../../../domain/genres';
 
 type Props = {
     label?: string;
@@ -28,20 +28,7 @@ export function GenreEditor({ label, genres, onChange }: Props) {
 
     // Asegurar que todos los géneros asignados se muestran traducidos al español
     // y sin opciones compuestas (ej. «Acción y Aventura» se descompone en «Acción» y «Aventura»).
-    const cleanAssigned = useMemo(() => {
-        const seen = new Set<string>();
-        const list: string[] = [];
-        for (const g of genres) {
-            for (const item of expandGenre(g)) {
-                const key = item.toLowerCase();
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    list.push(item);
-                }
-            }
-        }
-        return list;
-    }, [genres]);
+    const cleanAssigned = useMemo(() => cleanGenres(genres), [genres]);
 
     const assignedSet = useMemo(() => {
         return new Set(cleanAssigned.map((g) => g.toLowerCase()));

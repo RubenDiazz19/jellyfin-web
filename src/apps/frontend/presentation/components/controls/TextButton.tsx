@@ -7,6 +7,7 @@
 // se quedó sin ninguna de las tres navegaciones.
 
 import type { CSSProperties, ReactNode } from 'react';
+import { preventMouseDown } from '../../hooks/useStableClick';
 
 // Que el botón no se note: ni fondo, ni borde, ni relleno, ni tipografía
 // propia. Hereda del texto en el que está metido.
@@ -44,7 +45,7 @@ export function TextButton({ onClick, children, label, highlight, style }: Props
             // —los heroes son 100vh con el contenido pegado abajo— scrollea
             // unos px para acomodar el anillo de foco: el mouseup cae fuera y
             // el click no llega a dispararse.
-            onMouseDown={(e) => e.preventDefault()}
+            onMouseDown={preventMouseDown}
             aria-label={label}
             style={{ ...RESET, ...style }}
             onMouseEnter={highlight ? (e) => (e.currentTarget.style.color = '#fff') : undefined}
