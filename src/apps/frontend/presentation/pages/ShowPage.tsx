@@ -1,6 +1,5 @@
 import globalize from 'lib/globalize';
 
-import { T } from '../theme/tokens';
 import { formatDateLong, formatRemaining } from '../utils/format';
 import { translateStatus } from '../../domain/status';
 import { episodeKey, WATCHED } from '../../domain/stores';
@@ -12,9 +11,10 @@ import {
 } from '../components/layout/DetailHero';
 import { HeroActionsRow, HeroPlayButton } from '../components/layout/HeroActions';
 import {
-    DetailBody, DetailColumns, DetailHeading, DetailRow, DetailStatus, DetailTable,
+    DetailBody, DetailColumns, DetailRow, DetailStatus, DetailTable,
     GenreLinks, SectionLabel
 } from '../components/layout/DetailSections';
+import { SeasonsHeading } from '../components/layout/SeasonsHeading';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { MoreButton } from '../components/controls/MoreButton';
@@ -268,14 +268,11 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
             </DetailColumns>
 
             <div style={{ marginTop: r.touch ? 44 : 88 }}>
-                <DetailHeading
-                    title={globalize.translate('HeaderSeasons')}
+                <SeasonsHeading
+                    seasonCount={show.seasons.length}
+                    episodeCount={show.seasons.reduce((a, s) => a + s.total, 0)}
                     marginBottom={r.touch ? 18 : 32}
-                >
-                    <div style={{ marginLeft: 14, fontFamily: T.ui, fontSize: 12, color: T.dim }}>
-                        {show.seasons.length} temporadas · {show.seasons.reduce((a, s) => a + s.total, 0)} episodios
-                    </div>
-                </DetailHeading>
+                />
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: r.touch ? r.gap : 22 }}>
                     {show.seasons.map((s) => (
