@@ -42,6 +42,7 @@ export type JFMediaSource = {
 export type JFItem = {
     Id: string;
     Name: string;
+    Type?: string;
     IndexNumber?: number;
     ParentIndexNumber?: number;
     SeriesId?: string;

@@ -7,6 +7,7 @@ export {
     type CarouselSlide,
     type CastMember,
     type CatalogItem,
+    type ListEntry,
     type Episode,
     type Movie,
     type MovieSaga,

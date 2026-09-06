@@ -62,6 +62,27 @@ export function formatEndTime(
     return globalize.translate('EndsAtValue', timeStr);
 }
 
+export type EndTimeInfo = {
+    prefix: string;
+    time: string;
+    full: string;
+};
+
+// Devuelve la hora de fin desglosada en prefijo ("Termina a las") y hora ("14:12")
+// para permitir presentarlo en varias filas compactas en pantallas estrechas.
+export function formatEndTimeInfo(
+    runtime: RuntimeValue,
+    fromDate: Date = new Date()
+): EndTimeInfo | undefined {
+    const mins = parseRuntimeMinutes(runtime);
+    if (mins == null || mins <= 0) return undefined;
+    const end = new Date(fromDate.getTime() + mins * 60 * 1000);
+    const time = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const full = globalize.translate('EndsAtValue', time);
+    const prefix = full.replace(time, '').trim();
+    return { prefix, time, full };
+}
+
 // Calcula y formatea a qué hora terminará una reproducción a partir de los segundos restantes y la velocidad.
 export function formatPlaybackEndTime(
     remainingSeconds: number | undefined,

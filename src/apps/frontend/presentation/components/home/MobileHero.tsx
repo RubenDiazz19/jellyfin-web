@@ -27,6 +27,8 @@ import { PlayBtn } from '../controls/PlayBtn';
 import { TextButton, TEXT_BTN_TAP } from '../controls/TextButton';
 import { ScrollHint } from '../layout/ScrollHint';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
+import { HeroGenres } from '../layout/DetailHero';
+import { cleanGenres } from '../../../domain/genres';
 import type { Navigate } from '../../../app/router';
 import { SWIPE_DRAG_THRESHOLD, SWIPE_VERTICAL_TOLERANCE } from '../../../shared/gestures/thresholds';
 
@@ -90,6 +92,7 @@ export function MobileHero({
     const hasEpisode = isContinue && slide.season != null;
     const plainMeta = isContinue ? globalize.translate('ContinueWatching') : String(slide.year);
     const remaining = isContinue ? formatRemainingCompact(slide.remaining) : '';
+    const heroGenres = cleanGenres(slide.genres).slice(0, 3);
 
     // El Backdrop alimenta la seed del dynamic color con lo que se ve, así
     // que el tema (y con él la píldora de navegación) toma el color de esta
@@ -165,6 +168,16 @@ export function MobileHero({
                         animation: 'jfp-fade-in 0.45s ease-out both'
                     }}
                 >
+                    {heroGenres.length > 0 && (
+                        <HeroGenres
+                            genres={heroGenres}
+                            navigate={navigate}
+                            fontSize={10}
+                            marginBottom={0}
+                            justifyContent='center'
+                        />
+                    )}
+
                     <TextButton
                         onClick={goDetail}
                         label={slide.title}

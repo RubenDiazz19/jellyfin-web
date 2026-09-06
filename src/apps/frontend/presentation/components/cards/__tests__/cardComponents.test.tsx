@@ -1,6 +1,6 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -87,5 +87,42 @@ describe('PosterOverlay', () => {
     test('renderiza título como texto si no hay logo', async () => {
         await mount(<PosterOverlay title='Mi Película' />);
         expect(host?.textContent).toContain('Mi Película');
+    });
+
+    test('cuando recibe onLogoClick, el logo es interactivo y responde al clic', async () => {
+        const onLogoClick = vi.fn();
+        await mount(
+            <PosterOverlay
+                logo='https://example.com/logo.png'
+                title='Mi Serie'
+                onLogoClick={onLogoClick}
+            />
+        );
+        const btn = host?.querySelector('[role="button"]');
+        expect(btn).toBeTruthy();
+        expect(btn?.getAttribute('tabindex')).toBe('0');
+        expect(btn?.getAttribute('aria-label')).toBe('Mi Serie');
+
+        await act(async () => {
+            btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        });
+        expect(onLogoClick).toHaveBeenCalledTimes(1);
+    });
+
+    test('cuando recibe onLogoClick y no hay logo imagen, el título es interactivo', async () => {
+        const onLogoClick = vi.fn();
+        await mount(
+            <PosterOverlay
+                title='Mi Película'
+                onLogoClick={onLogoClick}
+            />
+        );
+        const btn = host?.querySelector('[role="button"]');
+        expect(btn).toBeTruthy();
+
+        await act(async () => {
+            btn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        });
+        expect(onLogoClick).toHaveBeenCalledTimes(1);
     });
 });

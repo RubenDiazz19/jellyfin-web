@@ -7,7 +7,7 @@
 // y seguía sirviendo la carátula vieja desde la caché del navegador.
 
 import { autoTagsFor } from '../autotag';
-import type { CastMember, Movie, Rating, Show } from '../models';
+import type { CastMember, CatalogItem, Movie, Rating, Show } from '../models';
 import { imageUrl, type ImageType } from './images';
 import { ticksToMinutes, type JFItem, type JFMediaStream } from './types';
 
@@ -103,7 +103,11 @@ export function runtimeLabel(item: JFItem): string {
 export function watchedFraction(item: JFItem): number {
     if (item.UserData?.Played) return 1;
     const pct = item.UserData?.PlayedPercentage;
-    return pct != null ? pct / 100 : 0;
+    if (pct != null) return pct / 100;
+    if (item.UserData?.PlaybackPositionTicks && item.RunTimeTicks) {
+        return item.UserData.PlaybackPositionTicks / item.RunTimeTicks;
+    }
+    return 0;
 }
 
 /**
@@ -324,3 +328,26 @@ export function mapCommonFields(item: JFItem): CommonItemFields {
         logo: logoUrl(item.Id, item.ImageTags?.Logo)
     };
 }
+
+/**
+ * Traduce un JFItem a CatalogItem. Lo comparten las filas curadas de la Home
+ * (recientes, favoritos, más vistos) para mantener la coherencia de carátulas y fondos.
+ */
+export function mapCatalogItem(item: JFItem, fallbackKind?: 'show' | 'movie'): CatalogItem {
+    const kind: 'show' | 'movie' = (item.Type === 'Series' || fallbackKind === 'show') ? 'show' : 'movie';
+    const backdrops = backdropUrls(item.Id, item.BackdropImageTags);
+    const primaryFallback = imageUrl(item.Id, 'Primary', { maxHeight: 1440, tag: item.ImageTags?.Primary }) ?? '';
+    return {
+        id: item.Id,
+        title: item.Name,
+        kind,
+        year: item.ProductionYear ?? 0,
+        poster: posterUrl(item.Id, item.ImageTags?.Primary),
+        backdrop: backdrops[0] ?? primaryFallback,
+        backdrops: backdrops.length > 0 ? backdrops : (primaryFallback ? [primaryFallback] : []),
+        logo: logoUrl(item.Id, item.ImageTags?.Logo),
+        watched: watchedFraction(item),
+        genres: item.Genres ?? []
+    };
+}
+

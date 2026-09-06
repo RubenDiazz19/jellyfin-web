@@ -7,12 +7,22 @@ import { FavButton } from '../controls/FavButton';
 import { useResponsive } from '../../theme/responsive';
 import { POSTER_W, PosterShell } from './PosterShell';
 import { useCardInteractions } from './useCardInteractions';
-import type { Movie } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 import { movieKey } from '../../../domain/stores';
 
+type MovieLike = {
+    id: string;
+    title: string;
+    year: number;
+    poster?: string;
+    backdrop?: string;
+    logo?: string | null;
+    watched?: number;
+    runtime?: string;
+};
+
 type Props = {
-    movie: Movie;
+    movie: MovieLike;
     navigate: Navigate;
     /** En rejilla la card llena su columna en vez de fijar ancho (ver abajo). */
     fluid?: boolean;
@@ -44,7 +54,7 @@ export const MovieCard = memo(function MovieCardBase({ movie, navigate, fluid }:
             logo={movie.logo}
             title={movie.title}
             progress={movie.watched ?? 0}
-            caption={fluid ?
+            caption={fluid || !movie.runtime ?
                 `${movie.year} · ${globalize.translate('Movie')}` :
                 `${movie.year} · ${formatRuntime(movie.runtime)}`}
         />

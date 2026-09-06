@@ -202,5 +202,20 @@ describe('MobileHero', () => {
         expect(precede(dot as Element, hint as Element)).toBe(true);
         expect((hint as HTMLElement).style.position).toBe('relative');
     });
+
+    it('muestra las categorías encima del logo cuando el slide tiene géneros', () => {
+        render(false, [slide({
+            id: 'demon', kind: 'show', title: 'Demon Slayer',
+            logo: 'http://srv/logo.png', genres: ['Animación', 'Acción']
+        })]);
+        const logoBtn = host?.querySelector('button[aria-label="Demon Slayer"]');
+        const genreBtn = host?.querySelector('button');
+        expect(genreBtn?.textContent).toBe('Animación');
+        expect(precede(genreBtn as Element, logoBtn as Element)).toBe(true);
+
+        // Al pulsar sobre un género navega a su página correspondiente
+        act(() => { (genreBtn as HTMLElement).click(); });
+        expect(routes).toEqual([{ page: 'genre', genre: 'Animación' }]);
+    });
 });
 

@@ -14,8 +14,8 @@ import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { Row, RowScroller } from '../components/layout/Row';
 import { CwCard } from '../components/cards/CwCard';
-import { MovieCard } from '../components/cards/MovieCard';
-import { PosterCard } from '../components/cards/PosterCard';
+import { CatalogCard } from '../components/cards/CatalogCard';
+import { CollectionCard } from '../components/collection/CollectionCard';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { TextButton } from '../components/controls/TextButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
@@ -23,6 +23,8 @@ import { SkeletonRow } from '../components/skeleton/Skeleton';
 import { MobileHero } from '../components/home/MobileHero';
 import { useResponsive } from '../theme/responsive';
 import { useHomeScrollTransition } from './useHomeScrollTransition';
+import { HeroGenres } from '../components/layout/DetailHero';
+import { cleanGenres } from '../../domain/genres';
 import type { Navigate } from '../../app/router';
 
 const HERO_AUTOPLAY_MS = 8000;
@@ -147,26 +149,12 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     // re-renderizarían todos por el cambio de prop.
     const idxRef = useRef(idx);
     idxRef.current = idx;
-    const onPlay = useCallback(() => {
+    const onPlay = useCallback(async () => {
         const cur = slides[idxRef.current];
         if (!cur) return;
-        if (cur.type === 'continue' && cur.jfEpisodeId) {
-            // Modo Jellyfin: reanuda el episodio/película directamente en el
-            // reproductor.
-            play({
-                itemId: cur.jfEpisodeId,
-                title: cur.season != null && cur.episode != null ?
-                    `${cur.title} · T${cur.season} E${String(cur.episode).padStart(2, '0')} — ${cur.episodeTitle}` :
-                    cur.title,
-                startTicks: cur.positionTicks
-            });
-        } else if (cur.type === 'continue' && cur.kind !== 'movie') {
-            navigate({
-                page: 'episode',
-                showId: cur.id,
-                seasonN: cur.season as number,
-                epN: cur.episode as number
-            });
+        const req = await homeVM.getPlayable(cur);
+        if (req) {
+            play(req);
         } else if (cur.kind === 'movie') {
             navigate({ page: 'movie', movieId: cur.id });
         } else {
@@ -365,6 +353,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
     const { prewarm } = usePlayer();
     const showData = PROTO_DATA.shows[slide.id] || PROTO_DATA.movies[slide.id];
     const logo = slide.logo ?? showData?.logo;
+    const heroGenres = cleanGenres(slide.genres ?? showData?.genres).slice(0, 3);
     // Menú contextual del slide: el mismo de la ficha, abierto con clic derecho
     // sin ir al botón. «Continuar» con id real de episodio se abre como tal; el
     // resto (novedades o modo prototipo) como serie o película según el `kind`.
@@ -411,6 +400,16 @@ const HeroSlide = React.memo(function HeroSlideBase({
                 pointerEvents: interactive ? 'auto' : 'none',
                 willChange: 'opacity, transform'
             }}>
+                {heroGenres.length > 0 && (
+                    <HeroGenres
+                        genres={heroGenres}
+                        navigate={navigate}
+                        fontSize={11}
+                        marginBottom={14}
+                        justifyContent='center'
+                    />
+                )}
+
                 <TextButton
                     onClick={goDetail}
                     label={slide.title}
@@ -499,10 +498,10 @@ const HeroSlide = React.memo(function HeroSlideBase({
                     <PlayBtn
                         size={96}
                         onClick={onPlay}
-                        // Solo los slides de «continuar viendo» abren el
-                        // reproductor; los de «novedad» llevan a la ficha, y
-                        // ahí no hay nada que calentar todavía.
-                        onHover={() => slide.jfEpisodeId && prewarm(slide.jfEpisodeId)}
+                        onHover={() => {
+                            const prewarmId = slide.jfEpisodeId ?? (slide.kind === 'movie' ? slide.id : undefined);
+                            if (prewarmId) prewarm(prewarmId);
+                        }}
                         progress={isContinue ? slide.progress : null}
                         hoverText={isContinue ? formatRemainingCompact(slide.remaining) || null : null}
                     />
@@ -576,50 +575,78 @@ function HomeLibraryJellyfin({
 
     // homeVM.load() lo dispara HomePage al montar; aquí solo se leen signals.
     useVmSignals(homeVM, (vm) => [
-        vm.shows, vm.movies, vm.showsLoading, vm.showsReady, vm.showsError
+        vm.continueWatching,
+        vm.recentlyAdded,
+        vm.collections,
+        vm.mostPlayed,
+        vm.rowsLoading,
+        vm.rowsReady
     ]);
-    const series = homeVM.shows.value;
-    const movies = homeVM.movies.value;
-    if (homeVM.showsLoading.value || !homeVM.showsReady.value) {
+    const cw = homeVM.continueWatching.value;
+    const recent = homeVM.recentlyAdded.value;
+    const collections = homeVM.collections.value;
+    const played = homeVM.mostPlayed.value;
+
+    if (homeVM.rowsLoading.value || !homeVM.rowsReady.value) {
         return (
             <section style={sectionStyle}>
-                <SkeletonRow title={globalize.translate('Shows')} />
-                <SkeletonRow title={globalize.translate('Movies')} />
+                <SkeletonRow title={globalize.translate('ContinueWatching')} />
+                <SkeletonRow title={globalize.translate('TabLatest')} />
             </section>
         );
     }
-    if (homeVM.showsError.value) {
+
+    const hasAny = cw.length > 0 || recent.length > 0 || collections.length > 0 || played.length > 0;
+    if (!hasAny) {
         return (
-            <section style={{
-                background: C.bg, color: '#ff6b6b',
-                padding: r.touch ? `48px ${r.pagePad}px` : '80px 56px',
-                fontFamily: T.ui, fontSize: 14
-            }}>
-                {homeVM.showsError.value}
+            <section style={sectionStyle}>
+                <div style={{ padding: r.touch ? `0 ${r.pagePad}px` : '0 56px', color: T.dim, fontSize: 14 }}>
+                    {globalize.translate('MessageNoShowsInLibrary')}
+                </div>
             </section>
         );
     }
-    // Solo en táctil: en escritorio, Series y Películas ya están arriba en la
-    // barra, y ahí el título de la fila nunca ha llevado a ningún sitio.
-    const goSeries = r.touch ? () => navigate({ page: 'series' }) : undefined;
-    const goMovies = r.touch ? () => navigate({ page: 'movies' }) : undefined;
+
+    const colCardWidth = r.touch ? (r.mobile ? 240 : 280) : 320;
+
     return (
         <section style={sectionStyle}>
-            <Row title={globalize.translate('Shows')} onTitleClick={goSeries} headingStyle={headingStyle}>
-                {series.length === 0 ? (
-                    <div style={{ padding: r.touch ? `0 ${r.pagePad}px` : '0 56px', color: T.dim, fontSize: 14 }}>
-                        {globalize.translate('MessageNoShowsInLibrary')}
-                    </div>
-                ) : (
+            {cw.length > 0 && (
+                <Row title={globalize.translate('ContinueWatching')} headingStyle={headingStyle}>
                     <RowScroller>
-                        {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
+                        {cw.map((s) => <CwCard key={s.jfEpisodeId ?? s.id} slide={s} navigate={navigate} />)}
                     </RowScroller>
-                )}
-            </Row>
-            {movies.length > 0 && (
-                <Row title={globalize.translate('Movies')} onTitleClick={goMovies} headingStyle={headingStyle}>
+                </Row>
+            )}
+            {recent.length > 0 && (
+                <Row title={globalize.translate('TabLatest')} headingStyle={headingStyle}>
                     <RowScroller>
-                        {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
+                        {recent.map((it) => <CatalogCard key={it.id} item={it} navigate={navigate} />)}
+                    </RowScroller>
+                </Row>
+            )}
+            {collections.length > 0 && (
+                <Row title={globalize.translate('Collections')} headingStyle={headingStyle}>
+                    <RowScroller>
+                        {collections.map((col) => (
+                            <CollectionCard
+                                key={col.id}
+                                id={col.id}
+                                title={col.name}
+                                logo={col.logo}
+                                backdrop={col.backdrop}
+                                image={col.image}
+                                style={{ width: colCardWidth, flex: `0 0 ${colCardWidth}px` }}
+                                onClick={() => navigate({ page: 'list', kind: 'collection', listId: col.id })}
+                            />
+                        ))}
+                    </RowScroller>
+                </Row>
+            )}
+            {played.length > 0 && (
+                <Row title={globalize.translate('MostPlayed')} headingStyle={headingStyle}>
+                    <RowScroller>
+                        {played.map((it) => <CatalogCard key={it.id} item={it} navigate={navigate} />)}
                     </RowScroller>
                 </Row>
             )}
@@ -643,51 +670,51 @@ function HomeLibraryProto({
     const headingStyle = getHeadingStyle(titleOpacity, titleTranslateY);
 
     const cw = useMemo(() => data.carousel.filter((s) => s.type === 'continue'), [data.carousel]);
-    const { movies, series, recent, hydrated } = useMemo(() => {
-        const m = Object.values(data.movies);
-        const s = Object.values(data.shows);
-        const rec = [...m, ...s]
+    const { recent, mostPlayed, hydrated } = useMemo(() => {
+        const m = Object.values(data.movies).map((x) => ({ ...x, kind: 'movie' as const }));
+        const s = Object.values(data.shows).map((x) => ({ ...x, kind: 'show' as const }));
+        const all = [...m, ...s];
+        const rec = [...all]
             .sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
             .slice(0, 8);
-        const hyd = [...s, ...m].some((x) => x.poster || x.backdrop);
-        return { movies: m, series: s, recent: rec, hydrated: hyd };
+        const played = [...all]
+            .sort((a, b) => (b.rating?.imdb ?? 0) - (a.rating?.imdb ?? 0))
+            .slice(0, 8);
+        const hyd = all.some((x) => x.poster || x.backdrop);
+        return { recent: rec, mostPlayed: played, hydrated: hyd };
     }, [data.movies, data.shows]);
+
     if (!hydrated) {
         return (
             <section style={sectionStyle}>
                 <SkeletonRow title={globalize.translate('ContinueWatching')} />
                 <SkeletonRow title={globalize.translate('TabLatest')} />
-                <SkeletonRow title={globalize.translate('Movies')} />
-                <SkeletonRow title={globalize.translate('Shows')} />
             </section>
         );
     }
     return (
         <section style={sectionStyle}>
-            <Row title={globalize.translate('ContinueWatching')} headingStyle={headingStyle}>
-                <RowScroller>
-                    {cw.map((s) => <CwCard key={s.id} slide={s} navigate={navigate} />)}
-                </RowScroller>
-            </Row>
-            <Row title={globalize.translate('TabLatest')} headingStyle={headingStyle}>
-                <RowScroller>
-                    {recent.map((item) =>
-                        'seasons' in item ?
-                            <PosterCard key={`s-${item.id}`} slide={item} navigate={navigate} /> :
-                            <MovieCard key={`m-${item.id}`} movie={item} navigate={navigate} />
-                    )}
-                </RowScroller>
-            </Row>
-            <Row title={globalize.translate('Movies')} headingStyle={headingStyle}>
-                <RowScroller>
-                    {movies.map((m) => <MovieCard key={m.id} movie={m} navigate={navigate} />)}
-                </RowScroller>
-            </Row>
-            <Row title={globalize.translate('Shows')} headingStyle={headingStyle}>
-                <RowScroller>
-                    {series.map((s) => <PosterCard key={s.id} slide={s} navigate={navigate} />)}
-                </RowScroller>
-            </Row>
+            {cw.length > 0 && (
+                <Row title={globalize.translate('ContinueWatching')} headingStyle={headingStyle}>
+                    <RowScroller>
+                        {cw.map((s) => <CwCard key={s.id} slide={s} navigate={navigate} />)}
+                    </RowScroller>
+                </Row>
+            )}
+            {recent.length > 0 && (
+                <Row title={globalize.translate('TabLatest')} headingStyle={headingStyle}>
+                    <RowScroller>
+                        {recent.map((item) => <CatalogCard key={item.id} item={item} navigate={navigate} />)}
+                    </RowScroller>
+                </Row>
+            )}
+            {mostPlayed.length > 0 && (
+                <Row title={globalize.translate('MostPlayed')} headingStyle={headingStyle}>
+                    <RowScroller>
+                        {mostPlayed.map((item) => <CatalogCard key={item.id} item={item} navigate={navigate} />)}
+                    </RowScroller>
+                </Row>
+            )}
         </section>
     );
 }

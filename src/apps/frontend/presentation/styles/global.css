@@ -374,8 +374,169 @@ html.layout-tablet body.jf-frontend-active {
     opacity: 0;
     transition: opacity 0.25s ease-out;
     background: rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+.jfp-playover > * {
+    pointer-events: auto;
 }
 .jfp-hoverlift:hover .jfp-playover { opacity: 1; }
+
+.jfp-poster-logo-btn {
+    pointer-events: auto;
+    cursor: pointer;
+    transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1), filter 0.22s ease;
+}
+.jfp-poster-logo-btn:hover,
+.jfp-poster-logo-btn:focus-visible {
+    transform: scale(1.05);
+    filter: brightness(1.22) drop-shadow(0 4px 16px rgba(0, 0, 0, 0.85));
+}
+.jfp-poster-logo-btn:active {
+    transform: scale(0.97);
+}
+
+.jfp-card-hover-show {
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+}
+
+.jfp-hoverlift:hover .jfp-card-hover-show,
+.jfp-hoverlift:focus-within .jfp-card-hover-show { opacity: 1; }
+
+/* Rotación suave del pie de tarjeta en móvil (6 s por estado, ciclo de 12 s)
+   El texto saliente sube y desaparece antes de que el entrante ascienda desde abajo,
+   evitando cualquier solapamiento o fantasma entre ambos. */
+@keyframes jfp-caption-rot-1 {
+    0%,
+    45% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    48% {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    48.01%,
+    97.99% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    98% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes jfp-caption-rot-2 {
+    0%,
+    48% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    51%,
+    95% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    98% {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    98.01%,
+    100% {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+/* Desplazamiento horizontal del texto si no cabe en el ancho de la tarjeta.
+   Sincronizado con el ciclo de 12 s: se desplaza durante la fase visible del título
+   y se reinicia a 0 mientras está oculto. */
+@keyframes jfp-caption-marquee-sync {
+    0%,
+    12% {
+        transform: translateX(0);
+    }
+
+    34%,
+    44% {
+        transform: translateX(var(--jfp-scroll-x, 0));
+    }
+
+    48%,
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Desplazamiento horizontal para tarjetas sin hora de fin (ciclo continuo de 7 s) */
+@keyframes jfp-caption-marquee-standalone {
+    0%,
+    18% {
+        transform: translateX(0);
+    }
+
+    50%,
+    72% {
+        transform: translateX(var(--jfp-scroll-x, 0));
+    }
+
+    92%,
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.jfp-caption-rotator {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    overflow: hidden;
+    width: 100%;
+}
+
+.jfp-caption-item-1 {
+    grid-area: 1 / 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    animation: jfp-caption-rot-1 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    will-change: opacity, transform;
+}
+
+.jfp-caption-item-2 {
+    grid-area: 1 / 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    animation: jfp-caption-rot-2 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    will-change: opacity, transform;
+}
+
+.jfp-caption-scroller-sync {
+    display: inline-block;
+    white-space: nowrap;
+    animation: jfp-caption-marquee-sync 12s ease-in-out infinite;
+    will-change: transform;
+}
+
+.jfp-caption-scroller-standalone {
+    display: inline-block;
+    white-space: nowrap;
+    animation: jfp-caption-marquee-standalone 7s ease-in-out infinite;
+    will-change: transform;
+}
 
 /* Movimiento reducido (A11y): si el sistema pide menos animación, se
    neutraliza TODA la animación y transición del frontend (incluida la ruta

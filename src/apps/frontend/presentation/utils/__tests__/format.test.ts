@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
-    formatDateLong, formatEndTime, formatPlaybackEndTime, formatRemaining,
-    formatRemainingCompact, formatRuntime, parseRuntimeMinutes
+    formatDateLong, formatEndTime, formatEndTimeInfo, formatPlaybackEndTime,
+    formatRemaining, formatRemainingCompact, formatRuntime, parseRuntimeMinutes
 } from '../format';
 
 describe('formatDateLong', () => {
@@ -105,6 +105,22 @@ describe('formatEndTime', () => {
     test('devuelve undefined si no hay duración válida', () => {
         expect(formatEndTime(undefined)).toBeUndefined();
         expect(formatEndTime('—')).toBeUndefined();
+    });
+});
+
+describe('formatEndTimeInfo', () => {
+    test('desglosa hora y prefijo adecuadamente', () => {
+        const baseDate = new Date('2026-08-31T10:00:00');
+        const info = formatEndTimeInfo(70, baseDate);
+        expect(info).toBeDefined();
+        expect(info?.time).toMatch(/11:10/);
+        expect(info?.full).toMatch(/11:10/);
+        expect(info?.full).toContain(info?.time);
+    });
+
+    test('devuelve undefined si no hay duración válida', () => {
+        expect(formatEndTimeInfo(undefined)).toBeUndefined();
+        expect(formatEndTimeInfo('')).toBeUndefined();
     });
 });
 

@@ -15,12 +15,12 @@ export function mutationOnLoad(
     onMutated: (detail: ItemMutatedDetail) => void,
     opts?: MutationOnLoadOptions
 ): () => void {
-    const subscription = new ItemMutationSubscription();
-    const debounceMs = typeof opts?.debounce === 'number' ?
-        opts.debounce :
-        (opts?.debounce ? MUTATION_DEBOUNCE_MS : 0);
-
+    let subscription: ItemMutationSubscription | null = null;
     return () => {
+        if (!subscription) subscription = new ItemMutationSubscription();
+        const debounceMs = typeof opts?.debounce === 'number' ?
+            opts.debounce :
+            (opts?.debounce ? MUTATION_DEBOUNCE_MS : 0);
         subscription.ensure(onMutated, debounceMs);
     };
 }

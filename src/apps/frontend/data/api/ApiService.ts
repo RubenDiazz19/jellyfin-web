@@ -32,7 +32,9 @@ import { invalidateLists } from './listCache';
 import { getShows, getShow } from './shows';
 import { getMovie, getMovies, getMovieSaga } from './movies';
 import { getByGenre, getByPerson, getSimilar, searchCatalog } from './discover';
-import { getHomeCarousel } from './home';
+import { getHomeCarousel, getResume, getLatest } from './home';
+import { getMostPlayed } from './played';
+import { getFavoriteItems, favoriteServerId, hydrateFavorites } from './favorites';
 import { getPersonMetadata } from './person';
 import { imageUrl } from './images';
 import {
@@ -43,7 +45,6 @@ import {
     downloadUrl,
     nativeItemUrl
 } from './items';
-import { favoriteServerId, hydrateFavorites } from './favorites';
 import {
     getPlaybackDecision,
     subtitleVttUrl,
@@ -72,6 +73,7 @@ import {
     getRemoteImages
 } from './remote-images';
 import { searchSubtitles, downloadSubtitle, uploadSubtitle, deleteSubtitle, getItemSubtitles } from './subtitles';
+import { getCollections } from './lists';
 import { getSystemInfo, refreshLibrary } from './admin';
 import { getRunningTasks, watchScheduledTasks, watchItemRefresh, watchLibraryChanged } from './tasks';
 import {
@@ -116,7 +118,19 @@ const authService = {
 };
 
 const catalogService = {
-    getShows, getShow, getMovie, getMovies, getMovieSaga, getHomeCarousel, clearShowCache, invalidateLists
+    getShows,
+    getShow,
+    getMovie,
+    getMovies,
+    getMovieSaga,
+    getHomeCarousel,
+    getResume,
+    getLatest,
+    getMostPlayed,
+    getFavoriteItems,
+    getCollections,
+    clearShowCache,
+    invalidateLists
 };
 
 const discoverService = { getByGenre, getByPerson, getSimilar, searchCatalog };

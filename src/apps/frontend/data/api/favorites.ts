@@ -11,12 +11,16 @@
 // El servidor manda: lo que ya no esté marcado allí sale de aquí, y así
 // desfavoritear desde el móvil llega al navegador de casa.
 
+import type { CatalogItem } from '../models';
 import { FAVS } from '../stores/favsStore';
 import { episodeKey, movieKey, parseItemKey, seasonKey, serverIdFromKey } from '../stores/itemKeys';
 import { fetchUserItems } from './http';
+import { mapCatalogItem } from './itemMapping';
 import { toggleFavorite } from './items';
+import { cachedList } from './listCache';
+import { emitListsRefreshed } from './mutations';
 import { getShow } from './shows';
-import type { JFItem } from './types';
+import { FIELDS_LIST, type JFItem } from './types';
 
 /** Lo que el servidor considera favoriteable dentro de este frontend. */
 const FAV_TYPES = 'Movie,Series,Season,Episode';
@@ -62,6 +66,21 @@ export async function getFavoriteKeys(): Promise<string[]> {
         `Filters=IsFavorite&Recursive=true&IncludeItemTypes=${FAV_TYPES}&SortBy=SortName`
     );
     return items.map(favKeyOf).filter((k): k is string => !!k);
+}
+
+/**
+ * Títulos favoritos (series y películas) para la fila curada de la Home.
+ * Más ligero que getFavoriteKeys(): no trae temporadas ni episodios.
+ */
+export function getFavoriteItems(limit = 12): Promise<CatalogItem[]> {
+    return cachedList('favorite-items', () => fetchFavoriteItems(limit), emitListsRefreshed);
+}
+
+async function fetchFavoriteItems(limit: number): Promise<CatalogItem[]> {
+    const items = await fetchUserItems<JFItem>(
+        `Filters=IsFavorite&Recursive=true&IncludeItemTypes=Movie,Series&Limit=${limit}&Fields=${FIELDS_LIST}&SortBy=SortName`
+    );
+    return items.map((it) => mapCatalogItem(it));
 }
 
 /**

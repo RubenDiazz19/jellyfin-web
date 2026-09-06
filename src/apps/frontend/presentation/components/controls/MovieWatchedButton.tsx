@@ -1,10 +1,10 @@
 import { useWatched } from '../../../domain/bridge/useWatched';
 import { useSession } from '../../../domain/bridge/useSession';
 import { WatchedToggle } from './WatchedToggle';
-import type { Movie } from '../../../domain/models';
 import { movieKey } from '../../../domain/stores';
 
-type Props = { movie: Movie; size?: number; badge?: boolean };
+type MovieLike = { id: string; title: string; watched?: number };
+type Props = { movie: MovieLike; size?: number; badge?: boolean };
 
 // "Visto" para películas. En sesión Jellyfin marca en el server; el
 // store local se hidrata desde getMovie() y da feedback inmediato al

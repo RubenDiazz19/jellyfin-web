@@ -41,6 +41,9 @@ type Props = {
     /** Etiqueta superior cuando variant === 'tile' */
     kindLabel?: string;
     borderRadius?: number;
+    centerOverlay?: ReactNode;
+    bottomOverlay?: ReactNode;
+    onLogoClick?: (e: MouseEvent) => void;
 };
 
 const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))';
@@ -56,7 +59,8 @@ export function PosterShell({
     cover, onClick, width = null, gradient = DEFAULT_GRADIENT,
     watchedButton, favButton, logo, title, progress = 0, caption,
     selecting = false, selected = false, onContextMenu, contextMenu,
-    variant = 'full', kindLabel, borderRadius
+    variant = 'full', kindLabel, borderRadius, centerOverlay, bottomOverlay,
+    onLogoClick
 }: Props) {
     const isTile = variant === 'tile';
     const inProgress = !isTile && progress > 0 && progress < 1;
@@ -124,7 +128,10 @@ export function PosterShell({
                     inProgress={inProgress}
                     fontSize={isTile ? 'clamp(11px, 7.5cqi, 15px)' : undefined}
                     fontWeight={isTile ? 600 : undefined}
+                    onLogoClick={onLogoClick}
                 />
+                {centerOverlay}
+                {bottomOverlay}
                 {inProgress && (
                     <CardProgress value={progress} />
                 )}

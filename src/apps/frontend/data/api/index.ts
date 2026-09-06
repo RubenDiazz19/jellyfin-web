@@ -15,9 +15,10 @@ export { clearShowCache } from './cache';
 export { invalidateLists } from './listCache';
 export { getShows, getShow } from './shows';
 export { getMovie, getMovies, getMovieSaga } from './movies';
-export { extractMediaBadges, resolutionLabel } from './itemMapping';
+export { extractMediaBadges, resolutionLabel, mapCatalogItem } from './itemMapping';
 export { getByGenre, getByPerson, getSimilar, searchCatalog, type CatalogSlice } from './discover';
-export { getHomeCarousel } from './home';
+export { getHomeCarousel, getResume, getLatest } from './home';
+export { getMostPlayed } from './played';
 export {
     getPlaybackDecision,
     subtitleVttUrl,
@@ -37,7 +38,7 @@ export {
     type RefreshMode,
     type RefreshOptions
 } from './items';
-export { getFavoriteKeys, favoriteServerId, hydrateFavorites } from './favorites';
+export { getFavoriteKeys, favoriteServerId, hydrateFavorites, getFavoriteItems } from './favorites';
 export {
     getItemRaw,
     updateItemMetadata,

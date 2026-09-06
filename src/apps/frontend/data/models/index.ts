@@ -131,7 +131,20 @@ export type CatalogItem = {
     year: number;
     poster?: string;
     backdrop?: string;
+    backdrops?: string[];
     logo?: string | null;
+    watched?: number;
+    genres?: string[];
+};
+
+export type ListEntry = {
+    id: string;
+    name: string;
+    count?: number;
+    image?: string;
+    logo?: string | null;
+    backdrop?: string;
+    parentId?: string;
 };
 
 export type CarouselSlide = {
@@ -153,6 +166,7 @@ export type CarouselSlide = {
     logo?: string | null;
     jfEpisodeId?: string;
     positionTicks?: number;
+    genres?: string[];
 };
 
 export type ProtoData = {
