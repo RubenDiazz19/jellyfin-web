@@ -20,11 +20,11 @@ import { parseQuery, SearchViewModel } from '../SearchViewModel';
 import type { ApiService } from '../../../data/api/ApiService';
 import type { Movie, Show } from '../../../data/models';
 
-function show(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = [], rating?: { imdb: number; age: string }): Show {
-    return { id, title, tags, autoTags, genres, rating: rating ?? { imdb: 0, age: 'N/A' }, seasons: [] } as unknown as Show;
+function show(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = [], rating?: { imdb: number; age: string }, extra?: { originalTitle?: string; synopsis?: string; cast?: { name: string; role: string }[] }): Show {
+    return { id, title, tags, autoTags, genres, rating: rating ?? { imdb: 0, age: 'N/A' }, seasons: [], ...extra } as unknown as Show;
 }
-function movie(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = [], rating?: { imdb: number; age: string }): Movie {
-    return { id, title, tags, autoTags, genres, rating: rating ?? { imdb: 0, age: 'N/A' } } as unknown as Movie;
+function movie(id: string, title: string, tags?: string[], autoTags?: string[], genres: string[] = [], rating?: { imdb: number; age: string }, extra?: { originalTitle?: string; synopsis?: string; cast?: { name: string; role: string }[] }): Movie {
+    return { id, title, tags, autoTags, genres, rating: rating ?? { imdb: 0, age: 'N/A' }, ...extra } as unknown as Movie;
 }
 
 /** VM con la biblioteca ya cargada; sin sesión para que `load()` no dispare. */
@@ -714,6 +714,91 @@ describe('filtro de valoración', () => {
         v.removeRatingFilter(1);
         expect(v.ratingFilters.value).toHaveLength(1);
         expect(ids(v)).toEqual(['s1', 's2', 'm2']);
+    });
+});
+
+describe('búsqueda permisiva por título oficial, título original y metadatos', () => {
+    const vm = () => makeVm(
+        [
+            show('s1', 'Ataque a los titanes', [], [], ['Animación', 'Acción'], undefined, {
+                originalTitle: 'Shingeki no Kyojin',
+                synopsis: 'La humanidad vive rodeada por enormes murallas.'
+            })
+        ],
+        [
+            movie('m1', 'La guerra de las galaxias. Episodio IV: Una nueva esperanza', [], [], ['Ciencia ficción'], undefined, {
+                originalTitle: 'Star Wars: Episode IV - A New Hope',
+                synopsis: 'Luke Skywalker emprende un viaje para salvar la galaxia.',
+                cast: [{ name: 'Harrison Ford', role: 'Han Solo' }, { name: 'Mark Hamill', role: 'Luke Skywalker' }]
+            }),
+            movie('m2', 'El Padrino', [], [], ['Crimen', 'Drama'], undefined, {
+                originalTitle: 'The Godfather',
+                synopsis: 'Don Vito Corleone es el jefe de una familia mafiosa de Nueva York.'
+            })
+        ]
+    );
+
+    test('encuentra por título original aunque el título oficial esté traducido al español', () => {
+        const v = vm();
+        v.setQuery('star wars');
+        expect(ids(v)).toEqual(['m1']);
+    });
+
+    test('encuentra por el título oficial traducido', () => {
+        const v = vm();
+        v.setQuery('guerra de las galaxias');
+        expect(ids(v)).toEqual(['m1']);
+    });
+
+    test('es permisivo con palabras conectoras omitidas (ej: "guerra galaxias")', () => {
+        const v = vm();
+        v.setQuery('guerra galaxias');
+        expect(ids(v)).toEqual(['m1']);
+    });
+
+    test('encuentra series por su título original en japonés o inglés', () => {
+        const v = vm();
+        v.setQuery('shingeki no kyojin');
+        expect(ids(v)).toEqual(['s1']);
+    });
+
+    test('ignora tildes y diacríticos tanto en la consulta como en los datos', () => {
+        const v = vm();
+        v.setQuery('padrino');
+        expect(ids(v)).toEqual(['m2']);
+
+        v.setQuery('animacion');
+        expect(ids(v)).toEqual(['s1']);
+    });
+
+    test('permite buscar combinando título original o traducción con actor del reparto', () => {
+        const v = vm();
+        v.setQuery('star wars ford');
+        expect(ids(v)).toEqual(['m1']);
+    });
+
+    test('encuentra por palabras de la sinopsis', () => {
+        const v = vm();
+        v.setQuery('murallas');
+        expect(ids(v)).toEqual(['s1']);
+    });
+
+    test('prioriza coincidencias directas en título frente a menciones en sinopsis', () => {
+        const v = makeVm(
+            [],
+            [
+                movie('m-synopsis', 'Fanáticos del cine', [], [], [], undefined, {
+                    synopsis: 'Documental sobre los fanáticos de Star Wars en todo el mundo.'
+                }),
+                movie('m-title', 'La guerra de las galaxias', [], [], [], undefined, {
+                    originalTitle: 'Star Wars'
+                })
+            ]
+        );
+
+        v.setQuery('star wars');
+        // m-title debe estar primero porque su título original coincide directamente
+        expect(ids(v)).toEqual(['m-title', 'm-synopsis']);
     });
 });
 

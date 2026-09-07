@@ -122,18 +122,87 @@ const MIN_REMOTE_QUERY = 2;
  */
 const REMOTE_DEBOUNCE_MS = 400;
 
+/**
+ * Normaliza texto para búsqueda libre e indexación:
+ * - A minúsculas.
+ * - Descompone y elimina acentos / marcas diacríticas (NFD).
+ * - Reemplaza signos de puntuación y símbolos por espacios para buscar palabras limpias.
+ * - Colapsa espacios en blanco repetidos.
+ */
+export function normalizeSearchText(text: string | undefined | null): string {
+    if (!text) return '';
+    return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 type IndexedItem = {
     item: SearchResult;
     id: string;
     kind: 'show' | 'movie';
-    lowerTitle: string;
-    lowerSynopsis: string;
+    normTitle: string;
+    normOriginalTitle: string;
+    normSynopsis: string;
     genres: string[];
     cast: string[];
     tags: string[];
     imdb: number;
     seriesEpisodeKeys?: string[];
 };
+
+/**
+ * Evalúa la coincidencia de una consulta contra un item indexado.
+ * Devuelve una puntuación de relevancia (>0 si coincide, 0 si no coincide).
+ * Permite buscar indistintamente por título oficial localizado o por título original,
+ * tolerando omisión de palabras conectoras (ej: "guerra galaxias" o "star wars").
+ */
+function calculateMatchScore(entry: IndexedItem, q: string, qWords: string[]): number {
+    if (!q) return 1;
+
+    // 1. Coincidencia exacta de la frase en título o título original
+    if (entry.normTitle === q || (entry.normOriginalTitle && entry.normOriginalTitle === q)) {
+        return 100;
+    }
+
+    // 2. Empieza por la frase de búsqueda
+    if (entry.normTitle.startsWith(q) || (entry.normOriginalTitle && entry.normOriginalTitle.startsWith(q))) {
+        return 80;
+    }
+
+    // 3. Contiene la frase completa de búsqueda en título o título original
+    if (entry.normTitle.includes(q) || (entry.normOriginalTitle && entry.normOriginalTitle.includes(q))) {
+        return 65;
+    }
+
+    // 4. Todas las palabras de la consulta están en el título o en el título original (ej: "guerra galaxias" o "star wars")
+    const inTitle = qWords.every((w) => entry.normTitle.includes(w));
+    const inOrig = entry.normOriginalTitle ? qWords.every((w) => entry.normOriginalTitle.includes(w)) : false;
+    if (inTitle || inOrig) {
+        return 50;
+    }
+
+    // 5. Palabras repartidas entre título, título original, géneros o reparto
+    const inMetadata = qWords.every((w) =>
+        entry.normTitle.includes(w)
+        || (entry.normOriginalTitle && entry.normOriginalTitle.includes(w))
+        || entry.genres.some((g) => g.includes(w))
+        || entry.cast.some((c) => c.includes(w))
+    );
+    if (inMetadata) {
+        return 30;
+    }
+
+    // 6. Coincidencia en la sinopsis
+    if (entry.normSynopsis.includes(q) || (qWords.length > 0 && qWords.every((w) => entry.normSynopsis.includes(w)))) {
+        return 10;
+    }
+
+    return 0;
+}
 
 export class SearchViewModel {
     query = signal('');
@@ -214,7 +283,11 @@ export class SearchViewModel {
         const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies];
 
         return all.map((item) => {
-            const genres = getItemGenres(item).map((g) => normalizeTagForSearch(g));
+            const rawGenres = getItemGenres(item);
+            const genres = [
+                ...rawGenres.map((g) => normalizeTagForSearch(g)),
+                ...rawGenres.map((g) => normalizeSearchText(g))
+            ].filter(Boolean);
             const tags = getItemTags(item).map((t) => normalizeTagForSearch(t));
             const seriesEpisodeKeys = item.kind === 'show' ?
                 (item.seasons || []).flatMap((s) => (s.episodes || []).map((e) => episodeKey(item.id, s.n, e.n))) :
@@ -224,10 +297,11 @@ export class SearchViewModel {
                 item,
                 id: item.id,
                 kind: item.kind,
-                lowerTitle: (item.title ?? '').toLowerCase(),
-                lowerSynopsis: (item.synopsis ?? '').toLowerCase(),
+                normTitle: normalizeSearchText(item.title),
+                normOriginalTitle: normalizeSearchText(item.originalTitle),
+                normSynopsis: normalizeSearchText(item.synopsis),
                 genres,
-                cast: (item.cast ?? []).map((c) => (c.name ?? '').toLowerCase()),
+                cast: (item.cast ?? []).map((c) => normalizeSearchText(c.name)).filter(Boolean),
                 tags,
                 imdb: item.rating?.imdb ?? 0,
                 seriesEpisodeKeys
@@ -248,7 +322,9 @@ export class SearchViewModel {
         const indexedCatalog = this.catalog.value;
         const types = this.typeFilters.value;
         const states = this.stateFilters.value;
-        const { text: q, tags: queryTags } = parseQuery(this.query.value);
+        const { text: rawText, tags: queryTags } = parseQuery(this.query.value);
+        const normQ = normalizeSearchText(rawText);
+        const qWords = normQ ? normQ.split(' ').filter(Boolean) : [];
         const requiredTags = [
             ...queryTags,
             ...this.tagFilters.value.map((t) => t.toLowerCase())
@@ -259,7 +335,7 @@ export class SearchViewModel {
         const hasStates = states.length > 0;
         const hasRatings = rFilters.length > 0;
 
-        const local: SearchResult[] = [];
+        const localScored: { item: SearchResult; score: number }[] = [];
         for (const entry of indexedCatalog) {
             if (hasTypes) {
                 const matchesType = (types.includes('series') && entry.kind === 'show')
@@ -283,16 +359,19 @@ export class SearchViewModel {
                 continue;
             }
 
-            if (q) {
-                const textMatch = entry.lowerTitle.includes(q)
-                    || entry.lowerSynopsis.includes(q)
-                    || entry.genres.some((g) => g.includes(q))
-                    || entry.cast.some((c) => c.includes(q));
-                if (!textMatch) continue;
+            let score = 1;
+            if (normQ) {
+                score = calculateMatchScore(entry, normQ, qWords);
+                if (score === 0) continue;
             }
 
-            local.push(entry.item);
+            localScored.push({ item: entry.item, score });
         }
+
+        if (normQ) {
+            localScored.sort((a, b) => b.score - a.score);
+        }
+        const local = localScored.map((l) => l.item);
 
         // Lo del servidor que no estuviera ya cargado, al final: son los
         // títulos que la búsqueda local no podía encontrar.

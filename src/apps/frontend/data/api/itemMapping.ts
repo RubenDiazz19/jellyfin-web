@@ -117,7 +117,7 @@ export function watchedFraction(item: JFItem): number {
  */
 export type CommonItemFields = Pick<
     Show & Movie,
-    'id' | 'title' | 'year' | 'runtime' | 'rating' | 'genres' | 'tags' | 'autoTags'
+    'id' | 'title' | 'originalTitle' | 'year' | 'runtime' | 'rating' | 'genres' | 'tags' | 'autoTags'
     | 'studio' | 'country' | 'premiere' | 'cast' | 'synopsis'
     | 'backdrop' | 'backdrops' | 'poster' | 'logo'
 >;
@@ -311,6 +311,7 @@ export function mapCommonFields(item: JFItem): CommonItemFields {
     return {
         id: item.Id,
         title: item.Name,
+        originalTitle: item.OriginalTitle,
         year: item.ProductionYear ?? 0,
         runtime: runtimeLabel(item),
         rating: ratingOf(item),
@@ -340,6 +341,7 @@ export function mapCatalogItem(item: JFItem, fallbackKind?: 'show' | 'movie'): C
     return {
         id: item.Id,
         title: item.Name,
+        originalTitle: item.OriginalTitle,
         kind,
         year: item.ProductionYear ?? 0,
         poster: posterUrl(item.Id, item.ImageTags?.Primary),

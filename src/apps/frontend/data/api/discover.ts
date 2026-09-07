@@ -108,23 +108,57 @@ export async function searchCatalog(term: string): Promise<CatalogSlice> {
 
     const session = loadSession();
     if (!session?.userId) throw noSessionError();
-    const hints = await apiFetch<{ SearchHints?: JFSearchHint[] }>(
-        `/Search/Hints?userId=${session.userId}&searchTerm=${encodeURIComponent(query)}`
-        + `&includeItemTypes=Series,Movie&limit=${SEARCH_LIMIT}`
-    );
-    // `ItemId` es el campo viejo, marcado como deprecado pero aún servido:
-    // se mira por si el servidor es anterior al que renombró el campo.
-    const ids = (hints.SearchHints ?? [])
+
+    // Consultamos en paralelo /Search/Hints (que ordena por relevancia) y
+    // /Users/{userId}/Items?SearchTerm=... (que busca sobre OriginalTitle y Name
+    // en el servidor).
+    const [hints, termItems] = await Promise.all([
+        apiFetch<{ SearchHints?: JFSearchHint[] }>(
+            `/Search/Hints?userId=${session.userId}&searchTerm=${encodeURIComponent(query)}`
+            + `&includeItemTypes=Series,Movie&limit=${SEARCH_LIMIT}`
+        ).catch(() => ({ SearchHints: [] as JFSearchHint[] })),
+        fetchUserItems<JFTypedItem>(
+            `SearchTerm=${encodeURIComponent(query)}&IncludeItemTypes=Series,Movie&Recursive=true&Limit=${SEARCH_LIMIT}&Fields=${FIELDS_LIST}`
+        ).catch(() => [] as JFTypedItem[])
+    ]);
+
+    const hintIds = (hints.SearchHints ?? [])
         .map((h) => h.Id || h.ItemId)
         .filter((id): id is string => !!id);
-    if (ids.length === 0) return empty;
 
-    const items = await fetchUserItems<JFTypedItem>(
-        `Ids=${ids.join(',')}&Fields=${FIELDS_LIST}`
-    );
-    // El orden lo pone el buscador, no el listado: pedir por `Ids` devuelve en
-    // el orden que quiera el servidor y ahí se perdería el ranking.
-    const rank = new Map(ids.map((id, i) => [id, i]));
-    items.sort((a, b) => (rank.get(a.Id) ?? 0) - (rank.get(b.Id) ?? 0));
-    return splitByType(items);
+    const itemMap = new Map<string, JFTypedItem>(termItems.map((it) => [it.Id, it]));
+    const allIds: string[] = [];
+    const seen = new Set<string>();
+
+    for (const id of hintIds) {
+        if (!seen.has(id)) {
+            seen.add(id);
+            allIds.push(id);
+        }
+    }
+    for (const it of termItems) {
+        if (!seen.has(it.Id)) {
+            seen.add(it.Id);
+            allIds.push(it.Id);
+        }
+    }
+
+    if (allIds.length === 0) return empty;
+
+    // Pedimos los datos completos de los items que solo vinieron en SearchHints
+    const missingIds = allIds.filter((id) => !itemMap.has(id));
+    if (missingIds.length > 0) {
+        const fetched = await fetchUserItems<JFTypedItem>(
+            `Ids=${missingIds.join(',')}&Fields=${FIELDS_LIST}`
+        );
+        for (const it of fetched) {
+            itemMap.set(it.Id, it);
+        }
+    }
+
+    const orderedItems = allIds
+        .map((id) => itemMap.get(id))
+        .filter((it): it is JFTypedItem => !!it);
+
+    return splitByType(orderedItems);
 }

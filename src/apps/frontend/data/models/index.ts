@@ -40,6 +40,7 @@ export type Season = {
 export type Show = {
     id: string;
     title: string;
+    originalTitle?: string;
     year: number;
     runtime: string;
     rating: Rating;
@@ -79,6 +80,7 @@ export type Show = {
 export type Movie = {
     id: string;
     title: string;
+    originalTitle?: string;
     year: number;
     runtime: string;
     rating: Rating;
@@ -127,6 +129,7 @@ export type MovieSaga = {
 export type CatalogItem = {
     id: string;
     title: string;
+    originalTitle?: string;
     kind: 'show' | 'movie';
     year: number;
     poster?: string;

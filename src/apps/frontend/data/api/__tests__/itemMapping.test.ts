@@ -8,6 +8,7 @@ describe('itemMapping and detail fields', () => {
     const baseItem: JFItem = {
         Id: 'item-1',
         Name: 'Shōgun',
+        OriginalTitle: 'Shōgun (Original)',
         ProductionYear: 2024,
         PremiereDate: '2024-02-27T00:00:00.0000000Z',
         Genres: ['Drama', 'War & Politics'],
@@ -24,6 +25,7 @@ describe('itemMapping and detail fields', () => {
 
     test('mapCommonFields mapea múltiples estudios y países', () => {
         const common = mapCommonFields(baseItem);
+        expect(common.originalTitle).toBe('Shōgun (Original)');
         expect(common.studio).toBe('FX Productions, DNA Films');
         expect(common.country).toBe('United States, Japan');
         expect(common.premiere).toBe('2024-02-27T00:00:00.0000000Z');

@@ -65,6 +65,7 @@ export type JFItem = {
     }[];
     CommunityRating?: number;
     OfficialRating?: string;
+    OriginalTitle?: string;
     Taglines?: string[];
     /** Etiquetas libres del item. Viven en el servidor: se ven desde cualquier cliente. */
     Tags?: string[];
@@ -85,10 +86,10 @@ export type JFItem = {
     };
 };
 
-// `Tags` hay que pedirlo explícitamente: no viene en la respuesta por
-// defecto, y sin él las etiquetas se leerían siempre como lista vacía.
+// `Tags` y `OriginalTitle` hay que pedirlos explícitamente: no vienen en la respuesta por
+// defecto, y sin ellos se omitirían en el buscador local y remoto.
 export const FIELDS_LIST =
-    'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate,Tags';
+    'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate,Tags,OriginalTitle';
 export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status,ProductionLocations,MediaSources,MediaStreams`;
 
 /**
@@ -103,12 +104,12 @@ export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status,Prod
  *   (varios tags de 32 caracteres cada uno) que la tarjeta nunca pinta —usa
  *   la carátula— y que en un catálogo de mil títulos son cientos de KB.
  *
- * `Overview` **se queda**: el buscador filtra por sinopsis sobre esta misma
- * lista (`SearchViewModel.matchesQuery`), así que quitarlo no sería un ahorro
- * sino perder una función.
+ * `Overview` y `OriginalTitle` **se quedan**: el buscador filtra por sinopsis
+ * y título original sobre esta misma lista, permitiendo encontrar obras por su
+ * versión original además de por la traducción local.
  */
 export const FIELDS_GRID =
-    'Overview,Genres,ProductionYear,CommunityRating,OfficialRating,ImageTags,RunTimeTicks,PremiereDate,Tags';
+    'Overview,Genres,ProductionYear,CommunityRating,OfficialRating,ImageTags,RunTimeTicks,PremiereDate,Tags,OriginalTitle';
 
 /** Las dos únicas imágenes que pinta una tarjeta de la rejilla. */
 export const GRID_IMAGE_TYPES = 'Primary,Logo';
