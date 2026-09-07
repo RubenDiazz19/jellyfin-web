@@ -107,6 +107,22 @@ export const COLLECTION_STYLES = {
         }
     },
 
+    clearPreview(collectionId: string, type?: 'Backdrop' | 'Logo' | 'Primary'): void {
+        if (!type) {
+            activePreviews.delete(collectionId);
+        } else {
+            const prev = activePreviews.get(collectionId);
+            if (prev) {
+                if (type === 'Logo') delete prev.logo;
+                else delete prev.backdrop;
+                if (!prev.backdrop && !prev.logo) activePreviews.delete(collectionId);
+            }
+        }
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent(EVENT));
+        }
+    },
+
     touch(collectionId: string): void {
         store.update((map) => ({
             ...map,

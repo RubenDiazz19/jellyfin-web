@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { COLLECTION_STYLES } from '../../../domain/stores';
+import { imageUrl } from '../../../domain/api';
 import { ListCardMenu, type ListMenuHandle } from '../controls/ListCardMenu';
 import { useSelectionMode } from '../controls/useSelectionMode';
 import { SelectionMark } from '../cards/SelectionMark';
@@ -34,16 +35,26 @@ export function CollectionCard({
     const [, setTick] = useState(0);
     const menuRef = useRef<ListMenuHandle>(null);
 
+    const customColor = COLLECTION_STYLES.getColor(id);
+    const customBackdrop = COLLECTION_STYLES.getBackdrop(id);
+    const customLogo = COLLECTION_STYLES.getLogo(id);
+    const version = COLLECTION_STYLES.getVersion(id);
+
+    // Si hay versión (tocada/subida en local), construimos URLs directas con cache-buster
+    // para que el navegador no devuelva la versión antigua de la caché HTTP.
+    const directBackdrop = version ? `${imageUrl(id, 'Backdrop', { maxWidth: 800, index: 0 })}&v=${version}` : undefined;
+    const directPrimary = version ? `${imageUrl(id, 'Primary', { maxWidth: 800 })}&v=${version}` : undefined;
+
+    const bgImage = customBackdrop ?? directBackdrop ?? backdrop ?? directPrimary ?? image;
+    const activeLogo = customLogo ?? logo;
+
     const selItem: SelectableItem = selectable ?? {
         id,
         title,
         kind: 'collection',
-        poster: image ?? backdrop
+        poster: bgImage ?? image ?? backdrop
     };
     const sel = useSelectionMode(selItem, onClick);
-
-    const customColor = COLLECTION_STYLES.getColor(id);
-    const bgImage = backdrop ?? image;
 
     useEffect(() => {
         const onStyleChange = () => setTick((n) => n + 1);
@@ -145,9 +156,9 @@ export function CollectionCard({
                 padding: '12px 14px',
                 pointerEvents: 'none'
             }}>
-                {logo ? (
+                {activeLogo ? (
                     <img
-                        src={logo}
+                        src={activeLogo}
                         alt={title}
                         style={{
                             maxWidth: '75%',
@@ -197,7 +208,7 @@ export function CollectionCard({
                     kind='collection'
                     listId={id}
                     title={title}
-                    logo={logo}
+                    logo={activeLogo}
                     handle={menuRef}
                     onChanged={onChanged ?? (() => {})}
                     onDeleted={onDeleted}

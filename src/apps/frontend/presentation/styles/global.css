@@ -538,6 +538,62 @@ html.layout-tablet body.jf-frontend-active {
     will-change: transform;
 }
 
+/* Transición suave al alternar entre tiempo restante y hora de fin en tarjetas de reanudación */
+@keyframes jfp-cw-time-in {
+    0% {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.jfp-cw-time-animated {
+    display: inline-block;
+    animation: jfp-cw-time-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.jfp-cw-remaining {
+    transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.jfp-cw-remaining:active {
+    transform: scale(0.96);
+}
+
+/* Desplazamiento horizontal lento para títulos que ocupan todo el ancho de la tarjeta */
+@keyframes jfp-title-marquee-slow {
+    0%,
+    20% {
+        transform: translateX(0);
+    }
+
+    65%,
+    80% {
+        transform: translateX(var(--jfp-scroll-x, 0));
+    }
+
+    95%,
+    100% {
+        transform: translateX(0);
+    }
+}
+
+.jfp-title-scroller {
+    display: inline-block;
+    white-space: nowrap;
+    animation: jfp-title-marquee-slow 10s ease-in-out infinite;
+    will-change: transform;
+}
+
+.jfp-title-scroller:hover {
+    animation-play-state: paused;
+}
+
 /* Movimiento reducido (A11y): si el sistema pide menos animación, se
    neutraliza TODA la animación y transición del frontend (incluida la ruta
    /video, que se monta sin AppLayout). La regla equivalente para el resto de

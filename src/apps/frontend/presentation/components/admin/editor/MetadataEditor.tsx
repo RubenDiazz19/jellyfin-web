@@ -9,7 +9,7 @@ const IdentifyTab = lazy(() => import('./IdentifyTab').then((m) => ({ default: m
 const ImagesTab = lazy(() => import('./ImagesTab').then((m) => ({ default: m.ImagesTab })));
 const SubtitlesTab = lazy(() => import('./SubtitlesTab').then((m) => ({ default: m.SubtitlesTab })));
 
-export type EditorKind = 'movie' | 'show' | 'season' | 'episode';
+export type EditorKind = 'movie' | 'show' | 'season' | 'episode' | 'collection';
 
 // Las temporadas no tienen endpoint en /Items/RemoteSearch: en Jellyfin se
 // identifican a través de la serie, no por sí solas.

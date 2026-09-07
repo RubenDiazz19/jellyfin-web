@@ -163,6 +163,7 @@ export type CarouselSlide = {
     // y refleje los cambios de imagen hechos en la ficha.
     backdrops?: string[];
     poster: string;
+    thumb?: string;
     logo?: string | null;
     jfEpisodeId?: string;
     positionTicks?: number;

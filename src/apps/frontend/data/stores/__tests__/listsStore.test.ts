@@ -75,6 +75,7 @@ vi.mock('../../api/lists', async (importActual) => {
 
 import { LISTS } from '../listsStore';
 import { LIST_COVERS } from '../listCoversStore';
+import { COLLECTION_STYLES } from '../collectionStylesStore';
 
 /** Lo que deja el servidor al meter una serie en una LISTA: uno por capítulo. */
 const asEpisodes = (n: number) => Array.from({ length: n }, (_, i) => ({
@@ -86,6 +87,7 @@ const asEpisodes = (n: number) => Array.from({ length: n }, (_, i) => ({
 beforeEach(() => {
     vi.clearAllMocks();
     LISTS._reset();
+    COLLECTION_STYLES._reset();
     getPlaylists.mockResolvedValue([{ id: 'p1', name: 'Pendientes' }]);
     getCollections.mockResolvedValue([{ id: 'c1', name: 'Saga' }]);
     getPlaylistItems.mockResolvedValue([
@@ -348,6 +350,29 @@ describe('fondo personalizado', () => {
         setImageByUrl.mockRejectedValue(new Error('formato no válido'));
         await expect(LISTS.setCover('playlist', 'p1', 'x')).rejects.toThrow('formato no válido');
         expect(LISTS.hasCustomCover('playlist', 'p1')).toBe(false);
+    });
+
+    test('la tarjeta de colección preserva su propio backdrop del servidor sobre el de los hijos', async () => {
+        getCollections.mockResolvedValue([{ id: 'c1', name: 'Saga', backdrop: 'col-backdrop' }]);
+        await LISTS.ensure();
+        const col = LISTS.ofKind('collection')[0];
+        expect(col.backdrop).toBe('col-backdrop');
+    });
+
+    test('con customBackdrop en COLLECTION_STYLES se propaga al backdrop de la tarjeta', async () => {
+        getCollections.mockResolvedValue([{ id: 'c1', name: 'Saga', backdrop: 'col-backdrop' }]);
+        COLLECTION_STYLES.setBackdrop('c1', 'https://ejemplo/custom-bd.jpg');
+        await LISTS.ensure();
+        const col = LISTS.ofKind('collection')[0];
+        expect(col.backdrop).toBe('https://ejemplo/custom-bd.jpg');
+    });
+
+    test('con fondo propio en colección, backdrop se actualiza con coverBackdrop', async () => {
+        await LISTS.ensure();
+        LIST_COVERS.mark('collection:c1');
+        const col = LISTS.all().find((l) => l.id === 'c1');
+        expect(col?.backdrop).toMatch(/^cover:\/\/c1&v=/);
+        expect(col?.hasCustomCover).toBe(true);
     });
 });
 

@@ -590,7 +590,7 @@ function HomeLibraryJellyfin({
     if (homeVM.rowsLoading.value || !homeVM.rowsReady.value) {
         return (
             <section style={sectionStyle}>
-                <SkeletonRow title={globalize.translate('ContinueWatching')} />
+                <SkeletonRow title={globalize.translate('ContinueWatching')} variant='landscape' />
                 <SkeletonRow title={globalize.translate('TabLatest')} />
             </section>
         );
@@ -687,7 +687,7 @@ function HomeLibraryProto({
     if (!hydrated) {
         return (
             <section style={sectionStyle}>
-                <SkeletonRow title={globalize.translate('ContinueWatching')} />
+                <SkeletonRow title={globalize.translate('ContinueWatching')} variant='landscape' />
                 <SkeletonRow title={globalize.translate('TabLatest')} />
             </section>
         );

@@ -449,6 +449,8 @@
     "OptionSearchLogo": "Buscar logo…",
     "OptionUploadBackdrop": "Subir foto de fondo…",
     "OptionUploadLogo": "Subir logo…",
+    "OptionBackdropUrl": "Fondo por URL…",
+    "OptionLogoUrl": "Logo por URL…",
     "LabelCommunityRating": "Puntuación de la comunidad",
     "LabelContentType": "Tipo de contenido",
     "LabelCountry": "País/Región",

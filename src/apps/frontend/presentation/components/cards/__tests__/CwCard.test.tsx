@@ -181,4 +181,85 @@ describe('CwCard', () => {
             startTicks: 7000000
         });
     });
+
+    test('renderiza la tarjeta en formato apaisado 16:9 con su barra de progreso', async () => {
+        await mount(<CwCard slide={showSlide} navigate={mockNavigate} />);
+
+        const cardM3 = host?.querySelector('.jfp-card-m3') as HTMLElement;
+        expect(cardM3).toBeTruthy();
+        expect(cardM3.style.aspectRatio).toBe('16/9');
+
+        // Barra de progreso presente con el porcentaje adecuado
+        const progressBar = host?.querySelector('.jfp-card-progress') as HTMLElement;
+        expect(progressBar).toBeTruthy();
+    });
+
+    test('usa backdrop (o poster como fallback) de la serie como imagen de portada', async () => {
+        await mount(<CwCard slide={showSlide} navigate={mockNavigate} />);
+
+        const coverDiv = host?.querySelector('.jfp-card-m3 div[style*="background-image"]') as HTMLElement;
+        expect(coverDiv).toBeTruthy();
+        expect(coverDiv.style.backgroundImage).toContain('backdrop.jpg');
+    });
+
+    test('usa poster de la serie si no hay backdrop disponible', async () => {
+        const slideWithoutBackdrop: CarouselSlide = {
+            ...showSlide,
+            backdrop: ''
+        };
+        await mount(<CwCard slide={slideWithoutBackdrop} navigate={mockNavigate} />);
+
+        const coverDiv = host?.querySelector('.jfp-card-m3 div[style*="background-image"]') as HTMLElement;
+        expect(coverDiv).toBeTruthy();
+        expect(coverDiv.style.backgroundImage).toContain('poster.jpg');
+    });
+
+    test('muestra el tiempo restante como badge en la tarjeta', async () => {
+        await mount(<CwCard slide={showSlide} navigate={mockNavigate} />);
+
+        const remainingBadge = host?.querySelector('.jfp-cw-remaining');
+        expect(remainingBadge).toBeTruthy();
+        expect(remainingBadge?.textContent).toContain('12 min');
+    });
+
+    test('alterna entre tiempo restante y hora de fin al hacer clic en el indicador sin fondo', async () => {
+        await mount(<CwCard slide={showSlide} navigate={mockNavigate} />);
+
+        const remainingBadge = host?.querySelector('.jfp-cw-remaining') as HTMLElement;
+        expect(remainingBadge).toBeTruthy();
+        expect(remainingBadge.textContent).toContain('12 min');
+
+        await act(async () => {
+            remainingBadge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        });
+
+        // Al hacer clic conmuta a la hora de fin sin disparar el play de la tarjeta
+        expect(mockPlay).not.toHaveBeenCalled();
+        expect(remainingBadge.textContent).not.toBe('12 min');
+
+        // Al volver a hacer clic vuelve al tiempo restante
+        await act(async () => {
+            remainingBadge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        });
+        expect(remainingBadge.textContent).toBe('12 min');
+    });
+
+    test('limita el título y subtítulo estrictamente a una sola línea con nowrap y overflow hidden', async () => {
+        const longTitleSlide: CarouselSlide = {
+            ...showSlide,
+            title: 'La guerra de las galaxias. Episodio I: La amenaza fantasma',
+            episodeTitle: 'Capítulo larguísimo que desborda el ancho completo de la tarjeta'
+        };
+        await mount(<CwCard slide={longTitleSlide} navigate={mockNavigate} />);
+
+        const titleSpan = host?.querySelector('.jfp-poster-logo-btn span') as HTMLElement;
+        expect(titleSpan).toBeTruthy();
+        expect(titleSpan.style.whiteSpace).toBe('nowrap');
+
+        const titleCont = host?.querySelector('.jfp-poster-logo-btn > div') as HTMLElement;
+        expect(titleCont).toBeTruthy();
+        expect(titleCont.style.overflow).toBe('hidden');
+        expect(titleCont.style.whiteSpace).toBe('nowrap');
+        expect(titleCont.style.height).toBe('20px');
+    });
 });

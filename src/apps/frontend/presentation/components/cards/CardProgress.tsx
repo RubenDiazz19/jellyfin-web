@@ -10,7 +10,7 @@ type Props = {
 export function CardProgress({ value, height = 3, bottom = 0 }: Props) {
     if (value <= 0) return null;
     return (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom }}>
+        <div className='jfp-card-progress' style={{ position: 'absolute', left: 0, right: 0, bottom }}>
             <Progress value={value} height={height} />
         </div>
     );

@@ -1,5 +1,11 @@
 // Listas del servidor: listas de reproducción y colecciones.
 //
+// BUG CORREGIDO: la tarjeta de colección usaba `backdrop ?? image`, pero
+// `all()` solo sobreescribía `image` (Primary). Un backdrop subido por el
+// usuario se veía en el hero (que lee COLLECTION_STYLES.customBackdrop)
+// pero la tarjeta seguía mostrando el viejo. Ahora `all()` también
+// sobreescribe `backdrop` y `logo` cuando hay valores personalizados.
+//
 // Mismo contrato que favsStore/queueStore —caché en memoria + evento global
 // para que la UI re-lea— pero la fuente de verdad es el SERVIDOR: se ven desde
 // cualquier cliente de Jellyfin.
@@ -27,6 +33,7 @@ import { updateItemMetadata } from '../api/metadata';
 import { deleteItem } from '../api/items';
 import { deleteImage, setImageByUrl, uploadImageFile } from '../api/remote-images';
 import { LIST_COVERS } from './listCoversStore';
+import { COLLECTION_STYLES } from './collectionStylesStore';
 
 const EVENT = 'jfp-lists-change';
 
@@ -52,9 +59,15 @@ const HERO_WIDTH = 1920;
  * apuntaría a la vieja. Se cuela un contador para saltarse la caché del
  * navegador, que si no seguiría enseñando la anterior.
  */
-function coverImage(listId: string, maxWidth: number): string | undefined {
+function coverImage(listId: string, maxWidth: number, version = coverVersion): string | undefined {
     const url = imageUrl(listId, 'Primary', { maxWidth });
-    return url ? `${url}&v=${coverVersion}` : undefined;
+    return url ? `${url}&v=${version}` : undefined;
+}
+
+/** Igual que coverImage pero para el Backdrop subido por el usuario. */
+function coverBackdrop(listId: string, maxWidth: number, version = coverVersion): string | undefined {
+    const url = imageUrl(listId, 'Backdrop', { maxWidth, index: 0 });
+    return url ? `${url}&v=${version}` : undefined;
 }
 
 /** Sube cada vez que se cambia un fondo, para invalidar la caché de imágenes. */
@@ -198,18 +211,36 @@ export const LISTS = {
             const key = keyOf(l.kind, l.id);
             const own = LIST_COVERS.has(key);
             const inherited = cache?.covers.get(key);
+
+            // Para colecciones, el usuario puede haber puesto un backdrop
+            // y/o logo personalizados en COLLECTION_STYLES. Hay que
+            // propagarlos a la tarjeta, que usa `backdrop ?? image`.
+            const isCol = l.kind === 'collection';
+            const customBd = isCol ? COLLECTION_STYLES.getBackdrop(l.id) : undefined;
+            const customLogo = isCol ? COLLECTION_STYLES.getLogo(l.id) : undefined;
+            const styleVer = isCol ? COLLECTION_STYLES.getVersion(l.id) : 0;
+            const ver = Math.max(coverVersion, styleVer);
+
             return {
                 ...l,
                 // Manda el fondo que haya puesto el usuario. Si no hay, la
-                // portada automática: el último título añadido. La imagen que
-                // trae el servidor por su cuenta (`l.image`) se deja la
-                // última porque suele ser el collage, que es feo.
+                // portada de la colección (o para playlists, la automática:
+                // el último título añadido, evitando el collage feo).
                 image: own ?
-                    coverImage(l.id, CARD_WIDTH) ?? l.image :
-                    inherited?.card ?? l.image,
+                    coverImage(l.id, CARD_WIDTH, ver) ?? l.image :
+                    (isCol ? (l.image ?? inherited?.card) : (inherited?.card ?? l.image)),
+                // El backdrop de la tarjeta: primero el personalizado del
+                // usuario (URL local / preview), luego el del servidor con
+                // cache-bust, luego el backdrop propio de la colección, y por
+                // último el heredado del último título.
+                backdrop: own ?
+                    customBd ?? coverBackdrop(l.id, CARD_WIDTH, ver) ?? l.backdrop :
+                    customBd ?? (isCol ? (l.backdrop ?? inherited?.card) : (inherited?.card ?? l.backdrop)),
                 heroImage: own ?
-                    coverImage(l.id, HERO_WIDTH) ?? l.image :
-                    inherited?.hero ?? inherited?.card ?? l.image,
+                    customBd ?? coverBackdrop(l.id, HERO_WIDTH, ver) ?? coverImage(l.id, HERO_WIDTH, ver) ?? l.image :
+                    customBd ?? (isCol ? (l.backdrop ?? inherited?.hero ?? inherited?.card ?? l.image) : (inherited?.hero ?? inherited?.card ?? l.image)),
+                // Logo personalizado si lo hay.
+                logo: customLogo ?? l.logo,
                 hasCustomCover: own,
                 // El `ChildCount` del servidor cuenta episodios sueltos: una
                 // lista con una película y una serie de 14 capítulos diría 15.

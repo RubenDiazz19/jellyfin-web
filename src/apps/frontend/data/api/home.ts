@@ -5,8 +5,7 @@
 import type { CarouselSlide, CatalogItem, Show } from '../models';
 import { loadSession } from '../session/session';
 import { apiFetch, noSessionError } from './http';
-import { imageUrl } from './images';
-import { backdropUrls, logoUrl, mapCatalogItem, posterUrl } from './itemMapping';
+import { backdropUrls, firstImageUrl, logoUrl, mapCatalogItem, posterUrl } from './itemMapping';
 import { cachedList } from './listCache';
 import { emitListsRefreshed } from './mutations';
 import { settlePlaybackReports } from './playback';
@@ -27,7 +26,7 @@ function backdropsOf(
     if (!itemId) return [];
     const backdrops = backdropUrls(itemId, backdropTags);
     if (backdrops.length > 0) return backdrops;
-    const primary = imageUrl(itemId, 'Primary', { maxHeight: 1440, tag: primaryTag });
+    const primary = firstImageUrl([['Primary', itemId, primaryTag]], { maxHeight: 1440 });
     return primary ? [primary] : [];
 }
 

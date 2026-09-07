@@ -20,7 +20,7 @@ vi.mock('../cache', () => ({ clearShowCache: mocks.clearShowCache }));
 vi.mock('../mutations', () => ({ emitItemMutated: mocks.emitItemMutated }));
 vi.mock('../../session/session', () => ({ loadSession: () => ({ userId: 'u1' }) }));
 
-import { normalizeTags, setItemTags, setItemsTags } from '../metadata';
+import { normalizeTags, remoteSearch, setItemTags, setItemsTags } from '../metadata';
 
 /** Cuerpo del n-ésimo POST /Items/{id}. */
 function postedBody(nth = 0): Record<string, unknown> {
@@ -85,5 +85,40 @@ describe('setItemsTags', () => {
         await setItemsTags(['i1'], ['  ']);
         expect(mocks.apiSend).not.toHaveBeenCalled();
         expect(mocks.emitItemMutated).not.toHaveBeenCalled();
+    });
+});
+
+describe('remoteSearch', () => {
+    test('construye la petición para BoxSet omitiendo Year si no se especifica', async () => {
+        mocks.apiFetch.mockResolvedValueOnce({ Id: 'col-1', Name: 'Star Wars', ProviderIds: {} });
+        mocks.apiSend.mockResolvedValueOnce(new Response(JSON.stringify([{ Name: 'Star Wars Colección' }]), { status: 200 }));
+
+        const results = await remoteSearch('col-1', 'BoxSet', { name: 'Star Wars' });
+
+        expect(mocks.apiSend).toHaveBeenCalledWith(
+            '/Items/RemoteSearch/BoxSet',
+            'POST',
+            expect.objectContaining({
+                ItemId: 'col-1',
+                SearchInfo: expect.objectContaining({ Name: 'Star Wars' })
+            })
+        );
+        expect(results).toEqual([{ Name: 'Star Wars Colección' }]);
+    });
+
+    test('incluye Year si se proporciona explícitamente para BoxSet', async () => {
+        mocks.apiFetch.mockResolvedValueOnce({ Id: 'col-1', Name: 'Alien', ProviderIds: {} });
+        mocks.apiSend.mockResolvedValueOnce(new Response(JSON.stringify([]), { status: 200 }));
+
+        await remoteSearch('col-1', 'BoxSet', { name: 'Alien', year: 1979 });
+
+        expect(mocks.apiSend).toHaveBeenCalledWith(
+            '/Items/RemoteSearch/BoxSet',
+            'POST',
+            expect.objectContaining({
+                ItemId: 'col-1',
+                SearchInfo: expect.objectContaining({ Name: 'Alien', Year: 1979 })
+            })
+        );
     });
 });

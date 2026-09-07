@@ -5,7 +5,8 @@ import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useToast } from '../toast/ToastProvider';
 import { COLLECTION_STYLES, LISTS, type ListKind } from '../../../domain/stores';
-import { setImageByUrl, uploadImageFile } from '../../../domain/api';
+import { refreshItemMetadata, type RefreshOptions } from '../../../domain/api';
+import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useSignalSelector } from '../../../domain/bridge/useViewModel';
 import { PopupPanel } from './PopupPanel';
@@ -13,17 +14,14 @@ import { MenuEntry } from './MenuEntry';
 import { AddToDialog } from './AddToDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ColorPickerDialog } from './ColorPickerDialog';
-import { Dialog, DialogHeader } from './Dialog';
-import { MetadataTab } from '../admin/editor/MetadataTab';
-import { RemoteAlternativesGrid, useRemoteAlternatives } from '../admin/editor/RemoteAlternatives';
+import { MetadataEditor } from '../admin/editor/MetadataEditor';
+import { RefreshDialog } from '../admin/RefreshDialog';
+import { TagsDialog } from './TagsDialog';
 
-// Los tres puntos de una lista: en la esquina de su tarjeta del índice y en el
-// hero de la propia lista. De momento solo llevan el fondo: subir una imagen,
-// ponerla por URL o volver a la portada automática (la del último título
-// añadido).
-//
-// El menú va en un portal con posición fija porque la tarjeta recorta lo que
-// se sale (`overflow: hidden`), que es lo que le da las esquinas redondeadas.
+// Menú contextual de una lista o colección (tres puntos).
+// Para colecciones ofrece el mismo flujo y opciones estándar que una película o serie:
+// Añadir a colección, Identificar, Actualizar metadatos, Editar metadatos, Editar etiquetas,
+// Editar imágenes (con soporte de portada, fondo y logo) y Color de fondo.
 
 /** Para abrirlo desde fuera: el clic derecho sobre el hero de la lista. */
 export type ListMenuHandle = { openAt: (x: number, y: number) => void };
@@ -45,7 +43,7 @@ type Props = {
 };
 
 const MENU_W = 230;
-const MENU_H = 220;
+const MENU_H = 340;
 const GAP = 8;
 
 export function ListCardMenu({
@@ -61,8 +59,11 @@ export function ListCardMenu({
     const [askingUrl, setAskingUrl] = useState(false);
     const [url, setUrl] = useState('');
     const [addTo, setAddTo] = useState(false);
+    const [refreshOpen, setRefreshOpen] = useState(false);
+    const [tagsOpen, setTagsOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [colorDialog, setColorDialog] = useState(false);
+    const [editorTab, setEditorTab] = useState<'metadata' | 'identify' | 'images' | null>(null);
 
     const isSelected = useSignalSelector(
         selectionVM.selectedIds,
@@ -79,9 +80,7 @@ export function ListCardMenu({
             selectionVM.toggle(selectable);
         }
     };
-    const [editMetadata, setEditMetadata] = useState(false);
-    const [remoteSearch, setRemoteSearch] = useState<'Backdrop' | 'Logo' | null>(null);
-    const uploadTargetRef = useRef<'Primary' | 'Backdrop' | 'Logo'>('Primary');
+
     const custom = LISTS.hasCustomCover(kind, listId);
     const customColor = kind === 'collection' ? COLLECTION_STYLES.getColor(listId) : undefined;
 
@@ -103,7 +102,6 @@ export function ListCardMenu({
         const dropUp = y + MENU_H + GAP > window.innerHeight;
         setPos({
             top: dropUp ? Math.max(GAP, y - MENU_H - GAP) : y + GAP,
-            // Se voltea al otro lado del cursor si no cabe a la derecha.
             left: Math.min(x, window.innerWidth - MENU_W - 12)
         });
         setAskingUrl(false);
@@ -146,35 +144,9 @@ export function ListCardMenu({
     };
 
     const setFromFile = async (file: File) => {
-        const target = uploadTargetRef.current;
-        const previewUrl = URL.createObjectURL(file);
-        if (kind === 'collection') {
-            COLLECTION_STYLES.setPreview(listId, target, previewUrl);
-        }
-        if (target === 'Backdrop' || target === 'Logo') {
-            await apply(
-                async () => {
-                    await uploadImageFile(listId, target, file);
-                    if (target === 'Backdrop') {
-                        await uploadImageFile(listId, 'Primary', file).catch(() => {});
-                    }
-                    if (kind === 'collection') {
-                        LISTS.markCustomCover(kind, listId);
-                        COLLECTION_STYLES.touch(listId);
-                    }
-                    await LISTS.refresh();
-                    onChanged();
-                },
-                globalize.translate('MessageCoverUpdated')
-            );
-            return;
-        }
         void apply(
             async () => {
                 await LISTS.setCover(kind, listId, file);
-                if (kind === 'collection') {
-                    COLLECTION_STYLES.touch(listId);
-                }
                 onChanged();
             },
             globalize.translate('MessageCoverUpdated')
@@ -184,38 +156,10 @@ export function ListCardMenu({
     const setFromUrl = () => {
         const clean = url.trim();
         if (!clean) return;
-        const target = uploadTargetRef.current;
-        if (kind === 'collection') {
-            if (target === 'Logo') {
-                COLLECTION_STYLES.setLogo(listId, clean);
-            } else {
-                COLLECTION_STYLES.setBackdrop(listId, clean);
-            }
-        }
-        if (target === 'Backdrop' || target === 'Logo') {
-            void apply(
-                async () => {
-                    await setImageByUrl(listId, target, clean);
-                    if (target === 'Backdrop') {
-                        await setImageByUrl(listId, 'Primary', clean).catch(() => {});
-                    }
-                    if (kind === 'collection') {
-                        LISTS.markCustomCover(kind, listId);
-                        COLLECTION_STYLES.touch(listId);
-                    }
-                    await LISTS.refresh();
-                    onChanged();
-                },
-                globalize.translate('MessageCoverUpdated')
-            );
-            return;
-        }
         void apply(
             async () => {
                 await LISTS.setCover(kind, listId, clean);
-                if (kind === 'collection') {
-                    COLLECTION_STYLES.touch(listId);
-                }
+                onChanged();
             },
             globalize.translate('MessageCoverUpdated')
         );
@@ -237,20 +181,13 @@ export function ListCardMenu({
                 hidden
                 onChange={(e) => {
                     const file = e.target.files?.[0];
-                    // Se limpia el input para que elegir el MISMO fichero otra
-                    // vez vuelva a disparar el change.
                     e.target.value = '';
                     if (file) void setFromFile(file);
                 }}
             />
-            {/* Sin renderizarlo, y no con `hidden`: el `display: flex` de aquí
-                abajo va en línea y le ganaría a la hoja del navegador, así que
-                el botón se seguiría viendo. */}
             {!hideTrigger && (
                 <button
                     ref={btnRef}
-                    // La tarjeta entera es un botón que navega: sin parar aquí,
-                    // el clic en los puntos abriría la lista además del menú.
                     onClick={(e) => { e.stopPropagation(); toggleMenu(); }}
                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     aria-label={globalize.translate('LabelCoverImage')}
@@ -322,36 +259,24 @@ export function ListCardMenu({
                     </div>
                 ) : kind === 'collection' ? (
                     <>
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditMetadata(true); }}>
+                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setAddTo(true); }}>
+                            {globalize.translate('AddToCollection')}
+                        </MenuEntry>
+                        <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
+                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('identify'); }}>
+                            {globalize.translate('Identify')}
+                        </MenuEntry>
+                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setRefreshOpen(true); }}>
+                            {globalize.translate('RefreshMetadata')}
+                        </MenuEntry>
+                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('metadata'); }}>
                             {globalize.translate('EditMetadata')}
                         </MenuEntry>
-                        <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
-                        <MenuEntry
-                            disabled={busy}
-                            onClick={() => {
-                                uploadTargetRef.current = 'Backdrop';
-                                setOpen(false);
-                                fileRef.current?.click();
-                            }}
-                        >
-                            {globalize.translate('OptionUploadBackdrop')}
+                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setTagsOpen(true); }}>
+                            {globalize.translate('EditTags')}
                         </MenuEntry>
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setRemoteSearch('Backdrop'); }}>
-                            {globalize.translate('OptionSearchBackdrop')}
-                        </MenuEntry>
-                        <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
-                        <MenuEntry
-                            disabled={busy}
-                            onClick={() => {
-                                uploadTargetRef.current = 'Logo';
-                                setOpen(false);
-                                fileRef.current?.click();
-                            }}
-                        >
-                            {globalize.translate('OptionUploadLogo')}
-                        </MenuEntry>
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setRemoteSearch('Logo'); }}>
-                            {globalize.translate('OptionSearchLogo')}
+                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('images'); }}>
+                            {globalize.translate('EditImages')}
                         </MenuEntry>
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
                         <MenuEntry disabled={busy} onClick={() => { setOpen(false); setColorDialog(true); }}>
@@ -380,10 +305,7 @@ export function ListCardMenu({
                     </>
                 ) : (
                     <>
-                        <MenuEntry disabled={busy} onClick={() => {
-                            uploadTargetRef.current = 'Primary';
-                            fileRef.current?.click();
-                        }}>
+                        <MenuEntry disabled={busy} onClick={() => fileRef.current?.click()}>
                             {globalize.translate('HeaderUploadImage')}
                         </MenuEntry>
                         <MenuEntry disabled={busy} onClick={() => setAskingUrl(true)}>
@@ -413,40 +335,47 @@ export function ListCardMenu({
                     initialColor={customColor}
                     onSave={(c) => {
                         COLLECTION_STYLES.setColor(listId, c);
+                        setColorDialog(false);
                         onChanged();
                     }}
                     onClose={() => setColorDialog(false)}
                 />
             )}
 
-            {remoteSearch && (
-                <Dialog
-                    label={remoteSearch === 'Logo' ? globalize.translate('OptionSearchLogo') : globalize.translate('OptionSearchBackdrop')}
-                    padding={20}
-                    width={720}
-                    onClose={() => setRemoteSearch(null)}
-                >
-                    <RemoteAltsModal
-                        itemId={listId}
-                        type={remoteSearch}
-                        onClose={() => setRemoteSearch(null)}
-                        onApplied={async () => {
-                            if (kind === 'collection') {
-                                LISTS.markCustomCover(kind, listId);
-                                COLLECTION_STYLES.touch(listId);
-                            }
-                            await LISTS.refresh();
-                            onChanged();
-                        }}
-                    />
-                </Dialog>
-            )}
-
             {addTo && (
                 <AddToDialog
                     kind='collection'
                     itemId={listId}
+                    itemTitle={title}
                     onClose={() => { setAddTo(false); onChanged(); }}
+                />
+            )}
+
+            {refreshOpen && (
+                <RefreshDialog
+                    subject={title ?? ''}
+                    onRefresh={async (options: RefreshOptions) => {
+                        try {
+                            await refreshItemMetadata(listId, options);
+                            tasksVM.expect(listId, title ?? '');
+                            toast(globalize.translate('MessageRefreshQueued'), 'success');
+                        } catch (e) {
+                            toast((e as Error).message, 'warn');
+                            throw e;
+                        }
+                    }}
+                    onClose={() => setRefreshOpen(false)}
+                />
+            )}
+
+            {tagsOpen && (
+                <TagsDialog
+                    itemId={listId}
+                    itemTitle={title}
+                    onClose={() => {
+                        setTagsOpen(false);
+                        onChanged();
+                    }}
                 />
             )}
 
@@ -465,69 +394,22 @@ export function ListCardMenu({
                 />
             )}
 
-            {editMetadata && (
-                <Dialog
-                    label={globalize.translate('EditMetadata')}
-                    width={580}
-                    padding={24}
-                    onClose={() => setEditMetadata(false)}
-                >
-                    <DialogHeader
-                        title={globalize.translate('EditMetadata')}
-                        onClose={() => setEditMetadata(false)}
-                    />
-                    <div style={{ marginTop: 16 }}>
-                        <MetadataTab
-                            itemId={listId}
-                            onClose={() => {
-                                setEditMetadata(false);
-                                onChanged();
-                            }}
-                        />
-                    </div>
-                </Dialog>
+            {editorTab && (
+                <MetadataEditor
+                    itemId={listId}
+                    kind={kind === 'collection' ? 'collection' : 'show'}
+                    initialTab={editorTab}
+                    onClose={async () => {
+                        setEditorTab(null);
+                        if (kind === 'collection') {
+                            LISTS.markCustomCover(kind, listId);
+                            COLLECTION_STYLES.touch(listId);
+                            await LISTS.refresh();
+                        }
+                        onChanged();
+                    }}
+                />
             )}
         </>
-    );
-}
-
-function RemoteAltsModal({
-    itemId,
-    type,
-    onClose,
-    onApplied
-}: {
-    itemId: string;
-    type: 'Backdrop' | 'Logo';
-    onClose: () => void;
-    onApplied: () => void;
-}) {
-    const toast = useToast();
-    const alternatives = useRemoteAlternatives({
-        itemId,
-        type,
-        appliedMessage: globalize.translate(type === 'Logo' ? 'OptionSearchLogo' : 'OptionSearchBackdrop'),
-        closeOnApply: true,
-        onApplied: () => {
-            onApplied();
-            onClose();
-        },
-        onError: (e) => toast((e as Error).message, 'warn')
-    });
-
-    // Abrir la búsqueda remota al montar el diálogo.
-    useEffect(() => {
-        void alternatives.open();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    return (
-        <div style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-            <RemoteAlternativesGrid
-                alt={alternatives}
-                thumbAspect='16/9'
-                fit={type === 'Logo' ? 'contain' : 'cover'}
-            />
-        </div>
     );
 }

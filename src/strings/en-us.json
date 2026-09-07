@@ -1525,6 +1525,8 @@
     "OptionSearchLogo": "Search logo…",
     "OptionUploadBackdrop": "Upload background photo…",
     "OptionUploadLogo": "Upload logo…",
+    "OptionBackdropUrl": "Background photo from URL…",
+    "OptionLogoUrl": "Logo from URL…",
     "OptionAllowAudioPlaybackTranscoding": "Allow audio playback that requires transcoding",
     "OptionAllowContentDownload": "Allow media downloads",
     "OptionAllowContentDownloadHelp": "Users can download media and store it on their devices. This is not the same as a sync feature. Book libraries require this enabled to function properly.",

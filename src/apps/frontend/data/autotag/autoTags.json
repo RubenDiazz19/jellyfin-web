@@ -1,6 +1,6 @@
 {
   "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
-  "_generatedAt": "2026-09-04T17:50:55.255Z",
+  "_generatedAt": "2026-09-07T16:46:06.727Z",
   "items": {
     "2581c8f29f2043730ea7921e9103ff09": [
       "Crimen",
@@ -105,6 +105,13 @@
       "Bélico",
       "Corrupción y poder",
       "Época histórica"
+    ],
+    "598e538251367d71845079bdeaba0dd4": [
+      "Aventura",
+      "Acción",
+      "Ciencia ficción",
+      "Space opera",
+      "Corrupción y poder"
     ]
   }
 }

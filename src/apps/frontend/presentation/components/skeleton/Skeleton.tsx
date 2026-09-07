@@ -15,7 +15,27 @@ export function SkeletonPoster() {
     );
 }
 
-export function SkeletonRow({ count = 6, title }: { count?: number; title?: string }) {
+export function SkeletonLandscape() {
+    const r = useResponsive();
+    const w = r.touch ? (r.mobile ? 312 : 364) : 416;
+    return (
+        <div style={{ width: w, flex: `0 0 ${w}px` }}>
+            <div className='jfp-skeleton' style={{ aspectRatio: '16/9', borderRadius: 4 }} />
+            <div className='jfp-skeleton' style={{ height: 13, marginTop: 10, width: '70%' }} />
+            <div className='jfp-skeleton' style={{ height: 11, marginTop: 6, width: '45%' }} />
+        </div>
+    );
+}
+
+export function SkeletonRow({
+    count = 6,
+    title,
+    variant = 'poster'
+}: {
+    count?: number;
+    title?: string;
+    variant?: 'poster' | 'landscape';
+}) {
     const r = useResponsive();
     return (
         <div style={{
@@ -34,7 +54,9 @@ export function SkeletonRow({ count = 6, title }: { count?: number; title?: stri
                 </div>
             )}
             <div style={{ display: 'flex', gap: r.touch ? r.gap : 24, overflowX: 'hidden' }}>
-                {Array.from({ length: count }).map((_, i) => <SkeletonPoster key={i} />)}
+                {Array.from({ length: count }).map((_, i) => (
+                    variant === 'landscape' ? <SkeletonLandscape key={i} /> : <SkeletonPoster key={i} />
+                ))}
             </div>
         </div>
     );

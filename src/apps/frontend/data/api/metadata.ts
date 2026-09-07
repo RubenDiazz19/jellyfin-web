@@ -120,16 +120,19 @@ export async function setItemsTags(itemIds: string[], tags: string[]): Promise<v
 
 export async function remoteSearch(
     itemId: string,
-    itemType: 'Movie' | 'Series' | 'Episode',
+    itemType: 'Movie' | 'Series' | 'Episode' | 'BoxSet',
     query?: { name?: string; year?: number }
 ): Promise<RemoteSearchResult[]> {
     const raw = await getItemRaw(itemId);
+    const isBoxSet = itemType === 'BoxSet';
     const body = {
         ItemId: itemId,
         SearchInfo: {
-            Name: query?.name ?? raw.Name,
-            Year: query?.year ?? raw.ProductionYear,
-            ProviderIds: raw.ProviderIds ?? {}
+            Name: (query?.name != null ? query.name.trim() : raw?.Name) || undefined,
+            // Las colecciones en TMDB no suelen ir asociadas a un único año de producción;
+            // si el usuario no especifica año en la búsqueda de BoxSet, evitamos forzar el del item.
+            Year: isBoxSet ? (query?.year ? query.year : undefined) : (query?.year ?? raw?.ProductionYear),
+            ProviderIds: raw?.ProviderIds ?? {}
         }
     };
     const res = await apiSend(`/Items/RemoteSearch/${itemType}`, 'POST', body);

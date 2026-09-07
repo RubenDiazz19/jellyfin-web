@@ -27,22 +27,15 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
     const [applying, setApplying] = useState<number | null>(null);
     const toast = useToast();
 
-    useEffect(() => {
-        getItemRaw(itemId).then((it) => {
-            setName(it.Name ?? '');
-            setYear(it.ProductionYear ? String(it.ProductionYear) : '');
-        }).catch(() => {});
-    }, [itemId]);
+    const kindApi: 'Movie' | 'Series' | 'Episode' | 'BoxSet' =
+        kind === 'show' ? 'Series' : kind === 'movie' ? 'Movie' : kind === 'collection' ? 'BoxSet' : 'Episode';
 
-    const kindApi: 'Movie' | 'Series' | 'Episode' =
-        kind === 'show' ? 'Series' : kind === 'movie' ? 'Movie' : 'Episode';
-
-    const doSearch = async () => {
+    const executeSearch = async (searchName: string, searchYear?: number) => {
         setSearching(true);
         try {
             const rs = await remoteSearch(itemId, kindApi, {
-                name: name || undefined,
-                year: year ? Number(year) : undefined
+                name: searchName || undefined,
+                year: searchYear
             });
             setResults(rs);
             if (rs.length === 0) toast(globalize.translate('MessageNoResults'), 'info');
@@ -52,6 +45,21 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
             setSearching(false);
         }
     };
+
+    const doSearch = () => executeSearch(name, year ? Number(year) : undefined);
+
+    useEffect(() => {
+        getItemRaw(itemId).then((it) => {
+            const initialName = it.Name ?? '';
+            setName(initialName);
+            const initialYear = it.ProductionYear ? String(it.ProductionYear) : '';
+            setYear(initialYear);
+            if (initialName) {
+                void executeSearch(initialName, initialYear ? Number(initialYear) : undefined);
+            }
+        }).catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [itemId]);
 
     const apply = async (i: number) => {
         if (!results) return;
@@ -75,10 +83,10 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
             </Muted>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 12 }}>
                 <Field label={globalize.translate('LabelName')}>
-                    <TextField size='md' value={name} onChange={setName} />
+                    <TextField size='md' value={name} onChange={setName} onEnter={doSearch} />
                 </Field>
                 <Field label={globalize.translate('LabelYear')}>
-                    <TextField size='md' value={year} onChange={setYear} placeholder={globalize.translate('Optional')} />
+                    <TextField size='md' value={year} onChange={setYear} placeholder={globalize.translate('Optional')} onEnter={doSearch} />
                 </Field>
                 <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                     <PillButton onClick={doSearch} busy={searching}>
