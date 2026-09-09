@@ -11,8 +11,11 @@ import { Dialog, DialogFooter, DialogHeader, DialogInputRow, DialogRow } from '.
 import { PillButton, TextField } from './fields';
 import { LoadState } from './LoadState';
 
+import { T } from '../../theme/tokens';
+
 type Props = {
-    kind: 'playlist' | 'collection';
+    kind?: 'playlist' | 'collection';
+    initialKind?: 'playlist' | 'collection';
     itemId?: string;
     itemIds?: string[];
     itemTitle?: string;
@@ -22,8 +25,17 @@ type Props = {
 
 // Diálogo "Añadir a lista de reproducción / colección": lista las existentes
 // y permite crear una nueva, todo contra la API (sin saltar al web nativo).
-export function AddToDialog({ kind, itemId, itemIds, itemTitle, onClose, onSuccess }: Props) {
+export function AddToDialog({
+    kind = 'playlist',
+    initialKind,
+    itemId,
+    itemIds,
+    itemTitle,
+    onClose,
+    onSuccess
+}: Props) {
     const toast = useToast();
+    const [activeKind, setActiveKind] = useState<'playlist' | 'collection'>(initialKind ?? kind);
     const [entries, setEntries] = useState<ListEntry[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
@@ -31,7 +43,8 @@ export function AddToDialog({ kind, itemId, itemIds, itemTitle, onClose, onSucce
 
     const ids = itemIds ?? (itemId ? [itemId] : []);
 
-    const labels = kind === 'playlist' ?
+    const isPlaylist = activeKind === 'playlist';
+    const labels = isPlaylist ?
         {
             title: globalize.translate('AddToPlaylist'),
             empty: globalize.translate('MessageNoPlaylistsYet'),
@@ -46,21 +59,23 @@ export function AddToDialog({ kind, itemId, itemIds, itemTitle, onClose, onSucce
     const idKey = ids.join(',');
 
     useEffect(() => {
-        const fetchEntries = kind === 'playlist' ? getPlaylists : getCollections;
+        setEntries(null);
+        setError(null);
+        const fetchEntries = isPlaylist ? getPlaylists : getCollections;
         fetchEntries()
             .then((list) => {
                 const excluded = new Set(idKey.split(','));
                 setEntries(list.filter((e) => !excluded.has(e.id)));
             })
             .catch((e) => setError((e as Error).message));
-    }, [kind, idKey]);
+    }, [isPlaylist, idKey]);
 
     const suffix = itemTitle ? ` · ${itemTitle}` : (ids.length > 1 ? ` · ${ids.length}` : '');
 
     const doAdd = async (entry: ListEntry) => {
         setBusy(true);
         try {
-            await (kind === 'playlist' ? addToPlaylist : addToCollection)(entry.id, ids);
+            await (isPlaylist ? addToPlaylist : addToCollection)(entry.id, ids);
             toast(globalize.translate('MessageAddedTo', entry.name) + suffix, 'success');
             onSuccess?.();
             onClose();
@@ -75,7 +90,7 @@ export function AddToDialog({ kind, itemId, itemIds, itemTitle, onClose, onSucce
         if (!name) return;
         setBusy(true);
         try {
-            await (kind === 'playlist' ? createPlaylist : createCollection)(name, ids);
+            await (isPlaylist ? createPlaylist : createCollection)(name, ids);
             toast(globalize.translate('MessageCreated', name) + suffix, 'success');
             onSuccess?.();
             onClose();
@@ -86,8 +101,40 @@ export function AddToDialog({ kind, itemId, itemIds, itemTitle, onClose, onSucce
     };
 
     return (
-        <Dialog label={labels.title} maxHeight='70vh' onClose={onClose}>
-            <DialogHeader title={labels.title} onClose={onClose} />
+        <Dialog label={globalize.translate('AddTo')} maxHeight='70vh' onClose={onClose}>
+            <DialogHeader title={globalize.translate('AddTo')} onClose={onClose} />
+
+            <div style={{
+                display: 'flex', gap: 6, padding: '0 4px 12px',
+                borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 12
+            }}>
+                <button
+                    type='button'
+                    onClick={() => setActiveKind('playlist')}
+                    style={{
+                        padding: '6px 14px', borderRadius: 999,
+                        background: isPlaylist ? 'rgba(255,255,255,0.12)' : 'transparent',
+                        border: isPlaylist ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
+                        color: isPlaylist ? '#fff' : T.dim,
+                        fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: T.ui
+                    }}
+                >
+                    {globalize.translate('Playlists')}
+                </button>
+                <button
+                    type='button'
+                    onClick={() => setActiveKind('collection')}
+                    style={{
+                        padding: '6px 14px', borderRadius: 999,
+                        background: !isPlaylist ? 'rgba(255,255,255,0.12)' : 'transparent',
+                        border: !isPlaylist ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
+                        color: !isPlaylist ? '#fff' : T.dim,
+                        fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: T.ui
+                    }}
+                >
+                    {globalize.translate('Collections')}
+                </button>
+            </div>
 
             <LoadState
                 loading={!entries && !error}
@@ -110,7 +157,6 @@ export function AddToDialog({ kind, itemId, itemIds, itemTitle, onClose, onSucce
             </LoadState>
 
             <DialogFooter>
-
                 <DialogInputRow
                     field={
                         <TextField

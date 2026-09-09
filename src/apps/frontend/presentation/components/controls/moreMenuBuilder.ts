@@ -23,8 +23,6 @@ type BuildMoreMenuItemsOptions = {
     doSelect: () => void;
     setEditor: (tab: EditorTab | null) => void;
     setAddTo: (kind: AddToKind | null) => void;
-    setRefreshOpen: (open: boolean) => void;
-    setTagsOpen: (open: boolean) => void;
     setConfirmDelete: (open: boolean) => void;
 };
 
@@ -61,8 +59,6 @@ export function buildMoreMenuItems({
     doSelect,
     setEditor,
     setAddTo,
-    setRefreshOpen,
-    setTagsOpen,
     setConfirmDelete
 }: BuildMoreMenuItemsOptions): MenuItem[] {
     const t = (key: string) => globalize.translate(key);
@@ -74,18 +70,19 @@ export function buildMoreMenuItems({
     ];
 
     /**
-     * El bloque de edición, que cierra los cuatro menús. Lo que cambia entre
-     * tipos es solo qué existe para cada uno.
+     * Gestión y mantenimiento: edición integral de metadatos (que reúne
+     * metadatos, identificar, refresco desde proveedores, imágenes, subtítulos
+     * y etiquetas en una sola ventana con pestañas).
      */
-    const editing = (has: { identify?: boolean; images?: boolean; subtitles?: boolean; tags?: boolean }): MenuItem[] => [
-        ...(has.identify ? [{ label: t('Identify'), fn: () => setEditor('identify') }] : []),
-        { label: t('RefreshMetadata'), fn: () => setRefreshOpen(true) },
+    const management: MenuItem[] = [
         { label: t('EditMetadata'), fn: () => setEditor('metadata') },
-        ...(has.tags !== false ? [{ label: t('EditTags'), fn: () => setTagsOpen(true) }] : []),
-        ...(has.images ? [{ label: t('EditImages'), fn: () => setEditor('images') }] : []),
-        ...(has.subtitles ? [{ label: t('EditSubtitles'), fn: () => setEditor('subtitles') }] : []),
         { isDivider: true },
         { label: t('Delete'), fn: () => setConfirmDelete(true), danger: true }
+    ];
+
+    /** Añadir a listas de reproducción o colecciones (diálogo unificado con pestañas). */
+    const addToList: MenuItem[] = [
+        { label: t('AddTo'), fn: () => setAddTo('playlist') }
     ];
 
     /** Series y temporadas arrancan por el episodio que toca, no por sí mismas. */
@@ -104,49 +101,50 @@ export function buildMoreMenuItems({
     const menuByType: Record<ItemKind, MenuItem[]> = {
         movie: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
-            ...selectItem,
             ...queueing,
             { isDivider: true },
+            ...addToList,
+            ...selectItem,
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
-            ...editing({ identify: true, images: true, subtitles: true })
+            ...management
         ],
         show: [
             ...continueEntries,
             ...(onShuffle ?
                 [{ label: t('ShufflePlay') || t('Shuffle'), fn: onShuffle }] :
                 [{ label: t('Shuffle'), fn: () => openNative(undefined, '&shuffle=true') }]),
-            { isDivider: true },
-            ...selectItem,
             ...queueing,
             { isDivider: true },
-            ...editing({ identify: true, images: true })
+            ...addToList,
+            ...selectItem,
+            { isDivider: true },
+            ...management
         ],
         season: [
             ...continueEntries,
-            { isDivider: true },
-            ...selectItem,
             ...queueing,
-            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
-            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
             { isDivider: true },
-            ...editing({ images: true, tags: false })
+            ...addToList,
+            ...selectItem,
+            { isDivider: true },
+            ...management
         ],
         episode: [
             { label: t('PlayFromBeginning'), fn: () => doPlay({ fromStart: true }) },
-            ...selectItem,
             ...queueing,
-            { label: t('AddToPlaylist'), fn: () => setAddTo('playlist') },
             { isDivider: true },
+            ...addToList,
+            ...selectItem,
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
-            ...editing({ identify: true, subtitles: true })
+            ...management
         ],
         collection: [
+            ...addToList,
             ...selectItem,
-            { label: t('AddToCollection'), fn: () => setAddTo('collection') },
             { isDivider: true },
-            ...editing({ identify: true, images: true })
+            ...management
         ]
     };
 

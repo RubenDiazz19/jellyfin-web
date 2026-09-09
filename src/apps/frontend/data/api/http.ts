@@ -118,6 +118,23 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
  * la imagen, y por eso no puede ir por `apiSend`. Lo usan tanto el avatar del
  * usuario como las carátulas de items, que hacían esto mismo por separado.
  */
+function inferImageMime(file: File): string {
+    if (file.type && file.type.startsWith('image/')) return file.type;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    switch (ext) {
+        case 'png': return 'image/png';
+        case 'webp': return 'image/webp';
+        case 'gif': return 'image/gif';
+        case 'svg': return 'image/svg+xml';
+        case 'bmp': return 'image/bmp';
+        case 'avif': return 'image/avif';
+        case 'jpg':
+        case 'jpeg':
+        default:
+            return 'image/jpeg';
+    }
+}
+
 export async function uploadImage(path: string, file: File): Promise<void> {
     const session = loadSession();
     if (!session?.accessToken) throw noSessionError();
@@ -125,7 +142,7 @@ export async function uploadImage(path: string, file: File): Promise<void> {
         throw new Error(`La imagen supera 30 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
     }
     const base64 = arrayBufferToBase64(await file.arrayBuffer());
-    const mime = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg';
+    const mime = inferImageMime(file);
     const res = await fetch(`${trimSlash(session.serverUrl)}${path}`, {
         method: 'POST',
         headers: { ...authHeaders(session.accessToken), 'Content-Type': mime },

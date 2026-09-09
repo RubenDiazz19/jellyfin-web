@@ -19,7 +19,7 @@ type Options = {
     type: ImgType;
     /** Lo que se dice al aplicar una: «carátula aplicada», «fondo añadido». */
     appliedMessage: string;
-    /** Cerrar la rejilla al aplicar, o dejarla para seguir eligiendo. */
+    /** Cerrar la rejilla al aplicar, o dejarla para seguir eligiendo. Por defecto true. */
     closeOnApply?: boolean;
     /** Para recargar las imágenes del item. */
     onApplied: () => void;
@@ -29,13 +29,14 @@ type Options = {
 export type RemoteAlternatives = ReturnType<typeof useRemoteAlternatives>;
 
 export function useRemoteAlternatives({
-    itemId, type, appliedMessage, closeOnApply, onApplied, onError
+    itemId, type, appliedMessage, closeOnApply = true, onApplied, onError
 }: Options) {
     const toast = useToast();
     const [state, setState] = useState<'idle' | 'loading' | 'results'>('idle');
     const [images, setImages] = useState<JFRemoteImage[]>([]);
     /** URL de la que se está aplicando: la rejilla la marca como ocupada. */
     const [applying, setApplying] = useState<string | null>(null);
+    const [lang, setLang] = useState<string>('');
 
     const open = async () => {
         setState('loading');
@@ -63,137 +64,199 @@ export function useRemoteAlternatives({
         }
     };
 
+    const langs = Array.from(new Set(images.map((i) => i.Language).filter(Boolean))) as string[];
+    const filtered = lang ? images.filter((i) => i.Language === lang) : images;
+
     return {
         open,
         apply,
         images,
+        filtered,
+        lang,
+        setLang,
+        langs,
         applying,
         loading: state === 'loading',
         showing: state === 'results',
-        close: () => setState('idle')
+        close: () => setState('idle'),
+        toggle: () => {
+            if (state === 'results') setState('idle');
+            else void open();
+        }
     };
 }
 
-/** La rejilla de alternativas, con su filtro por idioma. */
-export function RemoteAlternativesGrid({
-    alt, thumbAspect, fit = 'cover'
+/** Tira horizontal integrada de alternativas online al lado de la imagen actual. */
+export function RemoteAlternativesTrack({
+    alt,
+    thumbAspect,
+    fit = 'cover',
+    cardWidth
 }: {
     alt: RemoteAlternatives;
     /** `2/3` para carátulas, `16/9` para fondos y logos. */
     thumbAspect: string;
     fit?: 'cover' | 'contain';
+    cardWidth?: number;
 }) {
-    const [lang, setLang] = useState<string>('');
     if (!alt.showing) return null;
 
-    const langs = Array.from(new Set(alt.images.map((i) => i.Language).filter(Boolean))) as string[];
-    const filtered = lang ? alt.images.filter((i) => i.Language === lang) : alt.images;
+    if (alt.filtered.length === 0) {
+        return (
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 12px',
+                fontSize: 12,
+                color: T.dim,
+                lineHeight: 1.5,
+                whiteSpace: 'nowrap',
+                alignSelf: 'center'
+            }}>
+                {globalize.translate('MessageNoRemoteImages')}
+            </div>
+        );
+    }
 
     return (
-        <div style={{
-            marginTop: 16, padding: 14, borderRadius: 10,
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: T.dim }}>
-                    {filtered.length} alternativa{filtered.length === 1 ? '' : 's'}
-                    {langs.length > 1 && (
-                        <select
-                            value={lang}
-                            onChange={(e) => setLang(e.target.value)}
-                            style={{
-                                marginLeft: 10, background: 'rgba(255,255,255,0.06)',
-                                color: '#fff', border: '1px solid rgba(255,255,255,0.15)',
-                                borderRadius: 6, padding: '4px 8px', fontSize: 12
-                            }}
-                        >
-                            <option value=''>{globalize.translate('AllLanguages')}</option>
-                            {langs.map((l) => (<option key={l} value={l}>{l}</option>))}
-                        </select>
-                    )}
-                </div>
-                <button
-                    onClick={alt.close}
-                    style={{
-                        marginLeft: 'auto', background: 'none', border: 'none',
-                        color: T.dim, cursor: 'pointer', fontSize: 12
-                    }}
-                >{globalize.translate('ButtonClose')}</button>
-            </div>
-            {/* Sin resultados hay que decir por qué: un «0 alternativas» a
-                secas se lee como que el botón no ha funcionado, cuando lo que
-                pasa es que el proveedor no tiene esa imagen catalogada —típico
-                en temporadas recién estrenadas—. La salida es subirla a mano,
-                que es justo lo que hay encima. */}
-            {filtered.length === 0 && (
-                <div style={{ fontSize: 12, color: T.dim, lineHeight: 1.6, padding: '2px 0 6px' }}>
-                    {globalize.translate('MessageNoRemoteImages')}
-                </div>
-            )}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                gap: 10, maxHeight: 380, overflowY: 'auto'
-            }}>
-                {filtered.map((im) => (
-                    <RemoteThumb
-                        key={im.Url}
-                        image={im}
-                        aspect={thumbAspect}
-                        fit={fit}
-                        busy={alt.applying === im.Url}
-                        onPick={() => alt.apply(im.Url)}
-                    />
-                ))}
-            </div>
+        <div
+            onWheel={(e) => {
+                if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                }
+            }}
+            style={{
+                display: 'flex',
+                gap: 10,
+                overflowX: 'auto',
+                padding: '8px 10px 14px 8px',
+                margin: '-6px -8px 0 -6px',
+                scrollbarWidth: 'thin',
+                scrollBehavior: 'smooth'
+            }}
+        >
+            {alt.filtered.map((im) => (
+                <RemoteThumb
+                    key={im.Url}
+                    image={im}
+                    aspect={thumbAspect}
+                    fit={fit}
+                    cardWidth={cardWidth}
+                    busy={alt.applying === im.Url}
+                    onPick={() => alt.apply(im.Url)}
+                />
+            ))}
         </div>
     );
 }
 
+/** Componente de compatibilidad para rejillas de alternativas. */
+export function RemoteAlternativesGrid({
+    alt, thumbAspect, fit = 'cover'
+}: {
+    alt: RemoteAlternatives;
+    thumbAspect: string;
+    fit?: 'cover' | 'contain';
+}) {
+    return <RemoteAlternativesTrack alt={alt} thumbAspect={thumbAspect} fit={fit} />;
+}
+
 function RemoteThumb({
-    image, aspect, fit, busy, onPick
+    image, aspect, fit, cardWidth, busy, onPick
 }: {
     image: JFRemoteImage; aspect: string; fit: 'cover' | 'contain';
+    cardWidth?: number;
     busy: boolean; onPick: () => void;
 }) {
-    const size = image.Width && image.Height ? `${image.Width}×${image.Height}` : '';
+    const isWide = aspect === '16/9';
+    const width = cardWidth ?? (isWide ? 220 : 100);
+    let resLabel = '';
+    if (image.Width && image.Height) {
+        if (image.Width >= 3840) resLabel = '4K';
+        else if (image.Width >= 1920) resLabel = '1080p';
+        else if (image.Width >= 1280) resLabel = '720p';
+        else resLabel = `${image.Width}×${image.Height}`;
+    }
+
     return (
         <button
             onClick={onPick}
             disabled={busy}
-            title={[size, image.ProviderName, image.Language].filter(Boolean).join(' · ')}
+            title={[image.Width && image.Height ? `${image.Width}×${image.Height}` : '', image.ProviderName, image.Language].filter(Boolean).join(' · ')}
             style={{
-                padding: 0, border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.04)', borderRadius: 6,
+                flexShrink: 0,
+                width,
+                padding: 0,
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.05)',
+                borderRadius: 6,
                 cursor: busy ? 'wait' : 'pointer',
-                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                overflow: 'hidden',
                 opacity: busy ? 0.6 : 1,
-                transition: 'transform .12s, border-color .12s'
+                transition: 'transform .15s, border-color .15s, box-shadow .15s'
             }}
             onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'scale(1.02)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.4)';
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                e.currentTarget.style.boxShadow = 'none';
             }}
         >
             <div style={{
-                width: '100%', aspectRatio: aspect,
-                background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : undefined,
+                width: '100%',
+                aspectRatio: aspect,
                 backgroundImage: `url(${image.ThumbnailUrl || image.Url})`,
-                backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat'
+                backgroundSize: fit,
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat'
             }} />
-            <div style={{
-                padding: '6px 8px', fontSize: 10, color: T.dim,
-                display: 'flex', justifyContent: 'space-between', gap: 6,
-                textAlign: 'left'
-            }}>
-                <span>{size}</span>
-                <span>{image.Language ?? ''}</span>
-            </div>
+
+            {(resLabel || image.Language) && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: 4,
+                    left: 4,
+                    display: 'flex',
+                    gap: 4,
+                    alignItems: 'center'
+                }}>
+                    {resLabel && (
+                        <span style={{
+                            background: 'rgba(0,0,0,0.7)',
+                            backdropFilter: 'blur(4px)',
+                            padding: '2px 5px',
+                            borderRadius: 4,
+                            fontSize: 9,
+                            fontWeight: 600,
+                            color: '#fff',
+                            lineHeight: 1
+                        }}>
+                            {resLabel}
+                        </span>
+                    )}
+                    {image.Language && (
+                        <span style={{
+                            background: 'rgba(0,0,0,0.7)',
+                            backdropFilter: 'blur(4px)',
+                            padding: '2px 5px',
+                            borderRadius: 4,
+                            fontSize: 9,
+                            color: T.dim,
+                            lineHeight: 1,
+                            textTransform: 'uppercase'
+                        }}>
+                            {image.Language}
+                        </span>
+                    )}
+                </div>
+            )}
         </button>
     );
 }

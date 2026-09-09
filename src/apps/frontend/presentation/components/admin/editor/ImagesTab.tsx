@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     deleteImage,
     getItemRaw,
@@ -11,10 +11,14 @@ import {
 } from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
-import { PillButton, TextField } from '../../controls/fields';
+import { PillButton } from '../../controls/fields';
 import { BackdropTile } from './BackdropTile';
 import { ConfirmDeleteButton, type ImgType } from './primitives';
-import { RemoteAlternativesGrid, useRemoteAlternatives } from './RemoteAlternatives';
+import {
+    RemoteAlternativesTrack,
+    useRemoteAlternatives,
+    type RemoteAlternatives
+} from './RemoteAlternatives';
 import { useImageDrop } from './useImageDrop';
 
 export function ImagesTab({ itemId }: { itemId: string }) {
@@ -105,33 +109,44 @@ function SingleImageSection({
     onDone: () => void; onError: (e: unknown) => void;
 }) {
     const fit = type === 'Logo' ? 'contain' : 'cover';
+    const cardWidth = wide ? 220 : 100;
+    const aspect = wide ? '16/9' : '2/3';
     const run = useImageAction(onDone, onError);
     const alt = useRemoteAlternatives({
         itemId, type, onApplied: onDone, onError,
         appliedMessage: globalize.translate('MessageImageApplied', label),
-        // Sustituida la que había, no queda nada que elegir.
         closeOnApply: true
     });
 
     return (
         <div>
-            <SectionHeader label={label} onSearch={alt.open} loading={alt.loading} />
+            <SectionHeader
+                label={label}
+                onSearch={alt.toggle}
+                loading={alt.loading}
+                showing={alt.showing}
+                lang={alt.lang}
+                setLang={alt.setLang}
+                langs={alt.langs}
+                onApplyUrl={(url) => run(setImageByUrl(itemId, type, url))}
+            />
             <ImageEditor
-                src={src} wide={wide} fit={fit}
+                src={src}
+                wide={wide}
+                fit={fit}
+                selected={alt.showing}
+                alt={alt}
+                aspect={aspect}
+                cardWidth={cardWidth}
+                addLabel={label}
                 onUploadFile={(file) => run(
                     uploadImageFile(itemId, type, file),
                     globalize.translate('MessageImageUploaded', label)
                 )}
-                onApplyUrl={(url) => run(setImageByUrl(itemId, type, url))}
                 onDelete={src ? () => run(
                     deleteImage(itemId, type),
                     globalize.translate('MessageImageDeleted')
                 ) : undefined}
-            />
-            <RemoteAlternativesGrid
-                alt={alt}
-                thumbAspect={type === 'Primary' ? '2/3' : '16/9'}
-                fit={fit}
             />
         </div>
     );
@@ -156,7 +171,6 @@ function BackdropSection({
     onDone: () => void; onError: (e: unknown) => void;
 }) {
     const toast = useToast();
-    const [newUrl, setNewUrl] = useState('');
 
     /**
      * El orden que se pinta. Es copia local de `tags` porque al reordenar se
@@ -226,13 +240,34 @@ function BackdropSection({
         <div>
             <SectionHeader
                 label={`Fondos (${order.length})`}
-                onSearch={alt.open}
+                onSearch={alt.toggle}
                 loading={alt.loading}
+                showing={alt.showing}
+                lang={alt.lang}
+                setLang={alt.setLang}
+                langs={alt.langs}
+                onApplyUrl={(url) => run(setImageByUrl(itemId, 'Backdrop', url), added)}
             />
             <div style={{ fontSize: 12, color: T.dim, marginBottom: 12 }}>
                 {globalize.translate('MessageBackdropsHelp')}
             </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div
+                onWheel={(e) => {
+                    if (alt.showing && e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                        e.currentTarget.scrollLeft += e.deltaY;
+                    }
+                }}
+                style={{
+                    display: 'flex',
+                    gap: 10,
+                    alignItems: 'flex-start',
+                    flexWrap: alt.showing ? 'nowrap' : 'wrap',
+                    overflowX: alt.showing ? 'auto' : 'visible',
+                    padding: '8px 10px 14px 8px',
+                    margin: '-6px -8px 0 -6px',
+                    scrollbarWidth: 'thin'
+                }}
+            >
                 {order.map((b, i) => (
                     <BackdropTile
                         key={b.tag}
@@ -241,6 +276,7 @@ function BackdropSection({
                         position={i}
                         total={order.length}
                         active={active === i}
+                        selected={alt.showing}
                         dragging={dragFrom === i}
                         dropTarget={dragTo === i && dragFrom !== null && dragFrom !== i}
                         busy={moving}
@@ -260,131 +296,355 @@ function BackdropSection({
                         )}
                     />
                 ))}
-                <div
-                    {...drop.props}
-                    style={{
-                        width: 220, aspectRatio: '16/9', borderRadius: 6, cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: `1px dashed ${drop.over ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: T.dim, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase',
-                        transition: 'border-color .15s'
-                    }}
-                >
-                    + {globalize.translate('Backdrop')}
-                </div>
+                {!alt.showing && (
+                    <div
+                        {...drop.props}
+                        style={{
+                            width: 220, aspectRatio: '16/9', borderRadius: 6, cursor: 'pointer',
+                            flexShrink: 0,
+                            background: 'rgba(255,255,255,0.05)',
+                            border: `1px dashed ${drop.over ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: T.dim, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase',
+                            transition: 'border-color .15s'
+                        }}
+                    >
+                        + {globalize.translate('Backdrop')}
+                    </div>
+                )}
+                {alt.showing && (
+                    <RemoteAlternativesTrack
+                        alt={alt}
+                        thumbAspect='16/9'
+                        cardWidth={220}
+                    />
+                )}
             </div>
             {drop.input}
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <div style={{ flex: 1 }}>
-                    <TextField
-                        value={newUrl} onChange={setNewUrl} size='md'
-                        placeholder={globalize.translate('LabelImageUrl')}
-                    />
-                </div>
-                <PillButton
-                    variant='ghost'
-                    disabled={!newUrl}
-                    onClick={() => {
-                        void run(setImageByUrl(itemId, 'Backdrop', newUrl), added);
-                        setNewUrl('');
-                    }}
-                >
-                    {globalize.translate('ButtonAddImage')}
-                </PillButton>
-            </div>
-            <RemoteAlternativesGrid alt={alt} thumbAspect='16/9' />
         </div>
     );
 }
 
-/** El título de una sección y su botón de buscar alternativas. */
+/** Icono de lupa stroke minimalista. */
+function SearchIcon() {
+    return (
+        <svg
+            width='13'
+            height='13'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2.2'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+        >
+            <circle cx='11' cy='11' r='7' />
+            <line x1='21' y1='21' x2='16.65' y2='16.65' />
+        </svg>
+    );
+}
+
+/** Campo desplegable minimalista para añadir imágenes por URL directa desde la lupa. */
+function UrlSearchExpand({ onApply }: { onApply: (url: string) => void }) {
+    const [open, setOpen] = useState(false);
+    const [url, setUrl] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const onPointerDownOutside = (e: MouseEvent | TouchEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', onPointerDownOutside);
+        document.addEventListener('touchstart', onPointerDownOutside);
+        return () => {
+            document.removeEventListener('mousedown', onPointerDownOutside);
+            document.removeEventListener('touchstart', onPointerDownOutside);
+        };
+    }, [open]);
+
+    const handleApply = () => {
+        const trimmed = url.trim();
+        if (trimmed) {
+            onApply(trimmed);
+            setUrl('');
+            setOpen(false);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleApply();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setOpen(false);
+        }
+    };
+
+    return (
+        <div
+            ref={containerRef}
+            onBlur={(e) => {
+                if (containerRef.current && !containerRef.current.contains(e.relatedTarget as Node)) {
+                    setOpen(false);
+                }
+            }}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                height: 28,
+                borderRadius: 14,
+                background: open ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${open ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)'}`,
+                transition: 'width .25s cubic-bezier(0.2, 0.8, 0.2, 1), background .2s, border-color .2s',
+                width: open ? 240 : 28,
+                overflow: 'hidden',
+                boxSizing: 'border-box'
+            }}
+        >
+            <button
+                type='button'
+                onClick={() => setOpen((o) => !o)}
+                title={open ? globalize.translate('Close') : globalize.translate('LabelImageUrl')}
+                aria-label={open ? globalize.translate('Close') : globalize.translate('LabelImageUrl')}
+                style={{
+                    width: 26,
+                    height: 26,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: open ? '#fff' : T.dim,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    padding: 0,
+                    transition: 'color .15s'
+                }}
+            >
+                <SearchIcon />
+            </button>
+            {open && (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flex: 1,
+                        minWidth: 0,
+                        paddingRight: 4,
+                        gap: 4
+                    }}
+                >
+                    <input
+                        type='url'
+                        value={url}
+                        autoFocus
+                        onChange={(e) => setUrl(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder='https://…'
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            color: '#fff',
+                            fontSize: 11,
+                            fontFamily: T.ui,
+                            padding: '2px 4px'
+                        }}
+                    />
+                    <button
+                        type='button'
+                        disabled={!url.trim()}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={handleApply}
+                        style={{
+                            background: url.trim() ? 'rgba(255,255,255,0.2)' : 'transparent',
+                            color: url.trim() ? '#fff' : T.dim,
+                            border: 'none',
+                            borderRadius: 10,
+                            padding: '2px 8px',
+                            fontSize: 10,
+                            fontWeight: 500,
+                            fontFamily: T.ui,
+                            cursor: url.trim() ? 'pointer' : 'default',
+                            transition: 'background .15s, color .15s'
+                        }}
+                    >
+                        {globalize.translate('Apply')}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** El título de una sección y su botón de buscar alternativas con filtro opcional de idioma y URL desplegable. */
 function SectionHeader({
-    label, onSearch, loading
+    label, onSearch, loading, showing, lang, setLang, langs, onApplyUrl
 }: {
-    label: string; onSearch: () => void; loading: boolean;
+    label: string;
+    onSearch: () => void;
+    loading: boolean;
+    showing?: boolean;
+    lang?: string;
+    setLang?: (l: string) => void;
+    langs?: string[];
+    onApplyUrl?: (url: string) => void;
 }) {
     return (
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10, gap: 10 }}>
             <div style={{
                 fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: T.dim
             }}>{label}</div>
-            <div style={{ marginLeft: 'auto' }}>
-                <PillButton variant='ghost' onClick={onSearch} busy={loading}>
-                    {loading ? 'Buscando…' : 'Buscar alternativas'}
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {showing && onApplyUrl && (
+                    <UrlSearchExpand onApply={onApplyUrl} />
+                )}
+                {showing && langs && langs.length > 1 && setLang && (
+                    <select
+                        value={lang}
+                        onChange={(e) => setLang(e.target.value)}
+                        style={{
+                            height: 28,
+                            background: 'rgba(255,255,255,0.06)',
+                            color: '#eee',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            borderRadius: 14,
+                            padding: '0 10px',
+                            fontSize: 11,
+                            fontFamily: T.ui,
+                            cursor: 'pointer',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                        }}
+                    >
+                        <option value=''>{globalize.translate('AllLanguages')}</option>
+                        {langs.map((l) => (<option key={l} value={l}>{l}</option>))}
+                    </select>
+                )}
+                <PillButton
+                    variant={showing ? 'primary' : 'ghost'}
+                    onClick={onSearch}
+                    busy={loading}
+                    style={{
+                        height: 28,
+                        padding: '0 12px',
+                        fontSize: 11,
+                        lineHeight: '26px',
+                        fontWeight: showing ? 600 : 500,
+                        letterSpacing: 0,
+                        boxSizing: 'border-box'
+                    }}
+                >
+                    {loading ? 'Buscando…' : showing ? 'Ocultar sugerencias' : 'Buscar alternativas'}
                 </PillButton>
             </div>
         </div>
     );
 }
 
-/** La imagen actual (o el hueco donde iría), y las tres formas de cambiarla. */
+/** La imagen actual (con borrar arriba a la derecha), cuadro de subir (+) o sugerencias remotas integradas. */
 function ImageEditor({
-    src, wide, fit = 'cover', onUploadFile, onApplyUrl, onDelete
+    src, wide, fit = 'cover', selected, alt, aspect = '2/3', cardWidth, addLabel,
+    onUploadFile, onDelete
 }: {
     src?: string; wide?: boolean; fit?: 'cover' | 'contain';
+    selected?: boolean;
+    alt?: RemoteAlternatives;
+    aspect?: string;
+    cardWidth?: number;
+    addLabel: string;
     onUploadFile: (file: File) => void;
-    onApplyUrl: (url: string) => void;
     onDelete?: () => Promise<void>;
 }) {
-    const [newUrl, setNewUrl] = useState('');
     const drop = useImageDrop({ onFiles: (files) => onUploadFile(files[0]) });
 
     return (
-        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-            <div
-                {...drop.props}
-                style={{
-                    ...(wide ? { width: 220, aspectRatio: '16/9' } : { width: 100, aspectRatio: '2/3' }),
-                    borderRadius: 6, cursor: 'pointer',
-                    // El logo (fit: 'contain') es un PNG con aspect ratio propio: con
-                    // 'cover' se recortaba dentro de la caja 16/9 y no se veía entero.
-                    background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.05)',
-                    border: `1px dashed ${drop.over ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.16)'}`,
-                    backgroundImage: src ? `url(${src})` : undefined,
-                    backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
-                    position: 'relative', transition: 'border-color .15s, transform .15s',
-                    transform: drop.over ? 'scale(1.02)' : 'scale(1)'
-                }}
-            >
-                {!src && (
-                    <div style={{
-                        position: 'absolute', inset: 0, display: 'flex',
-                        alignItems: 'center', justifyContent: 'center',
-                        fontSize: 11, color: T.dim, textAlign: 'center', padding: 8,
-                        letterSpacing: 1, textTransform: 'uppercase'
-                    }}>
-                        Arrastra o pulsa
-                    </div>
-                )}
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {drop.input}
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <PillButton onClick={drop.open}>{globalize.translate('Upload')}</PillButton>
-                    {onDelete && (
+        <div
+            onWheel={(e) => {
+                if (selected && e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                }
+            }}
+            style={{
+                display: 'flex',
+                gap: 10,
+                alignItems: 'flex-start',
+                flexWrap: selected ? 'nowrap' : 'wrap',
+                overflowX: selected ? 'auto' : 'visible',
+                padding: '8px 10px 14px 8px',
+                margin: '-6px -8px 0 -6px',
+                scrollbarWidth: 'thin'
+            }}
+        >
+            {drop.input}
+
+            {/* Imagen actual si existe */}
+            {src && (
+                <div
+                    style={{
+                        ...(wide ? { width: 220, aspectRatio: '16/9' } : { width: 100, aspectRatio: '2/3' }),
+                        flexShrink: 0,
+                        borderRadius: 6,
+                        background: fit === 'contain' ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        outline: selected ? '2px solid #fff' : 'none',
+                        outlineOffset: 2,
+                        boxShadow: selected ? '0 0 14px rgba(255,255,255,0.45)' : 'none',
+                        backgroundImage: `url(${src})`,
+                        backgroundSize: fit,
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                        position: 'relative',
+                        transition: 'outline-color .15s, box-shadow .15s'
+                    }}
+                >
+                    {!selected && onDelete && (
                         <ConfirmDeleteButton
-                            variant='button'
                             onConfirm={onDelete}
-                            idleLabel={globalize.translate('DeleteImage')}
+                            idleLabel={globalize.translate('Delete')}
                             confirmLabel={globalize.translate('ConfirmDeleteImage')}
                         />
                     )}
                 </div>
-                <div style={{ fontSize: 11, color: T.dim, marginTop: 4 }}>o desde una URL:</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <div style={{ flex: 1 }}>
-                        <TextField value={newUrl} onChange={setNewUrl} size='md' placeholder='https://…' />
-                    </div>
-                    <PillButton
-                        variant='ghost'
-                        disabled={!newUrl}
-                        onClick={() => { onApplyUrl(newUrl); setNewUrl(''); }}
-                    >
-                        {globalize.translate('Apply')}
-                    </PillButton>
+            )}
+
+            {/* Cuadro gris punteado para subir, idéntico al de fondos */}
+            {!selected && (
+                <div
+                    {...drop.props}
+                    style={{
+                        ...(wide ? { width: 220, aspectRatio: '16/9' } : { width: 100, aspectRatio: '2/3' }),
+                        borderRadius: 6, cursor: 'pointer',
+                        flexShrink: 0,
+                        background: 'rgba(255,255,255,0.05)',
+                        border: `1px dashed ${drop.over ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: T.dim, fontSize: wide ? 12 : 10, letterSpacing: 1, textTransform: 'uppercase',
+                        textAlign: 'center', padding: 8,
+                        transition: 'border-color .15s, transform .15s',
+                        transform: drop.over ? 'scale(1.02)' : 'scale(1)'
+                    }}
+                >
+                    + {addLabel}
                 </div>
-            </div>
+            )}
+
+            {/* Alternativas integradas directamente al lado en la misma fila horizontal */}
+            {selected && alt && (
+                <RemoteAlternativesTrack
+                    alt={alt}
+                    thumbAspect={aspect}
+                    fit={fit}
+                    cardWidth={cardWidth}
+                />
+            )}
         </div>
     );
 }
+

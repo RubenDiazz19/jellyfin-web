@@ -131,8 +131,6 @@ export function MoreButton({
         doSelect: actions.doSelect,
         setEditor: actions.setEditor,
         setAddTo: actions.setAddTo,
-        setRefreshOpen: actions.setRefreshOpen,
-        setTagsOpen: actions.setTagsOpen,
         setConfirmDelete: actions.setConfirmDelete
     });
 

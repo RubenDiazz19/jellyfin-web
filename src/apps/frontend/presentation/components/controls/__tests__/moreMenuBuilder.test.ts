@@ -23,8 +23,6 @@ describe('moreMenuBuilder', () => {
         doSelect: vi.fn(),
         setEditor: vi.fn(),
         setAddTo: vi.fn(),
-        setRefreshOpen: vi.fn(),
-        setTagsOpen: vi.fn(),
         setConfirmDelete: vi.fn()
     };
 
@@ -43,6 +41,23 @@ describe('moreMenuBuilder', () => {
         // Debe contener opción de descarga
         const downloadItem = findByLabel(items, globalize.translate('Download'));
         expect(downloadItem).toBeDefined();
+
+        // Debe contener opción unificada de edición de metadatos
+        const editItem = findByLabel(items, globalize.translate('EditMetadata'));
+        expect(editItem).toBeDefined();
+
+        // RefreshMetadata ahora se gestiona dentro de MetadataEditor, no en el menú
+        expect(findByLabel(items, globalize.translate('RefreshMetadata'))).toBeUndefined();
+
+        // No debe contener opciones individuales redundantes de edición
+        expect(findByLabel(items, globalize.translate('Identify'))).toBeUndefined();
+        expect(findByLabel(items, globalize.translate('EditTags'))).toBeUndefined();
+        expect(findByLabel(items, globalize.translate('EditImages'))).toBeUndefined();
+        expect(findByLabel(items, globalize.translate('EditSubtitles'))).toBeUndefined();
+
+        // Debe contener opción unificada de Añadir a...
+        const addItem = findByLabel(items, globalize.translate('AddTo'));
+        expect(addItem).toBeDefined();
 
         // Debe contener opción de borrado
         const deleteItem = findByLabel(items, globalize.translate('Delete'));

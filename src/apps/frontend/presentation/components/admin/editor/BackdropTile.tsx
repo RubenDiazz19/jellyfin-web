@@ -14,13 +14,14 @@ import { ConfirmDeleteButton } from './primitives';
  * editando, porque el primero es el que se ve al abrir la ficha.
  */
 export function BackdropTile({
-    src, position, total, active, dragging, dropTarget, busy,
+    src, position, total, active, selected = false, dragging, dropTarget, busy,
     onActivate, onMove, onDragStart, onDragEnter, onDragEnd, onDrop, onDelete
 }: {
     src: string;
     position: number;
     total: number;
     active: boolean;
+    selected?: boolean;
     dragging: boolean;
     dropTarget: boolean;
     busy: boolean;
@@ -34,7 +35,7 @@ export function BackdropTile({
 }) {
     return (
         <div
-            draggable={!busy}
+            draggable={!busy && !selected}
             onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart(); }}
             onDragEnter={onDragEnter}
             // Sin este preventDefault el navegador no considera el elemento un
@@ -52,11 +53,13 @@ export function BackdropTile({
             }}
             style={{
                 position: 'relative', borderRadius: 6,
+                flexShrink: 0,
                 cursor: busy ? 'wait' : 'grab',
                 opacity: dragging ? 0.35 : 1,
-                outline: dropTarget ? '2px solid #fff' : '2px solid transparent',
+                outline: selected ? '2px solid #fff' : dropTarget ? '2px solid #fff' : 'none',
                 outlineOffset: 2,
-                transition: 'opacity .15s, outline-color .15s'
+                boxShadow: selected ? '0 0 14px rgba(255,255,255,0.45)' : 'none',
+                transition: 'opacity .15s, outline-color .15s, box-shadow .15s'
             }}
         >
             <div style={{
@@ -66,39 +69,43 @@ export function BackdropTile({
                 border: '1px solid rgba(255,255,255,0.08)'
             }} />
 
-            <div style={{
-                position: 'absolute', left: 0, right: 0, bottom: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                padding: '8px 0', borderRadius: '0 0 6px 6px',
-                background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
-                opacity: active ? 1 : 0,
-                // Invisible no debe seguir siendo clicable, ni por ratón ni
-                // por teclado: de ahí el visibility además del opacity.
-                visibility: active ? 'visible' : 'hidden',
-                transition: 'opacity .15s'
-            }}>
-                <MoveArrow
-                    label={globalize.translate('MoveLeft')}
-                    atEnd={position === 0}
-                    busy={busy}
-                    onClick={() => onMove(position - 1)}
-                >‹</MoveArrow>
-                <span style={{ fontFamily: T.ui, fontSize: 11, color: '#fff', letterSpacing: 1 }}>
-                    {position + 1}/{total}
-                </span>
-                <MoveArrow
-                    label={globalize.translate('MoveRight')}
-                    atEnd={position === total - 1}
-                    busy={busy}
-                    onClick={() => onMove(position + 1)}
-                >›</MoveArrow>
-            </div>
+            {!selected && (
+                <div style={{
+                    position: 'absolute', left: 0, right: 0, bottom: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    padding: '8px 0', borderRadius: '0 0 6px 6px',
+                    background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
+                    opacity: active ? 1 : 0,
+                    // Invisible no debe seguir siendo clicable, ni por ratón ni
+                    // por teclado: de ahí el visibility además del opacity.
+                    visibility: active ? 'visible' : 'hidden',
+                    transition: 'opacity .15s'
+                }}>
+                    <MoveArrow
+                        label={globalize.translate('MoveLeft')}
+                        atEnd={position === 0}
+                        busy={busy}
+                        onClick={() => onMove(position - 1)}
+                    >‹</MoveArrow>
+                    <span style={{ fontFamily: T.ui, fontSize: 11, color: '#fff', letterSpacing: 1 }}>
+                        {position + 1}/{total}
+                    </span>
+                    <MoveArrow
+                        label={globalize.translate('MoveRight')}
+                        atEnd={position === total - 1}
+                        busy={busy}
+                        onClick={() => onMove(position + 1)}
+                    >›</MoveArrow>
+                </div>
+            )}
 
-            <ConfirmDeleteButton
-                onConfirm={onDelete}
-                idleLabel={globalize.translate('Delete')}
-                confirmLabel={globalize.translate('ConfirmDeleteImage')}
-            />
+            {!selected && (
+                <ConfirmDeleteButton
+                    onConfirm={onDelete}
+                    idleLabel={globalize.translate('Delete')}
+                    confirmLabel={globalize.translate('ConfirmDeleteImage')}
+                />
+            )}
         </div>
     );
 }

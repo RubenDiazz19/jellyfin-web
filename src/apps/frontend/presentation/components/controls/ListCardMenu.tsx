@@ -5,8 +5,6 @@ import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useToast } from '../toast/ToastProvider';
 import { COLLECTION_STYLES, LISTS, type ListKind } from '../../../domain/stores';
-import { refreshItemMetadata, type RefreshOptions } from '../../../domain/api';
-import { tasksVM } from '../../../domain/viewModels/TasksViewModel';
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useSignalSelector } from '../../../domain/bridge/useViewModel';
 import { PopupPanel } from './PopupPanel';
@@ -15,8 +13,6 @@ import { AddToDialog } from './AddToDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ColorPickerDialog } from './ColorPickerDialog';
 import { MetadataEditor } from '../admin/editor/MetadataEditor';
-import { RefreshDialog } from '../admin/RefreshDialog';
-import { TagsDialog } from './TagsDialog';
 
 // Menú contextual de una lista o colección (tres puntos).
 // Para colecciones ofrece el mismo flujo y opciones estándar que una película o serie:
@@ -59,8 +55,6 @@ export function ListCardMenu({
     const [askingUrl, setAskingUrl] = useState(false);
     const [url, setUrl] = useState('');
     const [addTo, setAddTo] = useState(false);
-    const [refreshOpen, setRefreshOpen] = useState(false);
-    const [tagsOpen, setTagsOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [colorDialog, setColorDialog] = useState(false);
     const [editorTab, setEditorTab] = useState<'metadata' | 'identify' | 'images' | null>(null);
@@ -263,20 +257,8 @@ export function ListCardMenu({
                             {globalize.translate('AddToCollection')}
                         </MenuEntry>
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('identify'); }}>
-                            {globalize.translate('Identify')}
-                        </MenuEntry>
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setRefreshOpen(true); }}>
-                            {globalize.translate('RefreshMetadata')}
-                        </MenuEntry>
                         <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('metadata'); }}>
                             {globalize.translate('EditMetadata')}
-                        </MenuEntry>
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setTagsOpen(true); }}>
-                            {globalize.translate('EditTags')}
-                        </MenuEntry>
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('images'); }}>
-                            {globalize.translate('EditImages')}
                         </MenuEntry>
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
                         <MenuEntry disabled={busy} onClick={() => { setOpen(false); setColorDialog(true); }}>
@@ -351,34 +333,6 @@ export function ListCardMenu({
                 />
             )}
 
-            {refreshOpen && (
-                <RefreshDialog
-                    subject={title ?? ''}
-                    onRefresh={async (options: RefreshOptions) => {
-                        try {
-                            await refreshItemMetadata(listId, options);
-                            tasksVM.expect(listId, title ?? '');
-                            toast(globalize.translate('MessageRefreshQueued'), 'success');
-                        } catch (e) {
-                            toast((e as Error).message, 'warn');
-                            throw e;
-                        }
-                    }}
-                    onClose={() => setRefreshOpen(false)}
-                />
-            )}
-
-            {tagsOpen && (
-                <TagsDialog
-                    itemId={listId}
-                    itemTitle={title}
-                    onClose={() => {
-                        setTagsOpen(false);
-                        onChanged();
-                    }}
-                />
-            )}
-
             {confirmDelete && (
                 <ConfirmDialog
                     title={globalize.translate(kind === 'collection' ? 'HeaderDeleteCollection' : 'HeaderDeletePlaylist')}
@@ -399,6 +353,7 @@ export function ListCardMenu({
                     itemId={listId}
                     kind={kind === 'collection' ? 'collection' : 'show'}
                     initialTab={editorTab}
+                    itemTitle={title}
                     onClose={async () => {
                         setEditorTab(null);
                         if (kind === 'collection') {

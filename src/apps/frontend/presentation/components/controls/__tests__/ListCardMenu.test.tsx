@@ -106,31 +106,33 @@ describe('ListCardMenu', () => {
             btn.click();
         });
 
-        // Comprobar que contiene las opciones limpias estándar (igual que pelis/series)
+        // Comprobar que contiene las opciones limpias y simplificadas
         const entries = Array.from(document.body.querySelectorAll('button')).map((b) => b.textContent?.trim());
         expect(entries).toContain(globalize.translate('AddToCollection'));
-        expect(entries).toContain(globalize.translate('Identify'));
-        expect(entries).toContain(globalize.translate('RefreshMetadata'));
         expect(entries).toContain(globalize.translate('EditMetadata'));
-        expect(entries).toContain(globalize.translate('EditTags'));
-        expect(entries).toContain(globalize.translate('EditImages'));
+        expect(entries).not.toContain(globalize.translate('RefreshMetadata'));
         expect(entries).toContain(globalize.translate('OptionBackgroundColor'));
         expect(entries).toContain(globalize.translate('HeaderDeleteCollection'));
 
-        // Pulsar "Editar imágenes"
-        const editImagesBtn = Array.from(document.body.querySelectorAll('button')).find(
-            (b) => b.textContent?.trim() === globalize.translate('EditImages')
+        // No debe mostrar opciones redundantes dispersas
+        expect(entries).not.toContain(globalize.translate('Identify'));
+        expect(entries).not.toContain(globalize.translate('EditTags'));
+        expect(entries).not.toContain(globalize.translate('EditImages'));
+
+        // Pulsar "Editar metadatos"
+        const editBtn = Array.from(document.body.querySelectorAll('button')).find(
+            (b) => b.textContent?.trim() === globalize.translate('EditMetadata')
         );
-        expect(editImagesBtn).not.toBeUndefined();
+        expect(editBtn).not.toBeUndefined();
 
         await act(async () => {
-            editImagesBtn?.click();
+            editBtn?.click();
         });
 
-        // Verifica que se abrió MetadataEditor en la pestaña 'images'
+        // Verifica que se abrió MetadataEditor en la pestaña 'metadata'
         expect(mocks.editor).toHaveBeenCalledWith(
             expect.objectContaining({
-                initialTab: 'images'
+                initialTab: 'metadata'
             })
         );
     });

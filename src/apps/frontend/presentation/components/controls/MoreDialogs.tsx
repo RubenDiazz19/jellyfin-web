@@ -55,6 +55,8 @@ export function MoreDialogs({
                     itemId={id}
                     kind={type as EditorKind}
                     initialTab={editor}
+                    itemTitle={itemTitle}
+                    onRefresh={onRefresh}
                     onClose={onCloseEditor}
                 />
             )}
