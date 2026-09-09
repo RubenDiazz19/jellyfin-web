@@ -74,6 +74,78 @@ describe('IdentifyTab', () => {
         expect(title).toContain('TheMovieDb');
     });
 
+    test('permite buscar manualmente sin año y actualiza resultados', async () => {
+        await mount(<IdentifyTab itemId='col-1' kind='collection' onClose={vi.fn()} />);
+
+        // Limpiar mocks de la llamada automática al montar
+        remoteSearch.mockClear();
+        remoteSearch.mockResolvedValue([
+            {
+                Name: 'Star Wars: A New Hope',
+                ProductionYear: 1977,
+                SearchProviderName: 'TheMovieDb'
+            },
+            {
+                Name: 'Star Wars: The Empire Strikes Back',
+                ProductionYear: 1980,
+                SearchProviderName: 'TheMovieDb'
+            }
+        ]);
+
+        const inputs = host?.querySelectorAll('input');
+        expect(inputs?.length).toBeGreaterThanOrEqual(2);
+        const nameInput = inputs?.[0] as HTMLInputElement;
+        const yearInput = inputs?.[1] as HTMLInputElement;
+
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype,
+            'value'
+        )?.set;
+
+        await act(async () => {
+            // Cambiar nombre a 'Star Wars' y vaciar año
+            nativeInputValueSetter?.call(nameInput, 'Star Wars');
+            nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+            nativeInputValueSetter?.call(yearInput, '');
+            yearInput.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+
+        const searchBtn = Array.from(host?.querySelectorAll('button') ?? [])
+            .find((b) => b.textContent?.includes('Buscar') || b.textContent?.includes('Search'));
+        expect(searchBtn).toBeDefined();
+
+        await act(async () => {
+            searchBtn?.click();
+        });
+
+        expect(remoteSearch).toHaveBeenCalledWith('col-1', 'BoxSet', {
+            name: 'Star Wars',
+            year: undefined,
+            providerIds: undefined
+        });
+
+        expect(host?.textContent).toContain('Star Wars: A New Hope');
+        expect(host?.textContent).toContain('Star Wars: The Empire Strikes Back');
+    });
+
+    test('utiliza it.Type de getItemRaw para Series cuando la API lo reporta como Serie', async () => {
+        getItemRaw.mockResolvedValueOnce({
+            Id: 'show-1',
+            Name: 'Star Wars: The Clone Wars',
+            Type: 'Series',
+            ProductionYear: 2008
+        });
+
+        await mount(<IdentifyTab itemId='show-1' kind='movie' onClose={vi.fn()} />);
+
+        // Aunque kind sea 'movie', it.Type='Series' resuelve que se busque como Series
+        expect(remoteSearch).toHaveBeenCalledWith('show-1', 'Series', {
+            name: 'Star Wars: The Clone Wars',
+            year: 2008,
+            providerIds: undefined
+        });
+    });
+
     test('permite aplicar el resultado de identificación', async () => {
         const onClose = vi.fn();
         await mount(<IdentifyTab itemId='col-1' kind='collection' onClose={onClose} />);
@@ -93,3 +165,4 @@ describe('IdentifyTab', () => {
         expect(onClose).toHaveBeenCalled();
     });
 });
+

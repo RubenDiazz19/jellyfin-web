@@ -84,7 +84,9 @@ export {
     remoteSearch,
     applyRemoteSearchResult,
     setItemTags,
-    type RemoteSearchResult
+    type RemoteSearchResult,
+    type RemoteSearchQuery,
+    type RemoteSearchItemType
 } from '../data/api';
 export {
     setImageByUrl,

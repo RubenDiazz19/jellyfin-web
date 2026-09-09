@@ -118,24 +118,57 @@ export async function setItemsTags(itemIds: string[], tags: string[]): Promise<v
     emitItemMutated();
 }
 
+export type RemoteSearchItemType = 'Movie' | 'Series' | 'Episode' | 'BoxSet';
+
+export type RemoteSearchQuery = {
+    name?: string;
+    year?: number | null;
+    providerIds?: Record<string, string>;
+};
+
+function resolveRemoteSearchType(
+    rawType: unknown,
+    fallbackType: RemoteSearchItemType
+): RemoteSearchItemType {
+    if (rawType === 'Movie' || rawType === 'Series' || rawType === 'Episode' || rawType === 'BoxSet') {
+        return rawType;
+    }
+    return fallbackType;
+}
+
 export async function remoteSearch(
     itemId: string,
-    itemType: 'Movie' | 'Series' | 'Episode' | 'BoxSet',
-    query?: { name?: string; year?: number }
+    itemType: RemoteSearchItemType,
+    query?: RemoteSearchQuery
 ): Promise<RemoteSearchResult[]> {
     const raw = await getItemRaw(itemId);
-    const isBoxSet = itemType === 'BoxSet';
+    const targetType = resolveRemoteSearchType(raw?.Type, itemType);
+
+    // Si el usuario especifica providerIds explícitos (ej. TMDB ID o IMDb ID), los limpiamos.
+    // NUNCA enviamos raw?.ProviderIds porque corresponden al item viejo o a una identificación errónea previa;
+    // enviar los ProviderIds existentes hace que Jellyfin filtre/ignore el nombre y devuelva solo el item actual.
+    const cleanProviderIds: Record<string, string> = {};
+    if (query?.providerIds) {
+        for (const [key, val] of Object.entries(query.providerIds)) {
+            const trimmed = val?.trim();
+            if (trimmed) cleanProviderIds[key] = trimmed;
+        }
+    }
+
+    // El año solo se envía si el usuario lo especificó expresamente en la búsqueda.
+    // Forzar el ProductionYear del item anterior impedía encontrar resultados cuando el usuario buscaba
+    // una franquicia o película sin especificar año (o de un año diferente).
+    const year = query?.year && Number(query.year) > 0 ? Number(query.year) : undefined;
+
     const body = {
         ItemId: itemId,
         SearchInfo: {
             Name: (query?.name != null ? query.name.trim() : raw?.Name) || undefined,
-            // Las colecciones en TMDB no suelen ir asociadas a un único año de producción;
-            // si el usuario no especifica año en la búsqueda de BoxSet, evitamos forzar el del item.
-            Year: isBoxSet ? (query?.year ? query.year : undefined) : (query?.year ?? raw?.ProductionYear),
-            ProviderIds: raw?.ProviderIds ?? {}
+            Year: year,
+            ProviderIds: cleanProviderIds
         }
     };
-    const res = await apiSend(`/Items/RemoteSearch/${itemType}`, 'POST', body);
+    const res = await apiSend(`/Items/RemoteSearch/${targetType}`, 'POST', body);
     return res.json();
 }
 

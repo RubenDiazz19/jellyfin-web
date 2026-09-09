@@ -48,7 +48,9 @@ export {
     setItemsTags,
     normalizeTags,
     type ItemMetadataPatch,
-    type RemoteSearchResult
+    type RemoteSearchResult,
+    type RemoteSearchQuery,
+    type RemoteSearchItemType
 } from './metadata';
 export {
     setImageByUrl,
