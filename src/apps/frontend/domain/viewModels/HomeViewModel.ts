@@ -9,6 +9,11 @@ import { mutationOnLoad } from './mutationSubscription';
 import { LoadGuard } from './loadGuard';
 import { ticksFromProgress } from '../player/format';
 
+/** Formatea temporada y episodio con la convención 'T{season} E{episode}' (ej. 'T1 E05'). */
+export function formatEpisodeCode(season: number | string, episode: number | string): string {
+    return `T${season} E${String(episode).padStart(2, '0')}`;
+}
+
 export class HomeViewModel {
     slides = signal<CarouselSlide[]>([]);
 
@@ -110,7 +115,7 @@ export class HomeViewModel {
         // Serie con episodio ya resuelto (ej. continuar viendo):
         if (slide.jfEpisodeId) {
             const title = slide.season != null && slide.episode != null ?
-                `${slide.title} · T${slide.season} E${String(slide.episode).padStart(2, '0')} — ${slide.episodeTitle}` :
+                `${slide.title} · ${formatEpisodeCode(slide.season, slide.episode)} — ${slide.episodeTitle}` :
                 slide.title;
             return {
                 itemId: slide.jfEpisodeId,
@@ -134,7 +139,7 @@ export class HomeViewModel {
                     undefined;
                 return {
                     itemId: targetEp.jfId,
-                    title: `${show.title} · T${targetSeasonObj?.n ?? targetSeason} E${String(targetEp.n).padStart(2, '0')} — ${targetEp.title ?? ''}`,
+                    title: `${show.title} · ${formatEpisodeCode(targetSeasonObj?.n ?? targetSeason, targetEp.n)} — ${targetEp.title ?? ''}`,
                     startTicks
                 };
             }
@@ -145,7 +150,7 @@ export class HomeViewModel {
                 slide.jfEpisodeId = ep.jfId;
                 return {
                     itemId: ep.jfId,
-                    title: `${protoShow.title} · T1 E01 — ${ep.title ?? ''}`,
+                    title: `${protoShow.title} · ${formatEpisodeCode(1, 1)} — ${ep.title ?? ''}`,
                     startTicks: 0
                 };
             }

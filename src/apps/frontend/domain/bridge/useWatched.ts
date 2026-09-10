@@ -17,6 +17,6 @@ export function useWatched(id: string): [boolean, () => void] {
  * significa «cualquier cambio», y solo es correcto para vistas que de verdad
  * dependen de todo el store.
  */
-export function useWatchedVersion(scope?: string) {
-    useStoreVersion(WATCHED.event, scope);
+export function useWatchedVersion(scope?: string): number {
+    return useStoreVersion(WATCHED.event, scope);
 }

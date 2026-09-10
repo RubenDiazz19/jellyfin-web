@@ -11,6 +11,7 @@ import { imageUrl } from './images';
 import { mapMediaStream, type MediaStreamInfo, type PlaybackOptions } from './playback';
 import { cachedPlayback } from './playbackCache';
 import { TICKS_PER_SECOND, type JFMediaStream } from './types';
+import { clamp } from '../../shared/math';
 
 export type ItemChapter = {
     /** Inicio del capítulo en segundos. */
@@ -171,7 +172,7 @@ export function getTrickplayThumbnail(
 
     const timeMs = Math.max(0, timeSeconds * 1000);
     const thumbIndex = Math.floor(timeMs / res.interval);
-    const clampedIndex = Math.min(Math.max(0, thumbIndex), Math.max(0, res.thumbnailCount - 1));
+    const clampedIndex = clamp(thumbIndex, 0, Math.max(0, res.thumbnailCount - 1));
     const tilesPerSheet = res.tileWidth * res.tileHeight;
     const sheetIndex = Math.floor(clampedIndex / tilesPerSheet);
     const indexInSheet = clampedIndex % tilesPerSheet;

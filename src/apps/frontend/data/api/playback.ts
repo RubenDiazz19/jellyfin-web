@@ -1,6 +1,7 @@
 // Playback + streaming. Server decides DirectPlay/DirectStream/HLS based on
 // the browser device profile we send.
 
+import globalize from 'lib/globalize';
 import { loadSession } from '../session/session';
 import { clearShowCache } from './cache';
 import { apiSend, noSessionError, trimSlash } from './http';
@@ -168,7 +169,7 @@ async function negotiatePlayback(
     );
     const data = await res.json();
     const src = (data.MediaSources ?? [])[0];
-    if (!src) throw new Error('Sin fuentes reproducibles');
+    if (!src) throw new Error(globalize.translate('NoPlayableSources'));
     const server = trimSlash(session.serverUrl);
     const streams: JFMediaStream[] = src.MediaStreams ?? [];
     const audioStreams = streams.filter((s) => s.Type === 'Audio').map(mapMediaStream);
@@ -234,7 +235,7 @@ async function negotiatePlayback(
         return { kind: 'direct', playMethod: 'DirectStream', url: directUrl(), container: src.Container, ...common };
     }
 
-    throw new Error('El servidor no puede reproducir este item');
+    throw new Error(globalize.translate('ServerCannotPlayItem'));
 }
 
 // WebVTT URL for a text subtitle stream. Consumed as a <track> on <video>.

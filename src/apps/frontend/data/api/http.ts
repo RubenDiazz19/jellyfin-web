@@ -139,7 +139,7 @@ export async function uploadImage(path: string, file: File): Promise<void> {
     const session = loadSession();
     if (!session?.accessToken) throw noSessionError();
     if (file.size > MAX_IMAGE_BYTES) {
-        throw new Error(`La imagen supera 30 MB (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+        throw new Error(globalize.translate('ImageExceedsMaxSize', (file.size / 1024 / 1024).toFixed(1)));
     }
     const base64 = arrayBufferToBase64(await file.arrayBuffer());
     const mime = inferImageMime(file);

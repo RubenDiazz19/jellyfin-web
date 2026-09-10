@@ -6,6 +6,7 @@
 // póster de la ficha pasó a pedirse con `tag`, el de la Home se quedó atrás
 // y seguía sirviendo la carátula vieja desde la caché del navegador.
 
+import globalize from 'lib/globalize';
 import { autoTagsFor } from '../autotag';
 import type { CastMember, CatalogItem, Movie, Rating, Show } from '../models';
 import { imageUrl, type ImageType } from './images';
@@ -146,6 +147,45 @@ export function resolutionLabel(height?: number, width?: number): string | undef
     return undefined;
 }
 
+type AudioBadgeMatcher = {
+    badge: string;
+    matches: (ctx: { spatial: string; profile: string; title: string; displayTitle: string; codec: string }) => boolean;
+};
+
+const AUDIO_BADGE_MATCHERS: AudioBadgeMatcher[] = [
+    {
+        badge: 'Dolby Atmos',
+        matches: ({ spatial, profile, title, displayTitle }) =>
+            spatial === 'DolbyAtmos' || /atmos/i.test(`${profile} ${title} ${displayTitle}`)
+    },
+    {
+        badge: 'DTS:X',
+        matches: ({ profile, title, displayTitle }) =>
+            /dts:x|dtsx/i.test(`${profile} ${title} ${displayTitle}`)
+    },
+    {
+        badge: 'DTS-HD',
+        matches: ({ codec, profile, title }) =>
+            codec === 'dts-hd' || (codec === 'dts' && /ma|hd/i.test(profile + title))
+    },
+    {
+        badge: 'TrueHD',
+        matches: ({ codec }) => codec === 'truehd'
+    },
+    {
+        badge: 'Dolby Digital+',
+        matches: ({ codec }) => codec === 'eac3'
+    },
+    {
+        badge: 'Dolby Digital',
+        matches: ({ codec }) => codec === 'ac3'
+    },
+    {
+        badge: 'FLAC',
+        matches: ({ codec }) => codec === 'flac'
+    }
+];
+
 /** Extrae píldoras de calidad y especificaciones para cabeceras de detalle. */
 export function extractMediaBadges(streams: JFMediaStream[] = []): string[] {
     const badges: string[] = [];
@@ -185,35 +225,19 @@ export function extractMediaBadges(streams: JFMediaStream[] = []): string[] {
     }
 
     if (primaryAudio) {
-        const title = primaryAudio.Title ?? '';
-        const displayTitle = primaryAudio.DisplayTitle ?? '';
-        const profile = primaryAudio.Profile ?? '';
-        const spatial = primaryAudio.AudioSpatialFormat ?? '';
-        const codec = (primaryAudio.Codec ?? '').toLowerCase();
+        const audioCtx = {
+            title: primaryAudio.Title ?? '',
+            displayTitle: primaryAudio.DisplayTitle ?? '',
+            profile: primaryAudio.Profile ?? '',
+            spatial: primaryAudio.AudioSpatialFormat ?? '',
+            codec: (primaryAudio.Codec ?? '').toLowerCase()
+        };
 
-        const isAtmos = spatial === 'DolbyAtmos'
-            || /atmos/i.test(profile)
-            || /atmos/i.test(title)
-            || /atmos/i.test(displayTitle);
-
-        const isDtsX = /dts:x|dtsx/i.test(profile)
-            || /dts:x|dtsx/i.test(title)
-            || /dts:x|dtsx/i.test(displayTitle);
-
-        if (isAtmos) {
-            badges.push('Dolby Atmos');
-        } else if (isDtsX) {
-            badges.push('DTS:X');
-        } else if (codec === 'dts-hd' || (codec === 'dts' && /ma|hd/i.test(profile + title))) {
-            badges.push('DTS-HD');
-        } else if (codec === 'truehd') {
-            badges.push('TrueHD');
-        } else if (codec === 'eac3') {
-            badges.push('Dolby Digital+');
-        } else if (codec === 'ac3') {
-            badges.push('Dolby Digital');
-        } else if (codec === 'flac') {
-            badges.push('FLAC');
+        for (const matcher of AUDIO_BADGE_MATCHERS) {
+            if (matcher.matches(audioCtx)) {
+                badges.push(matcher.badge);
+                break;
+            }
         }
 
         // Canales de audio
@@ -224,7 +248,7 @@ export function extractMediaBadges(streams: JFMediaStream[] = []): string[] {
         }
     }
 
-    return Array.from(new Set(badges));
+    return [...new Set(badges)];
 }
 
 /**
@@ -283,7 +307,7 @@ export function summarizeAudio(streams: JFMediaStream[] = []): string | undefine
     const primary = tracks.find((s) => s.IsDefault) ?? tracks[0];
     const parts: string[] = [];
     if (primary.ChannelLayout) parts.push(primary.ChannelLayout);
-    else if (primary.Channels) parts.push(`${primary.Channels} canales`);
+    else if (primary.Channels) parts.push(`${primary.Channels} ${globalize.translate('ChannelsLabel')}`);
     if (primary.Codec) {
         const key = primary.Codec.toLowerCase();
         parts.push(AUDIO_CODEC_NAMES[key] ?? primary.Codec.toUpperCase());
@@ -291,7 +315,7 @@ export function summarizeAudio(streams: JFMediaStream[] = []): string | undefine
     const langs = new Set(
         tracks.map((s) => s.Language).filter((l): l is string => !!l && l !== 'und')
     );
-    if (langs.size > 1) parts.push(`${langs.size} idiomas`);
+    if (langs.size > 1) parts.push(`${langs.size} ${globalize.translate('LanguagesLabel')}`);
     return parts.length ? parts.join(' · ') : undefined;
 }
 
@@ -301,8 +325,8 @@ export function summarizeSubtitles(streams: JFMediaStream[] = []): string | unde
     const langs = new Set(
         subs.map((s) => s.Language).filter((l): l is string => !!l && l !== 'und')
     );
-    const parts = [`${subs.length} pistas`];
-    if (langs.size > 0) parts.push(`${langs.size} idiomas`);
+    const parts = [`${subs.length} ${globalize.translate('TracksLabel')}`];
+    if (langs.size > 0) parts.push(`${langs.size} ${globalize.translate('LanguagesLabel')}`);
     return parts.join(' · ');
 }
 

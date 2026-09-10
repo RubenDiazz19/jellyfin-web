@@ -26,7 +26,10 @@ export function TaskProgress() {
     const tasks = useSignalValue(tasksVM.active);
     const r = useResponsive();
 
-    useEffect(() => { tasksVM.start(); }, []);
+    useEffect(() => {
+        tasksVM.start();
+        return () => tasksVM.stop();
+    }, []);
 
     if (tasks.length === 0) return null;
 

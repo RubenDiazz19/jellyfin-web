@@ -3,6 +3,7 @@
 // y servir el fichero crudo con Static=true devuelve un video/x-matroska que
 // ningún navegador reproduce.
 
+import globalize from 'lib/globalize';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { apiSend } from '../http';
@@ -112,7 +113,7 @@ describe('getPlaybackDecision', () => {
     test('sin ninguna vía reproducible, error explícito', async () => {
         respondWith({ ...BASE, SupportsDirectPlay: false, SupportsDirectStream: false });
 
-        await expect(getPlaybackDecision('item1')).rejects.toThrow('no puede reproducir');
+        await expect(getPlaybackDecision('item1')).rejects.toThrow(globalize.translate('ServerCannotPlayItem'));
     });
 
     test('sin fuentes, error explícito', async () => {
@@ -120,7 +121,7 @@ describe('getPlaybackDecision', () => {
             json: () => Promise.resolve({ MediaSources: [] })
         } as unknown as Response);
 
-        await expect(getPlaybackDecision('item1')).rejects.toThrow('Sin fuentes');
+        await expect(getPlaybackDecision('item1')).rejects.toThrow(globalize.translate('NoPlayableSources'));
     });
 
     // Lo que hace útil el pre-calentamiento: la ficha negocia y, cuando el

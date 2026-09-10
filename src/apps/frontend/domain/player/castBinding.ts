@@ -24,11 +24,23 @@ export class CastBinding {
         remote.addEventListener('disconnect', onDisconnect);
 
         let watchId: number | null = null;
-        remote.watchAvailability((available) => { this.castAvailable.value = available; })
-            .then((id) => { watchId = id; })
-            .catch(() => { this.castAvailable.value = false; });
+        let cleaned = false;
+        remote.watchAvailability((available) => {
+            if (!cleaned) this.castAvailable.value = available;
+        })
+            .then((id) => {
+                if (cleaned) {
+                    void remote.cancelWatchAvailability(id).catch(() => {});
+                } else {
+                    watchId = id;
+                }
+            })
+            .catch(() => {
+                if (!cleaned) this.castAvailable.value = false;
+            });
 
         return () => {
+            cleaned = true;
             remote.removeEventListener('connecting', onConnecting);
             remote.removeEventListener('connect', onConnect);
             remote.removeEventListener('disconnect', onDisconnect);

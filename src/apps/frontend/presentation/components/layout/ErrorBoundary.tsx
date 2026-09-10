@@ -1,6 +1,7 @@
 import globalize from 'lib/globalize';
 
 import React from 'react';
+import { logger } from '../../../domain/logger';
 import { T } from '../../theme/tokens';
 
 type Props = { children: React.ReactNode };
@@ -17,7 +18,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     }
 
     componentDidCatch(error: Error, info: React.ErrorInfo) {
-        console.error('[ErrorBoundary]', error, info.componentStack);
+        logger.error('[ErrorBoundary]', error, info.componentStack);
     }
 
     // eslint-disable-next-line sonarjs/function-return-type -- children (ReactNode) o el fallback (JSX): ambos son renderizables

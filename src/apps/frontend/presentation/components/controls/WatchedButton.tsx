@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { useWatched } from '../../../domain/bridge/useWatched';
 import { WatchedToggle } from './WatchedToggle';
 
@@ -23,7 +24,7 @@ export function WatchedButton({ id, size = 18, badge = false, label, serverId }:
             message={(next) => (next ? `Marcado como visto${suffix}` : `Marcado como no visto${suffix}`)}
             size={size}
             badge={badge}
-            ariaLabel={w ? 'Marcar como no visto' : 'Marcar como visto'}
+            ariaLabel={globalize.translate(w ? 'MarkAsUnwatched' : 'MarkAsWatched')}
         />
     );
 }

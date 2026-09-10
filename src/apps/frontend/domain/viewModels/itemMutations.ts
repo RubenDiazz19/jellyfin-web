@@ -21,43 +21,29 @@ import { ITEM_MUTATED_EVENT, type ItemMutatedDetail } from '../../data/api/mutat
 export const MUTATION_DEBOUNCE_MS = 250;
 
 export class ItemMutationSubscription {
-    private handler: ((e: Event) => void) | null = null;
-    private timer: ReturnType<typeof setTimeout> | null = null;
+    private subscriber: (() => void) | null = null;
 
-    /**
-     * Engancha `onMutated` la primera vez que se llama; las siguientes no
-     * hacen nada. El `itemId` del detalle llega `undefined` cuando la mutación
-     * es de alcance desconocido (limpieza masiva de caché, refresh de
-     * biblioteca…), y `deleted` marca las que no se pueden recargar.
-     *
-     * Con `debounceMs` solo llega la ÚLTIMA mutación del lote, así que es para
-     * quien recarga todo y no mira el detalle (los listados). Una ficha, que
-     * decide según el `itemId`, tiene que enterarse de todas.
-     */
     ensure(onMutated: (detail: ItemMutatedDetail) => void, debounceMs = 0): void {
-        if (this.handler || typeof window === 'undefined') return;
-        this.handler = (e: Event) => {
-            const detail = (e as CustomEvent<ItemMutatedDetail>).detail ?? {};
-            if (!debounceMs) {
-                onMutated(detail);
-                return;
-            }
-            if (this.timer) clearTimeout(this.timer);
-            this.timer = setTimeout(() => {
-                this.timer = null;
-                onMutated(detail);
-            }, debounceMs);
-        };
-        window.addEventListener(ITEM_MUTATED_EVENT, this.handler);
+        if (!this.subscriber) {
+            let handler: ((e: Event) => void) | null = null;
+            let timer: ReturnType<typeof setTimeout> | null = null;
+            this.subscriber = () => {
+                if (handler || typeof window === 'undefined') return;
+                handler = (e: Event) => {
+                    const detail = (e as CustomEvent<ItemMutatedDetail>).detail ?? {};
+                    if (!debounceMs) {
+                        onMutated(detail);
+                        return;
+                    }
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        timer = null;
+                        onMutated(detail);
+                    }, debounceMs);
+                };
+                window.addEventListener(ITEM_MUTATED_EVENT, handler);
+            };
+        }
+        this.subscriber();
     }
 }
-
-/** Helper para suscribir un ViewModel a mutaciones de items con o sin debounce. */
-export function subscribeToMutations(
-    subscription: ItemMutationSubscription,
-    onMutated: (detail: ItemMutatedDetail) => void,
-    debounceMs = 0
-): void {
-    subscription.ensure(onMutated, debounceMs);
-}
-

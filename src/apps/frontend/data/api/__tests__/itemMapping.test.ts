@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { extractMediaBadges, formatVideoRange, mapCommonFields, summarizeVideo } from '../itemMapping';
+import { extractMediaBadges, formatVideoRange, mapCommonFields, summarizeAudio, summarizeSubtitles, summarizeVideo } from '../itemMapping';
 import { mapMovie } from '../movies';
 import { mapShow } from '../shows';
 import type { JFItem } from '../types';
@@ -171,5 +171,26 @@ describe('itemMapping and detail fields', () => {
             Codec: 'h264',
             VideoRangeType: 'SDR'
         }])).toBe('720p · H264 · SDR');
+    });
+
+    test('summarizeAudio formatea layout, canales, codec e idiomas', () => {
+        expect(summarizeAudio([
+            { Index: 0, Type: 'Audio' as const, Channels: 6, ChannelLayout: '5.1', Codec: 'eac3', Language: 'spa', IsDefault: true },
+            { Index: 1, Type: 'Audio' as const, Channels: 2, Codec: 'aac', Language: 'eng', IsDefault: false }
+        ])).toBe('5.1 · Dolby Digital+ · 2 languages');
+
+        expect(summarizeAudio([
+            { Index: 0, Type: 'Audio' as const, Channels: 2, Codec: 'aac', Language: 'spa', IsDefault: true }
+        ])).toBe('2 channels · AAC');
+    });
+
+    test('summarizeSubtitles formatea número de pistas e idiomas', () => {
+        expect(summarizeSubtitles([
+            { Index: 0, Type: 'Subtitle' as const, Language: 'spa' },
+            { Index: 1, Type: 'Subtitle' as const, Language: 'eng' },
+            { Index: 2, Type: 'Subtitle' as const, Language: 'spa' }
+        ])).toBe('3 tracks · 2 languages');
+
+        expect(summarizeSubtitles([])).toBeUndefined();
     });
 });

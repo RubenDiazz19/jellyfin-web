@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
     formatDateLong, formatEndTime, formatEndTimeInfo, formatPlaybackEndTime,
-    formatRemaining, formatRemainingCompact, formatRuntime, parseRuntimeMinutes
+    formatRemaining, formatRemainingCompact, formatRuntime, formatHM, parseRuntimeMinutes
 } from '../format';
 
 describe('formatDateLong', () => {
@@ -53,6 +53,20 @@ describe('formatRemaining', () => {
     test('formato largo con sufijo por defecto', () => {
         expect(formatRemaining(45)).toBe('45 minutos restantes');
         expect(formatRemaining(80)).toBe('1 hora y 20 minutos restantes');
+    });
+});
+
+describe('formatHM', () => {
+    test('formatea solo minutos', () => {
+        expect(formatHM(45)).toBe('45 min');
+    });
+
+    test('formatea horas y minutos', () => {
+        expect(formatHM(176)).toBe('2 h 56 min');
+    });
+
+    test('formatea horas exactas', () => {
+        expect(formatHM(120)).toBe('2 h');
     });
 });
 

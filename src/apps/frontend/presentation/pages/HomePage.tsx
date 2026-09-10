@@ -31,6 +31,14 @@ const HERO_AUTOPLAY_MS = 8000;
 const WHEEL_THRESHOLD = 100;
 const WHEEL_LOCK_MS = 900;
 
+const ROOT_PAGE_STYLE: React.CSSProperties = { position: 'relative', width: '100%', minHeight: '100vh', background: '#000' };
+const EMPTY_PAGE_STYLE: React.CSSProperties = { background: '#000', color: '#fff', minHeight: '100vh' };
+const SPACER_80_STYLE: React.CSSProperties = { height: 80 };
+const TOUCH_SPACER_STYLE: React.CSSProperties = { height: 'var(--jfp-viewport-h, 100vh)', pointerEvents: 'none' };
+const LIBRARY_LAYER_STYLE: React.CSSProperties = { position: 'relative', zIndex: 2, background: 'transparent', minHeight: '100vh' };
+const SPACER_100VH_STYLE: React.CSSProperties = { height: '100vh', pointerEvents: 'none' };
+const SCROLL_HINT_STYLE: React.CSSProperties = { position: 'fixed', bottom: 32, zIndex: 10 };
+
 export function HomePage({ navigate }: { navigate: Navigate }) {
     const { session } = useSession();
     const { play } = usePlayer();
@@ -168,7 +176,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     // biblioteca no "salte" cuando lleguen los slides.
     if (heroLoading) {
         return (
-            <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
+            <div style={ROOT_PAGE_STYLE}>
                 <Nav navigate={navigate} active='home' />
                 <section style={{
                     position: 'relative',
@@ -189,9 +197,9 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     // directamente la Nav sticky + biblioteca.
     if (slideCount === 0) {
         return (
-            <div style={{ background: '#000', color: '#fff', minHeight: '100vh' }}>
+            <div style={EMPTY_PAGE_STYLE}>
                 <Nav navigate={navigate} active='home' />
-                <div style={{ height: 80 }} />
+                <div style={SPACER_80_STYLE} />
                 <HomeLibrary navigate={navigate} />
             </div>
         );
@@ -200,7 +208,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     // Mobile/tablet: hero táctil con transición suave y fijo al deslizar.
     if (r.touch) {
         return (
-            <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
+            <div style={ROOT_PAGE_STYLE}>
                 <Nav navigate={navigate} active='home' />
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1,
@@ -222,12 +230,8 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                         scrollHintOpacity={trans.scrollHintOpacity}
                     />
                 </div>
-                <div style={{ height: 'var(--jfp-viewport-h, 100vh)', pointerEvents: 'none' }} />
-                <div style={{
-                    position: 'relative', zIndex: 2,
-                    background: 'transparent',
-                    minHeight: '100vh'
-                }}>
+                <div style={TOUCH_SPACER_STYLE} />
+                <div style={LIBRARY_LAYER_STYLE}>
                     <HomeLibrary
                         navigate={navigate}
                         titleOpacity={trans.titleOpacity}
@@ -239,7 +243,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     }
 
     return (
-        <div style={{ position: 'relative', width: '100%', minHeight: '100vh', background: '#000' }}>
+        <div style={ROOT_PAGE_STYLE}>
             <Nav navigate={navigate} active='home' />
 
             {/* Contenedor fixed del Hero: permanece 100% estático en su sitio sin desplazarse */}
@@ -305,14 +309,10 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
             </section>
 
             {/* Espaciador en el flujo del documento para reservar los 100vh del Hero */}
-            <div style={{ height: '100vh', pointerEvents: 'none' }} />
+            <div style={SPACER_100VH_STYLE} />
 
             {/* Capa de la biblioteca: sube suavemente sobre el Hero fijo al hacer scroll */}
-            <div style={{
-                position: 'relative', zIndex: 2,
-                background: 'transparent',
-                minHeight: '100vh'
-            }}>
+            <div style={LIBRARY_LAYER_STYLE}>
                 <HomeLibrary
                     navigate={navigate}
                     titleOpacity={trans.titleOpacity}
@@ -324,7 +324,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
             <ScrollHint
                 label={globalize.translate('HeaderMyLibrary')}
                 opacity={trans.scrollHintOpacity}
-                style={{ position: 'fixed', bottom: 32, zIndex: 10 }}
+                style={SCROLL_HINT_STYLE}
             />
         </div>
     );

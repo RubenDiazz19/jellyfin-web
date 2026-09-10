@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { episodeKey, WATCHED } from '../../../domain/stores';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
 import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
@@ -34,16 +34,20 @@ export const PosterCard = memo(function PosterCardBase({ slide, navigate, fluid 
     const w = r.touch ? r.cardW : POSTER_W;
     // Acotado a esta serie: sin el ámbito, marcar un episodio cualquiera
     // repintaba las decenas de tarjetas de la Home.
-    useWatchedVersion(slide.id);
-    const show = PROTO_DATA.shows[slide.id];
-    const seasons = show?.seasons || [];
-    const totalEps = seasons.reduce((a, s) => a + (s.total || 0), 0);
-    const watchedEps = seasons.reduce((a, s) => {
-        const ids = (s.episodes || []).map((ep) => episodeKey(slide.id, s.n, ep.n));
-        const live = ids.filter((id) => WATCHED.has(id)).length;
-        return a + Math.max(live, s.watched || 0);
-    }, 0);
-    const progress = totalEps ? Math.min(watchedEps / totalEps, 1) : 0;
+    const watchedVer = useWatchedVersion(slide.id);
+    const progress = useMemo(() => {
+        void watchedVer;
+        const show = PROTO_DATA.shows[slide.id];
+        const seasons = show?.seasons || [];
+        const totalEps = seasons.reduce((a, s) => a + (s.total || 0), 0);
+        if (!totalEps) return 0;
+        const watchedEps = seasons.reduce((a, s) => {
+            const ids = (s.episodes || []).map((ep) => episodeKey(slide.id, s.n, ep.n));
+            const live = ids.filter((id) => WATCHED.has(id)).length;
+            return a + Math.max(live, s.watched || 0);
+        }, 0);
+        return Math.min(watchedEps / totalEps, 1);
+    }, [slide.id, watchedVer]);
     const card = useCardInteractions(
         { id: slide.id, title: slide.title, kind: 'show', poster: slide.poster, year: slide.year },
         navigate

@@ -9,7 +9,7 @@
 //
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
-import { computed, effect, signal } from '@preact/signals-core';
+import { computed, effect, signal, type Signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
@@ -42,6 +42,8 @@ export type {
     StateFilter,
     TypeFilter
 };
+
+const CATALOG_TTL_MS = 60_000;
 
 /**
  * Un título del catálogo con la marca de qué es. `kind` y no `_type`: así el
@@ -76,10 +78,6 @@ export function parseQuery(raw: string): { text: string; tags: string[] } {
     return { text: words.join(' ').toLowerCase(), tags };
 }
 
-function isSeriesWatched(show: Show): boolean {
-    return isShowFullyWatched(show);
-}
-
 function isMovieWatched(movie: Movie): boolean {
     return (movie.watched ?? 0) >= 1 || WATCHED.has(movieKey(movie.id));
 }
@@ -108,6 +106,57 @@ function matchesState(
     if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) return false;
     if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) return false;
     return true;
+}
+
+export type FilterCriteria = {
+    types: readonly TypeFilter[];
+    states: readonly StateFilter[];
+    requiredTags: readonly string[];
+    ratingFilters: readonly RatingFilter[];
+};
+
+/**
+ * Comprueba si un elemento cumple con los criterios de filtrado seleccionados.
+ */
+export function matchesFilters(
+    item: {
+        kind: 'show' | 'movie';
+        id: string;
+        tags: readonly string[];
+        imdb: number;
+    },
+    isWatched: () => boolean,
+    criteria: FilterCriteria
+): boolean {
+    if (criteria.types.length > 0) {
+        const matchesType = (criteria.types.includes('series') && item.kind === 'show')
+            || (criteria.types.includes('peliculas') && item.kind === 'movie');
+        if (!matchesType) return false;
+    }
+
+    if (criteria.requiredTags.length > 0) {
+        if (!criteria.requiredTags.every((t) => item.tags.includes(t))) return false;
+    }
+
+    if (criteria.states.length > 0) {
+        if (!matchesState(item.kind, item.id, isWatched(), criteria.states)) return false;
+    }
+
+    return criteria.ratingFilters.length === 0 || matchesRating(item.imdb, criteria.ratingFilters);
+}
+
+/**
+ * Helper genérico para alternar elementos en señales con arrays.
+ */
+export function toggleArrayItem<T>(
+    sig: Signal<T[]>,
+    item: T,
+    equals: (a: T, b: T) => boolean = (a, b) => a === b
+): void {
+    const current = sig.value;
+    sig.value = current.some((x) => equals(x, item)) ?
+        current.filter((x) => !equals(x, item)) :
+        [...current, item];
 }
 
 /**
@@ -330,34 +379,23 @@ export class SearchViewModel {
             ...this.tagFilters.value.map((t) => t.toLowerCase())
         ];
         const rFilters = this.ratingFilters.value;
-        const hasTypes = types.length > 0;
-        const hasTags = requiredTags.length > 0;
-        const hasStates = states.length > 0;
-        const hasRatings = rFilters.length > 0;
+        const criteria: FilterCriteria = {
+            types,
+            states,
+            requiredTags,
+            ratingFilters: rFilters
+        };
 
         const localScored: { item: SearchResult; score: number }[] = [];
         for (const entry of indexedCatalog) {
-            if (hasTypes) {
-                const matchesType = (types.includes('series') && entry.kind === 'show')
-                    || (types.includes('peliculas') && entry.kind === 'movie');
-                if (!matchesType) continue;
-            }
-
-            if (hasTags) {
-                const allMatch = requiredTags.every((t) => entry.tags.includes(t));
-                if (!allMatch) continue;
-            }
-
-            if (hasStates) {
-                const isWatched = entry.kind === 'show' ?
+            const matches = matchesFilters(
+                entry,
+                () => entry.kind === 'show' ?
                     !!entry.seriesEpisodeKeys && entry.seriesEpisodeKeys.length > 0 && entry.seriesEpisodeKeys.every((k) => WATCHED.has(k)) :
-                    ((entry.item.watched ?? 0) >= 1 || WATCHED.has(movieKey(entry.id)));
-                if (!matchesState(entry.kind, entry.id, isWatched, states)) continue;
-            }
-
-            if (hasRatings && !matchesRating(entry.imdb, rFilters)) {
-                continue;
-            }
+                    ((entry.item.watched ?? 0) >= 1 || WATCHED.has(movieKey(entry.id))),
+                criteria
+            );
+            if (!matches) continue;
 
             let score = 1;
             if (normQ) {
@@ -383,28 +421,14 @@ export class SearchViewModel {
         for (const item of remoteItems) {
             if (known.has(item.id)) continue;
 
-            if (hasTypes) {
-                const matchesType = (types.includes('series') && item.kind === 'show')
-                    || (types.includes('peliculas') && item.kind === 'movie');
-                if (!matchesType) continue;
-            }
-
-            if (hasTags) {
-                const itemTags = getItemTags(item).map((t) => t.toLowerCase());
-                if (!requiredTags.every((t) => itemTags.includes(t))) continue;
-            }
-
-            if (hasStates) {
-                const isWatched = item.kind === 'show' ?
-                    isSeriesWatched(item) :
-                    isMovieWatched(item);
-                if (!matchesState(item.kind, item.id, isWatched, states)) continue;
-            }
-
-            if (hasRatings) {
-                const score = item.rating?.imdb ?? 0;
-                if (!matchesRating(score, rFilters)) continue;
-            }
+            const itemTags = getItemTags(item).map((t) => t.toLowerCase());
+            const score = item.rating?.imdb ?? 0;
+            const matches = matchesFilters(
+                { kind: item.kind, id: item.id, tags: itemTags, imdb: score },
+                () => item.kind === 'show' ? isShowFullyWatched(item) : isMovieWatched(item),
+                criteria
+            );
+            if (!matches) continue;
 
             extra.push(item);
         }
@@ -466,16 +490,10 @@ export class SearchViewModel {
         this.stateFilters.value = (f === 'todo' || !f) ? [] : [f];
     };
     toggleTypeFilter = (t: TypeFilter) => {
-        const current = this.typeFilters.value;
-        this.typeFilters.value = current.includes(t) ?
-            current.filter((x) => x !== t) :
-            [...current, t];
+        toggleArrayItem(this.typeFilters, t);
     };
     toggleStateFilter = (s: StateFilter) => {
-        const current = this.stateFilters.value;
-        this.stateFilters.value = current.includes(s) ?
-            current.filter((x) => x !== s) :
-            [...current, s];
+        toggleArrayItem(this.stateFilters, s);
     };
     hasTypeFilter = (t: TypeFilter): boolean => this.typeFilters.value.includes(t);
     hasStateFilter = (s: StateFilter): boolean => this.stateFilters.value.includes(s);
@@ -514,11 +532,11 @@ export class SearchViewModel {
 
     /** Añade o quita una etiqueta del filtro. */
     toggleTagFilter = (tag: string) => {
-        const key = normalizeTagForSearch(tag);
-        const current = this.tagFilters.value;
-        this.tagFilters.value = current.some((t) => normalizeTagForSearch(t) === key) ?
-            current.filter((t) => normalizeTagForSearch(t) !== key) :
-            [...current, tag];
+        toggleArrayItem(
+            this.tagFilters,
+            tag,
+            (a, b) => normalizeTagForSearch(a) === normalizeTagForSearch(b)
+        );
     };
 
     clearTagFilters = () => { this.tagFilters.value = []; };
@@ -600,10 +618,15 @@ export class SearchViewModel {
 
     private guarded = guardedLoad(this.loading, undefined, this.loads).guarded;
     private remoteGuarded = guardedLoad(this.searching, undefined, this.remoteLoads).guarded;
+    private lastLoadedAt = 0;
 
     /** Carga la biblioteca real para buscar sobre ella (si hay sesión). */
-    async load() {
+    async load(opts: { force?: boolean } = {}) {
         if (!this.api.session.load()?.accessToken) return;
+        const now = Date.now();
+        if (!opts.force && (this.shows.value.length > 0 || this.movies.value.length > 0) && now - this.lastLoadedAt < CATALOG_TTL_MS) {
+            return;
+        }
         this.loading.value = true;
         await this.guarded(async (isLatest) => {
             const [shows, movies] = await Promise.all([
@@ -613,6 +636,7 @@ export class SearchViewModel {
             if (!isLatest()) return;
             this.shows.value = shows;
             this.movies.value = movies;
+            this.lastLoadedAt = Date.now();
         }, () => {
             this.shows.value = [];
             this.movies.value = [];
@@ -669,7 +693,7 @@ export class SearchViewModel {
             if (this.mutationTimer) clearTimeout(this.mutationTimer);
             this.mutationTimer = setTimeout(() => {
                 this.mutationTimer = null;
-                void this.load();
+                void this.load({ force: true });
             }, MUTATION_DEBOUNCE_MS);
         };
         window.addEventListener(FAVS.event, bumpFavs);

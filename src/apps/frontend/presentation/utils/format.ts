@@ -28,6 +28,13 @@ export function parseRuntimeMinutes(runtime: RuntimeValue): number | undefined {
     return (!isNaN(direct) && direct > 0) ? direct : undefined;
 }
 
+/** Formatea un número entero de minutos en formato "X h Y min", "X h", o "Y min". */
+export function formatHM(minutes: number): string {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+}
+
 // Convierte "176 min" en "2 h 56 min" cuando supera los 60 min.
 // Si el valor no es un número simple de minutos (p.ej. "47–51 min") se
 // devuelve tal cual.
@@ -35,19 +42,13 @@ export function formatRuntime(runtime: RuntimeValue): string {
     if (runtime == null) return '';
     if (typeof runtime === 'number') {
         const t = Math.round(runtime);
-        if (!t || t <= 0) return '';
-        const h = Math.floor(t / 60);
-        const m = t % 60;
-        return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+        return t > 0 ? formatHM(t) : '';
     }
     const str = String(runtime).trim();
     if (!str || str === '—') return '';
     if (!/^\d+(\s*min)?$/.test(str)) return str;
     const t = parseInt(str, 10);
-    if (!t || t <= 0) return str;
-    const h = Math.floor(t / 60);
-    const m = t % 60;
-    return h ? (m ? `${h} h ${m} min` : `${h} h`) : `${m} min`;
+    return t > 0 ? formatHM(t) : str;
 }
 
 // Calcula y formatea a qué hora terminaría una reproducción si se inicia ahora.

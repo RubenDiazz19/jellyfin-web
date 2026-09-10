@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
@@ -56,6 +56,10 @@ export function CollectionCardCarousel({ items, listId, navigate, onReorder }: P
     const dragTimeoutRef = useRef<number | null>(null);
 
     const [isOverflowing, setIsOverflowing] = useState(false);
+    const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+    const animName = `collectionLoopMarquee_${instanceId}`;
+    const animatedClass = `collectionMarqueeAnimated_${instanceId}`;
+    const staticClass = `collectionMarqueeStatic_${instanceId}`;
 
     useEffect(() => {
         const el = containerRef.current;
@@ -79,12 +83,15 @@ export function CollectionCardCarousel({ items, listId, navigate, onReorder }: P
         };
     }, [orderedItems.length, cardWidth, gap]);
 
-    // Si no hay items, no pintamos nada
-    if (!orderedItems || orderedItems.length === 0) return null;
-
     // Duplicamos únicamente cuando desborda (Caso A) para permitir el bucle 0% -> -50% sin saltos.
     // En el Caso B (sin desborde), se mantiene el array original sin clones redundantes.
-    const displayItems = isOverflowing ? [...orderedItems, ...orderedItems] : orderedItems;
+    const displayItems = useMemo(
+        () => (isOverflowing ? [...(orderedItems || []), ...(orderedItems || [])] : orderedItems || []),
+        [isOverflowing, orderedItems]
+    );
+
+    // Si no hay items, no pintamos nada
+    if (!orderedItems || orderedItems.length === 0) return null;
 
     // Velocidad significativamente más lenta y fluida: ~20 píxeles por segundo
     const totalSingleSetWidth = orderedItems.length * (cardWidth + gap);
@@ -171,7 +178,7 @@ export function CollectionCardCarousel({ items, listId, navigate, onReorder }: P
             }}
         >
             <style>{`
-                @keyframes collectionLoopMarquee {
+                @keyframes ${animName} {
                     0% {
                         transform: translate3d(0, 0, 0);
                     }
@@ -179,17 +186,17 @@ export function CollectionCardCarousel({ items, listId, navigate, onReorder }: P
                         transform: translate3d(-50%, 0, 0);
                     }
                 }
-                .collectionMarqueeAnimated {
+                .${animatedClass} {
                     display: flex;
                     gap: ${gap}px;
                     width: max-content;
-                    animation: collectionLoopMarquee ${durationSec}s linear infinite;
+                    animation: ${animName} ${durationSec}s linear infinite;
                     will-change: transform;
                 }
-                .collectionMarqueeAnimated:hover {
+                .${animatedClass}:hover {
                     animation-play-state: paused;
                 }
-                .collectionMarqueeStatic {
+                .${staticClass} {
                     display: flex;
                     gap: ${gap}px;
                     justify-content: center;
@@ -201,7 +208,7 @@ export function CollectionCardCarousel({ items, listId, navigate, onReorder }: P
             `}</style>
 
             <div
-                className={isOverflowing ? 'collectionMarqueeAnimated' : 'collectionMarqueeStatic'}
+                className={isOverflowing ? `collectionMarqueeAnimated ${animatedClass}` : `collectionMarqueeStatic ${staticClass}`}
                 style={draggedId || isSelecting ? { animationPlayState: 'paused' } : undefined}
             >
                 {displayItems.map((item, idx) => (
@@ -313,6 +320,24 @@ function CollectionVerticalCard({
         cardTransform = 'scale(0.96)';
     }
 
+    const cardRootStyle = useMemo<React.CSSProperties>(() => ({
+        width: cardWidth,
+        flex: `0 0 ${cardWidth}px`,
+        cursor: isDragged ? 'grabbing' : 'pointer',
+        transform: cardTransform,
+        zIndex: cardZIndex,
+        transition: cardTransition,
+        userSelect: 'none',
+        touchAction: 'none'
+    }), [cardWidth, isDragged, cardTransform, cardZIndex, cardTransition]);
+
+    const frameStyle = useMemo<React.CSSProperties>(() => ({
+        boxShadow: cardBoxShadow,
+        border: sel.selected ? 'none' : cardBorder,
+        outline: sel.selected ? '3px solid #fff' : undefined,
+        outlineOffset: sel.selected ? -3 : undefined
+    }), [cardBoxShadow, sel.selected, cardBorder]);
+
     return (
         <div
             data-card-id={item.id}
@@ -322,26 +347,12 @@ function CollectionVerticalCard({
                 e.stopPropagation();
                 ctx.onContextMenu(e);
             }}
-            style={{
-                width: cardWidth,
-                flex: `0 0 ${cardWidth}px`,
-                cursor: isDragged ? 'grabbing' : 'pointer',
-                transform: cardTransform,
-                zIndex: cardZIndex,
-                transition: cardTransition,
-                userSelect: 'none',
-                touchAction: 'none'
-            }}
+            style={cardRootStyle}
             className={isDragged ? '' : 'jfp-hoverlift'}
         >
             <PosterFrame
                 borderRadius={8}
-                style={{
-                    boxShadow: cardBoxShadow,
-                    border: sel.selected ? 'none' : cardBorder,
-                    outline: sel.selected ? '3px solid #fff' : undefined,
-                    outlineOffset: sel.selected ? -3 : undefined
-                }}
+                style={frameStyle}
             >
                 {cover ? (
                     <img

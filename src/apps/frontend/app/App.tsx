@@ -12,11 +12,14 @@ import {
     type Route
 } from './router';
 import { HomePage } from '../presentation/pages/HomePage';
-import { SearchOverlay } from '../presentation/components/search/SearchOverlay';
 import { TaskProgress } from '../presentation/components/tasks/TaskProgress';
 import { GlobalSelectionBar } from '../presentation/components/controls/SelectionBar';
 import { selectionVM } from '../domain/viewModels/SelectionViewModel';
+import { searchVM } from '../domain/viewModels/SearchViewModel';
+import { useSignalValue } from '../domain/bridge/useViewModel';
 import { LoginPage } from '../presentation/pages/LoginPage';
+
+const SearchOverlay = lazy(() => import('../presentation/components/search/SearchOverlay').then(m => ({ default: m.SearchOverlay })));
 
 // Páginas de acceso puntual: se cargan bajo demanda para no engordar el
 // bundle inicial. React.lazy + Suspense hace el split automáticamente.
@@ -113,6 +116,7 @@ function PageFallback() {
 
 function AuthedApp() {
     const location = useLocation();
+    const isSearchOpen = useSignalValue(searchVM.overlayOpen);
     const rrNavigate = useNavigate();
     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
     // mobile/tablet: transición slide y scroll por tab. En desktop layout es
@@ -276,7 +280,11 @@ function AuthedApp() {
             {/* Fuera del wrapper de la ruta: la capa se abre desde la lupa de
                 cualquier página y tiene que quedar por encima de todo,
                 incluidos los heroes a pantalla completa. */}
-            <SearchOverlay navigate={navigate} />
+            {isSearchOpen && (
+                <Suspense fallback={null}>
+                    <SearchOverlay navigate={navigate} />
+                </Suspense>
+            )}
             {/* Fuera del wrapper de la ruta: el escaneo sigue corriendo aunque
                 el usuario se vaya a otra pantalla, que es lo que hace mientras
                 espera. */}

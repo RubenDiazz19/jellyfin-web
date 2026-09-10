@@ -14,11 +14,12 @@ import { formatPlaybackEndTime } from '../../utils/format';
 import { PlayerIc } from './playerIcons';
 import { VolumeSlider } from './VolumeSlider';
 import { VideoSettingsMenu } from './VideoSettingsMenu';
+import { clamp } from '../../../shared/math';
 
 /** % de la barra que ocupa un instante del vídeo. */
 function toPct(seconds: number, duration: number): number {
     if (duration <= 0) return 0;
-    return Math.min(Math.max((seconds / duration) * 100, 0), 100);
+    return clamp((seconds / duration) * 100, 0, 100);
 }
 
 type Props = {
@@ -92,7 +93,7 @@ export function VideoControls({ onToggleQueue }: Props) {
     const pctFromEvent = (e: React.PointerEvent): number => {
         const rect = barRef.current?.getBoundingClientRect();
         if (!rect || rect.width === 0) return 0;
-        return Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 0), 100);
+        return clamp(((e.clientX - rect.left) / rect.width) * 100, 0, 100);
     };
 
     const onPointerDown = (e: React.PointerEvent) => {

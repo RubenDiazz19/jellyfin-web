@@ -15,6 +15,7 @@
 // pre-calentamiento no llega a tiempo o revienta, el arranque normal hace su
 // trabajo igual que antes.
 
+import { logger } from '../../shared/logger';
 import { getTitleLanguagePref } from '../preferences/languagePrefs';
 import { loadSession } from '../session/session';
 import { getPlaybackDecision } from './playback';
@@ -54,6 +55,6 @@ export async function prewarmPlayback(
         const res = await fetch(decision.url);
         await res.text();
     } catch (e) {
-        console.debug('[player] pre-calentamiento no completado', e);
+        logger.debug('[player] pre-calentamiento no completado', e);
     }
 }

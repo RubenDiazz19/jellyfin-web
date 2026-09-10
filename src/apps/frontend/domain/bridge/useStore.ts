@@ -69,8 +69,8 @@ export function useStoreValue<T>(event: string, key: string, read: () => T): T {
  * vista que agrega sus episodios. Sin `scope` se repinta con CUALQUIER cambio
  * del store, que es lo que hay que evitar en una rejilla.
  */
-export function useStoreVersion(event: string, scope?: string): void {
-    const [, bump] = useState(0);
+export function useStoreVersion(event: string, scope?: string): number {
+    const [version, bump] = useState(0);
     useEffect(() => {
         const update = (e: Event) => {
             if (!touches(e, scope)) return;
@@ -79,6 +79,7 @@ export function useStoreVersion(event: string, scope?: string): void {
         window.addEventListener(event, update);
         return () => window.removeEventListener(event, update);
     }, [event, scope]);
+    return version;
 }
 
 /**

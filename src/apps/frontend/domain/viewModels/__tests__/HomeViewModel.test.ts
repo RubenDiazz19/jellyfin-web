@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { HomeViewModel } from '../HomeViewModel';
+import { formatEpisodeCode, HomeViewModel } from '../HomeViewModel';
 import type { ApiService } from '../../../data/api/ApiService';
 import type { CarouselSlide, CatalogItem, ListEntry } from '../../../data/models';
 
@@ -247,6 +247,14 @@ describe('HomeViewModel', () => {
                 startTicks: undefined
             });
             expect(newSlide.jfEpisodeId).toBe('ep1_jfId');
+        });
+    });
+
+    describe('formatEpisodeCode', () => {
+        test('formatea temporada y episodio con ceros a la izquierda', () => {
+            expect(formatEpisodeCode(1, 5)).toBe('T1 E05');
+            expect(formatEpisodeCode(2, 12)).toBe('T2 E12');
+            expect(formatEpisodeCode('1', '3')).toBe('T1 E03');
         });
     });
 });

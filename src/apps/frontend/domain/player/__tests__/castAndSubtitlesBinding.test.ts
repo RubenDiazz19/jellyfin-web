@@ -73,6 +73,27 @@ describe('CastBinding', () => {
         expect(fakeRemote.removeEventListener).toHaveBeenCalledWith('connecting', expect.any(Function));
         expect(cancelWatchAvailability).toHaveBeenCalledWith(42);
     });
+
+    test('cleanup antes de resolver watchAvailability cancela el watchId retornado', async () => {
+        const cast = new CastBinding();
+        let resolveWatch: (id: number) => void = () => {};
+        const cancelWatchAvailability = vi.fn().mockResolvedValue(undefined);
+        const fakeRemote = {
+            state: 'disconnected' as RemotePlaybackState,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            watchAvailability: vi.fn(() => new Promise<number>((res) => { resolveWatch = res; })),
+            cancelWatchAvailability
+        };
+        const fakeVideo = { remote: fakeRemote } as unknown as HTMLVideoElement;
+
+        const cleanup = cast.watch(fakeVideo);
+        cleanup();
+        resolveWatch(99);
+        await Promise.resolve();
+
+        expect(cancelWatchAvailability).toHaveBeenCalledWith(99);
+    });
 });
 
 describe('SubtitlesBinding', () => {

@@ -27,6 +27,9 @@ import { CastBinding } from '../player/castBinding';
 import { SegmentTracker } from '../player/segmentTracker';
 import { SubtitlesBinding } from '../player/subtitlesBinding';
 import { TitlePreferences } from '../player/titlePreferences';
+import { PlayerEventBinding } from '../player/PlayerEventBinding';
+import { logger } from '../logger';
+import { clamp } from '../../shared/math';
 import { SleepTimerTracker, type SleepTimerMode } from '../player/sleepTimer';
 
 const PROGRESS_REPORT_MS = 10_000;
@@ -229,7 +232,7 @@ export class VideoPlayerViewModel {
             const position = this.video?.currentTime ?? 0;
             return {
                 duration,
-                position: Math.min(Math.max(position, 0), duration),
+                position: clamp(position, 0, duration),
                 playbackRate: this.playbackRate.value || 1
             };
         },
@@ -244,6 +247,8 @@ export class VideoPlayerViewModel {
 
     constructor(private api: ApiService) {}
 
+    private eventBinding = new PlayerEventBinding();
+
     /**
      * Conecta el VM al <video> y su contenedor (para fullscreen). La View lo
      * llama al montar; devuelve el cleanup para el desmontaje.
@@ -254,114 +259,40 @@ export class VideoPlayerViewModel {
         this.closed = false;
         (video as OwnedVideo).jfpOwner = this.instanceId;
 
-        const savedVolume = Number(localStorage.getItem(VOLUME_KEY) ?? '1');
-        video.volume = Number.isFinite(savedVolume) ? Math.min(Math.max(savedVolume, 0), 1) : 1;
-        this.volume.value = video.volume;
-
-        // El <video> puede reutilizarse entre items: la velocidad no debe
-        // heredarse de la reproducción anterior.
-        video.defaultPlaybackRate = 1;
-        video.playbackRate = 1;
-
-        const on = <K extends keyof HTMLVideoElementEventMap>(
-            ev: K, fn: () => void
-        ) => {
-            video.addEventListener(ev, fn);
-            this.detachFns.push(() => video.removeEventListener(ev, fn));
-        };
-
-        on('timeupdate', () => {
-            this.publishTime(video.currentTime);
-            this.segments.syncTo(video.currentTime);
-            this.autoNext.syncTo(video.currentTime, this.duration.value);
-        });
-        on('durationchange', () => {
-            if (Number.isFinite(video.duration)) this.duration.value = video.duration;
-        });
-        on('play', () => {
-            this.playing.value = true;
-            // El reporte periódico solo tiene sentido mientras algo avanza.
-            this.startProgressTimer();
-        });
-        on('pause', () => {
-            this.playing.value = false;
-            // Un timer vivo en pausa reenviaba la MISMA posición cada 10 s.
-            // El estado de pausa se manda una vez, aquí.
-            this.stopProgressTimer();
-            void this.reportProgress();
-        });
-        on('waiting', () => { this.buffering.value = true; });
-        on('playing', () => {
-            this.buffering.value = false;
-            this.loading.value = false;
-            this.hasStarted = true;
-            // Con el vídeo ya en marcha, el servidor puede dedicarse a
-            // extraer subtítulos sin ahogar al transcode.
-            this.flushPendingSubtitle();
-        });
-        on('canplay', () => { this.buffering.value = false; this.loading.value = false; });
-        on('volumechange', () => {
-            this.volume.value = video.volume;
-            this.muted.value = video.muted;
-            localStorage.setItem(VOLUME_KEY, String(video.volume));
-        });
-        on('ended', () => {
-            this.playing.value = false;
-            // Nada más que reportar de este item: el stop lo manda close().
-            this.stopProgressTimer();
-            void this.reportProgress();
-            if (this.sleepTimer.handleEpisodeEnd()) {
-                return;
-            }
-            this.ended.value = true;
-        });
-        on('ratechange', () => { this.playbackRate.value = video.playbackRate; });
-
-        // Media Session (mobile/tablet): controles del sistema sincronizados.
-        on('play', () => this.mediaSession.syncPlayback());
-        on('pause', () => this.mediaSession.syncPlayback());
-        // `timeupdate` va sin `immediate`: es el que llega a ~4 Hz y el que el
-        // freno de la propia binding recorta a ~1 Hz. Duración y velocidad sí
-        // invalidan lo publicado, así que no pueden esperar.
-        on('timeupdate', () => this.mediaSession.syncPosition());
-        on('durationchange', () => this.mediaSession.syncPosition({ immediate: true }));
-        on('ratechange', () => this.mediaSession.syncPosition({ immediate: true }));
-
-        this.pipAvailable.value =
-            typeof video.requestPictureInPicture === 'function'
-            // eslint-disable-next-line compat/compat -- esta línea ES el feature-detect de PiP
-            && !!document.pictureInPictureEnabled;
-        on('enterpictureinpicture', () => { this.pipActive.value = true; });
-        on('leavepictureinpicture', () => { this.pipActive.value = false; });
-
-        this.detachFns.push(this.cast.watch(video));
-        on('error', () => {
-            if (this.closed) return;
-
-            // Un <video> SIN fuente no es un fallo de reproducción: es el
-            // 'error' que dispara load() al limpiar el src (cierre o cambio
-            // de item). Ese evento se despacha en un tick posterior, así que
-            // llegaba cuando el siguiente attach ya había re-armado los
-            // listeners y pintaba "no se pudo reproducir" encima de una
-            // reproducción que estaba arrancando bien.
-            if (!video.currentSrc && !video.getAttribute('src')) return;
-            // El evento no dice qué ha pasado; el MediaError sí, y es lo
-            // primero que hace falta para distinguir un códec no soportado
-            // de un 401 o de un transcode caído.
-            console.error(
-                '[player] el <video> ha fallado',
-                { code: video.error?.code, message: video.error?.message, src: video.currentSrc }
-            );
-            if (this.retrySource()) return;
-            this.error.value = globalize.translate('MessagePlaybackFailed');
-            this.loading.value = false;
-        });
-
-        const onFsChange = () => {
-            this.fullscreen.value = !!document.fullscreenElement;
-        };
-        document.addEventListener('fullscreenchange', onFsChange);
-        this.detachFns.push(() => document.removeEventListener('fullscreenchange', onFsChange));
+        const detach = this.eventBinding.attach(
+            video,
+            container,
+            {
+                duration: this.duration,
+                volume: this.volume,
+                muted: this.muted,
+                playing: this.playing,
+                buffering: this.buffering,
+                loading: this.loading,
+                ended: this.ended,
+                playbackRate: this.playbackRate,
+                pipAvailable: this.pipAvailable,
+                pipActive: this.pipActive,
+                fullscreen: this.fullscreen,
+                error: this.error,
+                publishTime: (t) => this.publishTime(t),
+                syncSegments: (t) => this.segments.syncTo(t),
+                syncAutoNext: (t, d) => this.autoNext.syncTo(t, d),
+                startProgressTimer: () => this.startProgressTimer(),
+                stopProgressTimer: () => this.stopProgressTimer(),
+                reportProgress: () => this.reportProgress(),
+                flushPendingSubtitle: () => this.flushPendingSubtitle(),
+                handleEpisodeEnd: () => this.sleepTimer.handleEpisodeEnd(),
+                syncMediaSessionPlayback: () => this.mediaSession.syncPlayback(),
+                syncMediaSessionPosition: (opts) => this.mediaSession.syncPosition(opts),
+                watchCast: (v) => this.cast.watch(v),
+                retrySource: () => this.retrySource(),
+                isClosed: () => this.closed,
+                setHasStarted: (v) => { this.hasStarted = v; }
+            },
+            VOLUME_KEY
+        );
+        this.detachFns.push(detach);
 
         return () => this.close();
     }
@@ -388,7 +319,9 @@ export class VideoPlayerViewModel {
         // era una vuelta a la red de más delante del primer fotograma.
         this.contextReady = this.loadContext(itemId);
         if (this.prefs.hasAny()) await this.contextReady;
+        if (this.closed || this.itemId !== itemId) return;
         await this.loadSource(this.prefs.tracksFor(this.context));
+        if (this.closed || this.itemId !== itemId) return;
         void this.api.playback.reportPlaybackStart(itemId, this.decision?.playMethod);
         // El timer de progreso lo arranca el evento 'play' y lo para 'pause':
         // si el autoplay se deniega no hay nada que reportar todavía.
@@ -415,7 +348,7 @@ export class VideoPlayerViewModel {
             // cuando el capítulo se acerca al final.
             if (context.isEpisode) void this.loadNextEpisode(context.titleId, itemId);
         } catch (e) {
-            console.debug('[player] sin contexto del item', e);
+            logger.debug('[player] sin contexto del item', e);
         }
     }
 
@@ -425,7 +358,7 @@ export class VideoPlayerViewModel {
             if (this.closed || this.itemId !== itemId) return;
             this.nextEpisode.value = next;
         } catch (e) {
-            console.debug('[player] sin siguiente episodio', e);
+            logger.debug('[player] sin siguiente episodio', e);
         }
     }
 
@@ -456,7 +389,7 @@ export class VideoPlayerViewModel {
         } catch (e) {
             // Los segmentos son un extra: que fallen no puede tumbar la
             // reproducción ni dejar una promesa rechazada suelta.
-            console.debug('[player] no se pudieron cargar los segmentos', e);
+            logger.debug('[player] no se pudieron cargar los segmentos', e);
             return;
         }
         // La carga es asíncrona: el usuario puede haber salido o cambiado de
@@ -508,21 +441,10 @@ export class VideoPlayerViewModel {
         if (!v.paused) v.pause();
     };
 
-    setSleepTimer = (mode: SleepTimerMode) => {
-        this.sleepTimer.setMode(mode);
-    };
-
-    setSubtitleOffset = (seconds: number) => {
-        this.subtitles.setSubtitleOffset(seconds);
-    };
-
-    adjustSubtitleOffset = (delta: number) => {
-        this.subtitles.adjustSubtitleOffset(delta);
-    };
-
-    resetSubtitleOffset = () => {
-        this.subtitles.resetSubtitleOffset();
-    };
+    setSleepTimer = (mode: SleepTimerMode) => { this.sleepTimer.setMode(mode); };
+    setSubtitleOffset = (seconds: number) => { this.subtitles.setSubtitleOffset(seconds); };
+    adjustSubtitleOffset = (delta: number) => { this.subtitles.adjustSubtitleOffset(delta); };
+    resetSubtitleOffset = () => { this.subtitles.resetSubtitleOffset(); };
 
     cycleSubtitles = () => {
         const tracks = this.subtitleTracks.value;
@@ -583,7 +505,7 @@ export class VideoPlayerViewModel {
     private seekTo(seconds: number) {
         const v = this.video;
         if (!v || !Number.isFinite(seconds)) return;
-        v.currentTime = Math.min(Math.max(seconds, 0), this.duration.value || seconds);
+        v.currentTime = clamp(seconds, 0, this.duration.value || seconds);
         this.publishTime(v.currentTime);
         // El salto invalida lo que la pantalla de bloqueo tuviera pintado.
         this.mediaSession.syncPosition({ immediate: true });
@@ -614,7 +536,7 @@ export class VideoPlayerViewModel {
     setVolume = (value: number) => {
         const v = this.video;
         if (!v) return;
-        v.volume = Math.min(Math.max(value, 0), 1);
+        v.volume = clamp(value, 0, 1);
         if (v.volume > 0) v.muted = false;
     };
 
@@ -627,7 +549,7 @@ export class VideoPlayerViewModel {
     setPlaybackRate = (rate: number) => {
         const v = this.video;
         if (!v || !Number.isFinite(rate)) return;
-        const r = Math.min(Math.max(rate, 0.25), 3);
+        const r = clamp(rate, 0.25, 3);
         // load() (recarga por cambio de pista) resetea playbackRate al valor
         // de defaultPlaybackRate — fijando ambos, la velocidad sobrevive.
         v.defaultPlaybackRate = r;
@@ -641,7 +563,7 @@ export class VideoPlayerViewModel {
 
     /** Ajusta el brillo del vídeo (filtro CSS). No baja de 0.15 (negro total). */
     setBrightness = (value: number) => {
-        this.brightness.value = Math.min(Math.max(value, 0.15), 1);
+        this.brightness.value = clamp(value, 0.15, 1);
     };
 
     toggleFullscreen = () => {
@@ -854,15 +776,16 @@ export class VideoPlayerViewModel {
     private async loadSource(opts: PlaybackOptions, cache: { fresh?: boolean } = {}) {
         const video = this.video;
         if (!video) return;
+        const currentItemId = this.itemId;
         this.lastSourceOpts = opts;
         try {
             // No pedimos startTimeTicks al servidor: las playlists HLS de
             // Jellyfin son VOD completas, así que basta con seek local tras
             // cargar metadatos (vale para direct y para transcode).
             const decision = await this.api.playback.getPlaybackDecision(
-                this.itemId, opts, cache
+                currentItemId, opts, cache
             );
-            if (this.closed) return;
+            if (this.closed || this.itemId !== currentItemId) return;
             this.decision = decision;
             if (decision.trickplay && !this.trickplay.value) {
                 this.trickplay.value = decision.trickplay;
@@ -880,7 +803,7 @@ export class VideoPlayerViewModel {
 
             if (decision.kind === 'hls' && !playsHlsNatively(video)) {
                 const attached = await attachHlsSource(video, decision.url, {
-                    isClosed: () => this.closed,
+                    isClosed: () => this.closed || this.itemId !== currentItemId,
                     onUnrecoverable: () => {
                         if (this.retrySource()) return;
                         this.error.value = globalize.translate('MessageHlsFatalError');
@@ -888,6 +811,7 @@ export class VideoPlayerViewModel {
                     }
                 });
                 if (attached.status === 'aborted') return;
+                if (this.closed || this.itemId !== currentItemId) return;
                 if (attached.status === 'unsupported') {
                     this.error.value = globalize.translate('MessageHlsUnsupported');
                     this.loading.value = false;
@@ -978,7 +902,7 @@ export class VideoPlayerViewModel {
         this.error.value = null;
         // Se reanuda donde estuviera (o donde se pidió abrir).
         this.startSeconds = Math.max(this.video.currentTime, this.resumeSeconds);
-        console.warn('[player] fallo en el arranque: reintentando la fuente');
+        logger.warn('[player] fallo en el arranque: reintentando la fuente');
         this.retryTimer = setTimeout(() => {
             this.retryTimer = null;
             if (this.closed) return;

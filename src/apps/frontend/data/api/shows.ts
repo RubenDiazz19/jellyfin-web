@@ -38,16 +38,14 @@ export function mapShow(item: JFItem): Show {
         .filter((p) => p.Type === 'Writer' || p.Role?.toLowerCase().includes('creator') || p.Role?.toLowerCase().includes('cread') || p.Role?.toLowerCase().includes('showrunner'))
         .map((p) => p.Name);
     const creatorList = creators.length > 0 ? creators : writers;
-    const creator = Array.from(new Set(creatorList)).filter(Boolean).join(', ');
+    const creator = [...new Set(creatorList)].filter(Boolean).join(', ');
 
-    const directors = Array.from(
-        new Set(
-            people
-                .filter((p) => p.Type === 'Director')
-                .map((p) => p.Name)
-                .filter(Boolean)
-        )
-    ).join(', ');
+    const directors = [...new Set(
+        people
+            .filter((p) => p.Type === 'Director')
+            .map((p) => p.Name)
+            .filter(Boolean)
+    )].join(', ');
 
     return {
         ...mapCommonFields(item),

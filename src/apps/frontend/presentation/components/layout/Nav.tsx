@@ -8,7 +8,7 @@ import globalize from 'lib/globalize';
 import jellyfinLogo from '../../../../../assets/img/jellyfin-white.png';
 import { T } from '../../theme/tokens';
 import { Ic, JellyfinLogo } from '../../theme/icons';
-import { useScrollY } from '../../../domain/bridge/useScrollY';
+import { useIsScrolled } from '../../../domain/bridge/useScrollY';
 import { NavActions, type NavActionData } from './NavActions';
 import { UserAvatar } from './UserAvatar';
 import { useResponsive } from '../../theme/responsive';
@@ -62,8 +62,7 @@ function Logo({ size, style }: { size: number; style?: React.CSSProperties }) {
 }
 
 export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionData }: NavProps) {
-    const y = useScrollY();
-    const scrolled = y > 80;
+    const scrolled = useIsScrolled(80);
     const r = useResponsive();
 
     // Mobile/tablet: barra superior slim — solo logo, acciones del item y

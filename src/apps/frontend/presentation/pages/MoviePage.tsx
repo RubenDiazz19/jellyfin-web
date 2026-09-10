@@ -92,7 +92,7 @@ function MovieHero({
                     navigate={navigate}
                     breadcrumb={[
                         { label: globalize.translate('Movies'), to: { page: 'home' } },
-                        { label: getItemGenres(movie)[0] ?? 'Película' },
+                        { label: getItemGenres(movie)[0] ?? globalize.translate('Movie') },
                         { label: movie.title }
                     ]}
                     actionId={movieKey(movie.id)}

@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { useWatched } from '../../../domain/bridge/useWatched';
 import { useSession } from '../../../domain/bridge/useSession';
 import { WatchedToggle } from './WatchedToggle';
@@ -26,7 +27,7 @@ export function MovieWatchedButton({ movie, size = 18, badge = false }: Props) {
             }
             size={size}
             badge={badge}
-            ariaLabel={complete ? 'Marcar como no vista' : 'Marcar como vista'}
+            ariaLabel={globalize.translate(complete ? 'MarkMovieAsUnwatched' : 'MarkMovieAsWatched')}
         />
     );
 }

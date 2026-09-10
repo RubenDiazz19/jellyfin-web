@@ -5,32 +5,20 @@
 
 import { signal, type Signal } from '@preact/signals-core';
 import type { ApiService } from '../../data/api/ApiService';
-import { guardedLoad, type GuardedBody, type GuardedOnError } from './guardedLoad';
-import { loadingError } from './loadingState';
-import { LoadGuard } from './loadGuard';
+import { LoadableViewModel } from './LoadableViewModel';
 import { mutationOnLoad } from './mutationSubscription';
 
-export abstract class DetailViewModel<T extends { id: string }> {
+export abstract class DetailViewModel<T extends { id: string }> extends LoadableViewModel {
     item: Signal<T | null> = signal<T | null>(null);
-    loading: Signal<boolean>;
-    error: Signal<string | null>;
     /**
      * Id de la entidad que se acaba de borrar. La ficha lo observa para irse.
      */
     gone = signal<string | null>(null);
 
-    protected loads: LoadGuard;
-    protected guarded: (body: GuardedBody, onError?: GuardedOnError) => Promise<void>;
     private ensureSubscribed: () => void;
 
     constructor(protected api: ApiService) {
-        const state = loadingError(false);
-        this.loading = state.loading;
-        this.error = state.error;
-
-        const gl = guardedLoad(this.loading, this.error);
-        this.loads = gl.loads;
-        this.guarded = gl.guarded;
+        super({ loadsOnMount: false });
 
         this.ensureSubscribed = mutationOnLoad(({ itemId, deleted }) => {
             const current = this.item.value;

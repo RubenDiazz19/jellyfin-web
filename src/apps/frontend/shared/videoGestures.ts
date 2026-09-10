@@ -10,6 +10,7 @@ import {
     VIDEO_MOVE_THRESHOLD,
     VIDEO_SEEK_RANGE_SECONDS
 } from './gestures/thresholds';
+import { clamp } from './math';
 
 export const MOVE_THRESHOLD = VIDEO_MOVE_THRESHOLD;
 export const CLOSE_BAND = VIDEO_CLOSE_BAND;
@@ -76,5 +77,5 @@ export function touchDistance(
 }
 
 export function clamp01(v: number): number {
-    return Math.min(1, Math.max(0, v));
+    return clamp(v, 0, 1);
 }

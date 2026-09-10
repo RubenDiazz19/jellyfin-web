@@ -4,6 +4,7 @@
 
 import { signal } from '@preact/signals-core';
 import type { MediaStreamInfo } from '../../data/api/playback';
+import { clamp } from '../../shared/math';
 
 export class SubtitlesBinding {
     subtitleTracks = signal<MediaStreamInfo[]>([]);
@@ -48,7 +49,7 @@ export class SubtitlesBinding {
 
     /** Ajusta el desfase de subtítulos absoluto en segundos (acotado entre -30s y +30s). */
     setSubtitleOffset(seconds: number): void {
-        const clamped = Math.round(Math.min(Math.max(seconds, -30), 30) * 10) / 10;
+        const clamped = Math.round(clamp(seconds, -30, 30) * 10) / 10;
         this.subtitleOffset.value = clamped;
     }
 

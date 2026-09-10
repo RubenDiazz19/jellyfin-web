@@ -7,6 +7,7 @@
 
 import { signal } from '@preact/signals-core';
 import type { NextEpisode } from '../../data/api/playbackContext';
+import { clamp } from '../../shared/math';
 
 /**
  * Sin créditos detectados, el aviso sale en los últimos segundos del
@@ -55,7 +56,7 @@ export class AutoNextTracker {
             return;
         }
         const span = Math.max(duration - start, 1);
-        const ratio = Math.min(Math.max((time - start) / span, 0), 1);
+        const ratio = clamp((time - start) / span, 0, 1);
         // Redondeo al 1%: evita repintar el OSD en cada timeupdate por una
         // diferencia invisible.
         const rounded = Math.round(ratio * 100) / 100;

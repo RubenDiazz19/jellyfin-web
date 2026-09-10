@@ -13,6 +13,7 @@
 // etiquetas sin que nada lo delatara. Con un número de una o dos cifras el
 // error deja de ocurrir, y si ocurriera se ve al validar el rango.
 
+import { logger } from '../../shared/logger';
 import { canonicalTag, dropRedundant, MAX_TAGS_PER_ITEM, translateEnglishTag } from './vocabulary';
 const STRICT = !!process.env.AUTOTAG_STRICT;
 
@@ -88,7 +89,7 @@ export function parseTagResponse(raw: string, batchIds: readonly string[]): Pars
                 const translated = translateEnglishTag(rawTag);
                 if (translated) {
                     tag = translated;
-                    console.warn(`Translated English tag "${rawTag}" to Spanish "${tag}"`);
+                    logger.warn(`Translated English tag "${rawTag}" to Spanish "${tag}"`);
                 } else {
                     rejectedTags.push(rawTag);
                     continue;

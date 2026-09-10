@@ -195,3 +195,25 @@ describe('LibraryChanged — señal de completado', () => {
         expect(vm.active.value.find((t) => t.id === 'lib1')?.completed).toBe(true);
     });
 });
+
+describe('stop() — limpieza de watchers', () => {
+    test('stop llama a los cleanup functions de todos los watchers registrados', () => {
+        const unsubs = [vi.fn(), vi.fn(), vi.fn()];
+        const api = {
+            tasks: {
+                getRunningTasks: vi.fn(() => Promise.resolve([])),
+                watchScheduledTasks: () => unsubs[0],
+                watchItemRefresh: () => unsubs[1],
+                watchLibraryChanged: () => unsubs[2]
+            }
+        } as unknown as ApiService;
+
+        const vm = new TasksViewModel(api);
+        vm.start();
+        vm.stop();
+
+        expect(unsubs[0]).toHaveBeenCalledTimes(1);
+        expect(unsubs[1]).toHaveBeenCalledTimes(1);
+        expect(unsubs[2]).toHaveBeenCalledTimes(1);
+    });
+});

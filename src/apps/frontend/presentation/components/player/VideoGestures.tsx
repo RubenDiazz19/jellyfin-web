@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatTime as fmt } from '../../../domain/player/format';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { haptic } from '../../../shared/haptics';
+import { clamp } from '../../../shared/math';
 import {
     classifySwipe,
     clamp01,
@@ -155,7 +156,7 @@ export function VideoGestures({ onClose, onWake }: Props) {
         if (s.axis === 'horizontal') {
             const duration = videoPlayerVM.duration.peek();
             if (duration <= 0) return;
-            const target = Math.min(Math.max(s.startTime + seekDeltaFromDrag(dx, s.width), 0), duration);
+            const target = clamp(s.startTime + seekDeltaFromDrag(dx, s.width), 0, duration);
             s.pendingSeek = target;
             setFeedback({ kind: 'seek', target, delta: target - s.startTime });
             return;

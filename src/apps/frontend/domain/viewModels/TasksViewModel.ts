@@ -38,11 +38,13 @@ export class TasksViewModel {
     private started = false;
     private timers = new Map<string, ReturnType<typeof setTimeout>>();
 
+    private cleanups: (() => void)[] = [];
+
     constructor(private api: ApiService) {}
 
     /**
      * Engancha las dos fuentes. Idempotente: lo llama la vista global al
-     * montar, y no hay cleanup porque esa vista dura lo que la sesión.
+     * montar.
      */
     start(): void {
         if (this.started || typeof window === 'undefined') return;
@@ -53,21 +55,33 @@ export class TasksViewModel {
             .then((tasks) => { this.scheduled.value = tasks; })
             .catch(() => { /* sin tareas que enseñar, que es el caso normal */ });
 
-        this.api.tasks.watchScheduledTasks((tasks) => { this.scheduled.value = tasks; });
-        this.api.tasks.watchItemRefresh((itemId, percent) => {
-            // RefreshProgress al 100 %: el item ha terminado.
-            if (percent >= 100) this.completeItem(itemId);
-            else this.updateItem(itemId, percent);
-        });
+        this.cleanups.push(
+            this.api.tasks.watchScheduledTasks((tasks) => { this.scheduled.value = tasks; }),
+            this.api.tasks.watchItemRefresh((itemId, percent) => {
+                // RefreshProgress al 100 %: el item ha terminado.
+                if (percent >= 100) this.completeItem(itemId);
+                else this.updateItem(itemId, percent);
+            }),
+            this.api.tasks.watchLibraryChanged(() => {
+                const pending = this.items.peek().filter((t) => !t.completed);
+                for (const t of pending) this.completeItem(t.id);
+            })
+        );
+    }
 
-        // LibraryChanged es la señal fiable de que un refresco de biblioteca
-        // acabó: RefreshProgress no siempre llega al 100 % para el item padre
-        // (el servidor puede terminar sin publicar el último tramo). Cuando
-        // llega, todos los items pendientes se marcan como completados.
-        this.api.tasks.watchLibraryChanged(() => {
-            const pending = this.items.peek().filter((t) => !t.completed);
-            for (const t of pending) this.completeItem(t.id);
-        });
+    /**
+     * Limpia los listeners y temporizadores activos.
+     */
+    stop(): void {
+        for (const cleanup of this.cleanups) {
+            cleanup();
+        }
+        this.cleanups = [];
+        for (const timer of this.timers.values()) {
+            clearTimeout(timer);
+        }
+        this.timers.clear();
+        this.started = false;
     }
 
     /**

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { T } from '../../theme/tokens';
 import { WatchedButton } from '../controls/WatchedButton';
 import { FavButton } from '../controls/FavButton';
@@ -118,8 +118,9 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
     const subTextRef = useRef<HTMLSpanElement>(null);
     const [subOverflow, setSubOverflow] = useState(0);
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         let active = true;
+        let rafId = 0;
 
         const measure = () => {
             if (!active) return;
@@ -133,7 +134,7 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
             }
         };
 
-        measure();
+        rafId = requestAnimationFrame(measure);
 
         if (typeof document !== 'undefined' && document.fonts?.ready) {
             document.fonts.ready.then(() => {
@@ -144,6 +145,7 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
         window.addEventListener('resize', measure);
         return () => {
             active = false;
+            cancelAnimationFrame(rafId);
             window.removeEventListener('resize', measure);
         };
     }, [slide.title, epSubtitle, w]);

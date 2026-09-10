@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { useWatchedToggle } from './useWatchedToggle';
 import { WatchedToggleIcon } from './WatchedToggleIcon';
 
@@ -37,7 +38,7 @@ export function WatchedToggle({
             size={size}
             badge={badge}
             padding={padding}
-            ariaLabel={ariaLabel ?? (active ? 'Marcar como no visto' : 'Marcar como visto')}
+            ariaLabel={ariaLabel ?? globalize.translate(active ? 'MarkAsUnwatched' : 'MarkAsWatched')}
         />
     );
 }

@@ -17,3 +17,21 @@ export function useScrollY(): number {
     }, []);
     return y;
 }
+
+/** True si window.scrollY supera el umbral. Solo re-renderiza al cruzar el umbral. */
+export function useIsScrolled(threshold = 80): boolean {
+    const [scrolled, setScrolled] = useState(() => (typeof window !== 'undefined' ? window.scrollY > threshold : false));
+    useEffect(() => {
+        let prev = window.scrollY > threshold;
+        const onScroll = () => {
+            const next = window.scrollY > threshold;
+            if (next !== prev) {
+                prev = next;
+                setScrolled(next);
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, [threshold]);
+    return scrolled;
+}

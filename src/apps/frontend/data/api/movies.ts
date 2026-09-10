@@ -19,14 +19,12 @@ import { FIELDS_DETAIL, FIELDS_GRID, GRID_IMAGE_TYPES, type JFItem } from './typ
 
 // Exportado para las consultas de `discover`: ver la nota en shows.ts.
 export function mapMovie(item: JFItem): Movie {
-    const directors = Array.from(
-        new Set(
-            (item.People ?? [])
-                .filter((p) => p.Type === 'Director')
-                .map((p) => p.Name)
-                .filter(Boolean)
-        )
-    ).join(', ');
+    const directors = [...new Set(
+        (item.People ?? [])
+            .filter((p) => p.Type === 'Director')
+            .map((p) => p.Name)
+            .filter(Boolean)
+    )].join(', ');
 
     const source = item.MediaSources?.[0];
     const streams = source?.MediaStreams ?? [];

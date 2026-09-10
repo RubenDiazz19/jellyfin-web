@@ -14,6 +14,7 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import {
     JELLYFIN_CAST_NAMESPACE, loadCastSender, type CastSession
 } from '../../data/cast/castSender';
+import { logger } from '../logger';
 
 export type CastState = 'unavailable' | 'disconnected' | 'connecting' | 'connected';
 
@@ -48,7 +49,7 @@ export class CastViewModel {
         if (!receiverId) {
             // Sin receptor configurado no hay nada que lanzar. El servidor
             // trae uno por defecto, así que esto solo pasa si lo han vaciado.
-            console.warn('[cast] el usuario no tiene CastReceiverId configurado');
+            logger.warn('[cast] el usuario no tiene CastReceiverId configurado');
             return;
         }
 
@@ -66,7 +67,7 @@ export class CastViewModel {
 
         await new Promise<void>((resolve) => {
             cast.initialize(config, () => resolve(), (err) => {
-                console.warn('[cast] initialize falló', err);
+                logger.warn('[cast] initialize falló', err);
                 resolve();
             });
         });
@@ -83,7 +84,7 @@ export class CastViewModel {
             (err) => {
                 // El usuario cerrando el diálogo también llega por aquí.
                 this.state.value = this.available.value ? 'disconnected' : 'unavailable';
-                console.debug('[cast] requestSession cancelado o fallido', err);
+                logger.debug('[cast] requestSession cancelado o fallido', err);
             }
         );
     };
@@ -172,7 +173,7 @@ export class CastViewModel {
         };
 
         if (isLoopback(auth.serverUrl)) {
-            console.warn('[cast] serverAddress es localhost: el receptor no podrá alcanzar el servidor');
+            logger.warn('[cast] serverAddress es localhost: el receptor no podrá alcanzar el servidor');
         }
 
         await new Promise<void>((resolve, reject) => {

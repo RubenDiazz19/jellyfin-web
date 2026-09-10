@@ -14,20 +14,13 @@
 //
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
-import { signal, type Signal } from '@preact/signals-core';
+import { signal } from '@preact/signals-core';
 import type { Movie, Show } from '../../data/models';
-import { guardedLoad, type GuardedBody, type GuardedOnError } from './guardedLoad';
-import { loadingError } from './loadingState';
-import { LoadGuard } from './loadGuard';
+import { LoadableViewModel } from './LoadableViewModel';
 
-export abstract class CatalogViewModel {
+export abstract class CatalogViewModel extends LoadableViewModel {
     shows = signal<Show[]>([]);
     movies = signal<Movie[]>([]);
-    loading: Signal<boolean>;
-    error: Signal<string | null>;
-
-    protected loads: LoadGuard;
-    protected guarded: (body: GuardedBody, onError?: GuardedOnError) => Promise<void>;
 
     /**
      * `loadsOnMount` arranca el spinner encendido. Lo quieren las pantallas
@@ -36,12 +29,6 @@ export abstract class CatalogViewModel {
      * no lo quiere, porque puede resolver desde caché en el mismo tick.
      */
     constructor({ loadsOnMount = false } = {}) {
-        const state = loadingError(loadsOnMount);
-        this.loading = state.loading;
-        this.error = state.error;
-
-        const gl = guardedLoad(this.loading, this.error);
-        this.loads = gl.loads;
-        this.guarded = gl.guarded;
+        super({ loadsOnMount });
     }
 }

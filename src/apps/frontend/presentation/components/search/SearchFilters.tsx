@@ -15,7 +15,7 @@ import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { useToast } from '../toast/ToastProvider';
-import { searchVM, type StateFilter, type TypeFilter } from '../../../domain/viewModels/SearchViewModel';
+import { searchVM, type FilterCategory, type StateFilter, type TypeFilter } from '../../../domain/viewModels/SearchViewModel';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { VIEWS, type SavedView } from '../../../domain/stores';
 import { AddFilterButton, MainPill, OptionPill } from './SearchPills';
@@ -82,6 +82,13 @@ export function SearchFilters() {
         });
     }, [availableTags, categoryQuery, activeTags]);
 
+    const categories: { id: FilterCategory; label: string; count: number }[] = [
+        { id: 'tipo', label: globalize.translate('LabelType'), count: typeCount },
+        { id: 'estado', label: globalize.translate('LabelStatus'), count: stateCount },
+        { id: 'generos', label: globalize.translate('Genres'), count: tagCount },
+        { id: 'valoracion', label: globalize.translate('Rating'), count: ratingCount }
+    ];
+
     return (
         <div style={{ marginTop: r.touch ? 14 : 20 }}>
 
@@ -107,42 +114,18 @@ export function SearchFilters() {
                         alignItems: 'center',
                         animation: 'jfpPillsFadeIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both'
                     }}>
-                        <MainPill
-                            label={globalize.translate('LabelType')}
-                            count={typeCount}
-                            isOpen={false}
-                            onClick={() => {
-                                setIsPickingCategory(false);
-                                searchVM.openCategory('tipo');
-                            }}
-                        />
-                        <MainPill
-                            label={globalize.translate('LabelStatus')}
-                            count={stateCount}
-                            isOpen={false}
-                            onClick={() => {
-                                setIsPickingCategory(false);
-                                searchVM.openCategory('estado');
-                            }}
-                        />
-                        <MainPill
-                            label={globalize.translate('Genres')}
-                            count={tagCount}
-                            isOpen={false}
-                            onClick={() => {
-                                setIsPickingCategory(false);
-                                searchVM.openCategory('generos');
-                            }}
-                        />
-                        <MainPill
-                            label={globalize.translate('Rating')}
-                            count={ratingCount}
-                            isOpen={false}
-                            onClick={() => {
-                                setIsPickingCategory(false);
-                                searchVM.openCategory('valoracion');
-                            }}
-                        />
+                        {categories.map((cat) => (
+                            <MainPill
+                                key={cat.id}
+                                label={cat.label}
+                                count={cat.count}
+                                isOpen={false}
+                                onClick={() => {
+                                    setIsPickingCategory(false);
+                                    searchVM.openCategory(cat.id);
+                                }}
+                            />
+                        ))}
                     </div>
                 )}
 
@@ -150,50 +133,21 @@ export function SearchFilters() {
                 {categoryMode !== null && (
                     <>
                         {/* Píldora padre seleccionada */}
-                        {categoryMode === 'tipo' && (
-                            <MainPill
-                                label={globalize.translate('LabelType')}
-                                count={typeCount}
-                                isOpen={true}
-                                onClick={() => {
-                                    setIsPickingCategory(false);
-                                    searchVM.closeCategory();
-                                }}
-                            />
-                        )}
-                        {categoryMode === 'estado' && (
-                            <MainPill
-                                label={globalize.translate('LabelStatus')}
-                                count={stateCount}
-                                isOpen={true}
-                                onClick={() => {
-                                    setIsPickingCategory(false);
-                                    searchVM.closeCategory();
-                                }}
-                            />
-                        )}
-                        {categoryMode === 'generos' && (
-                            <MainPill
-                                label={globalize.translate('Genres')}
-                                count={tagCount}
-                                isOpen={true}
-                                onClick={() => {
-                                    setIsPickingCategory(false);
-                                    searchVM.closeCategory();
-                                }}
-                            />
-                        )}
-                        {categoryMode === 'valoracion' && (
-                            <MainPill
-                                label={globalize.translate('Rating')}
-                                count={ratingCount}
-                                isOpen={true}
-                                onClick={() => {
-                                    setIsPickingCategory(false);
-                                    searchVM.closeCategory();
-                                }}
-                            />
-                        )}
+                        {(() => {
+                            const activeCat = categories.find((c) => c.id === categoryMode);
+                            if (!activeCat) return null;
+                            return (
+                                <MainPill
+                                    label={activeCat.label}
+                                    count={activeCat.count}
+                                    isOpen={true}
+                                    onClick={() => {
+                                        setIsPickingCategory(false);
+                                        searchVM.closeCategory();
+                                    }}
+                                />
+                            );
+                        })()}
 
                         {/* Divisor vertical sutil */}
                         <div style={{
@@ -312,50 +266,20 @@ export function SearchFilters() {
                                 flexShrink: 0,
                                 animation: 'jfpSubPillIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both'
                             }}>
-                                {categoryMode !== 'tipo' && (
-                                    <MainPill
-                                        label={globalize.translate('LabelType')}
-                                        count={typeCount}
-                                        isOpen={false}
-                                        onClick={() => {
-                                            searchVM.openCategory('tipo');
-                                            setIsPickingCategory(false);
-                                        }}
-                                    />
-                                )}
-                                {categoryMode !== 'estado' && (
-                                    <MainPill
-                                        label={globalize.translate('LabelStatus')}
-                                        count={stateCount}
-                                        isOpen={false}
-                                        onClick={() => {
-                                            searchVM.openCategory('estado');
-                                            setIsPickingCategory(false);
-                                        }}
-                                    />
-                                )}
-                                {categoryMode !== 'generos' && (
-                                    <MainPill
-                                        label={globalize.translate('Genres')}
-                                        count={tagCount}
-                                        isOpen={false}
-                                        onClick={() => {
-                                            searchVM.openCategory('generos');
-                                            setIsPickingCategory(false);
-                                        }}
-                                    />
-                                )}
-                                {categoryMode !== 'valoracion' && (
-                                    <MainPill
-                                        label={globalize.translate('Rating')}
-                                        count={ratingCount}
-                                        isOpen={false}
-                                        onClick={() => {
-                                            searchVM.openCategory('valoracion');
-                                            setIsPickingCategory(false);
-                                        }}
-                                    />
-                                )}
+                                {categories
+                                    .filter((cat) => cat.id !== categoryMode)
+                                    .map((cat) => (
+                                        <MainPill
+                                            key={cat.id}
+                                            label={cat.label}
+                                            count={cat.count}
+                                            isOpen={false}
+                                            onClick={() => {
+                                                searchVM.openCategory(cat.id);
+                                                setIsPickingCategory(false);
+                                            }}
+                                        />
+                                    ))}
                             </div>
                         )}
                     </>
