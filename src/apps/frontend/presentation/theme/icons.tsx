@@ -164,12 +164,45 @@ const Dots = ({ size = 18 }: { size?: number }) => (
     </svg>
 );
 
-export const Ic = { Play, Plus, Check, Search, Arrow, Imdb, Dot, Heart, Tick, Dots, Refresh, Shuffle };
+const Server = ({ size = 18, stroke = 'currentColor', sw = 1.5 }: IconProps) => (
+    <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+        <rect x='2' y='3' width='20' height='7' rx='2' stroke={stroke} strokeWidth={sw} />
+        <rect x='2' y='14' width='20' height='7' rx='2' stroke={stroke} strokeWidth={sw} />
+        <line x1='6' y1='6.5' x2='6.01' y2='6.5' stroke={stroke} strokeWidth={sw * 1.5} strokeLinecap='round' />
+        <line x1='6' y1='17.5' x2='6.01' y2='17.5' stroke={stroke} strokeWidth={sw * 1.5} strokeLinecap='round' />
+    </svg>
+);
 
-// Silueta del logo de Jellyfin como SVG inline. No reproduce el PNG a color
-// (es un perfil blanco) sino que da un fallback estable cuando el asset falla
-// —otro servidor, base path distinto, proxy que traga imágenes, etc.— para que
-// la nav nunca se quede con el icono roto del navegador.
+const Trash = ({ size = 16, stroke = 'currentColor', sw = 1.5 }: IconProps) => (
+    <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+        <path d='M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6' stroke={stroke} strokeWidth={sw} strokeLinecap='round' strokeLinejoin='round' />
+    </svg>
+);
+
+const Lock = ({ size = 14, stroke = 'currentColor', sw = 1.5 }: IconProps) => (
+    <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+        <rect x='5' y='11' width='14' height='10' rx='2' stroke={stroke} strokeWidth={sw} />
+        <path d='M8 11V7a4 4 0 0 1 8 0v4' stroke={stroke} strokeWidth={sw} strokeLinecap='round' />
+    </svg>
+);
+
+const User = ({ size = 18, stroke = 'currentColor', sw = 1.5 }: IconProps) => (
+    <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+        <path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2' stroke={stroke} strokeWidth={sw} strokeLinecap='round' strokeLinejoin='round' />
+        <circle cx='12' cy='7' r='4' stroke={stroke} strokeWidth={sw} />
+    </svg>
+);
+
+const Key = ({ size = 16, stroke = 'currentColor', sw = 1.5 }: IconProps) => (
+    <svg width={size} height={size} viewBox='0 0 24 24' fill='none'>
+        <circle cx='8' cy='15' r='4' stroke={stroke} strokeWidth={sw} />
+        <path d='M10.85 12.15L19 4M18 5l2 2M15 8l2 2' stroke={stroke} strokeWidth={sw} strokeLinecap='round' strokeLinejoin='round' />
+    </svg>
+);
+
+export const Ic = { Play, Plus, Check, Search, Arrow, Imdb, Dot, Heart, Tick, Dots, Refresh, Shuffle, Server, Trash, Lock, User, Key };
+
+// Silueta oficial del logo de Jellyfin como SVG inline (isotipo triangular).
 export function JellyfinLogo({ size = 22, style }: { size?: number; style?: CSSProperties }) {
     return (
         <svg
@@ -180,17 +213,9 @@ export function JellyfinLogo({ size = 22, style }: { size?: number; style?: CSSP
             style={{ display: 'block', ...style }}
             aria-hidden='true'
         >
-            {/* Cabeza: cúpula redondeada */}
             <path
-                d='M5 10.5C5 6.4 8.1 3 12 3s7 3.4 7 7.5'
-                fill='#fff'
-            />
-            {/* Bandeau horizontal: separa la cúpula de los tentáculos */}
-            <rect x='5' y='9' width='14' height='2.2' rx='1.1' fill='#fff' />
-            {/* Tentáculos colgantes */}
-            <path
-                d='M8 11.8v5.7c0 .9-.7 1.5-1.5 1.5S5 18.4 5 17.5M12 11.8v6.7c0 .8-.7 1.5-1.5 1.5S9 19.3 9 18.5M14 11.8v6.7c0 .8.7 1.5 1.5 1.5s1.5-.7 1.5-1.5M18 11.8v5.7c0 .9.7 1.5 1.5 1.5s1.5-.6 1.5-1.5'
-                fill='#fff'
+                fill='currentColor'
+                d='M12 .002C8.826.002-1.398 18.537.16 21.666c1.56 3.129 22.14 3.094 23.682 0S15.177 0 12 0zm7.76 18.949c-1.008 2.028-14.493 2.05-15.514 0C3.224 16.9 9.92 4.755 12.003 4.755c2.081 0 8.77 12.166 7.759 14.196zM12 9.198c-1.054 0-4.446 6.15-3.93 7.189c.518 1.04 7.348 1.027 7.86 0c.511-1.027-2.874-7.19-3.93-7.19z'
             />
         </svg>
     );

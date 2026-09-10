@@ -102,14 +102,26 @@ const TWEAK_DEFAULTS: TweakDefaults = {
     heroScrim: 'Media'
 };
 
+import introVideo from '../assets/video/intro.mp4';
+
 function PageFallback() {
     return (
         <div style={{
-            minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            minHeight: '100vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: '#000', color: T.dim, fontFamily: T.ui, fontSize: 13,
-            letterSpacing: 3, textTransform: 'uppercase'
+            letterSpacing: 3, textTransform: 'uppercase', overflow: 'hidden'
         }}>
-            {globalize.translate('Loading')}
+            <video 
+                src={introVideo} 
+                autoPlay 
+                muted 
+                loop 
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+            />
+            <div style={{ position: 'relative', zIndex: 1, textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
+                {globalize.translate('Loading')}
+            </div>
         </div>
     );
 }

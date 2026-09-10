@@ -19,7 +19,17 @@ import {
     SESSION_EVENT,
     type Session
 } from '../session/session';
-import { authenticate } from './auth';
+import {
+    authenticate,
+    getSavedServers,
+    saveServer,
+    removeSavedServer,
+    validateServer,
+    getPublicUsers,
+    avatarUrlForUser,
+    type DiscoveredServer,
+    type PublicUser
+} from './auth';
 import {
     isQuickConnectEnabled,
     startQuickConnect,
@@ -95,7 +105,7 @@ import {
     getUsers
 } from './users';
 
-export type { Session };
+export type { Session, DiscoveredServer, PublicUser };
 
 const sessionService = {
     load: loadSession,
@@ -114,7 +124,13 @@ const authService = {
     isQuickConnectEnabled,
     startQuickConnect,
     waitForQuickConnect,
-    authenticateWithQuickConnect
+    authenticateWithQuickConnect,
+    getSavedServers,
+    saveServer,
+    removeSavedServer,
+    validateServer,
+    getPublicUsers,
+    avatarUrlForUser
 };
 
 const catalogService = {

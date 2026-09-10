@@ -2252,5 +2252,17 @@
     "ShortcutMute": "Mute / Unmute",
     "ShortcutSkipSegment": "Skip intro / credits",
     "ShortcutSeekPercent": "Seek to percentage (0%-90%)",
-    "ShortcutHelp": "Keyboard shortcuts help"
+    "ShortcutHelp": "Keyboard shortcuts help",
+    "HeaderWhosWatching": "Who's watching?",
+    "HeaderSelectServerSubtitle": "Choose a server to connect",
+    "LabelServerOnline": "Online",
+    "LabelServerOffline": "Offline",
+    "LabelServerChecking": "Checking…",
+    "LabelNoUsersFound": "No public profiles found",
+    "LabelEnterPasswordFor": "Enter password for {0}",
+    "ButtonChangeProfile": "Change profile",
+    "ButtonDeleteServer": "Remove server",
+    "LabelConnectToAnotherServer": "Connect to another server",
+    "MessageInvalidServer": "Could not connect to the specified server",
+    "ButtonRefresh": "Refresh"
 }

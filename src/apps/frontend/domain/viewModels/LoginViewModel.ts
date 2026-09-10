@@ -1,9 +1,7 @@
-// ViewModel del login en dos pasos (servidor → credenciales).
-//
-// Del segundo paso salen dos caminos: usuario y contraseña, o Quick Connect —un
-// código que se aprueba desde una sesión ya abierta, sin teclear la contraseña
-// aquí—. Los dos acaban igual, con `notifyChanged()`, porque la sesión que
-// producen es la misma.
+// ViewModel del login en pasos:
+// 1. Selección de servidor disponible / añadir servidor.
+// 2. Selección de perfil de usuario (estilo Netflix/Jellyfin) o login manual.
+// 3. Introducción de contraseña (si el usuario la requiere) o Quick Connect.
 //
 // La View pinta los signals y muestra el resultado como toast; este VM no sabe
 // nada de React ni de presentation/.
@@ -11,19 +9,30 @@
 import globalize from 'lib/globalize';
 
 import { signal } from '@preact/signals-core';
-import { apiService, type ApiService } from '../../data/api/ApiService';
+import { apiService, type ApiService, type DiscoveredServer, type PublicUser } from '../../data/api/ApiService';
 
 const SERVER_URL_KEY = 'jfp-server-url';
 
-export type LoginStep = 'server' | 'login';
+export type LoginStep = 'server' | 'users' | 'password' | 'manual' | 'login';
 export type LoginResult = { ok: boolean; message: string };
+export type { DiscoveredServer, PublicUser };
 
 export class LoginViewModel {
     step = signal<LoginStep>('server');
     serverUrl = signal('');
+    serverName = signal('');
     username = signal('');
     password = signal('');
     busy = signal(false);
+
+    /** Lista de servidores detectados / guardados y su estado */
+    servers = signal<DiscoveredServer[]>([]);
+    checkingServers = signal(false);
+
+    /** Lista de usuarios públicos del servidor seleccionado */
+    publicUsers = signal<PublicUser[]>([]);
+    loadingUsers = signal(false);
+    selectedUser = signal<PublicUser | null>(null);
 
     /** Si el servidor tiene Quick Connect habilitado: sin esto no se ofrece. */
     quickConnectAvailable = signal(false);
@@ -41,30 +50,241 @@ export class LoginViewModel {
             null;
         if (saved) {
             this.serverUrl.value = saved;
-            this.step.value = 'login';
+            this.step.value = 'users';
+        } else {
+            this.step.value = 'server';
+        }
+        if (this.api.auth.getSavedServers) {
+            this.servers.value = this.api.auth.getSavedServers();
         }
     }
+
+    /**
+     * Inicializa comprobaciones asíncronas de servidores y usuarios fuera del constructor.
+     */
+    init = () => {
+        if (this.step.value === 'users' && this.serverUrl.value) {
+            void this.loadPublicUsers(this.serverUrl.value);
+        }
+        void this.loadServers();
+    };
 
     setServerUrl = (v: string) => { this.serverUrl.value = v; };
     setUsername = (v: string) => { this.username.value = v; };
     setPassword = (v: string) => { this.password.value = v; };
 
+    /**
+     * Carga los servidores guardados y comprueba en paralelo si están en línea.
+     * Actualiza la signal conforme cada servidor responde para que los
+     * disponibles aparezcan sin esperar a los que tardan en fallar por timeout.
+     */
+    loadServers = async () => {
+        const list = this.api.auth.getSavedServers ? this.api.auth.getSavedServers() : [];
+        if (list.length === 0) {
+            this.servers.value = [];
+            this.checkingServers.value = false;
+            return;
+        }
+
+        this.checkingServers.value = true;
+        const currentServers: DiscoveredServer[] = [...list];
+
+        const updateServers = () => {
+            const uniqueServers: DiscoveredServer[] = [];
+            const seenIds = new Set<string>();
+            for (const s of currentServers) {
+                if (s.id && seenIds.has(s.id)) continue;
+                if (s.id) seenIds.add(s.id);
+                uniqueServers.push(s);
+            }
+            this.servers.value = uniqueServers;
+        };
+
+        try {
+            await Promise.all(
+                list.map(async (srv, index) => {
+                    if (!this.api.auth.validateServer) {
+                        currentServers[index] = { ...srv, online: true };
+                        updateServers();
+                        return;
+                    }
+                    const res = await this.api.auth.validateServer(srv.url);
+                    currentServers[index] = {
+                        ...srv,
+                        id: res.id || srv.id,
+                        name: res.ok && res.name ? res.name : srv.name,
+                        version: res.version,
+                        online: res.ok
+                    };
+                    updateServers();
+                })
+            );
+        } finally {
+            this.checkingServers.value = false;
+        }
+    };
+
+    /**
+     * Vuelve a la pantalla de selección de servidores.
+     */
     backToServer = () => {
-        // Un código pedido al servidor anterior no vale para el siguiente.
         this.cancelQuickConnect();
         this.quickConnectAvailable.value = false;
         this.quickConnectCheckedFor = '';
+        this.selectedUser.value = null;
+        this.password.value = '';
         this.step.value = 'server';
+        void this.loadServers();
     };
 
-    /** Paso 1: normaliza y guarda la URL del servidor. */
+    /**
+     * Vuelve de la pantalla de contraseña o manual a la selección de usuarios.
+     */
+    backToUsers = () => {
+        this.cancelQuickConnect();
+        this.selectedUser.value = null;
+        this.password.value = '';
+        if (this.publicUsers.value.length > 0) {
+            this.step.value = 'users';
+        } else {
+            this.step.value = 'server';
+        }
+    };
+
+    /**
+     * Cambia a la vista de introducción manual de credenciales.
+     */
+    goToManualLogin = () => {
+        this.cancelQuickConnect();
+        this.selectedUser.value = null;
+        this.username.value = '';
+        this.password.value = '';
+        this.step.value = 'manual';
+    };
+
+    /**
+     * Selecciona un servidor de la lista o valida uno nuevo y pasa a usuarios.
+     */
+    selectServer = async (server: DiscoveredServer): Promise<LoginResult> => {
+        const normalized = this.api.auth.normalizeServerUrl(server.url);
+        if (!normalized) {
+            return { ok: false, message: globalize.translate('MessageInvalidServer') };
+        }
+
+        this.busy.value = true;
+        try {
+            if (this.api.auth.validateServer) {
+                const validation = await this.api.auth.validateServer(normalized);
+                if (!validation.ok) {
+                    this.busy.value = false;
+                    return { ok: false, message: validation.error || globalize.translate('MessageInvalidServer') };
+                }
+                if (validation.name) {
+                    server.name = validation.name;
+                }
+            }
+
+            this.serverUrl.value = normalized;
+            this.serverName.value = server.name || normalized;
+
+            if (this.api.auth.saveServer) {
+                this.api.auth.saveServer({ ...server, url: normalized, online: true });
+            }
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(SERVER_URL_KEY, normalized);
+            }
+
+            await this.loadPublicUsers(normalized);
+
+            if (this.publicUsers.value.length > 0) {
+                this.step.value = 'users';
+            } else {
+                this.step.value = 'login';
+            }
+            this.busy.value = false;
+            return { ok: true, message: '' };
+        } catch (err) {
+            this.busy.value = false;
+            return {
+                ok: false,
+                message: (err as Error).message || globalize.translate('MessageInvalidServer')
+            };
+        }
+    };
+
+    /** Paso 1: normaliza y guarda la URL del servidor (compatibilidad con tests y form). */
     chooseServer = (): boolean => {
         const normalized = this.api.auth.normalizeServerUrl(this.serverUrl.value);
         if (!normalized) return false;
         this.serverUrl.value = normalized;
-        localStorage.setItem(SERVER_URL_KEY, normalized);
-        this.step.value = 'login';
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(SERVER_URL_KEY, normalized);
+        }
+        if (this.api.auth.saveServer) {
+            this.api.auth.saveServer({ name: normalized, url: normalized });
+        }
+        void this.loadPublicUsers(normalized).then(() => {
+            if (this.publicUsers.value.length > 0) {
+                this.step.value = 'users';
+            } else {
+                this.step.value = 'login';
+            }
+        });
         return true;
+    };
+
+    /** Elimina un servidor guardado. */
+    removeServer = (url: string) => {
+        if (this.api.auth.removeSavedServer) {
+            this.api.auth.removeSavedServer(url);
+        }
+        void this.loadServers();
+    };
+
+    /**
+     * Carga los perfiles públicos de un servidor para la pantalla tipo Netflix.
+     */
+    loadPublicUsers = async (url: string) => {
+        this.loadingUsers.value = true;
+        try {
+            const users = this.api.auth.getPublicUsers ?
+                await this.api.auth.getPublicUsers(url) :
+                [];
+            this.publicUsers.value = users;
+        } catch {
+            this.publicUsers.value = [];
+        } finally {
+            this.loadingUsers.value = false;
+        }
+    };
+
+    /**
+     * Selecciona un perfil de usuario. Si no tiene contraseña configurada,
+     * inicia sesión directamente. Si tiene, pide la contraseña.
+     */
+    selectUser = async (user: PublicUser): Promise<LoginResult | null> => {
+        this.selectedUser.value = user;
+        this.username.value = user.name;
+        this.password.value = '';
+
+        if (!user.hasPassword) {
+            // Usuario sin contraseña: entra directamente sin pedir nada
+            return this.submitLogin();
+        }
+
+        // Requiere contraseña: pasa al formulario de contraseña para este usuario
+        this.step.value = 'password';
+        return null;
+    };
+
+    /**
+     * Devuelve la URL del avatar de un usuario público.
+     */
+    getUserAvatarUrl = (user: PublicUser): string => {
+        if (this.api.auth.avatarUrlForUser) {
+            return this.api.auth.avatarUrlForUser(this.serverUrl.value, user.id, user.primaryImageTag);
+        }
+        return '';
     };
 
     /**
@@ -73,7 +293,7 @@ export class LoginViewModel {
      */
     submitLogin = async (): Promise<LoginResult> => {
         const user = this.username.value.trim();
-        if (!user || !this.password.value) {
+        if (!user) {
             return { ok: false, message: globalize.translate('MessageMissingCredentials') };
         }
         this.busy.value = true;

@@ -2,6 +2,7 @@ import globalize from 'lib/globalize';
 
 import { useEffect, useRef, useState } from 'react';
 import { T } from '../../theme/tokens';
+import { Ic } from '../../theme/icons';
 import { avatarUrl } from '../../../domain/api';
 import { useSession } from '../../../domain/bridge/useSession';
 import { useToast } from '../toast/ToastProvider';
@@ -122,8 +123,24 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                     }}>
                         {name || globalize.translate('Guest')}
                     </div>
-                    <div style={{ padding: '0 14px 10px', fontSize: 11, color: T.dim, wordBreak: 'break-all' }}>
-                        {session?.serverUrl}
+                    <div style={{ padding: '0 14px 12px', display: 'flex' }}>
+                        <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: 999,
+                            padding: '4px 10px',
+                            color: T.dim,
+                            fontSize: 11,
+                            overflow: 'hidden'
+                        }} title={session?.serverUrl}>
+                            <Ic.Server size={12} stroke='currentColor' />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {session?.serverUrl}
+                            </span>
+                        </div>
                     </div>
                     <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 6px' }} />
                     <MenuEntry onClick={() => { setOpen(false); navigate({ page: 'queue' }); }}>

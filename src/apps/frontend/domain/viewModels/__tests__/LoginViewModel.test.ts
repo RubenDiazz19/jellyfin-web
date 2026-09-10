@@ -27,13 +27,19 @@ type AuthStubs = {
     startQuickConnect?: () => Promise<{ code: string; secret: string }>;
     waitForQuickConnect?: (url: string, secret: string, signal: AbortSignal) => Promise<boolean>;
     authenticateWithQuickConnect?: () => Promise<{ displayName: string }>;
+    getSavedServers?: () => Array<{ url: string; name: string }>;
+    saveServer?: (server: unknown) => void;
+    removeSavedServer?: (url: string) => void;
+    validateServer?: (url: string) => Promise<{ ok: boolean; name?: string; version?: string; error?: string }>;
+    getPublicUsers?: (url: string) => Promise<Array<{ id: string; name: string; hasPassword: boolean; primaryImageTag?: string | null }>>;
+    avatarUrlForUser?: (url: string, userId: string, tag?: string | null) => string;
 };
 
 function makeVm(stubs: AuthStubs = {}) {
     const notifyChanged = vi.fn();
     const auth = {
         normalizeServerUrl: (u: string) => u,
-        authenticate: vi.fn(),
+        authenticate: vi.fn(() => Promise.resolve({ displayName: 'Rubén', accessToken: 'tok', userId: 'u1', serverId: 's1' })),
         isQuickConnectEnabled: vi.fn(stubs.isQuickConnectEnabled ?? (() => Promise.resolve(true))),
         startQuickConnect: vi.fn(
             stubs.startQuickConnect ?? (() => Promise.resolve({ code: '123456', secret: 's3cr3t' }))
@@ -41,7 +47,13 @@ function makeVm(stubs: AuthStubs = {}) {
         waitForQuickConnect: vi.fn(stubs.waitForQuickConnect ?? (() => Promise.resolve(true))),
         authenticateWithQuickConnect: vi.fn(
             stubs.authenticateWithQuickConnect ?? (() => Promise.resolve({ displayName: 'Rubén' }))
-        )
+        ),
+        getSavedServers: vi.fn(stubs.getSavedServers ?? (() => [])),
+        saveServer: vi.fn(stubs.saveServer ?? (() => {})),
+        removeSavedServer: vi.fn(stubs.removeSavedServer ?? (() => {})),
+        validateServer: vi.fn(stubs.validateServer ?? (() => Promise.resolve({ ok: true, name: 'Mi Jellyfin', version: '10.9.0' }))),
+        getPublicUsers: vi.fn(stubs.getPublicUsers ?? (() => Promise.resolve([]))),
+        avatarUrlForUser: vi.fn(stubs.avatarUrlForUser ?? ((url: string, id: string) => `${url}/Users/${id}/Images/Primary`))
     };
     const api = { auth, session: { notifyChanged } } as unknown as ApiService;
     const vm = new LoginViewModel(api);
@@ -198,3 +210,104 @@ describe('cancelar la espera', () => {
         expect((await second)?.ok).toBe(true);
     });
 });
+
+describe('selección y validación de servidores', () => {
+    test('cargar servidores lee la lista y comprueba su estado', async () => {
+        const { vm, auth } = makeVm({
+            getSavedServers: () => [{ url: 'http://mi-servidor:8096', name: 'Mi Jellyfin' }],
+            validateServer: () => Promise.resolve({ ok: true, name: 'Mi Jellyfin', version: '10.9.0' })
+        });
+        await vm.loadServers();
+        expect(auth.getSavedServers).toHaveBeenCalled();
+        expect(auth.validateServer).toHaveBeenCalledWith('http://mi-servidor:8096');
+        expect(vm.servers.value).toHaveLength(1);
+        expect(vm.servers.value[0].online).toBe(true);
+    });
+
+    test('un servidor apagado o inalcanzable se marca con online: false', async () => {
+        const { vm } = makeVm({
+            getSavedServers: () => [{ url: 'http://hx99g:8096', name: 'HX99G' }],
+            validateServer: () => Promise.resolve({ ok: false, error: 'Connection refused' })
+        });
+        await vm.loadServers();
+        expect(vm.servers.value).toHaveLength(1);
+        expect(vm.servers.value[0].online).toBe(false);
+    });
+
+    test('seleccionar un servidor válido carga sus usuarios y avanza a perfiles', async () => {
+        const { vm, auth } = makeVm({
+            getPublicUsers: () => Promise.resolve([
+                { id: 'u1', name: 'Rubén', hasPassword: false, primaryImageTag: 'tag1' }
+            ])
+        });
+        const result = await vm.selectServer({ url: 'http://mi-servidor:8096', name: 'Servidor' });
+        expect(result.ok).toBe(true);
+        expect(vm.serverUrl.value).toBe('http://mi-servidor:8096');
+        expect(vm.step.value).toBe('users');
+        expect(vm.publicUsers.value).toHaveLength(1);
+        expect(auth.saveServer).toHaveBeenCalled();
+    });
+
+    test('un servidor inaccesible da error y no cambia de pantalla', async () => {
+        const { vm } = makeVm({
+            validateServer: () => Promise.resolve({ ok: false, error: 'Inalcanzable' })
+        });
+        vm.step.value = 'server';
+        const result = await vm.selectServer({ url: 'http://caido:8096', name: 'Caído' });
+        expect(result.ok).toBe(false);
+        expect(result.message).toBe('Inalcanzable');
+        expect(vm.step.value).toBe('server');
+    });
+
+    test('eliminar un servidor lo borra y recarga la lista', async () => {
+        const { vm, auth } = makeVm();
+        vm.removeServer('http://antiguo:8096');
+        expect(auth.removeSavedServer).toHaveBeenCalledWith('http://antiguo:8096');
+    });
+});
+
+describe('selección de perfiles de usuario estilo Netflix', () => {
+    test('un usuario sin contraseña inicia sesión directamente', async () => {
+        const { vm, auth, notifyChanged } = makeVm();
+        const user = { id: 'u1', name: 'Rubén', hasPassword: false, primaryImageTag: null };
+        const result = await vm.selectUser(user);
+
+        expect(auth.authenticate).toHaveBeenCalledWith('http://servidor:8096', 'Rubén', '');
+        expect(notifyChanged).toHaveBeenCalled();
+        expect(result?.ok).toBe(true);
+    });
+
+    test('un usuario con contraseña pasa al paso password y pide clave', async () => {
+        const { vm, auth, notifyChanged } = makeVm();
+        const user = { id: 'u2', name: 'Admin', hasPassword: true, primaryImageTag: null };
+        const result = await vm.selectUser(user);
+
+        expect(result).toBeNull();
+        expect(vm.step.value).toBe('password');
+        expect(vm.selectedUser.value).toEqual(user);
+        expect(auth.authenticate).not.toHaveBeenCalled();
+        expect(notifyChanged).not.toHaveBeenCalled();
+    });
+
+    test('volver a usuarios desde password resetea la clave', () => {
+        const { vm } = makeVm();
+        vm.publicUsers.value = [{ id: 'u1', name: 'Rubén', hasPassword: true, primaryImageTag: null }];
+        vm.step.value = 'password';
+        // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+        vm.password.value = 'test-pass';
+        vm.backToUsers();
+        expect(vm.step.value).toBe('users');
+        expect(vm.password.value).toBe('');
+        expect(vm.selectedUser.value).toBeNull();
+    });
+
+    test('ir a login manual permite introducir usuario y contraseña libres', () => {
+        const { vm } = makeVm();
+        vm.step.value = 'users';
+        vm.goToManualLogin();
+        expect(vm.step.value).toBe('manual');
+        expect(vm.username.value).toBe('');
+        expect(vm.password.value).toBe('');
+    });
+});
+

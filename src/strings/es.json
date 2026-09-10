@@ -2259,5 +2259,17 @@
     "ShortcutMute": "Silenciar / Activar sonido",
     "ShortcutSkipSegment": "Saltar intro / créditos",
     "ShortcutSeekPercent": "Saltar a porcentaje (0%-90%)",
-    "ShortcutHelp": "Ayuda de atajos de teclado"
+    "ShortcutHelp": "Ayuda de atajos de teclado",
+    "HeaderWhosWatching": "¿Quién está viendo?",
+    "HeaderSelectServerSubtitle": "Elige un servidor para conectarte",
+    "LabelServerOnline": "En línea",
+    "LabelServerOffline": "Desconectado",
+    "LabelServerChecking": "Comprobando…",
+    "LabelNoUsersFound": "No se encontraron perfiles públicos",
+    "LabelEnterPasswordFor": "Introduce la contraseña para {0}",
+    "ButtonChangeProfile": "Cambiar de perfil",
+    "ButtonDeleteServer": "Eliminar servidor",
+    "LabelConnectToAnotherServer": "Conectar a otro servidor",
+    "MessageInvalidServer": "No se pudo conectar con el servidor especificado",
+    "ButtonRefresh": "Actualizar"
 }
