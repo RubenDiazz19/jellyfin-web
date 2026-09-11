@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
@@ -8,7 +8,7 @@ import globalize from 'lib/globalize';
 import jellyfinLogo from '../../../../../assets/img/jellyfin-white.png';
 import { T } from '../../theme/tokens';
 import { Ic, JellyfinLogo } from '../../theme/icons';
-import { useIsScrolled } from '../../../domain/bridge/useScrollY';
+import { useNavScroll } from '../../../domain/bridge/useScrollY';
 import { NavActions, type NavActionData } from './NavActions';
 import { UserAvatar } from './UserAvatar';
 import { useResponsive } from '../../theme/responsive';
@@ -62,12 +62,37 @@ function Logo({ size, style }: { size: number; style?: React.CSSProperties }) {
 }
 
 export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionData }: NavProps) {
-    const scrolled = useIsScrolled(80);
+    const { isScrolled, isScrolling } = useNavScroll(40, 350);
     const r = useResponsive();
+    const [isHovered, setIsHovered] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
+    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+    const onNavMouseEnter = () => {
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current);
+            hoverTimerRef.current = undefined;
+        }
+        setIsHovered(true);
+    };
+
+    const onNavMouseLeave = () => {
+        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = setTimeout(() => {
+            setIsHovered(false);
+        }, 180);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        };
+    }, []);
 
     // Mobile/tablet: barra superior slim — solo logo, acciones del item y
     // avatar. Los enlaces y la lupa viven en la navegación M3 inferior/rail.
     if (r.touch) {
+        const showMobileBrandText = !isScrolled || !isScrolling;
         return (
             <div data-jfp-nav='' style={{
                 position: 'fixed', top: 0, right: 0, zIndex: 50,
@@ -79,11 +104,8 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                 padding: `calc(12px + env(safe-area-inset-top, 0px)) ${r.pagePad + 4}px 12px`,
                 display: 'flex', alignItems: 'center', gap: 14,
                 fontFamily: T.ui, fontSize: 14,
-                background: scrolled ? 'var(--md-sys-color-surface, rgba(0,0,0,0.65))' : 'transparent',
-                borderBottom: scrolled ?
-                    '1px solid var(--md-sys-color-outline-variant, rgba(255,255,255,0.12))' :
-                    '1px solid transparent',
-                transition: 'background .25s, border-color .25s'
+                background: 'transparent',
+                pointerEvents: 'none'
             }}>
                 <button
                     onClick={() => navigate({ page: 'home' })}
@@ -91,16 +113,32 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
                         ...linkReset,
                         display: 'flex', alignItems: 'center', gap: 8,
                         fontFamily: T.ui, fontSize: 21, letterSpacing: 0.5,
-                        color: 'var(--md-sys-color-on-surface, #fff)'
+                        color: 'var(--md-sys-color-on-surface, #fff)',
+                        pointerEvents: 'auto',
+                        filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.8))'
                     }}
                 >
                     <Logo size={21} />
-                    jellyfin
+                    <span
+                        data-jfp-brand-text=''
+                        style={{
+                            display: 'inline-block',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            maxWidth: showMobileBrandText ? '100px' : '0px',
+                            opacity: showMobileBrandText ? 1 : 0,
+                            transform: showMobileBrandText ? 'translateX(0)' : 'translateX(-6px)',
+                            transition: 'max-width .3s cubic-bezier(0.16, 1, 0.3, 1), opacity .25s ease, transform .3s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                    >
+                        jellyfin
+                    </span>
                 </button>
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 14,
                     color: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.55))',
-                    marginLeft: 'auto'
+                    marginLeft: 'auto',
+                    pointerEvents: 'auto'
                 }}>
                     {actionId && <NavActions actionId={actionId} actionData={actionData} />}
                     {/* Sin lupa aquí: en táctil la búsqueda es el segmento
@@ -113,79 +151,156 @@ export function Nav({ navigate, active = 'home', breadcrumb, actionId, actionDat
         );
     }
 
+    // Desktop:
+    // Al hacer scroll, la barra se funde sin raya inferior. Durante el scroll
+    // activo se contrae todo dejando solo el icono; al detenerse el scroll
+    // reaparece el texto de la marca, y al pasar el ratón se despliegan los
+    // enlaces con una animación suave.
+    const showBrandText = !isScrolled || (!isScrolling || isHovered);
+    const showLinks = !isScrolled || (!isScrolling && (isHovered || isFocused));
+
     return (
         <div data-jfp-nav='' style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
-            padding: '22px 24px 22px 56px',
-            display: 'flex', alignItems: 'center', gap: 44,
+            padding: isScrolled ? '16px 24px 16px 56px' : '22px 24px 22px 56px',
+            display: 'flex', alignItems: 'center', gap: 32,
             fontFamily: T.ui, fontSize: 14, letterSpacing: 0.2,
-            background: scrolled ? 'rgba(0,0,0,0.65)' : 'transparent',
-            backdropFilter: scrolled ? 'blur(16px) saturate(180%)' : 'none',
-            WebkitBackdropFilter: scrolled ? 'blur(16px) saturate(180%)' : 'none',
-            borderBottom: scrolled ? `1px solid ${T.hairline}` : '1px solid transparent',
-            transition: 'background .25s, border-color .25s, backdrop-filter .25s'
+            background: 'transparent',
+            pointerEvents: 'none',
+            transition: 'padding .3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-            <button
-                onClick={() => navigate({ page: 'home' })}
+            <div
+                onMouseEnter={onNavMouseEnter}
+                onMouseLeave={onNavMouseLeave}
+                onFocus={() => setIsFocused(true)}
+                onBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                        setIsFocused(false);
+                    }
+                }}
                 style={{
-                    ...linkReset,
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    fontFamily: T.ui, fontSize: 24, letterSpacing: 0.5,
-                    color: T.fg
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: showLinks ? 26 : (showBrandText ? 10 : 0),
+                    transition: 'gap .35s cubic-bezier(0.16, 1, 0.3, 1)',
+                    pointerEvents: 'auto',
+                    filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.8))'
                 }}
             >
-                {/* Silueta blanca del logo: el original a color desentona con
-                    el blanco y negro del resto de la interfaz. */}
-                <Logo size={24} />
-                jellyfin
-            </button>
+                <button
+                    onClick={() => navigate({ page: 'home' })}
+                    style={{
+                        ...linkReset,
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        fontFamily: T.ui, fontSize: 24, letterSpacing: 0.5,
+                        color: T.fg,
+                        flexShrink: 0
+                    }}
+                >
+                    {/* Silueta blanca del logo: el original a color desentona con
+                        el blanco y negro del resto de la interfaz. */}
+                    <Logo size={24} />
+                    <span
+                        data-jfp-brand-text=''
+                        style={{
+                            display: 'inline-block',
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            maxWidth: showBrandText ? '120px' : '0px',
+                            opacity: showBrandText ? 1 : 0,
+                            transform: showBrandText ? 'translateX(0)' : 'translateX(-8px)',
+                            transition: 'max-width .35s cubic-bezier(0.16, 1, 0.3, 1), opacity .25s ease, transform .35s cubic-bezier(0.16, 1, 0.3, 1)',
+                            pointerEvents: showBrandText ? 'auto' : 'none'
+                        }}
+                    >
+                        jellyfin
+                    </span>
+                </button>
 
-            {breadcrumb ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: T.dim, fontSize: 12, flex: 1 }}>
-                    {breadcrumb.map((b, i) => (
-                        <React.Fragment key={i}>
-                            {i > 0 && <span style={{ opacity: 0.4 }}>›</span>}
-                            {b.to ? (
-                                <button
-                                    onClick={() => navigate(b.to as Route)}
-                                    style={{
-                                        ...linkReset,
-                                        color: i === breadcrumb.length - 1 ? T.fg : T.dim
-                                    }}
-                                >
-                                    {b.label}
-                                </button>
-                            ) : (
-                                <span style={{ color: i === breadcrumb.length - 1 ? T.fg : T.dim }}>
-                                    {b.label}
-                                </span>
-                            )}
-                        </React.Fragment>
-                    ))}
-                </div>
-            ) : (
-                <div style={{ display: 'flex', gap: 26, flex: 1 }}>
-                    {NAV_LINKS.map((l) => (
-                        <button
-                            key={l.id}
-                            onClick={() => navigate(l.id === 'home' ? { page: 'home' } : { page: l.id })}
-                            style={{
-                                ...linkReset,
-                                color: l.id === active ? T.fg : T.dim,
-                                fontWeight: l.id === active ? 500 : 400,
-                                position: 'relative'
-                            }}
-                        >
-                            {globalize.translate(l.key)}
-                            {l.id === active && (
-                                <div style={{ position: 'absolute', bottom: -6, left: 0, right: 0, height: 1, background: T.fg }} />
-                            )}
-                        </button>
-                    ))}
-                </div>
-            )}
+                {breadcrumb ? (
+                    <div
+                        data-jfp-nav-links=''
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            color: T.dim,
+                            fontSize: 12,
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            maxWidth: showLinks ? '600px' : '0px',
+                            opacity: showLinks ? 1 : 0,
+                            transform: showLinks ? 'translateX(0)' : 'translateX(-10px)',
+                            transition: 'max-width .4s cubic-bezier(0.16, 1, 0.3, 1), opacity .3s ease, transform .4s cubic-bezier(0.16, 1, 0.3, 1)',
+                            pointerEvents: showLinks ? 'auto' : 'none',
+                            flexShrink: 0
+                        }}
+                    >
+                        {breadcrumb.map((b, i) => (
+                            <React.Fragment key={i}>
+                                {i > 0 && <span style={{ opacity: 0.4 }}>›</span>}
+                                {b.to ? (
+                                    <button
+                                        onClick={() => navigate(b.to as Route)}
+                                        style={{
+                                            ...linkReset,
+                                            color: i === breadcrumb.length - 1 ? T.fg : T.dim
+                                        }}
+                                    >
+                                        {b.label}
+                                    </button>
+                                ) : (
+                                    <span style={{ color: i === breadcrumb.length - 1 ? T.fg : T.dim }}>
+                                        {b.label}
+                                    </span>
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                ) : (
+                    <div
+                        data-jfp-nav-links=''
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 26,
+                            overflow: 'hidden',
+                            whiteSpace: 'nowrap',
+                            maxWidth: showLinks ? '500px' : '0px',
+                            opacity: showLinks ? 1 : 0,
+                            transform: showLinks ? 'translateX(0)' : 'translateX(-10px)',
+                            transition: 'max-width .4s cubic-bezier(0.16, 1, 0.3, 1), opacity .3s ease, transform .4s cubic-bezier(0.16, 1, 0.3, 1)',
+                            pointerEvents: showLinks ? 'auto' : 'none',
+                            flexShrink: 0
+                        }}
+                    >
+                        {NAV_LINKS.map((l) => (
+                            <button
+                                key={l.id}
+                                onClick={() => navigate(l.id === 'home' ? { page: 'home' } : { page: l.id })}
+                                style={{
+                                    ...linkReset,
+                                    color: l.id === active ? T.fg : T.dim,
+                                    fontWeight: l.id === active ? 500 : 400,
+                                    position: 'relative',
+                                    padding: '4px 0'
+                                }}
+                            >
+                                {globalize.translate(l.key)}
+                                {l.id === active && (
+                                    <div style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 1, background: T.fg }} />
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, color: T.dim, marginLeft: 'auto' }}>
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 18, color: T.dim, marginLeft: 'auto',
+                pointerEvents: 'auto',
+                filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.8))'
+            }}>
                 {actionId && <NavActions actionId={actionId} actionData={actionData} withDivider />}
                 <button
                     // Abre la capa encima de la página en vez de navegar: se

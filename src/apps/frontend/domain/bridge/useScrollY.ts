@@ -35,3 +35,56 @@ export function useIsScrolled(threshold = 80): boolean {
     }, [threshold]);
     return scrolled;
 }
+
+export type NavScrollState = {
+    /** True si window.scrollY supera el umbral. */
+    isScrolled: boolean;
+    /** True mientras el usuario se está desplazando activamente. */
+    isScrolling: boolean;
+};
+
+/**
+ * Detecta si la página se ha desplazado más allá del umbral y si el usuario
+ * está en movimiento activo de scroll. Al detenerse durante `idleDelay` ms,
+ * `isScrolling` vuelve a false.
+ */
+export function useNavScroll(threshold = 40, idleDelay = 350): NavScrollState {
+    const [isScrolled, setIsScrolled] = useState(() => (typeof window !== 'undefined' ? window.scrollY > threshold : false));
+    const [isScrolling, setIsScrolling] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        let idleTimer: ReturnType<typeof setTimeout> | undefined;
+        let prevScrolled = window.scrollY > threshold;
+
+        const onScroll = () => {
+            const currentY = window.scrollY;
+            const nextScrolled = currentY > threshold;
+            if (nextScrolled !== prevScrolled) {
+                prevScrolled = nextScrolled;
+                setIsScrolled(nextScrolled);
+            }
+
+            if (currentY > threshold) {
+                setIsScrolling(true);
+                if (idleTimer) clearTimeout(idleTimer);
+                idleTimer = setTimeout(() => {
+                    setIsScrolling(false);
+                }, idleDelay);
+            } else {
+                if (idleTimer) clearTimeout(idleTimer);
+                setIsScrolling(false);
+            }
+        };
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => {
+            if (idleTimer) clearTimeout(idleTimer);
+            window.removeEventListener('scroll', onScroll);
+        };
+    }, [threshold, idleDelay]);
+
+    return { isScrolled, isScrolling };
+}
+
