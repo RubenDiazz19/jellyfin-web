@@ -90,7 +90,9 @@ async function fetchResume(limit: number): Promise<CarouselSlide[]> {
                 logo: logoUrl(it.ParentLogoItemId ?? it.SeriesId, it.ParentLogoImageTag),
                 jfEpisodeId: it.Id,
                 positionTicks: it.UserData?.PlaybackPositionTicks,
-                genres: it.Genres ?? []
+                genres: it.Genres ?? [],
+                communityRating: it.CommunityRating,
+                officialRating: it.OfficialRating
             });
         } else {
             // Película a medias: se reanuda directamente en el reproductor.
@@ -112,7 +114,9 @@ async function fetchResume(limit: number): Promise<CarouselSlide[]> {
                 logo: logoUrl(it.Id, it.ImageTags?.Logo),
                 jfEpisodeId: it.Id,
                 positionTicks: it.UserData?.PlaybackPositionTicks,
-                genres: it.Genres ?? []
+                genres: it.Genres ?? [],
+                communityRating: it.CommunityRating,
+                officialRating: it.OfficialRating
             });
         }
         if (slides.length >= limit) break;
@@ -217,7 +221,9 @@ async function fetchHomeCarousel(): Promise<CarouselSlide[]> {
             poster: it.poster ?? '',
             logo: it.logo,
             jfEpisodeId: it.kind === 'movie' ? it.id : undefined,
-            genres: it.genres
+            genres: it.genres,
+            communityRating: it.communityRating,
+            officialRating: it.officialRating
         });
         if (slides.length >= 6) break;
     }
@@ -242,7 +248,9 @@ async function fetchHomeCarousel(): Promise<CarouselSlide[]> {
                 backdrops: s.backdrops?.length ? s.backdrops : undefined,
                 poster: s.poster ?? '',
                 logo: s.logo ?? null,
-                genres: s.genres
+                genres: s.genres,
+                communityRating: s.rating?.imdb,
+                officialRating: s.rating?.age
             });
             if (slides.length >= 6) break;
         }

@@ -11,7 +11,6 @@ import { useSession } from '../../domain/bridge/useSession';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { Backdrop } from '../components/layout/Backdrop';
 import { Nav } from '../components/layout/Nav';
-import { ScrollHint } from '../components/layout/ScrollHint';
 import { Row, RowScroller } from '../components/layout/Row';
 import { CwCard } from '../components/cards/CwCard';
 import { CatalogCard } from '../components/cards/CatalogCard';
@@ -36,8 +35,7 @@ const EMPTY_PAGE_STYLE: React.CSSProperties = { background: '#000', color: '#fff
 const SPACER_80_STYLE: React.CSSProperties = { height: 80 };
 const TOUCH_SPACER_STYLE: React.CSSProperties = { height: 'var(--jfp-viewport-h, 100vh)', pointerEvents: 'none' };
 const LIBRARY_LAYER_STYLE: React.CSSProperties = { position: 'relative', zIndex: 2, background: 'transparent', minHeight: '100vh' };
-const SPACER_100VH_STYLE: React.CSSProperties = { height: '100vh', pointerEvents: 'none' };
-const SCROLL_HINT_STYLE: React.CSSProperties = { position: 'fixed', bottom: 32, zIndex: 10 };
+const SPACER_100VH_STYLE: React.CSSProperties = { height: 'calc(100vh - 160px)', pointerEvents: 'none' };
 
 export function HomePage({ navigate }: { navigate: Navigate }) {
     const { session } = useSession();
@@ -286,8 +284,8 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                 </div>
 
                 <div style={{
-                    position: 'absolute', left: '50%', bottom: 84, transform: 'translateX(-50%)',
-                    display: 'flex', gap: 8, alignItems: 'center', zIndex: 5,
+                    position: 'absolute', left: '50%', bottom: 140, transform: 'translateX(-50%)',
+                    display: 'flex', gap: 9, alignItems: 'center', zIndex: 5,
                     opacity: trans.heroContentOpacity,
                     pointerEvents: trans.heroInteractive ? 'auto' : 'none',
                     willChange: 'opacity'
@@ -298,7 +296,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                             onClick={() => goSlide(i)}
                             aria-label={`Slide ${i + 1}`}
                             style={{
-                                width: i === idx ? 26 : 7, height: 2, borderRadius: 1,
+                                width: i === idx ? 29 : 8, height: 2, borderRadius: 1,
                                 background: i === idx ? '#fff' : 'rgba(255,255,255,0.32)',
                                 border: 'none', cursor: 'pointer', padding: 0,
                                 transition: 'width .5s cubic-bezier(.65,0,.35,1), background .3s'
@@ -308,24 +306,15 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                 </div>
             </section>
 
-            {/* Espaciador en el flujo del documento para reservar los 100vh del Hero */}
+            {/* Espaciador en el flujo del documento para reservar el espacio del Hero dejando asomar la primera fila */}
             <div style={SPACER_100VH_STYLE} />
 
             {/* Capa de la biblioteca: sube suavemente sobre el Hero fijo al hacer scroll */}
             <div style={LIBRARY_LAYER_STYLE}>
                 <HomeLibrary
                     navigate={navigate}
-                    titleOpacity={trans.titleOpacity}
-                    titleTranslateY={trans.titleTranslateY}
                 />
             </div>
-
-            {/* Indicador de scroll en la base del hero */}
-            <ScrollHint
-                label={globalize.translate('HeaderMyLibrary')}
-                opacity={trans.scrollHintOpacity}
-                style={SCROLL_HINT_STYLE}
-            />
         </div>
     );
 }
@@ -354,6 +343,8 @@ const HeroSlide = React.memo(function HeroSlideBase({
     const showData = PROTO_DATA.shows[slide.id] || PROTO_DATA.movies[slide.id];
     const logo = slide.logo ?? showData?.logo;
     const heroGenres = cleanGenres(slide.genres ?? showData?.genres).slice(0, 3);
+    const ageRating = slide.officialRating ?? showData?.rating?.age;
+    const imdbRating = slide.communityRating ?? showData?.rating?.imdb;
     // Menú contextual del slide: el mismo de la ficha, abierto con clic derecho
     // sin ir al botón. «Continuar» con id real de episodio se abre como tal; el
     // resto (novedades o modo prototipo) como serie o película según el `kind`.
@@ -387,12 +378,19 @@ const HeroSlide = React.memo(function HeroSlideBase({
             <Backdrop
                 src={slide.backdrop} srcs={slide.backdrops}
                 sharp
-                bottomFade={false}
-                vignette={0.2}
+                bottomFade
+                vignette={0.32}
             />
 
+            {/* Degradado cinematográfico envolvente tipo Netflix: funde de forma gradual y suave la imagen del hero a negro profundo */}
             <div style={{
-                position: 'absolute', inset: 0, padding: '0 48px 110px',
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.2) 55%, rgba(0,0,0,0.65) 75%, rgba(0,0,0,0.95) 92%, #000 100%)',
+                pointerEvents: 'none'
+            }} />
+
+            <div style={{
+                position: 'absolute', inset: 0, padding: '0 48px 168px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
                 textAlign: 'center',
                 opacity: contentOpacity,
@@ -404,8 +402,8 @@ const HeroSlide = React.memo(function HeroSlideBase({
                     <HeroGenres
                         genres={heroGenres}
                         navigate={navigate}
-                        fontSize={11}
-                        marginBottom={14}
+                        fontSize={12}
+                        marginBottom={15}
                         justifyContent='center'
                     />
                 )}
@@ -413,7 +411,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
                 <TextButton
                     onClick={goDetail}
                     label={slide.title}
-                    style={{ display: 'block', marginBottom: 18 }}
+                    style={{ display: 'block', marginBottom: 20 }}
                 >
                     {logo ? (
                         <img
@@ -421,13 +419,13 @@ const HeroSlide = React.memo(function HeroSlideBase({
                             alt={slide.title}
                             decoding='async'
                             style={{
-                                maxWidth: 470, maxHeight: 160, width: 'auto', height: 'auto',
+                                maxWidth: 518, maxHeight: 176, width: 'auto', height: 'auto',
                                 objectFit: 'contain', filter: 'drop-shadow(0 4px 50px rgba(0,0,0,0.6))'
                             }}
                         />
                     ) : (
                         <h1 style={{
-                            fontFamily: T.ui, fontSize: 'clamp(58px, 7vw, 116px)', lineHeight: 0.92,
+                            fontFamily: T.ui, fontSize: 'clamp(64px, 7.7vw, 128px)', lineHeight: 0.92,
                             margin: 0, fontWeight: 250, letterSpacing: -2,
                             textShadow: '0 4px 50px rgba(0,0,0,0.55)', textWrap: 'balance'
                         }}>
@@ -444,8 +442,8 @@ const HeroSlide = React.memo(function HeroSlideBase({
                     los minutos restantes al pasar por encima. */}
                 {isContinue && slide.season != null ? (
                     <div style={{
-                        fontFamily: T.ui, fontSize: 14, color: 'rgba(255,255,255,0.72)',
-                        marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12,
+                        fontFamily: T.ui, fontSize: 15, color: 'rgba(255,255,255,0.72)',
+                        marginBottom: 22, display: 'flex', alignItems: 'center', gap: 13,
                         flexWrap: 'wrap', justifyContent: 'center'
                     }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -467,14 +465,14 @@ const HeroSlide = React.memo(function HeroSlideBase({
                                     <TextButton
                                         onClick={goEpisode}
                                         highlight
-                                        style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 13 }}
                                     >
                                         {`E${slide.episode}`}
                                         {slide.episodeTitle && (
                                             <>
                                                 <Ic.Dot />
                                                 <span style={{
-                                                    fontFamily: T.ui, fontSize: 18
+                                                    fontFamily: T.ui, fontSize: 20
                                                 }}>
                                                     {slide.episodeTitle}
                                                 </span>
@@ -487,16 +485,49 @@ const HeroSlide = React.memo(function HeroSlideBase({
                     </div>
                 ) : (
                     <div style={{
-                        fontFamily: T.ui, fontSize: 12, color: 'rgba(255,255,255,0.65)',
-                        marginBottom: 20, letterSpacing: 3, textTransform: 'uppercase'
+                        fontFamily: T.ui, fontSize: 14, color: 'rgba(255,255,255,0.7)',
+                        marginBottom: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        gap: 13, flexWrap: 'wrap'
                     }}>
-                        {slide.year}
+                        <span style={{ letterSpacing: 2, fontWeight: 500 }}>
+                            {slide.year}
+                        </span>
+
+                        {ageRating && (
+                            <>
+                                <Ic.Dot />
+                                <span style={{
+                                    border: '1px solid rgba(255,255,255,0.35)',
+                                    padding: '2px 8px',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    borderRadius: 3,
+                                    letterSpacing: 0.5,
+                                    lineHeight: 1,
+                                    color: 'rgba(255,255,255,0.9)'
+                                }}>
+                                    {ageRating}
+                                </span>
+                            </>
+                        )}
+
+                        {imdbRating != null && imdbRating > 0 && (
+                            <>
+                                <Ic.Dot />
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 7,
+                                    fontWeight: 600, fontSize: 14, color: 'rgba(255,255,255,0.95)'
+                                }}>
+                                    <Ic.Imdb /> {imdbRating.toFixed(1)}
+                                </span>
+                            </>
+                        )}
                     </div>
                 )}
 
-                <div style={{ marginBottom: isContinue ? 14 : 0 }}>
+                <div style={{ marginBottom: isContinue ? 15 : 0 }}>
                     <PlayBtn
-                        size={96}
+                        size={106}
                         onClick={onPlay}
                         onHover={() => {
                             const prewarmId = slide.jfEpisodeId ?? (slide.kind === 'movie' ? slide.id : undefined);

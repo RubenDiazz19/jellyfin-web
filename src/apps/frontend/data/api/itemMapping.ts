@@ -373,7 +373,9 @@ export function mapCatalogItem(item: JFItem, fallbackKind?: 'show' | 'movie'): C
         backdrops: backdrops.length > 0 ? backdrops : (primaryFallback ? [primaryFallback] : []),
         logo: logoUrl(item.Id, item.ImageTags?.Logo),
         watched: watchedFraction(item),
-        genres: item.Genres ?? []
+        genres: item.Genres ?? [],
+        communityRating: item.CommunityRating,
+        officialRating: item.OfficialRating
     };
 }
 

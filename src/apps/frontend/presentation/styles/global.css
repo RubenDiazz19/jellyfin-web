@@ -366,9 +366,20 @@ html.layout-tablet body.jf-frontend-active {
 .jfp-fade-in { animation: jfp-fade-in 0.6s ease-out both; }
 
 .jfp-hoverlift {
-    transition: transform 0.25s cubic-bezier(0.2, 0.7, 0.3, 1);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.25, 1), box-shadow 0.28s ease, filter 0.28s ease;
+    border-radius: 6px;
 }
-.jfp-hoverlift:hover { transform: translateY(-4px); }
+.jfp-hoverlift .jfp-card-m3 {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    transition: box-shadow 0.28s ease;
+}
+.jfp-hoverlift:hover {
+    transform: translateY(-6px) scale(1.02);
+    z-index: 5;
+}
+.jfp-hoverlift:hover .jfp-card-m3 {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+}
 
 .jfp-playover {
     opacity: 0;

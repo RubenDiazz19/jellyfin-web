@@ -103,17 +103,17 @@ export function Backdrop({
                 position: 'absolute', inset: 0,
                 background: `radial-gradient(ellipse at center, transparent 28%, rgba(0,0,0,${vignette}) 100%)`
             }} />
-            {/* El remate inferior funde a negro para enlazar suavemente con el
-                inicio de la sección inferior, manteniendo la imagen del hero visible. */}
+            {/* El remate inferior funde a negro de manera progresiva y cinematográfica
+                para enlazar suavemente con el contenido de las filas inferiores. */}
             {bottomFade && (
                 <div style={{
                     position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to bottom, transparent 80%, rgba(0,0,0,0.18) 90%, rgba(0,0,0,0.55) 97%, #000 100%)'
+                    background: 'linear-gradient(to bottom, transparent 38%, rgba(0,0,0,0.18) 58%, rgba(0,0,0,0.65) 80%, #000 98%)'
                 }} />
             )}
             <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: 160,
-                background: 'linear-gradient(to bottom, rgba(0,0,0,0.30), transparent)'
+                position: 'absolute', top: 0, left: 0, right: 0, height: 180,
+                background: 'linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.12) 65%, transparent 100%)'
             }} />
         </div>
     );

@@ -18,8 +18,9 @@ import { useRef } from 'react';
 
 import globalize from 'lib/globalize';
 
-import type { CarouselSlide } from '../../../domain/models';
+import { PROTO_DATA, type CarouselSlide } from '../../../domain/models';
 import { T } from '../../theme/tokens';
+import { Ic } from '../../theme/icons';
 import { useShortViewport } from '../../theme/responsive';
 import { formatRemainingCompact } from '../../utils/format';
 import { Backdrop } from '../layout/Backdrop';
@@ -93,6 +94,9 @@ export function MobileHero({
     const plainMeta = isContinue ? globalize.translate('ContinueWatching') : String(slide.year);
     const remaining = isContinue ? formatRemainingCompact(slide.remaining) : '';
     const heroGenres = cleanGenres(slide.genres).slice(0, 3);
+    const showData = PROTO_DATA.shows[slide.id] || PROTO_DATA.movies[slide.id];
+    const ageRating = slide.officialRating ?? showData?.rating?.age;
+    const imdbRating = slide.communityRating ?? showData?.rating?.imdb;
 
     // El Backdrop alimenta la seed del dynamic color con lo que se ve, así
     // que el tema (y con él la píldora de navegación) toma el color de esta
@@ -251,6 +255,29 @@ export function MobileHero({
                             <>
                                 {plainMeta}
                                 {isContinue && slide.episodeTitle ? ` · ${slide.episodeTitle}` : ''}
+                                {ageRating ? (
+                                    <>
+                                        {' · '}
+                                        <span style={{
+                                            border: '1px solid rgba(255,255,255,0.35)',
+                                            padding: '1px 5px',
+                                            fontSize: 10,
+                                            borderRadius: 3,
+                                            fontWeight: 600,
+                                            lineHeight: 1
+                                        }}>
+                                            {ageRating}
+                                        </span>
+                                    </>
+                                ) : null}
+                                {imdbRating != null && imdbRating > 0 ? (
+                                    <>
+                                        {' · '}
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            <Ic.Imdb /> {imdbRating.toFixed(1)}
+                                        </span>
+                                    </>
+                                ) : null}
                             </>
                         )}
                         {remaining ? ` · ${remaining}` : ''}

@@ -10,7 +10,7 @@ type Props = {
 
 // Marco estándar para carátulas verticales con aspect ratio 2:3.
 export function PosterFrame({
-    borderRadius = 4,
+    borderRadius = 6,
     selected = false,
     style,
     className = 'jfp-card-m3',

@@ -49,11 +49,10 @@ type Props = {
 const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))';
 
 /**
- * Ancho del póster en desktop. Lo comparten las tarjetas y el hueco que deja
- * `LazyCard` cuando las desmonta: si no midieran igual, las filas cambiarían
- * de alto al montarse y el scroll daría tirones.
+ * Ancho del póster en desktop. Compactado a 185px para dar mayor densidad
+ * visual de catálogo cinematográfico (5–6 tarjetas por pantalla).
  */
-export const POSTER_W = 230;
+export const POSTER_W = 185;
 
 export function PosterShell({
     cover, onClick, width = null, gradient = DEFAULT_GRADIENT,

@@ -30,20 +30,20 @@ export function Row({ title, children, onTitleClick, headingStyle, style }: Prop
     const heading = (
         <h3 style={{
             fontFamily: T.ui,
-            fontSize: r.touch ? 21 : 30, fontWeight: 300,
-            margin: 0, letterSpacing: -0.3
+            fontSize: r.touch ? 21 : 24, fontWeight: 500,
+            margin: 0, letterSpacing: -0.2
         }}>
             {title}
         </h3>
     );
     return (
         <div style={{
-            marginTop: r.touch ? 24 : 48,
+            marginTop: r.touch ? 24 : 36,
             padding: r.touch ? `0 ${r.pagePad}px` : '0 56px',
             ...style
         }}>
             <div style={{
-                display: 'flex', alignItems: 'baseline', marginBottom: r.touch ? 12 : 20,
+                display: 'flex', alignItems: 'baseline', marginBottom: r.touch ? 12 : 16,
                 ...headingStyle
             }}>
                 {onTitleClick ? (
@@ -57,8 +57,8 @@ export function Row({ title, children, onTitleClick, headingStyle, style }: Prop
                     >
                         {heading}
                         <span aria-hidden='true' style={{
-                            fontSize: r.touch ? 20 : 26, lineHeight: 1,
-                            opacity: 0.45, fontWeight: 300
+                            fontSize: r.touch ? 20 : 22, lineHeight: 1,
+                            opacity: 0.5, fontWeight: 400
                         }}
                         >
                             ›
@@ -74,18 +74,22 @@ export function Row({ title, children, onTitleClick, headingStyle, style }: Prop
 /**
  * La fila de tarjetas en sí: se arrastra de lado. En táctil encaja cada
  * tarjeta al soltar (scroll-snap) y esconde la barra de scroll, que ahí no
- * pinta nada. En escritorio se queda como estaba: flex con scroll a secas.
+ * pinta nada. En escritorio se queda como estaba: flex con scroll a secas,
+ * con holgura para la elevación y sombra de hover de las tarjetas.
  */
 export function RowScroller({ children }: { children: ReactNode }) {
     const r = useResponsive();
     const style: CSSProperties = {
         display: 'flex',
-        gap: r.touch ? r.gap : 24,
+        gap: r.touch ? r.gap : 16,
         overflowX: 'auto',
+        paddingTop: 8,
+        paddingBottom: r.touch ? 6 : 16,
+        marginTop: -8,
+        marginBottom: -16,
         ...(r.touch ? {
             scrollSnapType: 'x mandatory',
             // Hueco para la sombra M3 de las tarjetas, que el scroll recorta.
-            paddingBottom: 6,
             scrollbarWidth: 'none' as const
         } : {})
     };

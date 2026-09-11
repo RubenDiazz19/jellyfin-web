@@ -138,6 +138,8 @@ export type CatalogItem = {
     logo?: string | null;
     watched?: number;
     genres?: string[];
+    communityRating?: number;
+    officialRating?: string;
 };
 
 export type ListEntry = {
@@ -171,6 +173,8 @@ export type CarouselSlide = {
     jfEpisodeId?: string;
     positionTicks?: number;
     genres?: string[];
+    communityRating?: number;
+    officialRating?: string;
 };
 
 export type ProtoData = {

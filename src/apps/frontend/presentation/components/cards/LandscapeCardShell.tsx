@@ -73,7 +73,7 @@ export function LandscapeCardShell({
                 style={{
                     height,
                     aspectRatio: height ? undefined : aspectRatio,
-                    borderRadius: 4,
+                    borderRadius: 6,
                     overflow: 'hidden',
                     position: 'relative',
                     background: '#0b0b0b',

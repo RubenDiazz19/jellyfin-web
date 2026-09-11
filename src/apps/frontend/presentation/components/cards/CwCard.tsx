@@ -19,8 +19,8 @@ type Props = { slide: CarouselSlide; navigate: Navigate };
 export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
     const r = useResponsive();
     const { play, prewarm } = usePlayer();
-    // Dimensiones ampliadas un ~30% para mayor presencia visual y legibilidad
-    const w = r.touch ? (r.mobile ? 312 : 364) : 416;
+    // Ancho optimizado a 340px en desktop para mantener proporción áurea con pósters de 185px
+    const w = r.touch ? (r.mobile ? 312 : 364) : 340;
     const epId = slide.jfEpisodeId ?? slide.id;
     const wKey = slide.season != null && slide.episode != null ?
         episodeKey(slide.id, slide.season as number, slide.episode as number) : slide.id;
