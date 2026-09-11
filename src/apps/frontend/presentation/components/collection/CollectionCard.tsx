@@ -45,7 +45,8 @@ export function CollectionCard({
     const directBackdrop = version ? `${imageUrl(id, 'Backdrop', { maxWidth: 800, index: 0 })}&v=${version}` : undefined;
     const directPrimary = version ? `${imageUrl(id, 'Primary', { maxWidth: 800 })}&v=${version}` : undefined;
 
-    const bgImage = customBackdrop ?? directBackdrop ?? backdrop ?? directPrimary ?? image;
+    // Se prioriza la carátula principal predeterminada (Primary/póster vertical) sobre el backdrop
+    const bgImage = customBackdrop ?? directPrimary ?? image ?? directBackdrop ?? backdrop;
     const activeLogo = customLogo ?? logo;
 
     const selItem: SelectableItem = selectable ?? {
@@ -79,11 +80,12 @@ export function CollectionCard({
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
+            className='jfp-hoverlift'
             style={{
                 position: 'relative',
                 width: '100%',
-                aspectRatio: '16/9',
-                borderRadius: 10,
+                aspectRatio: '2/3',
+                borderRadius: 6,
                 overflow: 'hidden',
                 cursor: 'pointer',
                 outline: sel.selected ? '3px solid #fff' : 'none',
@@ -118,12 +120,14 @@ export function CollectionCard({
                             transition: 'transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1)'
                         }}
                     />
-                    {/* Gradiente oscuro para asegurar contraste con el logo o título */}
-                    <div style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.6) 100%)'
-                    }} />
+                    {/* Gradiente oscuro solo si hay un logo o rótulo superpuesto */}
+                    {(customLogo != null || (!bgImage && customColor)) && (
+                        <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: 'linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.6) 100%)'
+                        }} />
+                    )}
                 </>
             )}
 
@@ -146,19 +150,19 @@ export function CollectionCard({
                 }} />
             )}
 
-            {/* Primer plano: Logo o título en la esquina inferior izquierda */}
-            <div style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'flex-end',
-                justifyContent: 'flex-start',
-                padding: '12px 14px',
-                pointerEvents: 'none'
-            }}>
-                {activeLogo ? (
+            {/* Primer plano: si se definió un logo personalizado explícito, o si no hay carátula con foto */}
+            {customLogo ? (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'flex-start',
+                    padding: '12px 14px',
+                    pointerEvents: 'none'
+                }}>
                     <img
-                        src={activeLogo}
+                        src={customLogo}
                         alt={title}
                         style={{
                             maxWidth: '75%',
@@ -172,25 +176,53 @@ export function CollectionCard({
                             pointerEvents: 'none'
                         }}
                     />
-                ) : (
-                    <span style={{
-                        color: '#fff',
-                        fontSize: 16,
-                        fontWeight: 700,
-                        textAlign: 'left',
-                        textTransform: 'uppercase',
-                        letterSpacing: 1.2,
-                        textShadow: '0 2px 10px rgba(0,0,0,0.9)',
-                        pointerEvents: 'none',
-                        width: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                    }}>
-                        {title}
-                    </span>
-                )}
-            </div>
+                </div>
+            ) : (!bgImage || customColor) && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'flex-start',
+                    padding: '12px 14px',
+                    pointerEvents: 'none'
+                }}>
+                    {activeLogo ? (
+                        <img
+                            src={activeLogo}
+                            alt={title}
+                            style={{
+                                maxWidth: '75%',
+                                maxHeight: '45%',
+                                objectFit: 'contain',
+                                objectPosition: 'left bottom',
+                                filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.9))',
+                                transform: hovered ? 'scale(1.04)' : 'scale(1)',
+                                transformOrigin: 'bottom left',
+                                transition: 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                                pointerEvents: 'none'
+                            }}
+                        />
+                    ) : (
+                        <span style={{
+                            color: '#fff',
+                            fontSize: 16,
+                            fontWeight: 700,
+                            textAlign: 'left',
+                            textTransform: 'uppercase',
+                            letterSpacing: 1.2,
+                            textShadow: '0 2px 10px rgba(0,0,0,0.9)',
+                            pointerEvents: 'none',
+                            width: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                        }}>
+                            {title}
+                        </span>
+                    )}
+                </div>
+            )}
 
             {/* Menú de opciones (3 puntos) en la esquina superior derecha */}
             <div

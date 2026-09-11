@@ -177,6 +177,10 @@ export async function applyRemoteSearchResult(
     result: RemoteSearchResult
 ): Promise<void> {
     await apiSend(`/Items/RemoteSearch/Apply/${itemId}?replaceAllImages=true`, 'POST', result);
+    // replaceAllImages descarga todas las carátulas del proveedor: el
+    // margen evita que el refetch traiga los tags viejos (misma razón
+    // que setImageByUrl, pero más generoso porque hay más imágenes).
+    await new Promise((r) => setTimeout(r, 800));
     clearShowCache();
     emitItemMutated(itemId);
 }

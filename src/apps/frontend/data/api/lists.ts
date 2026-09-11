@@ -42,7 +42,7 @@ function mapEntry(i: JFListItem): ListEntry {
         id: i.Id,
         name: i.Name,
         count: i.ChildCount,
-        image: firstImageUrl([['Primary', i.Id, i.ImageTags?.Primary]], { maxHeight: 300 }),
+        image: firstImageUrl([['Primary', i.Id, i.ImageTags?.Primary]], { maxHeight: 600 }),
         logo: firstImageUrl([['Logo', i.Id, i.ImageTags?.Logo]], { maxHeight: LOGO_HEIGHT }) ?? null,
         backdrop: firstImageUrl([['Backdrop', i.Id, i.BackdropImageTags?.[0]]], { maxWidth: 960 }),
         parentId: i.ParentId

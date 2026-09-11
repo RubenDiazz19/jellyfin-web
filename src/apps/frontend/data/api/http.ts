@@ -62,7 +62,13 @@ export async function apiFetch<T>(path: string): Promise<T> {
         throw noSessionError();
     }
     const res = await fetch(`${trimSlash(session.serverUrl)}${path}`, {
-        headers: authHeaders(session.accessToken)
+        headers: authHeaders(session.accessToken),
+        // Sin esto el navegador puede servir una respuesta JSON cacheada
+        // con los ImageTags/BackdropImageTags VIEJOS tras cambiar una
+        // imagen: la URL generada con el tag viejo sigue apuntando a la
+        // imagen anterior. El listCache de la app ya evita peticiones
+        // redundantes, así que el coste extra de red es despreciable.
+        cache: 'no-store'
     });
     if (!res.ok) throw new HttpError(res.status, `API ${path} → HTTP ${res.status}`);
     return res.json();

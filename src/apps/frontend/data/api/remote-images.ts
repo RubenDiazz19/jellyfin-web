@@ -23,6 +23,11 @@ export async function setImageByUrl(itemId: string, type: ImageType, url: string
         `/Items/${itemId}/RemoteImages/Download?Type=${type}&ImageUrl=${encodeURIComponent(url)}`,
         'POST'
     );
+    // El servidor descarga la imagen asíncronamente tras responder 200.
+    // Sin este margen el refetch llega antes de que se actualicen los tags
+    // y vuelve a construir URLs idénticas → la caché del navegador sirve
+    // la imagen vieja.
+    await new Promise((r) => setTimeout(r, 600));
     clearShowCache();
     emitItemMutated(itemId);
 }

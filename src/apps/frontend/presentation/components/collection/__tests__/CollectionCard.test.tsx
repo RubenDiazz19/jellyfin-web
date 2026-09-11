@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 describe('CollectionCard', () => {
-    test('renderiza backdrop e imagen por defecto cuando no hay estilo personalizado', async () => {
+    test('renderiza carátula predeterminada (póster) cuando no hay estilo personalizado', async () => {
         await mount(
             <CollectionCard
                 id='col-1'
@@ -52,7 +52,7 @@ describe('CollectionCard', () => {
         );
 
         const img = host?.querySelector('img[aria-hidden="true"]') as HTMLImageElement | null;
-        expect(img?.src).toBe('http://server/sw-backdrop.jpg');
+        expect(img?.src).toBe('http://server/sw-poster.jpg');
     });
 
     test('prioriza customBackdrop de COLLECTION_STYLES sobre las props', async () => {

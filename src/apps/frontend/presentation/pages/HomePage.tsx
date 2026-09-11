@@ -14,6 +14,7 @@ import { Nav } from '../components/layout/Nav';
 import { Row, RowScroller } from '../components/layout/Row';
 import { CwCard } from '../components/cards/CwCard';
 import { CatalogCard } from '../components/cards/CatalogCard';
+import { POSTER_W } from '../components/cards/PosterShell';
 import { CollectionCard } from '../components/collection/CollectionCard';
 import { PlayBtn } from '../components/controls/PlayBtn';
 import { TextButton } from '../components/controls/TextButton';
@@ -638,7 +639,7 @@ function HomeLibraryJellyfin({
         );
     }
 
-    const colCardWidth = r.touch ? (r.mobile ? 240 : 280) : 320;
+    const colCardWidth = r.touch ? r.cardW : POSTER_W;
 
     return (
         <section style={sectionStyle}>
