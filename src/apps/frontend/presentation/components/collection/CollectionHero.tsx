@@ -3,8 +3,11 @@ import { useResponsive } from '../../theme/responsive';
 import { ListCardMenu, type ListMenuHandle } from '../controls/ListCardMenu';
 import { COLLECTION_STYLES, type ListRef } from '../../../domain/stores';
 import { CollectionCardCarousel } from './CollectionCardCarousel';
+import { SubCollectionsCarousel } from './SubCollectionsCarousel';
 import { useCollectionScrollTransition } from './useCollectionScrollTransition';
+
 import { imageUrl, type PlaylistItem } from '../../../domain/api';
+import { analyzeImage } from '../../theme/dynamicColor';
 import type { Navigate } from '../../../app/router';
 
 type Props = {
@@ -33,10 +36,27 @@ export function CollectionHero({
     menuRef
 }: Props) {
     const r = useResponsive();
-    const trans = useCollectionScrollTransition(r.touch);
     const hasItems = !!(items && items.length > 0);
+
+    // Separamos subcolecciones (BoxSet hijos) de películas/series
+    const collectionItems = useMemo(() => items?.filter(i => i.kind === 'collection') || [], [items]);
+    const mediaItems = useMemo(() => items?.filter(i => i.kind !== 'collection') || [], [items]);
+    const onlyCollections = hasItems && mediaItems.length === 0 && collectionItems.length > 0;
+
     const internalMenu = useRef<ListMenuHandle | null>(null);
     const activeMenu = menuRef ?? internalMenu;
+
+    const {
+        scrollY,
+        logoTranslateY,
+        logoScale,
+        headerHeight,
+        backgroundBlur,
+        backgroundScale,
+        gradientOpacity,
+        backdropOpacity,
+        logoBottomFromTop
+    } = useCollectionScrollTransition(r.touch, onlyCollections);
 
     const [styleState, setStyleState] = useState(() => ({
         color: COLLECTION_STYLES.getColor(listId),
@@ -100,6 +120,22 @@ export function CollectionHero({
 
     const currentLogo = logoCandidates[logoIndex];
 
+    const [bgDynamic, setBgDynamic] = useState('#050505');
+
+    useEffect(() => {
+        if (!currentBackdrop) {
+            setBgDynamic('#050505');
+            return;
+        }
+        let active = true;
+        analyzeImage(currentBackdrop).then(res => {
+            if (active) {
+                setBgDynamic(res.seed || '#000000');
+            }
+        }).catch(() => {});
+        return () => { active = false; };
+    }, [currentBackdrop]);
+
     return (
         <section
             className='collectionHero'
@@ -108,86 +144,94 @@ export function CollectionHero({
                 activeMenu.current?.openAt(e.clientX, e.clientY);
             }}
             style={{
-                position: 'fixed',
+                position: 'relative',
                 top: 0,
                 left: 0,
                 width: '100vw',
                 height: '100vh',
                 overflow: 'hidden',
-                backgroundColor: styleState.color ?? '#000000',
+                backgroundColor: '#000000',
+                '--bg-dynamic': bgDynamic,
+                transition: 'background 0.5s ease-in-out',
                 userSelect: 'none',
                 zIndex: 0
-            }}
+            } as React.CSSProperties}
         >
-            {/* 1. Imagen a pantalla completa pura (sin degradados oscuros ni recortes) */}
+            {/* 1. Imagen a pantalla completa que se recorta a encabezado al hacer scroll */}
             {currentBackdrop && (
-                <img
-                    key={currentBackdrop}
-                    src={currentBackdrop}
-                    alt=''
-                    onError={() => {
-                        // Si falla la imagen actual (ej. 404 del Backdrop), probar el siguiente candidato
-                        setBackdropIndex((prev) => (prev + 1 < backdropCandidates.length ? prev + 1 : prev));
-                    }}
-                    style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        objectPosition: 'center top',
-                        display: 'block'
-                    }}
-                />
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0,
+                    height: headerHeight,
+                    zIndex: 0,
+                    overflow: 'hidden',
+                    pointerEvents: 'none',
+                    opacity: backdropOpacity,
+                    willChange: 'height, opacity'
+                }}>
+                    <img
+                        key={currentBackdrop}
+                        src={currentBackdrop}
+                        alt=''
+                        onError={() => {
+                            // Si falla la imagen actual (ej. 404 del Backdrop), probar el siguiente candidato
+                            setBackdropIndex((prev) => (prev + 1 < backdropCandidates.length ? prev + 1 : prev));
+                        }}
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: 'top center',
+                            display: 'block',
+                            transform: `scale(${backgroundScale})`,
+                            filter: `blur(${backgroundBlur}px)`,
+                            transition: 'transform 0.1s ease-out, filter 0.1s ease-out'
+                        }}
+                    />
+                </div>
             )}
 
-            {/* 1.1. Capa de oscurecimiento general del fondo vinculada al progreso del scroll para resaltar el carrusel */}
+            {/* 2. Capas de degradado negro dinámico */}
             {hasItems && (
                 <div
                     style={{
-                        position: 'absolute',
-                        inset: 0,
-                        backgroundColor: '#000000',
-                        opacity: trans.progress * 0.45,
+                        position: 'fixed',
+                        top: 0, left: 0, right: 0,
+                        height: headerHeight,
+                        background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0, 0.8) 55%, #000000 75%, #000000 100%)',
                         pointerEvents: 'none',
                         zIndex: 1,
-                        willChange: 'opacity',
-                        transition: 'opacity 0.1s linear'
+                        willChange: 'height'
                     }}
                 />
             )}
+            <div
+                style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0,
+                    height: headerHeight,
+                    backgroundColor: `rgba(0,0,0,${Math.min(0.65, gradientOpacity)})`,
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    transition: 'background-color 0.1s ease-out',
+                    willChange: 'height'
+                }}
+            />
 
-            {/* 2. Capa de degradado negro translúcido tras el carrusel para contraste de lectura */}
-            {hasItems && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        height: r.touch ? '380px' : '480px',
-                        background: 'linear-gradient(to top, rgba(0, 0, 0, 0.94) 0%, rgba(0, 0, 0, 0.72) 48%, rgba(0, 0, 0, 0.25) 80%, transparent 100%)',
-                        opacity: trans.gradientOpacity,
-                        pointerEvents: 'none',
-                        zIndex: 1,
-                        willChange: 'opacity'
-                    }}
-                />
-            )}
-
-            {/* 3. Logo oficial: siempre centrado horizontalmente y pegado abajo del todo */}
+            {/* 3. Logo oficial: siempre centrado horizontalmente y pegado sobre el carrusel */}
             {currentLogo && (
                 <div
                     style={{
-                        position: 'absolute',
-                        bottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 38px)' : 80,
+                        position: 'fixed',
+                        bottom: r.touch ? 280 : (hasItems ? (onlyCollections ? 500 : 360) : 280),
                         left: '50%',
-                        transform: `translate3d(-50%, ${hasItems ? trans.logoTranslateY : 0}px, 0)`,
+                        transform: `translate(-50%, ${logoTranslateY}px) scale(${logoScale})`,
                         zIndex: 2,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         pointerEvents: 'none',
+                        transformOrigin: 'center center',
                         willChange: 'transform'
                     }}
                 >
@@ -209,63 +253,51 @@ export function CollectionHero({
                 </div>
             )}
 
-            {/* 4. Indicador de scroll: Flechas animadas apuntando hacia abajo justo debajo del logo */}
+            {/* 5. Carrusel de cards solapado, fijo en pantalla, traslada con el scroll y recortado bajo el logo */}
             {hasItems && (
                 <div
-                    onClick={trans.scrollToContent}
                     style={{
-                        position: 'absolute',
-                        bottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 8px)' : 26,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 2,
-                        cursor: 'pointer',
-                        opacity: trans.scrollHintOpacity,
-                        pointerEvents: trans.scrollHintOpacity > 0.05 ? 'auto' : 'none',
-                        zIndex: 3,
-                        transition: 'opacity 0.15s ease-out'
+                        position: 'fixed',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 4,
+                        pointerEvents: 'none',
+                        maskImage: `linear-gradient(to bottom, transparent 0px, transparent ${logoBottomFromTop}px, black ${logoBottomFromTop + 80}px, black 100%)`,
+                        WebkitMaskImage: `linear-gradient(to bottom, transparent 0px, transparent ${logoBottomFromTop}px, black ${logoBottomFromTop + 80}px, black 100%)`
                     }}
                 >
-                    <svg
-                        width='18'
-                        height='18'
-                        viewBox='0 0 24 24'
-                        fill='none'
-                        style={{
-                            animation: 'jfp-arrow 1.8s ease-in-out infinite',
-                            filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.85))'
-                        }}
-                    >
-                        <path
-                            d='M6 9l6 6 6-6'
-                            stroke='rgba(255,255,255,0.85)'
-                            strokeWidth='2'
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                        />
-                    </svg>
-                </div>
-            )}
-
-            {/* 5. Carrusel de cards por encima de los iconos de navegación en móvil/tablet */}
-            {hasItems && (
-                <div
-                    style={{
+                    <div style={{
                         position: 'absolute',
-                        bottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 8px)' : 0,
+                        bottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 8px)' : 40,
                         left: 0,
                         right: 0,
-                        zIndex: 2,
-                        opacity: trans.carouselOpacity,
-                        transform: `translate3d(0, ${trans.carouselTranslateY}px, 0)`,
-                        pointerEvents: trans.carouselInteractive ? 'auto' : 'none',
-                        willChange: 'transform, opacity'
-                    }}
-                >
-                    <CollectionCardCarousel listId={listId} items={items} navigate={navigate} />
+                        paddingLeft: r.touch ? 16 : '5vw',
+                        pointerEvents: 'auto',
+                        transform: `translateY(${-scrollY}px)`,
+                        willChange: 'transform'
+                    }}>
+                        {mediaItems.length > 0 ? (
+                            <>
+                                <CollectionCardCarousel listId={listId} items={mediaItems} navigate={navigate} />
+                                {collectionItems.length > 0 && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: r.touch ? 'calc(100% + var(--jfp-nav-bottom, 72px) + 28px)' : 'calc(100% + 50px)',
+                                        left: 0,
+                                        right: 0,
+                                        paddingLeft: r.touch ? 16 : '5vw',
+                                        paddingRight: r.touch ? 16 : '5vw',
+                                        pointerEvents: 'auto'
+                                    }}>
+                                        <SubCollectionsCarousel items={collectionItems} navigate={navigate} listId={listId} />
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            collectionItems.length > 0 && (
+                                <SubCollectionsCarousel items={collectionItems} navigate={navigate} />
+                            )
+                        )}
+                    </div>
                 </div>
             )}
 

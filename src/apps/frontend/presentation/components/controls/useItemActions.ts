@@ -15,6 +15,7 @@ import {
     nativeItemUrl,
     type RefreshOptions
 } from '../../../domain/api';
+import { LISTS } from '../../../domain/stores';
 
 export type ItemKind = 'movie' | 'show' | 'season' | 'episode' | 'collection';
 export type EditorTab = 'metadata' | 'identify' | 'images' | 'subtitles';
@@ -29,6 +30,7 @@ type UseItemActionsOptions = {
     nextEpisodeId?: string;
     selectable?: SelectableItem;
     onSelect?: () => void;
+    parentListId?: string;
 };
 
 /**
@@ -43,7 +45,8 @@ export function useItemActions({
     queuePoster,
     nextEpisodeId,
     selectable,
-    onSelect
+    onSelect,
+    parentListId
 }: UseItemActionsOptions) {
     const [editor, setEditor] = useState<EditorTab | null>(null);
     const [addTo, setAddTo] = useState<AddToKind | null>(null);
@@ -153,6 +156,16 @@ export function useItemActions({
         }
     };
 
+    const doRemoveFromList = parentListId ? async () => {
+        try {
+            await LISTS.toggle('collection', parentListId, id);
+            toast(globalize.translate('RemovedFromCollection') || 'Removed from collection', 'success');
+        } catch (e) {
+            toast((e as Error).message, 'warn');
+            throw e;
+        }
+    } : undefined;
+
     return {
         // Estado de diálogos
         editor,
@@ -178,6 +191,7 @@ export function useItemActions({
         doDelete,
         openNative,
         doDownload,
-        doSelect
+        doSelect,
+        doRemoveFromList
     };
 }

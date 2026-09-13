@@ -21,6 +21,7 @@ type Options = {
     queuePoster?: string;
     nextEpisodeId?: string;
     onShuffle?: () => void;
+    parentListId?: string;
     /** Pasar null si se desea desactivar la opción de selección explícitamente */
     selectable?: SelectableItem | null;
     onSelect?: () => void;
@@ -65,6 +66,7 @@ export function useItemContextMenu(opts: Options) {
                 queuePoster={opts.queuePoster}
                 nextEpisodeId={opts.nextEpisodeId}
                 onShuffle={opts.onShuffle}
+                parentListId={opts.parentListId}
                 selectable={opts.selectable === null ? undefined : (opts.selectable ?? {
                     id: opts.id,
                     title: opts.itemTitle,

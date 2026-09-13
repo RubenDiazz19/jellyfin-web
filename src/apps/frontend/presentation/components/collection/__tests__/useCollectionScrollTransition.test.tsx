@@ -49,40 +49,33 @@ describe('useCollectionScrollTransition', () => {
         expect(latestResult).not.toBeNull();
         expect(latestResult!.scrollY).toBe(0);
         expect(latestResult!.progress).toBe(0);
-        // Indicador de scroll (flecha) 100% visible
+        // Indicador de scroll (flecha) visible
         expect(latestResult!.scrollHintOpacity).toBe(1);
-        // Carrusel oculto y desplazado hacia abajo
-        expect(latestResult!.carouselOpacity).toBe(0);
-        expect(latestResult!.carouselTranslateY).toBeGreaterThan(0);
-        // Fondo sin degradado negro (0% opacidad)
-        expect(latestResult!.gradientOpacity).toBe(0);
+        // El cabecero a pantalla completa (100vh)
+        expect(latestResult!.headerHeight).toBe(1000);
         // Logo en su posición inferior de reposo
-        expect(latestResult!.logoTranslateY).toBe(0);
+        expect(latestResult!.logoTranslateY).toBe(-0);
         expect(latestResult!.carouselInteractive).toBe(false);
     });
 
-    it('sincroniza la progresión hacia arriba y activa el carrusel al hacer scroll', async () => {
+    it('sincroniza la progresión hacia arriba y recorta el cabecero al hacer scroll', async () => {
         await mount(<HookTester />);
 
-        // Simular scroll hacia abajo (500px, completando el umbral)
+        // Simular scroll hacia abajo superando el máximo
         await act(async () => {
-            Object.defineProperty(window, 'scrollY', { value: 600, configurable: true, writable: true });
+            Object.defineProperty(window, 'scrollY', { value: 800, configurable: true, writable: true });
             window.dispatchEvent(new Event('scroll'));
-            // Esperar animación/raf
             await new Promise((resolve) => setTimeout(resolve, 50));
         });
 
         expect(latestResult).not.toBeNull();
         expect(latestResult!.progress).toBe(1);
-        // Indicador de flecha desvanecido
-        expect(latestResult!.scrollHintOpacity).toBe(0);
-        // Carrusel visible y en su posición final
-        expect(latestResult!.carouselOpacity).toBe(1);
-        expect(latestResult!.carouselTranslateY).toBe(0);
-        // Degradado negro translúcido al 100%
-        expect(latestResult!.gradientOpacity).toBe(1);
-        // Logo ha ascendido hacia la parte superior
-        expect(latestResult!.logoTranslateY).toBeLessThan(-200);
+        // El cabecero se mantiene a pantalla completa
+        expect(latestResult!.headerHeight).toBe(1000);
+        // El logo asciende hasta el límite de 33vh
+        expect(latestResult!.logoTranslateY).toBeLessThan(-100);
+        expect(latestResult!.logoScale).toBe(1);
         expect(latestResult!.carouselInteractive).toBe(true);
     });
 });
+

@@ -43,6 +43,7 @@ type Props = {
     /** Datos del item para el modo selección cuando se abre desde una tarjeta. */
     selectable?: SelectableItem;
     onSelect?: () => void;
+    parentListId?: string;
 };
 
 // Botón "más opciones" (tres puntos) con menú flotante y editor de metadata
@@ -60,7 +61,7 @@ type MenuPos = {
 export function MoreButton({
     id, size = 18, items, type = 'show', itemTitle, nextEpisodeId,
     queueSubtitle, queuePoster, handle, hideTrigger, onShuffle,
-    selectable, onSelect
+    selectable, onSelect, parentListId
 }: Props) {
     const [open, setOpen] = useState(false);
     const [menuPos, setMenuPos] = useState<MenuPos | null>(null);
@@ -75,7 +76,8 @@ export function MoreButton({
         queuePoster,
         nextEpisodeId,
         selectable,
-        onSelect
+        onSelect,
+        parentListId
     });
 
     const openMenu = () => {
@@ -131,7 +133,8 @@ export function MoreButton({
         doSelect: actions.doSelect,
         setEditor: actions.setEditor,
         setAddTo: actions.setAddTo,
-        setConfirmDelete: actions.setConfirmDelete
+        setConfirmDelete: actions.setConfirmDelete,
+        doRemoveFromList: actions.doRemoveFromList
     });
 
     const close = () => setOpen(false);

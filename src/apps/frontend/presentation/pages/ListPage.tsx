@@ -143,7 +143,7 @@ export function ListPage({ kind, listId, navigate }: Props) {
                     navigate={navigate}
                     onCoverChanged={refresh}
                 />
-                <ListGrid items={items} error={error} navigate={navigate} />
+                <ListGrid items={items} error={error} navigate={navigate} listId={listId} />
             </DetailBody>
         </div>
     );
@@ -297,10 +297,11 @@ function ListInfoStrip({
 }
 
 /** Los títulos de la lista, o el aviso de que no hay ninguno. */
-function ListGrid({ items, error, navigate }: {
+function ListGrid({ items, error, navigate, listId }: {
     items: PlaylistItem[] | null;
     error: string | null;
     navigate: Navigate;
+    listId: string;
 }) {
     const r = useResponsive();
 
@@ -319,7 +320,7 @@ function ListGrid({ items, error, navigate }: {
                 gap={r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'}
             >
                 {items?.map((item) => (
-                    <ListItemCard key={item.id} item={item} navigate={navigate} />
+                    <ListItemCard key={item.id} item={item} navigate={navigate} listId={listId} />
                 ))}
             </CardGrid>
         </LoadState>
@@ -329,7 +330,7 @@ function ListGrid({ items, error, navigate }: {
 /**
  * Un título de la lista.
  */
-function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
+function ListItemCard({ item, navigate, listId }: { item: PlaylistItem; navigate: Navigate; listId: string }) {
     if (item.kind === 'collection') {
         const selectable: SelectableItem = {
             id: item.id,
@@ -348,13 +349,14 @@ function ListItemCard({ item, navigate }: { item: PlaylistItem; navigate: Naviga
                 onClick={() => navigate({ page: 'list', kind: 'collection', listId: item.id })}
                 onChanged={() => {}}
                 selectable={selectable}
+                parentListId={listId}
             />
         );
     }
-    return <MediaItemCard item={item} navigate={navigate} />;
+    return <MediaItemCard item={item} navigate={navigate} listId={listId} />;
 }
 
-function MediaItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navigate }) {
+function MediaItemCard({ item, navigate, listId }: { item: PlaylistItem; navigate: Navigate; listId: string }) {
     const selectable: SelectableItem = {
         id: item.id,
         title: item.title,
@@ -374,7 +376,8 @@ function MediaItemCard({ item, navigate }: { item: PlaylistItem; navigate: Navig
         itemTitle: item.title,
         queueSubtitle: item.year ? String(item.year) : undefined,
         queuePoster: item.poster,
-        selectable
+        selectable,
+        parentListId: listId
     });
     const kindKey = item.kind === 'movie' ? 'Movie' : item.kind === 'episode' ? 'Episode' : 'Series';
     return (

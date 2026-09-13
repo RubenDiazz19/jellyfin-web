@@ -95,6 +95,7 @@ export {
     uploadImageFile,
     getRemoteImages,
     imageUrl,
+    getItemImageInfos,
     type JFRemoteImage
 } from '../data/api';
 export {

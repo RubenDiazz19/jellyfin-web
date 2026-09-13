@@ -111,7 +111,6 @@ describe('ListCardMenu', () => {
         expect(entries).toContain(globalize.translate('AddToCollection'));
         expect(entries).toContain(globalize.translate('EditMetadata'));
         expect(entries).not.toContain(globalize.translate('RefreshMetadata'));
-        expect(entries).toContain(globalize.translate('OptionBackgroundColor'));
         expect(entries).toContain(globalize.translate('HeaderDeleteCollection'));
 
         // No debe mostrar opciones redundantes dispersas

@@ -18,6 +18,17 @@ export type JFRemoteImage = {
     Type?: string;
 };
 
+export type JFImageInfo = {
+    ImageType: ImageType;
+    ImageIndex?: number;
+    ImageTag?: string;
+};
+
+export async function getItemImageInfos(itemId: string): Promise<JFImageInfo[]> {
+    return apiFetch<JFImageInfo[]>(`/Items/${itemId}/Images`);
+}
+
+
 export async function setImageByUrl(itemId: string, type: ImageType, url: string): Promise<void> {
     await apiSend(
         `/Items/${itemId}/RemoteImages/Download?Type=${type}&ImageUrl=${encodeURIComponent(url)}`,

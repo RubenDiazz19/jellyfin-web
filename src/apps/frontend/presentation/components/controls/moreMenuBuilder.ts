@@ -24,6 +24,7 @@ type BuildMoreMenuItemsOptions = {
     setEditor: (tab: EditorTab | null) => void;
     setAddTo: (kind: AddToKind | null) => void;
     setConfirmDelete: (open: boolean) => void;
+    doRemoveFromList?: () => void;
 };
 
 /**
@@ -59,7 +60,8 @@ export function buildMoreMenuItems({
     doSelect,
     setEditor,
     setAddTo,
-    setConfirmDelete
+    setConfirmDelete,
+    doRemoveFromList
 }: BuildMoreMenuItemsOptions): MenuItem[] {
     const t = (key: string) => globalize.translate(key);
 
@@ -85,6 +87,10 @@ export function buildMoreMenuItems({
         { label: t('AddTo'), fn: () => setAddTo('playlist') }
     ];
 
+    const removeFromList: MenuItem[] = doRemoveFromList ? [
+        { label: t('RemoveFromCollection'), fn: doRemoveFromList }
+    ] : [];
+
     /** Series y temporadas arrancan por el episodio que toca, no por sí mismas. */
     const continueEntries: MenuItem[] = nextEpisodeId ? [
         { label: t('PlayNextEpisode'), fn: doPlayNextEpisode },
@@ -104,6 +110,7 @@ export function buildMoreMenuItems({
             ...queueing,
             { isDivider: true },
             ...addToList,
+            ...removeFromList,
             ...selectItem,
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
@@ -117,6 +124,7 @@ export function buildMoreMenuItems({
             ...queueing,
             { isDivider: true },
             ...addToList,
+            ...removeFromList,
             ...selectItem,
             { isDivider: true },
             ...management
@@ -126,6 +134,7 @@ export function buildMoreMenuItems({
             ...queueing,
             { isDivider: true },
             ...addToList,
+            ...removeFromList,
             ...selectItem,
             { isDivider: true },
             ...management
@@ -135,6 +144,7 @@ export function buildMoreMenuItems({
             ...queueing,
             { isDivider: true },
             ...addToList,
+            ...removeFromList,
             ...selectItem,
             { label: t('Download'), fn: doDownload },
             { isDivider: true },
@@ -142,6 +152,7 @@ export function buildMoreMenuItems({
         ],
         collection: [
             ...addToList,
+            ...removeFromList,
             ...selectItem,
             { isDivider: true },
             ...management

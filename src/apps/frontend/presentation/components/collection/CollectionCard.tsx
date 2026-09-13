@@ -17,6 +17,7 @@ type Props = {
     onDeleted?: () => void;
     style?: CSSProperties;
     selectable?: SelectableItem;
+    parentListId?: string;
 };
 
 export function CollectionCard({
@@ -29,7 +30,8 @@ export function CollectionCard({
     onChanged,
     onDeleted,
     style,
-    selectable
+    selectable,
+    parentListId
 }: Props) {
     const [hovered, setHovered] = useState(false);
     const [, setTick] = useState(0);
@@ -76,6 +78,7 @@ export function CollectionCard({
             }}
             onContextMenu={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 menuRef.current?.openAt(e.clientX, e.clientY);
             }}
             onMouseEnter={() => setHovered(true)}
@@ -245,6 +248,7 @@ export function CollectionCard({
                     onChanged={onChanged ?? (() => {})}
                     onDeleted={onDeleted}
                     selectable={selItem}
+                    parentListId={parentListId}
                 />
             </div>
         </div>

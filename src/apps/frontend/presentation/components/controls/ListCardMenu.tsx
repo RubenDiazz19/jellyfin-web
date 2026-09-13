@@ -13,6 +13,8 @@ import { AddToDialog } from './AddToDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ColorPickerDialog } from './ColorPickerDialog';
 import { MetadataEditor } from '../admin/editor/MetadataEditor';
+import { playbackManager } from 'components/playback/playbackmanager';
+import { getItemRaw } from '../../../domain/api';
 
 // Menú contextual de una lista o colección (tres puntos).
 // Para colecciones ofrece el mismo flujo y opciones estándar que una película o serie:
@@ -36,6 +38,7 @@ type Props = {
     handle?: RefObject<ListMenuHandle | null>;
     selectable?: SelectableItem;
     onSelect?: () => void;
+    parentListId?: string;
 };
 
 const MENU_W = 230;
@@ -44,7 +47,7 @@ const GAP = 8;
 
 export function ListCardMenu({
     kind, listId, title, logo, onChanged, onDeleted, size = 26, hideTrigger, handle,
-    selectable, onSelect
+    selectable, onSelect, parentListId
 }: Props) {
     const toast = useToast();
     const btnRef = useRef<HTMLButtonElement>(null);
@@ -256,26 +259,41 @@ export function ListCardMenu({
                         <MenuEntry disabled={busy} onClick={() => { setOpen(false); setAddTo(true); }}>
                             {globalize.translate('AddToCollection')}
                         </MenuEntry>
+                        {parentListId && (
+                            <MenuEntry disabled={busy} onClick={async () => {
+                                setOpen(false);
+                                setBusy(true);
+                                try {
+                                    await LISTS.toggle('collection', parentListId, listId);
+                                    onChanged();
+                                } catch (e) {
+                                    toast((e as Error).message, 'warn');
+                                } finally {
+                                    setBusy(false);
+                                }
+                            }}>
+                                {globalize.translate('RemoveFromCollection')}
+                            </MenuEntry>
+                        )}
+                        <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
+                        <MenuEntry disabled={busy} onClick={async () => {
+                            setOpen(false);
+                            setBusy(true);
+                            try {
+                                const item = await getItemRaw(listId);
+                                playbackManager.shuffle(item);
+                            } catch (e) {
+                                toast((e as Error).message, 'warn');
+                            } finally {
+                                setBusy(false);
+                            }
+                        }}>
+                            {globalize.translate('ShufflePlay') || globalize.translate('Shuffle')}
+                        </MenuEntry>
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
                         <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('metadata'); }}>
                             {globalize.translate('EditMetadata')}
                         </MenuEntry>
-                        <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
-                        <MenuEntry disabled={busy} onClick={() => { setOpen(false); setColorDialog(true); }}>
-                            {globalize.translate('OptionBackgroundColor')}
-                        </MenuEntry>
-                        {customColor && (
-                            <MenuEntry
-                                disabled={busy}
-                                onClick={() => {
-                                    COLLECTION_STYLES.clear(listId);
-                                    setOpen(false);
-                                    onChanged();
-                                }}
-                            >
-                                {globalize.translate('LabelRemoveColor')}
-                            </MenuEntry>
-                        )}
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
                         <MenuEntry
                             danger

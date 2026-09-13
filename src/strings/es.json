@@ -772,7 +772,7 @@
     "MessageManageUsersInDashboard": "Desde aquí puedes ver el estado; el alta, permisos y contraseñas de otros usuarios se editan en la gestión avanzada.",
     "MessageMissingCredentials": "Faltan usuario o contraseña",
     "MessageNoActivity": "Sin actividad",
-    "MessageNoRemoteImages": "El proveedor de metadatos no tiene imágenes para esto. Suele pasar cuando aún no ha catalogado la temporada: puedes subir una tú desde aquí arriba o pegar su dirección.",
+    "MessageNoRemoteImages": "El proveedor de metadatos no tiene imágenes para esto. Puedes subir una tú desde aquí arriba o pegar su dirección.",
     "MessageNoAppearancesFor": "Sin apariciones de {0} en tu biblioteca",
     "MessageNoAppearancesForHelp": "Puede que su nombre esté escrito de otra forma en los metadatos, o que aún no se haya identificado el reparto de esos títulos.",
     "MessageNoCollectionsYet": "No hay colecciones todavía",

@@ -293,7 +293,7 @@
     "MessageManageUsersInDashboard": "This is a read-only view; creating users and editing permissions and passwords happens in the advanced management screens.",
     "MessageMissingCredentials": "Username or password missing",
     "MessageNoActivity": "No activity",
-    "MessageNoRemoteImages": "The metadata provider has no images for this. It usually means the season is not catalogued yet: you can upload one above or paste its address.",
+    "MessageNoRemoteImages": "The metadata provider has no images for this. You can upload one above or paste its address.",
     "MessageNoAppearancesFor": "No appearances by {0} in your library",
     "MessageNoAppearancesForHelp": "Their name may be spelled differently in the metadata, or the cast of those titles may not have been identified yet.",
     "MessageNoCollectionsYet": "No collections yet",

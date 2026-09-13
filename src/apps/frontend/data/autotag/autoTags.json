@@ -1,6 +1,6 @@
 {
   "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
-  "_generatedAt": "2026-09-09T08:32:47.235Z",
+  "_generatedAt": "2026-09-14T11:43:23.355Z",
   "items": {
     "2581c8f29f2043730ea7921e9103ff09": [
       "Crimen",
@@ -118,6 +118,39 @@
       "Acción",
       "Comedia",
       "Romance"
+    ],
+    "97e3319dd3ab29353847ee66cdd8f325": [
+      "Animación",
+      "Acción",
+      "Aventura",
+      "Crimen",
+      "Drama"
+    ],
+    "362ebf6081db28484134feb33991ad27": [
+      "Aventura",
+      "Fantasía",
+      "Acción",
+      "Bélico"
+    ],
+    "f0ab39cd60938edca247b9b0504dbdec": [
+      "Aventura",
+      "Fantasía",
+      "Acción",
+      "Amistad"
+    ],
+    "2c04f6f56065d6f4bfae469f1cf276fc": [
+      "Aventura",
+      "Fantasía",
+      "Acción",
+      "Amistad",
+      "Bélico"
+    ],
+    "234d0e57e9f60b7f6c6b8c06eda04eeb": [
+      "Aventura",
+      "Acción",
+      "Ciencia ficción",
+      "Bélico",
+      "Space opera"
     ]
   }
 }

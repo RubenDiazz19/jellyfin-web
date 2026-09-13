@@ -8,6 +8,7 @@ type Props = {
     fontSize?: string;
     fontWeight?: CSSProperties['fontWeight'];
     onLogoClick?: (e: MouseEvent) => void;
+    scale?: number;
 };
 
 // Overlay inferior para el logo o título en tarjetas de tipo póster.
@@ -17,7 +18,8 @@ export function PosterOverlay({
     inProgress = false,
     fontSize = 'clamp(12px, 8.5cqi, 20px)',
     fontWeight,
-    onLogoClick
+    onLogoClick,
+    scale
 }: Props) {
     const bottom = inProgress ? '8%' : '5%';
     const interactive = !!onLogoClick;
@@ -59,7 +61,9 @@ export function PosterOverlay({
                     zIndex: interactive ? 2 : undefined,
                     filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))',
                     cursor: interactive ? 'pointer' : undefined,
-                    outline: 'none'
+                    outline: 'none',
+                    transform: scale ? `scale(${scale})` : undefined,
+                    transformOrigin: 'bottom left'
                 }}
             >
                 <img
@@ -101,7 +105,9 @@ export function PosterOverlay({
                 zIndex: interactive ? 2 : undefined,
                 filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))',
                 cursor: interactive ? 'pointer' : undefined,
-                outline: 'none'
+                outline: 'none',
+                transform: scale ? `scale(${scale})` : undefined,
+                transformOrigin: 'bottom left'
             }}
         >
             <div style={{

@@ -110,7 +110,7 @@ export function RemoteAlternativesTrack({
                 fontSize: 12,
                 color: T.dim,
                 lineHeight: 1.5,
-                whiteSpace: 'nowrap',
+                whiteSpace: 'normal',
                 alignSelf: 'center'
             }}>
                 {globalize.translate('MessageNoRemoteImages')}

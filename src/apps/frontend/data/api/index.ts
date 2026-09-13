@@ -58,6 +58,7 @@ export {
     moveImage,
     uploadImageFile,
     getRemoteImages,
+    getItemImageInfos,
     type JFRemoteImage
 } from './remote-images';
 export {
