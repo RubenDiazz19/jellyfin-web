@@ -12,7 +12,7 @@ import type { SelectableItem } from '../../../domain/viewModels/SelectionViewMod
 import { useItemContextMenu } from '../controls/useItemContextMenu';
 import { useSelectionMode } from '../controls/useSelectionMode';
 
-export type CardKind = 'show' | 'movie' | 'season' | 'episode';
+export type CardKind = 'show' | 'movie' | 'season' | 'episode' | 'collection';
 
 /** Lo que hace falta del item para navegar a su ficha y para encolarlo. */
 export type CardItem = {
@@ -64,6 +64,8 @@ export function useCardInteractions(item: CardItem, navigate: Navigate): CardInt
             navigate({ page: 'season', showId: item.showId, seasonN: item.seasonN });
         } else if (item.kind === 'episode' && item.showId && item.seasonN != null && item.epN != null) {
             navigate({ page: 'episode', showId: item.showId, seasonN: item.seasonN, epN: item.epN });
+        } else if (item.kind === 'collection') {
+            navigate({ page: 'list', kind: 'collection', listId: item.id });
         }
     };
 

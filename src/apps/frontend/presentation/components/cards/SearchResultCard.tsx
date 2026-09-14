@@ -23,10 +23,11 @@ export const SearchResultCard = memo(function SearchResultCardBase({ item, navig
     return (
         <PosterTile
             title={item.title}
-            kindLabel={globalize.translate(item.kind === 'show' ? 'Series' : 'Movie')}
+            kindLabel={item.kind === 'collection' ? 'Colección' : globalize.translate(item.kind === 'show' ? 'Series' : 'Movie')}
             cover={item.poster || item.backdrop}
             logo={item.logo}
             interactions={interactions}
+            aspectRatio={item.kind === 'collection' ? '16/9' : '2/3'}
         />
     );
 });

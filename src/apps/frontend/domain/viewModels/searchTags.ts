@@ -1,11 +1,11 @@
-import type { Movie, Show } from '../../data/models';
+import type { Movie, Show, ListEntry } from '../../data/models';
 import { canonicalTag, getItemTags, normalizeTagForSearch } from '../tags';
 
 /**
  * Extrae y normaliza todas las etiquetas de las obras del catálogo,
  * ignorando mayúsculas y conservando la primera grafía encontrada.
  */
-export function computeAllTags(items: ReadonlyArray<Show | Movie>): string[] {
+export function computeAllTags(items: ReadonlyArray<Show | Movie | (ListEntry & { kind: 'collection' })>): string[] {
     const seen = new Map<string, string>();
     for (const item of items) {
         for (const tag of getItemTags(item)) {
@@ -16,7 +16,7 @@ export function computeAllTags(items: ReadonlyArray<Show | Movie>): string[] {
     return [...seen.values()].sort((a, b) => a.localeCompare(b));
 }
 
-type ComputeAvailableTagsOptions<T extends Show | Movie> = {
+type ComputeAvailableTagsOptions<T extends Show | Movie | (ListEntry & { kind: 'collection' })> = {
     allTags: string[];
     activeTags: string[];
     currentResults: ReadonlyArray<T>;
@@ -29,7 +29,7 @@ type ComputeAvailableTagsOptions<T extends Show | Movie> = {
  * Si hay filtros activos, solo devuelve las etiquetas que tienen las obras resultantes
  * (más las etiquetas ya seleccionadas, para poder desmarcarlas).
  */
-export function computeAvailableTags<T extends Show | Movie>({
+export function computeAvailableTags<T extends Show | Movie | (ListEntry & { kind: 'collection' })>({
     allTags,
     activeTags,
     currentResults,

@@ -23,7 +23,8 @@ import { RatingFilterBar } from './RatingFilterBar';
 
 const TYPE_OPTIONS: { id: TypeFilter; key: string }[] = [
     { id: 'series', key: 'Shows' },
-    { id: 'peliculas', key: 'Movies' }
+    { id: 'peliculas', key: 'Movies' },
+    { id: 'colecciones', key: 'Collections' }
 ];
 
 const STATE_OPTIONS: { id: StateFilter; key: string }[] = [

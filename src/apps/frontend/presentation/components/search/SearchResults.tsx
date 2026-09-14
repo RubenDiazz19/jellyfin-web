@@ -78,6 +78,8 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
     }
 
     const visibleItems = filtered.slice(0, limit);
+    const moviesAndSeries = visibleItems.filter((item) => item.kind !== 'collection');
+    const collections = visibleItems.filter((item) => item.kind === 'collection');
 
     return (
         <>
@@ -91,15 +93,45 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
                 </div>
                 <SelectToggle pushRight />
             </div>
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? (r.mobile ? 110 : 140) : 160}px, 1fr))`,
-                gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'
-            }}>
-                {visibleItems.map((item) => (
-                    <SearchResultCard key={item.id} item={item} navigate={navigate} />
-                ))}
-            </div>
+            {moviesAndSeries.length > 0 && (
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? (r.mobile ? 110 : 140) : 160}px, 1fr))`,
+                    gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px',
+                    marginBottom: collections.length > 0 ? 40 : 0
+                }}>
+                    {moviesAndSeries.map((item) => (
+                        <SearchResultCard key={item.id} item={item as any} navigate={navigate} />
+                    ))}
+                </div>
+            )}
+            
+            {collections.length > 0 && (
+                <>
+                    {moviesAndSeries.length > 0 && (
+                        <div style={{
+                            height: 1,
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            marginBottom: 40,
+                            width: '100%',
+                            maxWidth: 300,
+                        }} />
+                    )}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(auto-fill, minmax(${r.touch ? (r.mobile ? 200 : 220) : 260}px, 1fr))`,
+                        gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'
+                    }}>
+                        {collections.map((item) => (
+                            <SearchResultCard 
+                                key={item.id} 
+                                item={{ ...item, title: 'name' in item ? item.name : (item as any).title, year: 0 } as any} 
+                                navigate={navigate} 
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
             {limit < filtered.length && (
                 <div ref={sentinelRef} style={{ height: 40, margin: '20px 0' }} />
             )}

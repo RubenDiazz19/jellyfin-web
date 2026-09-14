@@ -130,7 +130,7 @@ export type CatalogItem = {
     id: string;
     title: string;
     originalTitle?: string;
-    kind: 'show' | 'movie';
+    kind: 'show' | 'movie' | 'collection';
     year: number;
     poster?: string;
     backdrop?: string;
@@ -150,6 +150,8 @@ export type ListEntry = {
     logo?: string | null;
     backdrop?: string;
     parentId?: string;
+    tags?: string[];
+    autoTags?: string[];
 };
 
 export type CarouselSlide = {

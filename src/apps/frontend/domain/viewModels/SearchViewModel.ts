@@ -12,7 +12,7 @@
 import { computed, effect, signal, type Signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
-import { PROTO_DATA, type Movie, type Show } from '../../data/models';
+import { PROTO_DATA, type Movie, type Show, type ListEntry } from '../../data/models';
 import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { WATCHED } from '../../data/stores/watchedStore';
@@ -52,7 +52,8 @@ const CATALOG_TTL_MS = 60_000;
  */
 export type SearchResult =
     | (Show & { kind: 'show' })
-    | (Movie & { kind: 'movie' });
+    | (Movie & { kind: 'movie' })
+    | (ListEntry & { kind: 'collection' });
 
 /**
  * Separa los `#tag` del texto libre.
@@ -96,12 +97,12 @@ function matchesRating(score: number, filters: readonly RatingFilter[]): boolean
 }
 
 function matchesState(
-    kind: 'show' | 'movie',
+    kind: 'show' | 'movie' | 'collection',
     id: string,
     isWatched: boolean,
     states: readonly StateFilter[]
 ): boolean {
-    const isFav = kind === 'show' ? FAVS.has(id) : FAVS.has(movieKey(id));
+    const isFav = (kind === 'show' || kind === 'collection') ? FAVS.has(id) : FAVS.has(movieKey(id));
     if (states.includes('favs') && !isFav) return false;
     if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) return false;
     if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) return false;
@@ -120,7 +121,7 @@ export type FilterCriteria = {
  */
 export function matchesFilters(
     item: {
-        kind: 'show' | 'movie';
+        kind: 'show' | 'movie' | 'collection';
         id: string;
         tags: readonly string[];
         imdb: number;
@@ -130,7 +131,8 @@ export function matchesFilters(
 ): boolean {
     if (criteria.types.length > 0) {
         const matchesType = (criteria.types.includes('series') && item.kind === 'show')
-            || (criteria.types.includes('peliculas') && item.kind === 'movie');
+            || (criteria.types.includes('peliculas') && item.kind === 'movie')
+            || (criteria.types.includes('colecciones') && item.kind === 'collection');
         if (!matchesType) return false;
     }
 
@@ -192,7 +194,7 @@ export function normalizeSearchText(text: string | undefined | null): string {
 type IndexedItem = {
     item: SearchResult;
     id: string;
-    kind: 'show' | 'movie';
+    kind: 'show' | 'movie' | 'collection';
     normTitle: string;
     normOriginalTitle: string;
     normSynopsis: string;
@@ -283,6 +285,7 @@ export class SearchViewModel {
     /** Biblioteca real de Jellyfin (vacía sin sesión). */
     shows = signal<Show[]>([]);
     movies = signal<Movie[]>([]);
+    collections = signal<ListEntry[]>([]);
     loading = signal(false);
 
     /**
@@ -329,15 +332,16 @@ export class SearchViewModel {
         const protoMovies = Object.values(PROTO_DATA.movies)
             .filter((m) => !jfMovieIds.has(m.id))
             .map((m) => ({ ...m, kind: 'movie' as const }));
-        const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies];
+        const jfCollections = this.collections.value.map((c) => ({ ...c, kind: 'collection' as const }));
+        const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies, ...jfCollections];
 
         return all.map((item) => {
-            const rawGenres = getItemGenres(item);
+            const rawGenres = 'genres' in item ? getItemGenres(item) : [];
             const genres = [
                 ...rawGenres.map((g) => normalizeTagForSearch(g)),
                 ...rawGenres.map((g) => normalizeSearchText(g))
             ].filter(Boolean);
-            const tags = getItemTags(item).map((t) => normalizeTagForSearch(t));
+            const tags = 'tags' in item ? getItemTags(item).map((t) => normalizeTagForSearch(t)) : [];
             const seriesEpisodeKeys = item.kind === 'show' ?
                 (item.seasons || []).flatMap((s) => (s.episodes || []).map((e) => episodeKey(item.id, s.n, e.n))) :
                 undefined;
@@ -346,13 +350,13 @@ export class SearchViewModel {
                 item,
                 id: item.id,
                 kind: item.kind,
-                normTitle: normalizeSearchText(item.title),
-                normOriginalTitle: normalizeSearchText(item.originalTitle),
-                normSynopsis: normalizeSearchText(item.synopsis),
+                normTitle: normalizeSearchText('title' in item ? item.title : item.name),
+                normOriginalTitle: 'originalTitle' in item ? normalizeSearchText(item.originalTitle) : '',
+                normSynopsis: 'synopsis' in item ? normalizeSearchText(item.synopsis) : '',
                 genres,
-                cast: (item.cast ?? []).map((c) => normalizeSearchText(c.name)).filter(Boolean),
+                cast: ('cast' in item && item.cast ? item.cast : []).map((c) => normalizeSearchText(c.name)).filter(Boolean),
                 tags,
-                imdb: item.rating?.imdb ?? 0,
+                imdb: 'rating' in item ? (item.rating?.imdb ?? 0) : 0,
                 seriesEpisodeKeys
             };
         });
@@ -390,9 +394,15 @@ export class SearchViewModel {
         for (const entry of indexedCatalog) {
             const matches = matchesFilters(
                 entry,
-                () => entry.kind === 'show' ?
-                    !!entry.seriesEpisodeKeys && entry.seriesEpisodeKeys.length > 0 && entry.seriesEpisodeKeys.every((k) => WATCHED.has(k)) :
-                    ((entry.item.watched ?? 0) >= 1 || WATCHED.has(movieKey(entry.id))),
+                () => {
+                    if (entry.kind === 'show') {
+                        return !!entry.seriesEpisodeKeys && entry.seriesEpisodeKeys.length > 0 && entry.seriesEpisodeKeys.every((k) => WATCHED.has(k));
+                    }
+                    if (entry.kind === 'movie') {
+                        return (('watched' in entry.item ? (entry.item.watched ?? 0) : 0) >= 1 || WATCHED.has(movieKey(entry.id)));
+                    }
+                    return false; // Collections no tienen estado de visto
+                },
                 criteria
             );
             if (!matches) continue;
@@ -421,11 +431,11 @@ export class SearchViewModel {
         for (const item of remoteItems) {
             if (known.has(item.id)) continue;
 
-            const itemTags = getItemTags(item).map((t) => t.toLowerCase());
-            const score = item.rating?.imdb ?? 0;
+            const itemTags = 'tags' in item ? getItemTags(item).map((t) => t.toLowerCase()) : [];
+            const score = 'rating' in item ? (item.rating?.imdb ?? 0) : 0;
             const matches = matchesFilters(
                 { kind: item.kind, id: item.id, tags: itemTags, imdb: score },
-                () => item.kind === 'show' ? isShowFullyWatched(item) : isMovieWatched(item),
+                () => item.kind === 'show' ? isShowFullyWatched(item) : item.kind === 'movie' ? isMovieWatched(item) : false,
                 criteria
             );
             if (!matches) continue;
@@ -629,17 +639,20 @@ export class SearchViewModel {
         }
         this.loading.value = true;
         await this.guarded(async (isLatest) => {
-            const [shows, movies] = await Promise.all([
+            const [shows, movies, collections] = await Promise.all([
                 this.api.catalog.getShows(),
-                this.api.catalog.getMovies().catch(() => [] as Movie[])
+                this.api.catalog.getMovies().catch(() => [] as Movie[]),
+                this.api.catalog.getCollections().catch(() => [] as ListEntry[])
             ]);
             if (!isLatest()) return;
             this.shows.value = shows;
             this.movies.value = movies;
+            this.collections.value = collections;
             this.lastLoadedAt = Date.now();
         }, () => {
             this.shows.value = [];
             this.movies.value = [];
+            this.collections.value = [];
             return false;
         });
     }

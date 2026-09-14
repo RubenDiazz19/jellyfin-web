@@ -1,12 +1,12 @@
 import type { RatingOperator, SavedView } from '../../data/stores/viewsStore';
 
 export type { RatingOperator };
-export type TypeFilter = 'todo' | 'series' | 'peliculas';
+export type TypeFilter = 'todo' | 'series' | 'peliculas' | 'colecciones';
 export type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
 export type FilterCategory = 'tipo' | 'estado' | 'generos' | 'valoracion';
 export type RatingFilter = { operator: RatingOperator; value: number };
 
-export const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas'];
+export const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas', 'colecciones'];
 export const STATE_FILTERS: readonly string[] = ['todo', 'favs', 'vistos', 'no-vistos'];
 
 export function isTypeFilter(v: string): v is TypeFilter {

@@ -44,6 +44,7 @@ type Props = {
     centerOverlay?: ReactNode;
     bottomOverlay?: ReactNode;
     onLogoClick?: (e: MouseEvent) => void;
+    aspectRatio?: string;
 };
 
 const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))';
@@ -59,7 +60,7 @@ export function PosterShell({
     watchedButton, favButton, logo, title, progress = 0, caption,
     selecting = false, selected = false, onContextMenu, contextMenu,
     variant = 'full', kindLabel, borderRadius, centerOverlay, bottomOverlay,
-    onLogoClick
+    onLogoClick, aspectRatio
 }: Props) {
     const isTile = variant === 'tile';
     const inProgress = !isTile && progress > 0 && progress < 1;
@@ -87,7 +88,7 @@ export function PosterShell({
                 { width, flex: `0 0 ${width}px`, cursor: 'pointer' }}
             className='jfp-hoverlift'
         >
-            <PosterFrame borderRadius={computedRadius} selected={selected}>
+            <PosterFrame borderRadius={computedRadius} selected={selected} aspectRatio={aspectRatio}>
                 {/* `<img>` y no `background-image`: un fondo CSS no admite
                     `loading='lazy'`, así que el navegador se descargaba de
                     golpe las carátulas de toda la rejilla —cientos— aunque no

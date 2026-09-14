@@ -5,6 +5,7 @@ type Props = {
     selected?: boolean;
     style?: CSSProperties;
     className?: string;
+    aspectRatio?: string;
     children: ReactNode;
 };
 
@@ -12,6 +13,7 @@ type Props = {
 export function PosterFrame({
     borderRadius = 6,
     selected = false,
+    aspectRatio = '2/3',
     style,
     className = 'jfp-card-m3',
     children
@@ -20,7 +22,7 @@ export function PosterFrame({
         <div
             className={className}
             style={{
-                aspectRatio: '2/3',
+                aspectRatio,
                 borderRadius,
                 overflow: 'hidden',
                 position: 'relative',
