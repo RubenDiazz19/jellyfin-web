@@ -6,11 +6,12 @@
 // orden. Lo que dejan de repetir son los cuatro bloques de estilo idénticos
 // que había copiados en cada una.
 
+import globalize from 'lib/globalize';
 import type { CSSProperties, ReactNode } from 'react';
 import { C, T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';
-import { expandGenre } from '../../../domain/genres';
+import { cleanGenres } from '../../../domain/genres';
 
 const FULL_SCREEN: CSSProperties = {
     minHeight: '100vh', background: '#000', fontFamily: T.ui,
@@ -34,7 +35,7 @@ export function DetailStatus({ error }: { error?: string | null }) {
             ...FULL_SCREEN, color: T.dim,
             fontSize: 13, letterSpacing: 3, textTransform: 'uppercase'
         }}>
-            Cargando…
+            {globalize.translate('Loading')}
         </section>
     );
 }
@@ -173,7 +174,7 @@ export function GenreLinks({
     genres: string[];
     navigate: Navigate;
 }) {
-    const cleanList = Array.from(new Set(genres.flatMap((g) => expandGenre(g))));
+    const cleanList = cleanGenres(genres);
     return (
         <>
             {cleanList.map((label, i) => {

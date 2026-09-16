@@ -47,6 +47,7 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
 
     const menuItems = (
         <>
+            {!r.touch && <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 6px' }} />}
             <MenuEntry sheet={r.touch} onClick={() => { setOpen(false); navigate({ page: 'queue' }); }}>
                 {globalize.translate('HeaderPlayQueue')}
             </MenuEntry>
@@ -63,6 +64,7 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
             }}>
                 {globalize.translate('ButtonSwitchUser')}
             </MenuEntry>
+            {!r.touch && <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 0' }} />}
             <MenuEntry sheet={r.touch} danger onClick={() => {
                 setOpen(false);
                 toast(globalize.translate('MessageSignedOut'), 'info');
@@ -142,31 +144,7 @@ export function UserAvatar({ navigate }: { navigate: Navigate }) {
                             </span>
                         </div>
                     </div>
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '2px 0 6px' }} />
-                    <MenuEntry onClick={() => { setOpen(false); navigate({ page: 'queue' }); }}>
-                        {globalize.translate('HeaderPlayQueue')}
-                    </MenuEntry>
-                    <MenuEntry onClick={() => { setOpen(false); navigate({ page: 'profile' }); }}>
-                        {globalize.translate('Profile')}
-                    </MenuEntry>
-                    <MenuEntry onClick={() => { setOpen(false); navigate({ page: 'settings' }); }}>
-                        {globalize.translate('Settings')}
-                    </MenuEntry>
-                    <MenuEntry onClick={() => {
-                        setOpen(false);
-                        toast(globalize.translate('MessageSignedOutSwitchUser'), 'info');
-                        logout();
-                    }}>
-                        {globalize.translate('ButtonSwitchUser')}
-                    </MenuEntry>
-                    <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '6px 0' }} />
-                    <MenuEntry danger onClick={() => {
-                        setOpen(false);
-                        toast(globalize.translate('MessageSignedOut'), 'info');
-                        logout();
-                    }}>
-                        {globalize.translate('ButtonSignOut')}
-                    </MenuEntry>
+                    {menuItems}
                 </PopupPanel>
             )}
         </div>

@@ -26,6 +26,11 @@ export default [
                         target: './src/apps/frontend/data',
                         from: './src/apps/frontend/presentation',
                         message: 'Model no puede importar de presentation/.'
+                    },
+                    {
+                        target: './src/apps/frontend',
+                        from: ['./src/legacy/components', './src/legacy/scripts', './src/legacy/elements'],
+                        message: 'Frontend no puede importar componentes legacy. Usa lib/globalize para traducciones.'
                     }
                 ]
             }]

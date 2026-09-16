@@ -37,6 +37,9 @@ const SPACER_80_STYLE: React.CSSProperties = { height: 80 };
 const TOUCH_SPACER_STYLE: React.CSSProperties = { height: 'var(--jfp-viewport-h, 100vh)', pointerEvents: 'none' };
 const LIBRARY_LAYER_STYLE: React.CSSProperties = { position: 'relative', zIndex: 2, background: 'transparent', minHeight: '100vh' };
 const SPACER_100VH_STYLE: React.CSSProperties = { height: 'calc(100vh - 160px)', pointerEvents: 'none' };
+const HERO_VIGNETTE_STYLE: React.CSSProperties = { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.2) 55%, rgba(0,0,0,0.65) 75%, rgba(0,0,0,0.95) 92%, #000 100%)', pointerEvents: 'none' };
+const HERO_LOADING_TOUCH_STYLE: React.CSSProperties = { position: 'relative', height: 'var(--jfp-viewport-h, 100vh)', marginLeft: 'calc(-1 * var(--jfp-nav-left, 0px))', width: 'calc(100% + var(--jfp-nav-left, 0px))', overflow: 'hidden', background: '#000' };
+const HERO_LOADING_DESKTOP_STYLE: React.CSSProperties = { position: 'relative', height: '100vh', width: '100%', overflow: 'hidden', background: '#000' };
 
 export function HomePage({ navigate }: { navigate: Navigate }) {
     const { session } = useSession();
@@ -177,16 +180,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         return (
             <div style={ROOT_PAGE_STYLE}>
                 <Nav navigate={navigate} active='home' />
-                <section style={{
-                    position: 'relative',
-                    // El hero táctil también es a pantalla completa y a
-                    // sangre, así que el hueco reservado mientras carga mide
-                    // lo mismo (si no, la biblioteca da un salto al llegar).
-                    height: r.touch ? 'var(--jfp-viewport-h, 100vh)' : '100vh',
-                    marginLeft: r.touch ? 'calc(-1 * var(--jfp-nav-left, 0px))' : undefined,
-                    width: r.touch ? 'calc(100% + var(--jfp-nav-left, 0px))' : '100%',
-                    overflow: 'hidden', background: '#000'
-                }} />
+                <section style={r.touch ? HERO_LOADING_TOUCH_STYLE : HERO_LOADING_DESKTOP_STYLE} />
                 <HomeLibrary navigate={navigate} />
             </div>
         );
@@ -384,11 +378,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
             />
 
             {/* Degradado cinematográfico envolvente tipo Netflix: funde de forma gradual y suave la imagen del hero a negro profundo */}
-            <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.2) 55%, rgba(0,0,0,0.65) 75%, rgba(0,0,0,0.95) 92%, #000 100%)',
-                pointerEvents: 'none'
-            }} />
+            <div style={HERO_VIGNETTE_STYLE} />
 
             <div style={{
                 position: 'absolute', inset: 0, padding: '0 48px 168px',

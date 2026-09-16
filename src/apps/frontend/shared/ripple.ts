@@ -19,10 +19,13 @@ function spawnInk(target: HTMLElement, clientX: number, clientY: number): void {
     ink.style.height = `${size}px`;
     ink.style.left = `${clientX - rect.left - size / 2}px`;
     ink.style.top = `${clientY - rect.top - size / 2}px`;
-    ink.addEventListener('animationend', () => ink.remove(), { once: true });
-    target.appendChild(ink);
     // Red de seguridad por si el animationend no llega (elemento desmontado).
-    setTimeout(() => ink.remove(), 700);
+    const timerId = setTimeout(() => ink.remove(), 700);
+    ink.addEventListener('animationend', () => {
+        clearTimeout(timerId);
+        ink.remove();
+    }, { once: true });
+    target.appendChild(ink);
 }
 
 /**

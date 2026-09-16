@@ -168,78 +168,57 @@ export function SearchFilters() {
                                 flexShrink: 0
                             }}
                         >
-                            {categoryMode === 'tipo' && (
-                                filteredTypeOptions.length === 0 ? (
-                                    <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
-                                        {globalize.translate('MessageNoResultsFound')}
-                                    </span>
-                                ) : (
-                                    filteredTypeOptions.map((opt, index) => {
-                                        const selected = searchVM.hasTypeFilter(opt.id);
-                                        return (
-                                            <OptionPill
-                                                key={opt.id}
-                                                index={index}
-                                                label={globalize.translate(opt.key)}
-                                                selected={selected}
-                                                onClick={() => searchVM.toggleTypeFilter(opt.id)}
-                                            />
-                                        );
-                                    })
-                                )
-                            )}
+                            {(() => {
+                                if (categoryMode === 'valoracion') return <RatingFilterBar />;
 
-                            {categoryMode === 'estado' && (
-                                filteredStateOptions.length === 0 ? (
-                                    <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
-                                        {globalize.translate('MessageNoResultsFound')}
-                                    </span>
-                                ) : (
-                                    filteredStateOptions.map((opt, index) => {
-                                        const selected = searchVM.hasStateFilter(opt.id);
-                                        return (
-                                            <OptionPill
-                                                key={opt.id}
-                                                index={index}
-                                                label={globalize.translate(opt.key)}
-                                                selected={selected}
-                                                onClick={() => searchVM.toggleStateFilter(opt.id)}
-                                            />
-                                        );
-                                    })
-                                )
-                            )}
+                                let activeOptions: { id: string; label: string; selected: boolean; toggle: () => void }[] | null = null;
+                                if (categoryMode === 'tipo') {
+                                    activeOptions = filteredTypeOptions.map(opt => ({
+                                        id: opt.id,
+                                        label: globalize.translate(opt.key),
+                                        selected: searchVM.hasTypeFilter(opt.id),
+                                        toggle: () => searchVM.toggleTypeFilter(opt.id)
+                                    }));
+                                } else if (categoryMode === 'estado') {
+                                    activeOptions = filteredStateOptions.map(opt => ({
+                                        id: opt.id,
+                                        label: globalize.translate(opt.key),
+                                        selected: searchVM.hasStateFilter(opt.id),
+                                        toggle: () => searchVM.toggleStateFilter(opt.id)
+                                    }));
+                                } else if (categoryMode === 'generos') {
+                                    activeOptions = filteredTags.map(tag => ({
+                                        id: tag,
+                                        label: tag,
+                                        selected: searchVM.hasTagFilter(tag),
+                                        toggle: () => {
+                                            const isSelecting = !searchVM.hasTagFilter(tag);
+                                            searchVM.toggleTagFilter(tag);
+                                            if (isSelecting) scrollRowRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                                        }
+                                    }));
+                                }
 
-                            {categoryMode === 'generos' && (
-                                filteredTags.length === 0 ? (
-                                    <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
-                                        {globalize.translate('MessageNoResultsFound')}
-                                    </span>
-                                ) : (
-                                    filteredTags.map((tag, index) => {
-                                        const selected = searchVM.hasTagFilter(tag);
-                                        return (
-                                            <OptionPill
-                                                key={tag}
-                                                index={index}
-                                                label={tag}
-                                                selected={selected}
-                                                onClick={() => {
-                                                    const isSelecting = !searchVM.hasTagFilter(tag);
-                                                    searchVM.toggleTagFilter(tag);
-                                                    if (isSelecting) {
-                                                        scrollRowRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                                                    }
-                                                }}
-                                            />
-                                        );
-                                    })
-                                )
-                            )}
+                                if (!activeOptions) return null;
 
-                            {categoryMode === 'valoracion' && (
-                                <RatingFilterBar />
-                            )}
+                                if (activeOptions.length === 0) {
+                                    return (
+                                        <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
+                                            {globalize.translate('MessageNoResultsFound')}
+                                        </span>
+                                    );
+                                }
+
+                                return activeOptions.map((opt, index) => (
+                                    <OptionPill
+                                        key={opt.id}
+                                        index={index}
+                                        label={opt.label}
+                                        selected={opt.selected}
+                                        onClick={opt.toggle}
+                                    />
+                                ));
+                            })()}
                         </div>
 
                         {/* Divisor hacia el botón de añadir/mezclar otras categorías */}

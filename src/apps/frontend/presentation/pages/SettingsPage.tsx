@@ -52,10 +52,14 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
     const goDashboard: GoDashboard = (sub = '') => rrNavigate(`/dashboard${sub}`);
 
     useEffect(() => {
+        let alive = true;
         if (!isReal) return;
         getCurrentUser()
-            .then(setUser)
-            .catch((e) => setLoadError((e as Error).message));
+            .then((u) => { if (alive) setUser(u); })
+            .catch((e) => { if (alive) setLoadError((e as Error).message); });
+        return () => {
+            alive = false;
+        };
     }, [isReal]);
 
     // Parche optimista de la configuración del usuario: pinta el cambio al

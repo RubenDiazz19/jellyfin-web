@@ -120,21 +120,23 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
 
     useEffect(() => {
         let active = true;
-        let rafId = 0;
+        const titleEl = titleContRef.current;
+        const textEl = titleTextRef.current;
+        const subContEl = subContRef.current;
+        const subTextEl = subTextRef.current;
+        if (!titleEl || !textEl || !subContEl || !subTextEl) return;
 
         const measure = () => {
             if (!active) return;
-            if (titleContRef.current && titleTextRef.current) {
-                const diff = titleTextRef.current.scrollWidth - titleContRef.current.clientWidth;
-                setTitleOverflow(diff > 3 ? Math.ceil(diff) : 0);
-            }
-            if (subContRef.current && subTextRef.current) {
-                const diff = subTextRef.current.scrollWidth - subContRef.current.clientWidth;
-                setSubOverflow(diff > 3 ? Math.ceil(diff) : 0);
-            }
+            const tDiff = textEl.scrollWidth - titleEl.clientWidth;
+            setTitleOverflow(tDiff > 3 ? Math.ceil(tDiff) : 0);
+            const sDiff = subTextEl.scrollWidth - subContEl.clientWidth;
+            setSubOverflow(sDiff > 3 ? Math.ceil(sDiff) : 0);
         };
 
-        rafId = requestAnimationFrame(measure);
+        const ro = new ResizeObserver(measure);
+        ro.observe(titleEl);
+        ro.observe(subContEl);
 
         if (typeof document !== 'undefined' && document.fonts?.ready) {
             document.fonts.ready.then(() => {
@@ -142,11 +144,9 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
             }).catch(() => {});
         }
 
-        window.addEventListener('resize', measure);
         return () => {
             active = false;
-            cancelAnimationFrame(rafId);
-            window.removeEventListener('resize', measure);
+            ro.disconnect();
         };
     }, [slide.title, epSubtitle, w]);
 

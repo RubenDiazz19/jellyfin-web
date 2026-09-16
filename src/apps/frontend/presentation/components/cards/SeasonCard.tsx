@@ -71,7 +71,7 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
                                 fontFamily: T.ui, fontSize: 9, letterSpacing: 2.5, textTransform: 'uppercase',
                                 color: 'rgba(255,255,255,0.78)', fontWeight: 500
                             }}>
-                                Temporada
+                                {globalize.translate('Season')}
                             </div>
                         )
                     }
@@ -102,7 +102,7 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
                         fontFamily: T.ui, fontSize: 10, color: 'rgba(255,255,255,0.78)',
                         letterSpacing: 1, textTransform: 'uppercase', fontWeight: 500
                     }}>
-                        <span>{season.total} episodios</span>
+                        <span>{globalize.translate('ValueEpisodeCount', season.total)}</span>
                         <span>{season.year}</span>
                     </div>
                 </div>

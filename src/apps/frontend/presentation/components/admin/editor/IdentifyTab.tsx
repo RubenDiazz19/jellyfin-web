@@ -81,7 +81,9 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
     };
 
     useEffect(() => {
+        let alive = true;
         getItemRaw(itemId).then((it) => {
+            if (!alive) return;
             const rawType = (it.Type === 'Movie' || it.Type === 'Series' || it.Type === 'Episode' || it.Type === 'BoxSet') ?
                 it.Type :
                 undefined;
@@ -102,6 +104,9 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                 );
             }
         }).catch(() => {});
+        return () => {
+            alive = false;
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [itemId]);
 

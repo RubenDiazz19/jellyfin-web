@@ -36,6 +36,51 @@ Generado automáticamente a partir de un análisis profundo del código.
 - **Descripción:** `@keyframes collectionLoopMarquee` es global. Múltiples instancias con distintos `durationSec` comparten la misma animación.
 - **Fix:** Generar nombre de keyframe único por instancia, o extraer la animación a un CSS module.
 
+### B6 — SearchViewModel.start() filtra listeners si se llama múltiples veces (MEDIA)
+- **Archivo:** `src/apps/frontend/domain/viewModels/SearchViewModel.ts`
+- **Líneas:** 696–729
+- **Descripción:** `start()` registra event listeners en `window` y crea un `effect`, pero no limpia los de llamadas anteriores. Si se llama repetidamente sin invocar la función de cleanup, se acumulan listeners y suscripciones.
+- **Fix:** Guard contra doble-start: rastrear si ya está iniciado y saltar/advertir, o limpiar suscripciones anteriores antes de re-suscribir.
+
+### B7 — Device ID vacío si nunca se generó (MEDIA)
+- **Archivo:** `src/apps/frontend/data/api/playback.ts`
+- **Líneas:** 337–340
+- **Descripción:** `getDeviceId()` devuelve `localStorage.getItem(KEY) ?? ''`. Si nunca se generó un device ID (primera visita, storage limpiado), devuelve cadena vacía. Este ID se envía al servidor en el header `Authorization` y en `deleteActiveEncodings`. Un device ID vacío puede impedir que el servidor asocie correctamente el encoding con este cliente, impidiendo la limpieza de procesos transcode obsoletos.
+- **Fix:** Generar device ID al primer uso con `crypto.randomUUID()` y persistirlo.
+
+### B8 — ToastProvider crea contexto nuevo en cada render (MEDIA)
+- **Archivo:** `src/apps/frontend/presentation/components/toast/ToastProvider.tsx`
+- **Línea:** 54
+- **Descripción:** `value={{ toast }}` crea un nuevo objeto en cada render de `ToastProvider`. Aunque `toast` es estable por `useCallback`, el objeto de valor del contexto es nuevo cada vez. Cualquier consumidor con `useContext(ToastContext)` se re-renderiza en cada render de `ToastProvider`, aunque la función toast no haya cambiado.
+- **Fix:** Memoizar el valor del contexto: `const ctxValue = useMemo(() => ({ toast }), [toast]);`.
+
+### B9 — Race conditions en useEffect con async sin guard de cancelación (MEDIA)
+- **Archivos:**
+  - `presentation/pages/ListPage.tsx` (líneas 51–66)
+  - `presentation/pages/SettingsPage.tsx` (líneas 54–59)
+  - `presentation/components/controls/AddToDialog.tsx` (líneas 61–71)
+  - `presentation/components/admin/editor/IdentifyTab.tsx` (líneas 83–106)
+- **Descripción:** Varios `useEffect` lanzan fetches asíncronos sin flag `alive`/`cancelled`. Si las dependencias cambian rápido o el componente se desmonta antes de que la promise resuelva, los `set*` callbacks actualizan estado de componentes desmontados o con datos obsoletos.
+- **Fix:** Añadir patrón `let alive = true; ... return () => { alive = false; };` y guardar cada `set*` con `if (alive)`.
+
+### B10 — `as any` doble en SearchResults (BAJA-MEDIA)
+- **Archivo:** `src/apps/frontend/presentation/components/search/SearchResults.tsx`
+- **Línea:** 128
+- **Descripción:** `item={{ ...item, title: 'name' in item ? item.name : (item as any).title, year: 0 } as any}` — doble cast `as any`. Los items de colección tienen `name` pero no `title`, y la card espera `title`. Si la forma de los datos cambia, esto pasa `undefined` silenciosamente.
+- **Fix:** Crear función mapper `toCardItem(item): CardItem` que transforme los tipos de forma segura, o usar un type guard con fallback: `('title' in item ? item.title : undefined) ?? ''`.
+
+### B11 — VideoPlayer lee signals `.value` fuera del mecanismo de suscripción (MEDIA)
+- **Archivo:** `src/apps/frontend/presentation/components/player/VideoPlayer.tsx`
+- **Líneas:** 95–96, 112–114, 165, 283–286, 317–319
+- **Descripción:** Varias signals se leen via `.value` directamente en el body del componente (ej. `videoPlayerVM.subtitleUrl.value`, `videoPlayerVM.fullscreen.value`). `useVmSignals` suscribe a algunas, pero estas lecturas directas están fuera del hook. Si alguna signal cambia pero no está en la lista de pick de `useVmSignals`, el componente NO se re-renderiza y el JSX muestra valores obsoletos.
+- **Fix:** Auditar todas las lecturas `.value` en el render y asegurar que estén cubiertas por el mecanismo de suscripción, o usar `useSignalValue` para cada una que el pick list omita.
+
+### B12 — ripple.ts: setTimeout de seguridad nunca se limpia (BAJA)
+- **Archivo:** `src/apps/frontend/shared/ripple.ts`
+- **Línea:** 25
+- **Descripción:** `setTimeout(() => ink.remove(), 700)` es un fallback por si `animationend` nunca se dispara. El timeout nunca se cancela incluso si `animationend` sí se ejecuta primero (el handler intenta remover un elemento ya removido, que es no-op). Deja timers innecesarios en la cola.
+- **Fix:** Almacenar el ID del timeout y cancelarlo en el handler de `animationend`.
+
 ---
 
 ## 🟠 Optimizaciones de Rendimiento
@@ -87,6 +132,18 @@ Generado automáticamente a partir de un análisis profundo del código.
 - **Líneas:** 171–329
 - **Descripción:** Muchos objetos style estáticos se recrean en cada render del hero.
 - **Fix:** Extraer constantes de estilo fuera del componente.
+
+### O9 — VideoControls crea setInterval cada segundo para calcular endTime (BAJA)
+- **Archivo:** `src/apps/frontend/presentation/components/player/VideoControls.tsx`
+- **Líneas:** 54–60
+- **Descripción:** Cuando `hasDuration` es true, un `setInterval` dispara cada segundo para actualizar `now` con el fin de mostrar la hora de fin. Esto provoca un re-render de `VideoControls` cada segundo durante toda la reproducción. Dado que `currentTime` ya se actualiza cada segundo, el endTime puede calcularse directamente de `current` y `duration` sin un timer separado.
+- **Fix:** Calcular `endTimeText` directamente de `current` y `duration` sin usar estado `now` ni intervalo.
+
+### O10 — getMaxStreamingBitrate() se llama dos veces (BAJA)
+- **Archivo:** `src/apps/frontend/data/api/playback.ts`
+- **Líneas:** 58–61
+- **Descripción:** `MaxStreamingBitrate` y `MaxStaticBitrate` ambos llaman a `getMaxStreamingBitrate()`. Aunque la función lee de `localStorage` y es barata, el resultado podría cachearse en una variable local por claridad.
+- **Fix:** `const maxBitrate = getMaxStreamingBitrate();` y usar `maxBitrate` para ambos campos.
 
 ---
 
@@ -143,6 +200,46 @@ Generado automáticamente a partir de un análisis profundo del código.
 - **Líneas:** 207–225, 462–524
 - **Descripción:** `toggleTypeFilter`, `toggleStateFilter`, `toggleTagFilter` son casi idénticos.
 - **Fix:** Helper genérico `toggleArrayItem<T>(signal, item, equals?)`.
+
+### R9 — Patrón setBusy/try/catch/toast duplicado en 20+ ubicaciones (ALTA)
+- **Archivos afectados:** 20+ archivos incluyendo:
+  - `presentation/components/controls/AddToDialog.tsx` (líneas 75–85, 88–101)
+  - `presentation/components/controls/MyListButton.tsx` (líneas 92–108, 110–123)
+  - `presentation/components/controls/TagsDialog.tsx` (líneas 57–71)
+  - `presentation/components/controls/BulkTagsDialog.tsx` (líneas 32–40)
+  - `presentation/components/controls/CreateCollectionDialog.tsx` (líneas 36–49)
+  - `presentation/components/controls/SelectionBar.tsx` (líneas 52–85, 178–183)
+  - `presentation/components/admin/editor/MetadataEditor.tsx`, `MetadataTab.tsx`, `TagsTab.tsx`, `IdentifyTab.tsx`, `SubtitlesTab.tsx`
+  - `domain/hooks/useItemActions.ts` (líneas 97–109, 114–122)
+  - `presentation/components/admin/AvatarPickerDialog.tsx`
+  - `presentation/pages/settings/ProfileSection.tsx`, `LibrariesSection.tsx`, `DisplaySection.tsx`, `SettingsPage.tsx`
+- **Descripción:** El patrón `setBusy(true); try { await action(); toast(success); onClose(); } catch(e) { toast(e.message, 'warn'); setBusy(false); }` se repite en prácticamente cada diálogo y manejador de acción. ~120 líneas de boilerplate idéntico.
+- **Fix:** Crear hook `useAsyncAction()`:
+  ```ts
+  function useAsyncAction<T>(
+      action: () => Promise<T>,
+      opts?: { success?: string; onClose?: () => void }
+  ): { execute: () => Promise<void>; busy: boolean }
+  ```
+  O una función de orden superior `withBusyToast(toast, fn, opts?)`.
+
+### R10 — expandGenre + dedup duplicado en 2 componentes (BAJA)
+- **Archivos:**
+  - `presentation/components/layout/DetailHero.tsx` (líneas 196–223) — `HeroGenres`
+  - `presentation/components/layout/DetailSections.tsx` (líneas 169–195) — `GenreLinks`
+- **Descripción:** Ambos componentes hacen `Array.from(new Set(genres.flatMap((g) => expandGenre(g))))` — la misma lógica de expansión y deduplicación.
+- **Fix:** Extraer utilidad `expandAndDedupeGenres(genres: string[]): string[]` en `domain/genres.ts` junto a `expandGenre`.
+
+### R11 — Menú de UserAvatar duplicado (touch/desktop) (BAJA)
+- **Archivo:** `src/apps/frontend/presentation/components/layout/UserAvatar.tsx`
+- **Líneas:** 48–73 (touch/BottomSheet), 146–169 (desktop/PopupPanel)
+- **Descripción:** Los mismos 5 items de menú se renderizan dos veces — una para touch y otra para desktop. Ambos branch tienen la misma estructura de click handler (`setOpen(false); toast(...); logout()`). El branch desktop añade URL del servidor y divisores.
+- **Fix:** Extraer los items del menú a una variable JSX compartida que ambos branches rendericen. El prop `sheet` en `MenuEntry` ya maneja las diferencias de estilo.
+
+### R12 — Sin regla ESLint para bloquear imports de legacy/components en frontend (MEDIA)
+- **Archivo:** `config/eslint/frontend.mjs`
+- **Descripción:** Las reglas MVVM bloquean `presentation/` → `data/` y `domain/` → `presentation/`, pero NO hay regla que impida `src/apps/frontend/**` importar de `src/legacy/components/*` o `src/legacy/scripts/*`. El caso actual es `ListCardMenu.tsx` importando `playbackManager` directamente. Sin esta regla, nuevos imports legacy pueden colarse sin detección.
+- **Fix:** Añadir regla `import/no-restricted-paths` para `src/apps/frontend/**` que bloquee `src/legacy/components/*` y `src/legacy/scripts/*`, con whitelist para módulos aceptados (`lib/globalize`, `lib/jellyfin-apiclient`).
 
 ---
 
@@ -227,15 +324,106 @@ Generado automáticamente a partir de un análisis profundo del código.
 - **Líneas:** 286, 294, 304
 - **Strings:** `'canales'`, `'idiomas'`, `'pistas'`
 
+### I8 — SeasonCard.tsx
+- **Líneas:** 74, 105
+- **Strings:** `'Temporada'`, `'episodios'`
+
+### I9 — SeasonPage.tsx
+- **Líneas:** 140, 191–194, 227
+- **Strings:** `'episodios'`, `'vistos'`, `'Reanudar E...'`, `'Volver a ver desde E01'`, `'Continuar con E...'`, `'Temporada {s.n}'`
+
+### I10 — PersonStats.tsx
+- **Línea:** 66
+- **Strings:** `'Genero'`, `'Anos'`
+
+### I11 — EpCard.tsx
+- **Línea:** 75
+- **String:** `'Temporada'`
+
+### I12 — DetailSections.tsx
+- **Línea:** 37
+- **String:** `'Cargando...'` (debería usar `globalize.translate('Loading')`)
+
+### I13 — SearchResultCard.tsx
+- **Línea:** 26
+- **String:** `'Coleccion'`
+
+---
+
+## 🧪 Tests Faltantes
+
+### T1 — Cobertura de páginas (MEDIA)
+- **Páginas sin tests:**
+  - `presentation/pages/HomePage.tsx` — la página principal no tiene test dedicado
+  - `presentation/pages/LoginPage.tsx`
+  - `presentation/pages/ShowPage.tsx`
+  - `presentation/pages/MoviePage.tsx`
+  - `presentation/pages/SeasonPage.tsx`
+  - `presentation/pages/EpisodePage.tsx`
+  - `presentation/pages/SearchPage.tsx`
+  - `presentation/pages/GenrePage.tsx`
+  - `presentation/pages/FavoritesPage.tsx`
+  - `presentation/pages/PersonPage.tsx`
+  - `presentation/pages/ListsPage.tsx`
+  - `presentation/pages/ListPage.tsx`
+  - `presentation/pages/QueuePage.tsx`
+- **Fix:** Añadir al menos smoke tests para las páginas más visitadas (HomePage, LoginPage, ShowPage, MoviePage).
+
+### T2 — Módulos data/api sin tests (MEDIA)
+- **Archivos sin tests:**
+  - `data/api/http.ts` — `apiFetch`, `apiSend`, `uploadImage`, `authHeader`
+  - `data/api/auth.ts` — `connectTo`, `authenticate`, `getSavedServers`, `saveServer`
+  - `data/api/quickConnect.ts`
+  - `data/api/tasks.ts` — `watchScheduledTasks`, `watchItemRefresh`
+  - `data/session/session.ts` — restore, clear, event wiring (solo testeado indirectamente via SessionViewModel)
+- **Fix:** Tests unitarios para los flujos de autenticación y HTTP helpers.
+
+### T3 — Componentes UI sin tests (BAJA)
+- **Componentes críticos sin tests:**
+  - `presentation/components/player/VideoControls.tsx`
+  - `presentation/components/player/VideoSettingsMenu.tsx`
+  - `presentation/components/search/SearchFilters.tsx`
+  - `presentation/components/search/SearchResults.tsx`
+  - `presentation/components/controls/AddToDialog.tsx`
+  - `presentation/components/controls/ConfirmDialog.tsx`
+  - `presentation/components/controls/WatchedToggle.tsx`
+- **Fix:** Tests de integración para los componentes de mayor uso.
+
+---
+
+## 🧹 Limpieza de Configuración
+
+### C1 — Polyfills obsoletos en ESLint (BAJA)
+- **Archivo:** `config/eslint/app.mjs`
+- **Líneas:** ~73
+- **Descripción:** La lista de polyfills incluye ES2015 (`Object.assign`, `Array.from`, `String.trim`, `Number`, `RegExp`, `Symbol`, `Map`, `Set`, etc.) que son nativos desde ES2015/2017. Con `browserslist` apuntando a `chrome107`, `firefox104`, `safari16`, ninguno necesita polyfill. También incluye `document.registerElement` (API v0 de Web Components no utilizada).
+- **Fix:** Limpiar la lista para reflejar solo polyfills reales necesarios.
+
+### C2 — `history` en devDependencies posiblemente sin uso (BAJA)
+- **Archivo:** `package.json`
+- **Descripción:** `history` (5.3.0) está en `devDependencies`. Era la librería de routing del setup legacy de React Router. El frontend nuevo usa `react-router-dom` 6.x. Verificar si se usa en tests del dashboard o legacy, y eliminar si no es así.
+
+### C3 — `loading.ts` legacy podría reemplazarse (BAJA)
+- **Archivos:**
+  - `src/apps/frontend/app/VideoRoute.tsx` (línea 4)
+  - `src/apps/frontend/app/AppLayout.tsx` (línea 2)
+- **Descripción:** El módulo legacy `loading` es imperativo (crea `<div class="docspinner">`, lo añade a `document.body`, alterna clases). Solo se usa `loading.hide()` para dismiss del splash screen. Es el último acoplamiento a DOM imperativo en `app/`.
+- **Fix:** Reemplazar con una variable de estado React o una línea CSS inline que oculte el splash.
+
 ---
 
 ## Orden de Ejecución Sugerido
 
 1. **B1** — Race condition en VideoPlayerViewModel (bug más peligroso)
-2. **R1** — Logger centralizado (limpieza rápida, mejora toda la base)
-3. **O1 + O2** — SearchOverlay lazy + Nav scroll (ganancia visible de rendimiento)
-4. **I1–I7** — i18n (corrección mecánica de bajo riesgo)
-5. **B2–B5** — Resto de bugs (memory leaks y race conditions menores)
-6. **O3–O8** — Resto de optimizaciones de rendimiento
-7. **R2–R8** — Refactorizaciones estructurales
-8. **S1–S7** — Simplificaciones de código
+2. **B9** — Race conditions en useEffect con async (4 archivos, impacto visible)
+3. **B8** — ToastProvider context memo (re-renders innecesarios en toda la app)
+4. **R1** — Logger centralizado (limpieza rápida, mejora toda la base)
+5. **R9** — useAsyncAction hook (elimina ~120 líneas de boilerplate en 20+ archivos)
+6. **O1 + O2** — SearchOverlay lazy + Nav scroll (ganancia visible de rendimiento)
+7. **I1–I13** — i18n (corrección mecánica de bajo riesgo)
+8. **B6–B7, B10–B12** — Resto de bugs (memory leaks, device ID, type safety)
+9. **O3–O10** — Resto de optimizaciones de rendimiento
+10. **R2–R8, R10–R12** — Refactorizaciones estructurales
+11. **S1–S7** — Simplificaciones de código
+12. **T1–T3** — Tests faltantes
+13. **C1–C3** — Limpieza de configuración

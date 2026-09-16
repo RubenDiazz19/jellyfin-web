@@ -23,7 +23,7 @@ export const SearchResultCard = memo(function SearchResultCardBase({ item, navig
     return (
         <PosterTile
             title={item.title}
-            kindLabel={item.kind === 'collection' ? 'Colección' : globalize.translate(item.kind === 'show' ? 'Series' : 'Movie')}
+            kindLabel={globalize.translate(item.kind === 'collection' ? 'Collection' : item.kind === 'show' ? 'Series' : 'Movie')}
             cover={item.poster || item.backdrop}
             logo={item.logo}
             interactions={interactions}

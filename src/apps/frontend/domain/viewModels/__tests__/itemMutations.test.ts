@@ -17,7 +17,7 @@ vi.mock('lib/jellyfin-apiclient', () => ({
 }));
 
 import { ITEM_MUTATED_EVENT } from '../../../data/api/mutations';
-import { ItemMutationSubscription, MUTATION_DEBOUNCE_MS } from '../itemMutations';
+import { mutationOnLoad, MUTATION_DEBOUNCE_MS } from '../mutationSubscription';
 
 function mutate(itemId?: string) {
     window.dispatchEvent(new CustomEvent(ITEM_MUTATED_EVENT, { detail: { itemId } }));
@@ -26,12 +26,12 @@ function mutate(itemId?: string) {
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
-describe('ItemMutationSubscription', () => {
+describe('mutationOnLoad', () => {
     // Las fichas deciden según el itemId: perderse una mutación sería no
     // enterarse de que el item que enseñan ha cambiado.
     test('sin debounce llega una llamada por evento', () => {
         const onMutated = vi.fn();
-        new ItemMutationSubscription().ensure(onMutated);
+        mutationOnLoad(onMutated)();
 
         mutate('a');
         mutate('b');
@@ -41,7 +41,7 @@ describe('ItemMutationSubscription', () => {
 
     test('con debounce un lote de mutaciones es una sola llamada', () => {
         const onMutated = vi.fn();
-        new ItemMutationSubscription().ensure(onMutated, MUTATION_DEBOUNCE_MS);
+        mutationOnLoad(onMutated, { debounce: MUTATION_DEBOUNCE_MS })();
 
         for (const id of ['e1', 'e2', 'e3', 'e4', 'e5']) mutate(id);
         expect(onMutated).not.toHaveBeenCalled();
@@ -53,7 +53,7 @@ describe('ItemMutationSubscription', () => {
 
     test('dos lotes separados en el tiempo son dos llamadas', () => {
         const onMutated = vi.fn();
-        new ItemMutationSubscription().ensure(onMutated, MUTATION_DEBOUNCE_MS);
+        mutationOnLoad(onMutated, { debounce: MUTATION_DEBOUNCE_MS })();
 
         mutate('a');
         vi.advanceTimersByTime(MUTATION_DEBOUNCE_MS);
@@ -66,10 +66,9 @@ describe('ItemMutationSubscription', () => {
     test('ensure solo engancha una vez', () => {
         const first = vi.fn();
         const second = vi.fn();
-        const subscription = new ItemMutationSubscription();
-        subscription.ensure(first);
-        subscription.ensure(second);
-
+        const init = mutationOnLoad(first);
+        init();
+        init();
         mutate('a');
 
         expect(first).toHaveBeenCalledTimes(1);

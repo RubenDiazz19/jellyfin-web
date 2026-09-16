@@ -43,7 +43,7 @@ export function CollectionCardCarousel({ items, navigate, listId }: Props) {
                 gap: gap,
                 paddingBottom: 24, // un poco de margen para la sombra
                 scrollbarWidth: 'none', // hide scrollbar Firefox
-                msOverflowStyle: 'none', // hide scrollbar IE/Edge
+                msOverflowStyle: 'none' // hide scrollbar IE/Edge
             }}
         >
             <style>{`
@@ -162,6 +162,7 @@ function CollectionVerticalCard({
             }}
             style={cardRootStyle}
             className={isSelecting ? '' : 'collectionCardPremium'}
+            role='button'
             tabIndex={0}
         >
             <PosterFrame

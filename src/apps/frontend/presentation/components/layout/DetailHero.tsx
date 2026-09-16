@@ -11,7 +11,7 @@ import { useResponsive, useShortViewport } from '../../theme/responsive';
 import { Backdrop } from './Backdrop';
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
-import { expandGenre } from '../../../domain/genres';
+import { cleanGenres } from '../../../domain/genres';
 import { MediaBadges } from '../media/MediaBadges';
 
 import { useHomeScrollTransition } from '../../pages/useHomeScrollTransition';
@@ -194,7 +194,7 @@ type GenresProps = {
 
 /** Géneros del item, cada uno navegable a su listado. */
 export function HeroGenres({ genres, navigate, fontSize, marginBottom, justifyContent }: GenresProps) {
-    const cleanList = Array.from(new Set(genres.flatMap((g) => expandGenre(g))));
+    const cleanList = cleanGenres(genres);
     return (
         <div style={{
             fontFamily: T.ui, fontSize, letterSpacing: 4, textTransform: 'uppercase',

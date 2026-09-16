@@ -1,5 +1,5 @@
 import {
-    createContext, useCallback, useContext, useEffect, useRef, useState,
+    createContext, useCallback, useContext, useEffect, useRef, useState, useMemo,
     type ReactNode
 } from 'react';
 import { T } from '../../theme/tokens';
@@ -50,8 +50,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
+    const ctxValue = useMemo(() => ({ toast }), [toast]);
+
     return (
-        <ToastContext.Provider value={{ toast }}>
+        <ToastContext.Provider value={ctxValue}>
             {children}
             <Toaster toasts={toasts} onDismiss={dismiss} />
         </ToastContext.Provider>

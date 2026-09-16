@@ -55,7 +55,7 @@ export function VideoControls({ onToggleQueue }: Props) {
         if (!hasDuration) return;
         const timer = setInterval(() => {
             setNow(new Date());
-        }, 1000);
+        }, 60000); // 1 MINUTE
         return () => clearInterval(timer);
     }, [hasDuration]);
     // Se recalcula solo al cambiar de item o al llegar los segmentos, no en

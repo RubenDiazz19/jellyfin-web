@@ -37,8 +37,8 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
 
     const selectable: SelectableItem[] = useMemo(() => {
         const results = rawResults ?? [];
-        return results.map((i) => ({
-            id: i.id, title: i.title, kind: i.kind, poster: i.poster, year: i.year
+        return results.map((i: any) => ({
+            id: i.id, title: i.title || i.name || '', kind: i.kind, poster: i.poster, year: i.year
         }));
     }, [rawResults]);
 

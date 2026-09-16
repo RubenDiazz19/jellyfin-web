@@ -861,7 +861,7 @@ export class VideoPlayerViewModel {
                 this.detachOnMeta = null;
             };
         } catch (e) {
-            if (this.closed) return;
+            if (this.closed || this.itemId !== currentItemId) return;
             this.error.value = (e as Error).message || globalize.translate('MessagePlaybackStartFailed');
             this.loading.value = false;
         }

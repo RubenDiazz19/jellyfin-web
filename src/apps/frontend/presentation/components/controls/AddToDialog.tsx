@@ -2,6 +2,7 @@ import globalize from 'lib/globalize';
 
 import { useEffect, useState } from 'react';
 import { useToast } from '../toast/ToastProvider';
+import { useAsyncAction } from '../../../domain/hooks/useAsyncAction';
 import {
     getPlaylists, addToPlaylist, createPlaylist,
     getCollections, addToCollection, createCollection,
@@ -59,46 +60,42 @@ export function AddToDialog({
     const idKey = ids.join(',');
 
     useEffect(() => {
+        let alive = true;
         setEntries(null);
         setError(null);
         const fetchEntries = isPlaylist ? getPlaylists : getCollections;
         fetchEntries()
             .then((list) => {
+                if (!alive) return;
                 const excluded = new Set(idKey.split(','));
                 setEntries(list.filter((e) => !excluded.has(e.id)));
             })
-            .catch((e) => setError((e as Error).message));
+            .catch((e) => { if (alive) setError((e as Error).message); });
+        return () => {
+            alive = false;
+        };
     }, [isPlaylist, idKey]);
 
     const suffix = itemTitle ? ` · ${itemTitle}` : (ids.length > 1 ? ` · ${ids.length}` : '');
 
-    const doAdd = async (entry: ListEntry) => {
-        setBusy(true);
-        try {
-            await (isPlaylist ? addToPlaylist : addToCollection)(entry.id, ids);
-            toast(globalize.translate('MessageAddedTo', entry.name) + suffix, 'success');
-            onSuccess?.();
-            onClose();
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-            setBusy(false);
-        }
-    };
+    const { execute: doAdd, busy: adding } = useAsyncAction(async (entry: ListEntry) => {
+        await (isPlaylist ? addToPlaylist : addToCollection)(entry.id, ids);
+        toast(globalize.translate('MessageAddedTo', entry.name) + suffix, 'success');
+        onSuccess?.();
+        onClose();
+    });
 
-    const doCreate = async () => {
+    const { execute: doCreate, busy: creating } = useAsyncAction(async () => {
         const name = newName.trim();
         if (!name) return;
-        setBusy(true);
-        try {
-            await (isPlaylist ? createPlaylist : createCollection)(name, ids);
-            toast(globalize.translate('MessageCreated', name) + suffix, 'success');
-            onSuccess?.();
-            onClose();
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-            setBusy(false);
-        }
-    };
+        await (isPlaylist ? createPlaylist : createCollection)(name, ids);
+        toast(globalize.translate('MessageCreated', name) + suffix, 'success');
+        onSuccess?.();
+        onClose();
+    });
+
+    // Combina los estados busy
+    useEffect(() => { setBusy(adding || creating); }, [adding, creating]);
 
     return (
         <Dialog label={globalize.translate('AddTo')} maxHeight='70vh' onClose={onClose}>

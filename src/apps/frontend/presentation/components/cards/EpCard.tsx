@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { memo } from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
@@ -31,7 +32,7 @@ export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: P
         showId: show.id,
         seasonN: season.n,
         epN: ep.n,
-        queueSubtitle: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')}`,
+        queueSubtitle: `${show.title} · ${globalize.translate('ValueSeasonEpisode', season.n, String(ep.n).padStart(2, '0'))}`,
         queuePoster: ep.thumb ?? show.poster
     }, navigate);
 

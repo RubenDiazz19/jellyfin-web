@@ -21,7 +21,7 @@ export function WatchedButton({ id, size = 18, badge = false, label, serverId }:
             active={w}
             applyLocal={() => toggle()}
             serverId={serverId}
-            message={(next) => (next ? `Marcado como visto${suffix}` : `Marcado como no visto${suffix}`)}
+            message={(next) => `${globalize.translate(next ? 'MarkedAsWatched' : 'MarkedAsUnwatched')}${suffix}`}
             size={size}
             badge={badge}
             ariaLabel={globalize.translate(w ? 'MarkAsUnwatched' : 'MarkAsWatched')}

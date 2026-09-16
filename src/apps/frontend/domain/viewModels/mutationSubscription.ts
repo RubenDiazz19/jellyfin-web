@@ -2,8 +2,7 @@
 // Regla MVVM: este módulo no importa React ni nada de presentation/.
 
 import { ITEM_MUTATED_EVENT, type ItemMutatedDetail } from '../../data/api/mutations';
-import { MUTATION_DEBOUNCE_MS } from './itemMutations';
-
+export const MUTATION_DEBOUNCE_MS = 250;
 export type MutationOnLoadOptions = {
     debounce?: boolean | number;
 };

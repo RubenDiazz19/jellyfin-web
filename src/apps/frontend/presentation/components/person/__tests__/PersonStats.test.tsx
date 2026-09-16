@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, it, expect } from 'vitest';
@@ -55,9 +56,9 @@ describe('PersonStats', () => {
             );
 
             expect(host?.textContent).toContain('Femenino');
-            expect(host?.textContent).toContain('Género');
+            expect(host?.textContent).toContain(globalize.translate('Gender'));
             expect(host?.textContent).toContain('35');
-            expect(host?.textContent).toContain('Años');
+            expect(host?.textContent).toContain(globalize.translate('Years'));
             expect(host?.textContent).toContain('España');
             expect(host?.textContent).toContain('Madrid');
         });

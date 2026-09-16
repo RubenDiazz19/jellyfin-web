@@ -23,7 +23,7 @@ export function MovieWatchedButton({ movie, size = 18, badge = false }: Props) {
             applyLocal={() => toggle()}
             serverId={movie.id}
             message={(next) =>
-                `${next ? 'Marcada como vista' : 'Marcada como no vista'} · ${movie.title}`
+                `${globalize.translate(next ? 'MarkedMovieAsWatched' : 'MarkedMovieAsUnwatched')} · ${movie.title}`
             }
             size={size}
             badge={badge}

@@ -24,7 +24,7 @@ import { useImageDrop } from './useImageDrop';
 
 export function ImagesTab({ itemId }: { itemId: string }) {
     const [refreshTick, setRefreshTick] = useState(0);
-    const [backdropTags, setBackdropTags] = useState<{tag: string, index: number}[]>([]);
+    const [backdropTags, setBackdropTags] = useState<{ tag: string, index: number }[]>([]);
     const [primaryTag, setPrimaryTag] = useState<string | undefined>();
     const [logoTag, setLogoTag] = useState<string | undefined>();
     const toast = useToast();
@@ -38,11 +38,11 @@ export function ImagesTab({ itemId }: { itemId: string }) {
             if (cancelled) return;
             setPrimaryTag(it.ImageTags?.Primary);
             setLogoTag(it.ImageTags?.Logo);
-            
+
             const backdrops = images
                 .filter(img => img.ImageType === 'Backdrop' && img.ImageTag)
                 .map(img => ({ tag: img.ImageTag!, index: img.ImageIndex ?? 0 }));
-            
+
             setBackdropTags(backdrops);
         }).catch(() => {});
         return () => { cancelled = true; };
@@ -176,7 +176,7 @@ export function movedTo<T>(list: readonly T[], from: number, to: number): T[] {
 function BackdropSection({
     itemId, tags, refreshTick, onDone, onError
 }: {
-    itemId: string; tags: {tag: string, index: number}[]; refreshTick: number;
+    itemId: string; tags: { tag: string, index: number }[]; refreshTick: number;
     onDone: () => void; onError: (e: unknown) => void;
 }) {
     const toast = useToast();

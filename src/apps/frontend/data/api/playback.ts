@@ -55,9 +55,10 @@ export function setMaxStreamingBitrate(bps: number): void {
 // Device profile: which containers/codecs the browser can decode. The server
 // uses it to decide DirectPlay/DirectStream/HLS transcode.
 function browserDeviceProfile() {
+    const maxBitrate = getMaxStreamingBitrate();
     return {
-        MaxStreamingBitrate: getMaxStreamingBitrate(),
-        MaxStaticBitrate: getMaxStreamingBitrate(),
+        MaxStreamingBitrate: maxBitrate,
+        MaxStaticBitrate: maxBitrate,
         MusicStreamingTranscodingBitrate: 384_000,
         DirectPlayProfiles: [
             { Container: 'mp4,m4v', Type: 'Video', VideoCodec: 'h264,vp9,av1', AudioCodec: 'aac,mp3,opus' },
@@ -336,5 +337,10 @@ export async function reportPlaybackStop(
 /** Id de dispositivo que el servidor asocia a esta sesión. */
 export function getDeviceId(): string {
     const KEY = 'jfp-device-id';
-    return localStorage.getItem(KEY) ?? '';
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(KEY, id);
+    }
+    return id;
 }

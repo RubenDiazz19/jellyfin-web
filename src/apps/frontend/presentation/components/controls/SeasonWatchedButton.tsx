@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { seasonKey, WATCHED } from '../../../domain/stores';
 import { getSeasonEpisodeKeys, isSeasonFullyWatched } from '../../../domain/showWatched';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
@@ -18,11 +19,11 @@ export function SeasonWatchedButton({ show, season, size = 15 }: Props) {
             active={all}
             applyLocal={(next) => WATCHED.setMany(epIds, next)}
             serverId={season.jfId}
-            message={(next) => `Temporada ${season.n} marcada como ${next ? 'vista' : 'no vista'}`}
+            message={(next) => globalize.translate(next ? 'SeasonMarkedAsWatched' : 'SeasonMarkedAsUnwatched', season.n)}
             size={size}
             badge
             padding={0}
-            ariaLabel={all ? 'Marcar temporada como no vista' : 'Marcar temporada como vista'}
+            ariaLabel={globalize.translate(all ? 'MarkSeasonAsUnwatched' : 'MarkSeasonAsWatched')}
         />
     );
 }

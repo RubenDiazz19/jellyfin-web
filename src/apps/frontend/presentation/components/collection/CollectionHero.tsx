@@ -223,7 +223,7 @@ export function CollectionHero({
                 <div
                     style={{
                         position: 'fixed',
-                        bottom: r.touch ? 280 : (hasItems ? (onlyCollections ? 500 : 360) : 280),
+                        bottom: r.touch ? 265 : (hasItems ? (onlyCollections ? 485 : 345) : 265),
                         left: '50%',
                         transform: `translate(-50%, ${logoTranslateY}px) scale(${logoScale})`,
                         zIndex: 2,

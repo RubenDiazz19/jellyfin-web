@@ -17,7 +17,7 @@ import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { WATCHED } from '../../data/stores/watchedStore';
 import type { SavedView } from '../../data/stores/viewsStore';
-import { MUTATION_DEBOUNCE_MS } from './itemMutations';
+import { MUTATION_DEBOUNCE_MS } from './mutationSubscription';
 import { registerTagSource } from './knownTags';
 import { guardedLoad } from './guardedLoad';
 import { LoadGuard } from './loadGuard';
@@ -692,39 +692,56 @@ export class SearchViewModel {
         });
     }
 
+    private activeSubs = 0;
+    private cleanupEvents: (() => void) | null = null;
+
     /** Suscribe el VM a favoritos/vistos y a las mutaciones. Devuelve cleanup. */
     start(): () => void {
         if (typeof window === 'undefined') return () => {};
-        const bumpFavs = () => { this.favsVersion.value++; };
-        const bumpWatched = () => { this.watchedVersion.value++; };
-        const onMutated = () => {
-            this.mutationVersion.value++;
-            // Refetch, no solo re-filtrado: una etiqueta nueva no está en los
-            // datos que ya tenemos en memoria. Agrupado como el de la
-            // biblioteca: etiquetar diez items de una selección son diez
-            // mutaciones y una sola recarga. Ver MUTATION_DEBOUNCE_MS.
-            if (this.mutationTimer) clearTimeout(this.mutationTimer);
-            this.mutationTimer = setTimeout(() => {
-                this.mutationTimer = null;
-                void this.load({ force: true });
-            }, MUTATION_DEBOUNCE_MS);
-        };
-        window.addEventListener(FAVS.event, bumpFavs);
-        window.addEventListener(WATCHED.event, bumpWatched);
-        window.addEventListener(ITEM_MUTATED_EVENT, onMutated);
-        // Se vigila el signal y no se engancha a `setQuery`: la caja no es el
-        // único sitio desde donde cambia el texto (aplicar una vista guardada,
-        // cerrar la superposición), y todos tienen que buscar igual.
-        const stopWatchingQuery = effect(() => {
-            this.scheduleRemoteSearch(parseQuery(this.query.value).text);
-        });
+
+        this.activeSubs++;
+
+        if (this.activeSubs === 1) {
+            const bumpFavs = () => { this.favsVersion.value++; };
+            const bumpWatched = () => { this.watchedVersion.value++; };
+            const onMutated = () => {
+                this.mutationVersion.value++;
+                // Refetch, no solo re-filtrado: una etiqueta nueva no está en los
+                // datos que ya tenemos en memoria. Agrupado como el de la
+                // biblioteca: etiquetar diez items de una selección son diez
+                // mutaciones y una sola recarga. Ver MUTATION_DEBOUNCE_MS.
+                if (this.mutationTimer) clearTimeout(this.mutationTimer);
+                this.mutationTimer = setTimeout(() => {
+                    this.mutationTimer = null;
+                    void this.load({ force: true });
+                }, MUTATION_DEBOUNCE_MS);
+            };
+            window.addEventListener(FAVS.event, bumpFavs);
+            window.addEventListener(WATCHED.event, bumpWatched);
+            window.addEventListener(ITEM_MUTATED_EVENT, onMutated);
+            // Se vigila el signal y no se engancha a `setQuery`: la caja no es el
+            // único sitio desde donde cambia el texto (aplicar una vista guardada,
+            // cerrar la superposición), y todos tienen que buscar igual.
+            const stopWatchingQuery = effect(() => {
+                this.scheduleRemoteSearch(parseQuery(this.query.value).text);
+            });
+
+            this.cleanupEvents = () => {
+                window.removeEventListener(FAVS.event, bumpFavs);
+                window.removeEventListener(WATCHED.event, bumpWatched);
+                window.removeEventListener(ITEM_MUTATED_EVENT, onMutated);
+                stopWatchingQuery();
+                if (this.remoteTimer) clearTimeout(this.remoteTimer);
+                if (this.mutationTimer) clearTimeout(this.mutationTimer);
+            };
+        }
+
         return () => {
-            window.removeEventListener(FAVS.event, bumpFavs);
-            window.removeEventListener(WATCHED.event, bumpWatched);
-            window.removeEventListener(ITEM_MUTATED_EVENT, onMutated);
-            stopWatchingQuery();
-            if (this.remoteTimer) clearTimeout(this.remoteTimer);
-            if (this.mutationTimer) clearTimeout(this.mutationTimer);
+            this.activeSubs--;
+            if (this.activeSubs === 0 && this.cleanupEvents) {
+                this.cleanupEvents();
+                this.cleanupEvents = null;
+            }
         };
     }
 }

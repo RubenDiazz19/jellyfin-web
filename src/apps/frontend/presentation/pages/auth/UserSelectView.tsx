@@ -308,20 +308,6 @@ const titleStyle: React.CSSProperties = {
     textAlign: 'center'
 };
 
-const serverPillBtnStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 7,
-    background: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    borderRadius: 999,
-    padding: '5px 14px',
-    color: 'rgba(255, 255, 255, 0.65)',
-    fontSize: 12,
-    cursor: 'pointer',
-    transition: 'all .2s'
-};
-
 const profilesSectionStyle: React.CSSProperties = {
     width: '100%',
     maxWidth: 800,

@@ -111,11 +111,11 @@ function PageFallback() {
             background: '#000', color: T.dim, fontFamily: T.ui, fontSize: 13,
             letterSpacing: 3, textTransform: 'uppercase', overflow: 'hidden'
         }}>
-            <video 
-                src={introVideo} 
-                autoPlay 
-                muted 
-                loop 
+            <video
+                src={introVideo}
+                autoPlay
+                muted
+                loop
                 playsInline
                 style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
             />

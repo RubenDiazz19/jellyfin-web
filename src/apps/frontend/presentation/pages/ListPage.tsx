@@ -49,20 +49,24 @@ export function ListPage({ kind, listId, navigate }: Props) {
     const { list, refresh } = useListSync(kind, listId);
 
     useEffect(() => {
+        let alive = true;
         setItems(null);
         setError(null);
         const fetchItems = kind === 'playlist' ? getPlaylistItems : getCollectionItems;
         fetchItems(listId)
-            .then((all) => setItems(displayItems(kind, all)))
-            .catch((e) => setError((e as Error).message));
+            .then((all) => { if (alive) setItems(displayItems(kind, all)); })
+            .catch((e) => { if (alive) setError((e as Error).message); });
 
         if (kind === 'collection') {
             getCollectionAncestors(listId)
-                .then(setAncestors)
-                .catch(() => setAncestors([]));
+                .then((listAncestors) => { if (alive) setAncestors(listAncestors); })
+                .catch(() => { if (alive) setAncestors([]); });
         } else {
             setAncestors([]);
         }
+        return () => {
+            alive = false;
+        };
     }, [kind, listId]);
 
     useEffect(() => {

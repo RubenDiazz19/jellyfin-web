@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 
 type PersonStatsProps = {
@@ -63,7 +64,7 @@ export function PersonStats({
                         {gender || '—'}
                     </span>
                 </div>
-                <div style={{ fontSize: 13, color: T.dim, marginTop: 1, fontFamily: T.ui }}>Género</div>
+                <div style={{ fontSize: 13, color: T.dim, marginTop: 1, fontFamily: T.ui }}>{globalize.translate('Gender')}</div>
             </div>
 
             {/* Edad */}
@@ -73,7 +74,7 @@ export function PersonStats({
                         {(age !== null && age !== undefined) ? age : '—'}
                     </span>
                 </div>
-                <div style={{ fontSize: 13, color: T.dim, marginTop: 1, fontFamily: T.ui }}>Años</div>
+                <div style={{ fontSize: 13, color: T.dim, marginTop: 1, fontFamily: T.ui }}>{globalize.translate('Years')}</div>
             </div>
 
             {/* Nacionalidad / Bandera — proporción 3:2 */}

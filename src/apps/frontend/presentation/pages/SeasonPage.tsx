@@ -137,8 +137,8 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     fontFamily: T.ui, fontSize: short ? 12 : r.touch ? 13 : 15,
                     color: 'rgba(255,255,255,0.85)', textAlign: 'center'
                 }}>
-                    <span>{season.total === 1 ? '1 episodio' : `${season.total} episodios`}</span><Ic.Dot />
-                    <span>{season.watched}/{season.total} vistos</span><Ic.Dot />
+                    <span>{season.total === 1 ? globalize.translate('ValueOneEpisode') : globalize.translate('ValueEpisodeCount', season.total)}</span><Ic.Dot />
+                    <span>{globalize.translate('ValueWatchedProgress', season.watched, season.total)}</span><Ic.Dot />
                     <span>{season.year}</span>
                 </div>
 
@@ -188,10 +188,10 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
                     textAlign: 'center'
                 }}>
                     {inProgress ?
-                        `Reanudar E${nextEp.n} · ${nextEp.title}` :
+                        globalize.translate('ResumeEpisode', nextEp.n, nextEp.title) :
                         season.watched >= season.total ?
-                            'Volver a ver desde E01' :
-                            `Continuar con E${nextEp?.n} · ${nextEp?.title}`}
+                            globalize.translate('RewatchFromBeginning') :
+                            globalize.translate('ContinueWithEpisode', nextEp?.n, nextEp?.title)}
                 </div>
             </>
             {ctx.menu}
@@ -224,7 +224,7 @@ function SeasonDetail({ show, season, navigate }: { show: Show; season: Season; 
                                 transition: 'background .2s, color .2s'
                             }}
                         >
-                            Temporada {s.n}
+                            {globalize.translate('ValueSeason', s.n)}
                         </button>
                     ))}
                 </div>

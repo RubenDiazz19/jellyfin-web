@@ -1,3 +1,4 @@
+import globalize from 'lib/globalize';
 import { WATCHED } from '../../../domain/stores';
 import { getShowEpisodeKeys, isShowFullyWatched } from '../../../domain/showWatched';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
@@ -40,11 +41,11 @@ export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props
             }}
             serverId={showId}
             message={(next) =>
-                `Serie marcada como ${next ? 'vista' : 'no vista'} · ${show?.title ?? ''}`
+                globalize.translate(next ? 'SeriesMarkedAsWatched' : 'SeriesMarkedAsUnwatched', show?.title ?? '')
             }
             size={size}
             badge={badge}
-            ariaLabel={allWatched ? 'Marcar serie como no vista' : 'Marcar serie como vista'}
+            ariaLabel={globalize.translate(allWatched ? 'MarkSeriesAsUnwatched' : 'MarkSeriesAsWatched')}
         />
     );
 }

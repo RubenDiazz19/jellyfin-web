@@ -10,6 +10,7 @@ import { EmptyState } from '../skeleton/Skeleton';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
+import type { CatalogItem } from '../../../domain/models';
 
 const PAGE_SIZE = 48;
 
@@ -81,6 +82,12 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
     const moviesAndSeries = visibleItems.filter((item) => item.kind !== 'collection');
     const collections = visibleItems.filter((item) => item.kind === 'collection');
 
+    const toCardItem = (item: typeof filtered[number]): CatalogItem => ({
+        ...item,
+        title: 'title' in item ? item.title : item.name,
+        year: 'year' in item ? item.year : 0
+    });
+
     return (
         <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
@@ -101,11 +108,11 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
                     marginBottom: collections.length > 0 ? 40 : 0
                 }}>
                     {moviesAndSeries.map((item) => (
-                        <SearchResultCard key={item.id} item={item as any} navigate={navigate} />
+                        <SearchResultCard key={item.id} item={toCardItem(item)} navigate={navigate} />
                     ))}
                 </div>
             )}
-            
+
             {collections.length > 0 && (
                 <>
                     {moviesAndSeries.length > 0 && (
@@ -114,7 +121,7 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
                             background: 'rgba(255, 255, 255, 0.08)',
                             marginBottom: 40,
                             width: '100%',
-                            maxWidth: 300,
+                            maxWidth: 300
                         }} />
                     )}
                     <div style={{
@@ -123,10 +130,10 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
                         gap: r.touch ? `${r.gap + 6}px ${r.gap}px` : '28px 20px'
                     }}>
                         {collections.map((item) => (
-                            <SearchResultCard 
-                                key={item.id} 
-                                item={{ ...item, title: 'name' in item ? item.name : (item as any).title, year: 0 } as any} 
-                                navigate={navigate} 
+                            <SearchResultCard
+                                key={item.id}
+                                item={toCardItem(item)}
+                                navigate={navigate}
                             />
                         ))}
                     </div>
