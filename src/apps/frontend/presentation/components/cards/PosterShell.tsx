@@ -68,6 +68,8 @@ export function PosterShell({
 
     const topLeftOverlay = selecting ? (
         <SelectionMark selected={selected} />
+    ) : watchedButton ? (
+        watchedButton
     ) : isTile && kindLabel ? (
         <span style={{
             fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase',
@@ -77,7 +79,7 @@ export function PosterShell({
         }}>
             {kindLabel}
         </span>
-    ) : watchedButton;
+    ) : null;
 
     return (
         <div
@@ -110,7 +112,7 @@ export function PosterShell({
                     top={isTile ? 8 : undefined}
                     left={isTile ? 10 : undefined}
                     topLeft={topLeftOverlay}
-                    topRight={selecting || isTile ? null : favButton}
+                    topRight={selecting ? null : favButton}
                 />
                 {isTile && !cover && (
                     <div style={{
@@ -129,6 +131,7 @@ export function PosterShell({
                     fontSize={isTile ? 'clamp(11px, 7.5cqi, 15px)' : undefined}
                     fontWeight={isTile ? 600 : undefined}
                     onLogoClick={onLogoClick}
+                    largeLogo={aspectRatio === '16/9'}
                 />
                 {centerOverlay}
                 {bottomOverlay}

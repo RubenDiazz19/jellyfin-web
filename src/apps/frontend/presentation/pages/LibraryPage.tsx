@@ -110,7 +110,7 @@ export function LibraryPage({ kind, navigate }: Props) {
                         {isSeries ?
                             libraryVM.sortedShows.value.map((s, i) => (
                                 <LazyCard key={s.id} width={cardWidth} eager={i < EAGER_CARDS}>
-                                    <PosterCard slide={s} navigate={navigate} fluid={r.touch} />
+                                    <PosterCard slide={s} navigate={navigate} fluid />
                                 </LazyCard>
                             )) :
                             libraryVM.sortedMovies.value.map((m, i) => (

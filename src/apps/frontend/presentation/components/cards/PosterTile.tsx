@@ -18,12 +18,14 @@ type Props = {
     /** Clic, clic derecho y estado de selección. */
     interactions: CardInteractions;
     aspectRatio?: string;
+    watchedButton?: React.ReactNode;
+    favButton?: React.ReactNode;
 };
 
 // Sin React.memo: `interactions` trae el menú y los handlers, que son nuevos
 // en cada render, así que memoizar aquí no evitaría ni un repintado. Quien
 // tiene props estables y sí memoiza es la tarjeta que la monta.
-export function PosterTile({ title, kindLabel, cover, logo, interactions, aspectRatio }: Props) {
+export function PosterTile({ title, kindLabel, cover, logo, interactions, aspectRatio, watchedButton, favButton }: Props) {
     const { onClick, onContextMenu, selecting, selected, contextMenu } = interactions;
     return (
         <PosterShell
@@ -38,6 +40,8 @@ export function PosterTile({ title, kindLabel, cover, logo, interactions, aspect
             selected={selected}
             contextMenu={contextMenu}
             aspectRatio={aspectRatio}
+            watchedButton={watchedButton}
+            favButton={favButton}
         />
     );
 }

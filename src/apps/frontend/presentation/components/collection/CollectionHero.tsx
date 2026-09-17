@@ -267,7 +267,7 @@ export function CollectionHero({
                 >
                     <div style={{
                         position: 'absolute',
-                        bottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 8px)' : 40,
+                        bottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 8px)' : 24,
                         left: 0,
                         right: 0,
                         paddingLeft: r.touch ? 16 : '5vw',

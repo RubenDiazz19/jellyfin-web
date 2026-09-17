@@ -8,7 +8,7 @@ type Props = {
     fontSize?: string;
     fontWeight?: CSSProperties['fontWeight'];
     onLogoClick?: (e: MouseEvent) => void;
-    scale?: number;
+    largeLogo?: boolean;
 };
 
 // Overlay inferior para el logo o título en tarjetas de tipo póster.
@@ -19,9 +19,10 @@ export function PosterOverlay({
     fontSize = 'clamp(12px, 8.5cqi, 20px)',
     fontWeight,
     onLogoClick,
-    scale
+    largeLogo
 }: Props) {
-    const bottom = inProgress ? '8%' : '5%';
+    const bottom = inProgress ? '8%' : (largeLogo ? '4%' : '5%');
+    const left = largeLogo ? '4%' : '6%';
     const interactive = !!onLogoClick;
 
     const handleClick = (e: MouseEvent) => {
@@ -50,10 +51,10 @@ export function PosterOverlay({
                 className={interactive ? 'jfp-poster-logo-btn' : undefined}
                 style={{
                     position: 'absolute',
-                    left: '6%',
+                    left,
                     right: '8%',
                     bottom,
-                    height: '11.9%',
+                    height: largeLogo ? '28%' : '11.9%',
                     display: 'flex',
                     alignItems: 'flex-end',
                     justifyContent: 'flex-start',
@@ -61,9 +62,7 @@ export function PosterOverlay({
                     zIndex: interactive ? 2 : undefined,
                     filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))',
                     cursor: interactive ? 'pointer' : undefined,
-                    outline: 'none',
-                    transform: scale ? `scale(${scale})` : undefined,
-                    transformOrigin: 'bottom left'
+                    outline: 'none'
                 }}
             >
                 <img
@@ -95,7 +94,7 @@ export function PosterOverlay({
             className={interactive ? 'jfp-poster-logo-btn' : undefined}
             style={{
                 position: 'absolute',
-                left: '6%',
+                left,
                 right: '6%',
                 bottom,
                 maxHeight: '24%',
@@ -105,9 +104,7 @@ export function PosterOverlay({
                 zIndex: interactive ? 2 : undefined,
                 filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.7))',
                 cursor: interactive ? 'pointer' : undefined,
-                outline: 'none',
-                transform: scale ? `scale(${scale})` : undefined,
-                transformOrigin: 'bottom left'
+                outline: 'none'
             }}
         >
             <div style={{

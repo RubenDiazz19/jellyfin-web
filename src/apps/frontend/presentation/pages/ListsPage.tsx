@@ -178,7 +178,7 @@ function Group({ title, action, empty, children }: {
                     {globalize.translate('ListsEmpty')}
                 </div>
             ) : (
-                <CardGrid minWidth={r.touch ? 150 : 210} gap={r.touch ? 16 : 20}>
+                <CardGrid minWidth={r.touch ? 172 : 241} gap={r.touch ? 16 : 20}>
                     {children}
                 </CardGrid>
             )}

@@ -247,7 +247,7 @@ function CollectionVerticalCard({
                     title={item.title}
                     fontSize='clamp(11px, 7.5cqi, 15px)'
                     fontWeight={600}
-                    scale={1.8}
+                    largeLogo
                 />
             </PosterFrame>
             {ctx.menu}
