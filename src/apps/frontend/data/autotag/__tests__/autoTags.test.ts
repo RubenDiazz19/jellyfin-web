@@ -9,14 +9,14 @@ vi.mock('../autoTags.json', () => ({
     default: {
         _generatedAt: '2026-07-31T00:00:00.000Z',
         items: {
-            ok: ['Anime', 'Venganza'],
-            grafia: ['anime', '  WESTERN '],
-            inventadas: ['Comedia romántica', 'Bélico'],
+            ok: ['Mafia', 'Venganza'],
+            grafia: ['mafia', '  SLASHER '],
+            inventadas: ['Comedia romántica', 'Surrealista'],
             todoInventado: ['Chorrada'],
             vacio: [],
-            duplicadas: ['Anime', 'ANIME'],
-            demasiadas: ['Anime', 'Venganza', 'Western', 'Bélico', 'Musical', 'Prisión', 'Terror'],
-            noEsLista: 'Anime'
+            duplicadas: ['Mafia', 'MAFIA'],
+            demasiadas: ['Mafia', 'Venganza', 'Slasher', 'Zombis', 'Prisión', 'Extraterrestres', 'Vampiros'],
+            noEsLista: 'Mafia'
         }
     }
 }));
@@ -30,15 +30,15 @@ describe('autoTagsFor', () => {
     });
 
     test('devuelve las etiquetas del item', () => {
-        expect(mod.autoTagsFor('ok')).toEqual(['Anime', 'Venganza']);
+        expect(mod.autoTagsFor('ok')).toEqual(['Mafia', 'Venganza']);
     });
 
     test('normaliza la grafía a la del vocabulario', () => {
-        expect(mod.autoTagsFor('grafia')).toEqual(['Anime', 'Western']);
+        expect(mod.autoTagsFor('grafia')).toEqual(['Mafia', 'Slasher']);
     });
 
     test('descarta lo que no está en el vocabulario', () => {
-        expect(mod.autoTagsFor('inventadas')).toEqual(['Bélico']);
+        expect(mod.autoTagsFor('inventadas')).toEqual(['Surrealista']);
     });
 
     test('un item cuyas etiquetas ya no existen desaparece', () => {
@@ -50,7 +50,7 @@ describe('autoTagsFor', () => {
     });
 
     test('deduplica', () => {
-        expect(mod.autoTagsFor('duplicadas')).toEqual(['Anime']);
+        expect(mod.autoTagsFor('duplicadas')).toEqual(['Mafia']);
     });
 
     test('recorta al máximo por item', () => {

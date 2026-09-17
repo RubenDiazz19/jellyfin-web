@@ -64,8 +64,8 @@ describe('parseQuery', () => {
 
 describe('filtro por etiqueta', () => {
     const vm = () => makeVm(
-        [show('s1', 'Serie A', ['vampiros']), show('s2', 'Serie B')],
-        [movie('m1', 'Peli', ['vampiros', 'comedia'])]
+        [show('s1', 'Serie A', ['Vampiros']), show('s2', 'Serie B')],
+        [movie('m1', 'Peli', ['Vampiros', 'Feelgood'])]
     );
 
     test('sin filtro salen todos', () => {
@@ -80,7 +80,7 @@ describe('filtro por etiqueta', () => {
 
     test('la etiqueta del chip ignora mayúsculas', () => {
         const v = vm();
-        v.toggleTagFilter('ANIME');
+        v.toggleTagFilter('VAMPIROS');
         expect(ids(v)).toEqual(['s1', 'm1']);
     });
 
@@ -98,7 +98,7 @@ describe('filtro por etiqueta', () => {
 
     test('chip y `#tag` se acumulan: hacen falta las dos etiquetas', () => {
         const v = vm();
-        v.toggleTagFilter('comedia');
+        v.toggleTagFilter('Feelgood');
         v.setQuery('#vampiros');
         expect(ids(v)).toEqual(['m1']);
     });
@@ -121,7 +121,7 @@ describe('filtro por etiqueta', () => {
     test('quitar un chip ignora la grafía con la que se puso', () => {
         const v = vm();
         v.toggleTagFilter('Vampiros');
-        v.toggleTagFilter('ANIME');
+        v.toggleTagFilter('vAMPIROS');
         expect(v.tagFilters.value).toEqual([]);
     });
 
@@ -143,7 +143,7 @@ describe('allTags (los chips que se pintan)', () => {
             [show('s1', 'A', [], ['Trepidante', 'Vampiros'])],
             [movie('m1', 'B', [], ['Venganza'])]
         );
-        expect(v.allTags.value).toEqual(['Vampiros', 'Venganza', 'Trepidante']);
+        expect(v.allTags.value).toEqual(['Trepidante', 'Vampiros', 'Venganza']);
     });
 
     test('deduplica ignorando mayúsculas y conserva la primera grafía', () => {
@@ -156,13 +156,13 @@ describe('allTags (los chips que se pintan)', () => {
 
     test('las etiquetas de servidor y automáticas conviven en la lista', () => {
         const v = makeVm([show('s1', 'A', ['Feelgood'], ['Vampiros'])]);
-        expect(v.allTags.value).toEqual(['Vampiros', 'Feelgood']);
+        expect(v.allTags.value).toEqual(['Feelgood', 'Vampiros']);
     });
 
     test('los géneros no se incluyen como chips de etiquetas ya que pertenecen a la categoría de géneros', () => {
         const v = makeVm(
-            [show('s1', 'A', [], [], ['War & Politics', 'Drama'])],
-            [movie('m1', 'B', [], [], ['Action & Adventure'])]
+            [show('s1', 'A', [], [], ['Bélico', 'Drama'])],
+            [movie('m1', 'B', [], [], ['Acción', 'Aventura'])]
         );
         expect(v.allTags.value).toEqual([]);
     });
@@ -202,8 +202,8 @@ describe('availableTags (filtrado dinámico por facetas)', () => {
         ]);
         v.toggleTagFilter('Feelgood');
         // Los 3 resultados tienen 'Vampiros': seleccionar 'Vampiros' no acotaría nada,
-        // por lo que no se ofrece. 'Juicios', 'Distopía' y 'Melancólica' sí acotan.
-        expect(v.availableTags.value).toEqual(['Feelgood', 'Juicios', 'Distopía', 'Melancólica']);
+        // por lo que no se ofrece. 'Distopía', 'Juicios' y 'Melancólica' sí acotan (orden alfabético).
+        expect(v.availableTags.value).toEqual(['Distopía', 'Feelgood', 'Juicios', 'Melancólica']);
     });
 
     test('si al filtrar solo queda 1 resultado, desaparecen las demás opciones irrelevantes', () => {

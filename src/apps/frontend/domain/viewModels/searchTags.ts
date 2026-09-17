@@ -1,6 +1,5 @@
 import type { Movie, Show, ListEntry } from '../../data/models';
-import { canonicalTag, getItemTags, normalizeTagForSearch } from '../tags';
-import { getItemGenres } from '../genres';
+import { getItemTags, normalizeTagForSearch } from '../tags';
 
 /**
  * Extrae y normaliza todas las etiquetas de las obras del catálogo,
@@ -9,8 +8,7 @@ import { getItemGenres } from '../genres';
 export function computeAllTags(items: ReadonlyArray<Show | Movie | (ListEntry & { kind: 'collection' })>): string[] {
     const seen = new Map<string, string>();
     for (const item of items) {
-        const itemGenres = 'genres' in item ? getItemGenres(item as any) : [];
-        const allItemTags = [...itemGenres, ...getItemTags(item)];
+        const allItemTags = getItemTags(item);
         for (const tag of allItemTags) {
             const key = normalizeTagForSearch(tag);
             if (!seen.has(key)) seen.set(key, tag);
@@ -63,8 +61,7 @@ export function computeAvailableTags<T extends Show | Movie | (ListEntry & { kin
         if (totalResults > 1) {
             const tagFrequency = new Map<string, { canon: string; count: number }>();
             for (const item of currentResults) {
-                const itemGenres = 'genres' in item ? getItemGenres(item as any) : [];
-                const allItemTags = [...itemGenres, ...getItemTags(item)];
+                const allItemTags = getItemTags(item);
                 for (const tag of allItemTags) {
                     const key = normalizeTagForSearch(tag);
                     const entry = tagFrequency.get(key);
@@ -86,8 +83,7 @@ export function computeAvailableTags<T extends Show | Movie | (ListEntry & { kin
         // Sin etiquetas activas aún (solo filtros de tipo/estado/valoración/búsqueda):
         // Extraer todas las etiquetas presentes en las obras resultantes.
         for (const item of currentResults) {
-            const itemGenres = 'genres' in item ? getItemGenres(item as any) : [];
-            const allItemTags = [...itemGenres, ...getItemTags(item)];
+            const allItemTags = getItemTags(item);
             for (const tag of allItemTags) {
                 const key = normalizeTagForSearch(tag);
                 if (!seen.has(key)) seen.set(key, tag);

@@ -20,7 +20,7 @@ describe('vocabulary', () => {
     });
 
     test('canonicalTag devuelve la grafía del vocabulario', () => {
-        expect(canonicalTag('ANIME')).toBe('Anime');
+        expect(canonicalTag('VENGANZA')).toBe('Venganza');
         expect(canonicalTag('  terror psicológico ')).toBe('Terror psicológico');
     });
 
@@ -32,8 +32,8 @@ describe('vocabulary', () => {
     test('los acentos cuentan: no se aceptan variantes sin tilde', () => {
         // Si algún día se quiere tolerar, hay que hacerlo explícito en
         // `canonicalTag`; que pase de rebote sería un bug silencioso.
-        expect(canonicalTag('Belico')).toBeUndefined();
-        expect(canonicalTag('Bélico')).toBe('Bélico');
+        expect(canonicalTag('Terror psicologico')).toBeUndefined();
+        expect(canonicalTag('Terror psicológico')).toBe('Terror psicológico');
     });
 
     test('translateEnglishTag mapea términos comunes en inglés al español', () => {

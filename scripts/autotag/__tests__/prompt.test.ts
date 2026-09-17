@@ -25,15 +25,15 @@ describe('buildSystemPrompt', () => {
         expect(faltan).toEqual([]);
     });
 
-    test('deja claro que la lista es cerrada', () => {
-        expect(prompt).toMatch(/lista cerrada/i);
-        expect(prompt).toMatch(/no inventes/i);
+    test('permite proponer etiquetas nuevas', () => {
+        expect(prompt).toMatch(/lista base ni en la dinámica/i);
+        expect(prompt).toMatch(/campo "nuevas"/i);
     });
 
     test('permite explícitamente no etiquetar', () => {
         // Sin esto un modelo siempre devuelve el máximo de etiquetas, aunque
         // no venga a cuento.
-        expect(prompt).toMatch(/lista vacía/i);
+        expect(prompt).toMatch(/déjalo/i);
     });
 });
 

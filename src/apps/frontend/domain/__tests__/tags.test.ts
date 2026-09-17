@@ -21,8 +21,8 @@ describe('normalizeTagForSearch', () => {
 describe('getItemTags', () => {
     it('devuelve string[] con los tags del vocabulario cerrado, no objetos', () => {
         const item = {
-            autoTags: ['Anime', 'Suspense'],
-            tags: ['anime', 'Comedia']
+            autoTags: ['Mafia', 'Surrealista'],
+            tags: ['mafia', 'Comedia']
         };
         const tags = getItemTags(item);
         // Debe devolver strings, no objetos con label/source
@@ -30,11 +30,11 @@ describe('getItemTags', () => {
     });
 
     it('autoTags del vocabulario pasan directamente', () => {
-        const item = { autoTags: ['Anime', 'Terror', 'Suspense'] };
+        const item = { autoTags: ['Mafia', 'Venganza', 'Surrealista'] };
         const tags = getItemTags(item);
-        expect(tags).toContain('Anime');
-        expect(tags).toContain('Terror');
-        expect(tags).toContain('Suspense');
+        expect(tags).toContain('Mafia');
+        expect(tags).toContain('Venganza');
+        expect(tags).toContain('Surrealista');
     });
 
     it('server tags basura de TMDB se descartan', () => {
@@ -51,17 +51,17 @@ describe('getItemTags', () => {
 
     it('server tags que SÍ están en el vocabulario pasan', () => {
         const item = {
-            tags: ['Anime', 'Terror psicológico']
+            tags: ['Mafia', 'Terror psicológico']
         };
         const tags = getItemTags(item);
-        expect(tags).toContain('Anime');
+        expect(tags).toContain('Mafia');
         expect(tags).toContain('Terror psicológico');
     });
 
     it('no incluye genres — los genres viven en su propio módulo', () => {
         const item = {
             genres: ['Action', 'Comedy'],
-            tags: ['Anime']
+            tags: ['Mafia']
         };
         const tags = getItemTags(item);
         // Los genres no pasan por getItemTags: no están en el vocabulario
@@ -70,23 +70,23 @@ describe('getItemTags', () => {
         expect(tags).not.toContain('Acción');
         expect(tags).not.toContain('Comedy');
         expect(tags).not.toContain('Comedia');
-        // Pero Anime sí está en el vocabulario
-        expect(tags).toContain('Anime');
+        // Pero Mafia sí está en el vocabulario
+        expect(tags).toContain('Mafia');
     });
 
     it('deduplica case-insensitive entre autoTags y server tags', () => {
         const item = {
-            autoTags: ['Anime', 'Terror'],
-            tags: ['anime', 'TERROR']
+            autoTags: ['Mafia', 'Venganza'],
+            tags: ['mafia', 'VENGANZA']
         };
         const tags = getItemTags(item);
-        expect(tags.filter((t) => t.toLowerCase() === 'anime')).toHaveLength(1);
-        expect(tags.filter((t) => t.toLowerCase() === 'terror')).toHaveLength(1);
+        expect(tags.filter((t) => t.toLowerCase() === 'mafia')).toHaveLength(1);
+        expect(tags.filter((t) => t.toLowerCase() === 'venganza')).toHaveLength(1);
     });
 
     it('ordena alfabéticamente', () => {
         const item = {
-            autoTags: ['Terror', 'Anime', 'Comedia']
+            autoTags: ['Zombis', 'Mafia', 'Slasher']
         };
         const tags = getItemTags(item);
         const sorted = [...tags].sort((a, b) => a.localeCompare(b));
