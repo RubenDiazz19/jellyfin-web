@@ -16,6 +16,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseTagResponse } from '../../src/apps/frontend/data/autotag/parseResponse';
+import { addDynamicTags } from '../../src/apps/frontend/data/autotag/vocabulary';
 import { fetchLibrary, resolveUserId, type JellyfinConfig } from './jellyfin';
 import { buildSystemPrompt, buildUserPrompt, type PromptItem } from './prompt';
 import {
@@ -24,7 +25,7 @@ import {
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = resolve(SCRIPT_DIR, '../../src/apps/frontend/data/autotag/autoTags.json');
-const PROVIDERS: readonly ProviderName[] = ['groq', 'gemini', 'ollama', 'openai'];
+const PROVIDERS: readonly ProviderName[] = ['groq', 'gemini', 'ollama', 'openai', 'openrouter'];
 
 /** Lotes fallidos seguidos tras los que se da la pasada por perdida. */
 const MAX_CONSECUTIVE_FAILURES = 3;
@@ -44,7 +45,7 @@ Variables de entorno (se leen también de .env):
   JELLYFIN_SERVER    URL del backend. Por defecto http://localhost:8096
   JELLYFIN_API_KEY   Clave de API (Panel → Avanzado → Claves de API). Obligatoria.
   JELLYFIN_USER_ID   Opcional; si no, se usa el primer administrador.
-  AUTOTAG_PROVIDER   groq | gemini | ollama | openai. Por defecto groq.
+  AUTOTAG_PROVIDER   groq | gemini | ollama | openai | openrouter. Por defecto openrouter.
   AUTOTAG_API_KEY    Clave del proveedor (no hace falta con ollama).
   AUTOTAG_MODEL      Modelo a usar. Por defecto, el del proveedor.
   AUTOTAG_BASE_URL   Solo para openai/ollama: URL alternativa.`;
@@ -138,7 +139,7 @@ function resolveJellyfin(): JellyfinConfig {
 }
 
 function resolveProvider(): Provider {
-    const provider = (process.env.AUTOTAG_PROVIDER ?? 'groq') as ProviderName;
+    const provider = (process.env.AUTOTAG_PROVIDER ?? 'openrouter') as ProviderName;
     if (!PROVIDERS.includes(provider)) {
         fail(`AUTOTAG_PROVIDER debe ser uno de: ${PROVIDERS.join(', ')}`);
     }
@@ -156,16 +157,24 @@ function resolveProvider(): Provider {
 
 // ── Fichero de salida ───────────────────────────────────────────────────────
 
-type OutFile = { items: Record<string, string[]> };
+type OutFile = {
+    items: Record<string, string[]>;
+    promotedTags: string[];
+    pendingTags: Record<string, number>;
+};
 
 const OUT_COMMENT = 'Generado por `bun run autotag`. Mapa itemId -> etiquetas del '
     + 'vocabulario. Las claves que empiezan por _ se ignoran al leer.';
 
 function readExisting(): OutFile {
-    if (!existsSync(OUT_PATH)) return { items: {} };
+    if (!existsSync(OUT_PATH)) return { items: {}, promotedTags: [], pendingTags: {} };
     try {
         const parsed = JSON.parse(readFileSync(OUT_PATH, 'utf8')) as Partial<OutFile>;
-        return { items: parsed.items ?? {} };
+        return { 
+            items: parsed.items ?? {},
+            promotedTags: parsed.promotedTags ?? [],
+            pendingTags: parsed.pendingTags ?? {}
+        };
     } catch {
         fail(`${OUT_PATH} existe pero no es JSON válido. Bórralo o arréglalo.`);
     }
@@ -175,6 +184,8 @@ function write(file: OutFile) {
     const body = {
         _comment: OUT_COMMENT,
         _generatedAt: new Date().toISOString(),
+        promotedTags: file.promotedTags.length > 0 ? file.promotedTags : undefined,
+        pendingTags: Object.keys(file.pendingTags).length > 0 ? file.pendingTags : undefined,
         items: file.items
     };
     writeFileSync(OUT_PATH, `${JSON.stringify(body, null, 2)}\n`);
@@ -195,11 +206,38 @@ type Totals = { tagged: number; empty: number; rejected: Set<string> };
 async function runBatch(
     llm: Provider, system: string, batch: PromptItem[], out: OutFile, opts: Options, totals: Totals
 ) {
-    const raw = await llm.complete(system, buildUserPrompt(batch));
+    // Pasar las tags promocionadas al prompt
+    const systemWithDynamic = system.replace('LISTA_DINAMICA_PLACEHOLDER', out.promotedTags.length > 0 ? `\nTambién puedes usar estas etiquetas añadidas dinámicamente:\n${out.promotedTags.map(t => `- ${t}`).join('\n')}\n` : '');
+    
+    const raw = await llm.complete(systemWithDynamic, buildUserPrompt(batch));
     const result = parseTagResponse(raw, batch.map((b) => b.id));
+
+    const PROMOTION_THRESHOLD = 2;
 
     for (const item of batch) {
         const tags = result.tags.get(item.id) ?? [];
+        
+        // Procesar las etiquetas nuevas propuestas
+        const itemNewTags = result.newTags.get(item.id) ?? [];
+        for (const newTag of itemNewTags) {
+            if (out.promotedTags.includes(newTag)) continue;
+            
+            const currentCount = out.pendingTags[newTag] ?? 0;
+            const newCount = currentCount + 1;
+            
+            if (newCount >= PROMOTION_THRESHOLD) {
+                out.promotedTags.push(newTag);
+                delete out.pendingTags[newTag];
+                // Inyectar al entorno global del script para futuros lote
+                addDynamicTags([newTag]);
+                // Incluirla en este mismo item si no estaba
+                if (!tags.includes(newTag)) tags.push(newTag);
+                console.log(`  ⭐ Nueva etiqueta promocionada: "${newTag}"`);
+            } else {
+                out.pendingTags[newTag] = newCount;
+            }
+        }
+
         // Se guarda también la lista vacía: es lo que marca el título como ya
         // visto para la próxima pasada.
         out.items[item.id] = tags;
@@ -300,6 +338,10 @@ async function main() {
     console.log(`Biblioteca: ${library.length} títulos`);
 
     const out = readExisting();
+    if (out.promotedTags.length > 0) {
+        addDynamicTags(out.promotedTags);
+    }
+    
     const known = Object.keys(out.items).length;
     if (known > 0) console.log(`Ya etiquetados: ${known}`);
 

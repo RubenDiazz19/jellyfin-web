@@ -5,23 +5,23 @@ describe('knownTags', () => {
     it('solo incluye tags del vocabulario cerrado, no géneros traducidos', () => {
         registerTagSource(() => [
             {
-                tags: ['Anime', 'aftercreditsstinger', 'blind girl'],
-                autoTags: ['Terror', 'Suspense']
+                tags: ['Vampiros', 'aftercreditsstinger', 'blind girl'],
+                autoTags: ['Melancólica', 'Trepidante']
             },
             {
-                tags: ['anime', 'Comedia'],
-                autoTags: ['Bélico']
+                tags: ['vampiros', 'Venganza'],
+                autoTags: ['Distopía']
             }
         ]);
 
         const tags = knownTags();
 
         // Tags del vocabulario que pasan canonicalTag()
-        expect(tags).toContain('Anime');
-        expect(tags).toContain('Terror');
-        expect(tags).toContain('Suspense');
-        expect(tags).toContain('Comedia');
-        expect(tags).toContain('Bélico');
+        expect(tags).toContain('Vampiros');
+        expect(tags).toContain('Melancólica');
+        expect(tags).toContain('Trepidante');
+        expect(tags).toContain('Venganza');
+        expect(tags).toContain('Distopía');
 
         // Keywords basura de TMDB se descartan
         expect(tags).not.toContain('aftercreditsstinger');
@@ -34,6 +34,6 @@ describe('knownTags', () => {
         expect(tags).toEqual(sorted);
 
         // Sin duplicados insensibles a mayúsculas
-        expect(tags.filter((t) => t.toLowerCase() === 'anime')).toHaveLength(1);
+        expect(tags.filter((t) => t.toLowerCase() === 'vampiros')).toHaveLength(1);
     });
 });

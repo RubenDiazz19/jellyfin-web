@@ -46,7 +46,7 @@ function ids(vm: SearchViewModel): string[] {
 
 describe('parseQuery', () => {
     test('separa etiquetas del texto libre', () => {
-        expect(parseQuery('#anime cine')).toEqual({ text: 'cine', tags: ['anime'] });
+        expect(parseQuery('#vampiros cine')).toEqual({ text: 'cine', tags: ['vampiros'] });
     });
 
     test('varias etiquetas', () => {
@@ -58,14 +58,14 @@ describe('parseQuery', () => {
     });
 
     test('normaliza a minúsculas', () => {
-        expect(parseQuery('#Anime')).toEqual({ text: '', tags: ['anime'] });
+        expect(parseQuery('#Vampiros')).toEqual({ text: '', tags: ['vampiros'] });
     });
 });
 
 describe('filtro por etiqueta', () => {
     const vm = () => makeVm(
-        [show('s1', 'Serie A', ['anime']), show('s2', 'Serie B')],
-        [movie('m1', 'Peli', ['anime', 'comedia'])]
+        [show('s1', 'Serie A', ['vampiros']), show('s2', 'Serie B')],
+        [movie('m1', 'Peli', ['vampiros', 'comedia'])]
     );
 
     test('sin filtro salen todos', () => {
@@ -74,7 +74,7 @@ describe('filtro por etiqueta', () => {
 
     test('el chip filtra por esa etiqueta', () => {
         const v = vm();
-        v.toggleTagFilter('anime');
+        v.toggleTagFilter('vampiros');
         expect(ids(v)).toEqual(['s1', 'm1']);
     });
 
@@ -86,41 +86,41 @@ describe('filtro por etiqueta', () => {
 
     test('`#tag` en la caja filtra igual que el chip', () => {
         const v = vm();
-        v.setQuery('#comedia');
+        v.setQuery('#feelgood');
         expect(ids(v)).toEqual(['m1']);
     });
 
     test('`#tag` y texto libre se combinan', () => {
         const v = vm();
-        v.setQuery('#anime Serie');
+        v.setQuery('#vampiros Serie');
         expect(ids(v)).toEqual(['s1']);
     });
 
     test('chip y `#tag` se acumulan: hacen falta las dos etiquetas', () => {
         const v = vm();
         v.toggleTagFilter('comedia');
-        v.setQuery('#anime');
+        v.setQuery('#vampiros');
         expect(ids(v)).toEqual(['m1']);
     });
 
     test('clearTagFilters desactiva el filtro', () => {
         const v = vm();
-        v.toggleTagFilter('anime');
+        v.toggleTagFilter('vampiros');
         v.clearTagFilters();
         expect(ids(v)).toEqual(['s1', 's2', 'm1']);
     });
 
     test('volver a pulsar el mismo chip lo quita', () => {
         const v = vm();
-        v.toggleTagFilter('anime');
-        v.toggleTagFilter('anime');
+        v.toggleTagFilter('vampiros');
+        v.toggleTagFilter('vampiros');
         expect(v.tagFilters.value).toEqual([]);
         expect(ids(v)).toEqual(['s1', 's2', 'm1']);
     });
 
     test('quitar un chip ignora la grafía con la que se puso', () => {
         const v = vm();
-        v.toggleTagFilter('Anime');
+        v.toggleTagFilter('Vampiros');
         v.toggleTagFilter('ANIME');
         expect(v.tagFilters.value).toEqual([]);
     });
@@ -128,7 +128,7 @@ describe('filtro por etiqueta', () => {
     test('cuenta como filtro activo', () => {
         const v = vm();
         expect(v.anyFilterActive.value).toBe(false);
-        v.toggleTagFilter('anime');
+        v.toggleTagFilter('vampiros');
         expect(v.anyFilterActive.value).toBe(true);
     });
 });
@@ -140,23 +140,23 @@ describe('allTags (los chips que se pintan)', () => {
 
     test('une las automáticas de series y películas, ordenadas', () => {
         const v = makeVm(
-            [show('s1', 'A', [], ['Western', 'Anime'])],
-            [movie('m1', 'B', [], ['Bélico'])]
+            [show('s1', 'A', [], ['Trepidante', 'Vampiros'])],
+            [movie('m1', 'B', [], ['Venganza'])]
         );
-        expect(v.allTags.value).toEqual(['Anime', 'Bélico', 'Western']);
+        expect(v.allTags.value).toEqual(['Vampiros', 'Venganza', 'Trepidante']);
     });
 
     test('deduplica ignorando mayúsculas y conserva la primera grafía', () => {
         const v = makeVm(
-            [show('s1', 'A', [], ['Anime'])],
-            [movie('m1', 'B', [], ['anime'])]
+            [show('s1', 'A', [], ['Vampiros'])],
+            [movie('m1', 'B', [], ['vampiros'])]
         );
-        expect(v.allTags.value).toEqual(['Anime']);
+        expect(v.allTags.value).toEqual(['Vampiros']);
     });
 
     test('las etiquetas de servidor y automáticas conviven en la lista', () => {
-        const v = makeVm([show('s1', 'A', ['Comedia'], ['Anime'])]);
-        expect(v.allTags.value).toEqual(['Anime', 'Comedia']);
+        const v = makeVm([show('s1', 'A', ['Feelgood'], ['Vampiros'])]);
+        expect(v.allTags.value).toEqual(['Vampiros', 'Feelgood']);
     });
 
     test('los géneros no se incluyen como chips de etiquetas ya que pertenecen a la categoría de géneros', () => {
@@ -175,65 +175,65 @@ describe('allTags (los chips que se pintan)', () => {
 describe('availableTags (filtrado dinámico por facetas)', () => {
     test('sin filtros activos devuelve todas las etiquetas', () => {
         const v = makeVm(
-            [show('s1', 'A', ['Acción', 'Superhéroes'])],
-            [movie('m1', 'B', ['Comedia', 'Romance'])]
+            [show('s1', 'A', ['Atraco', 'Superhéroes'])],
+            [movie('m1', 'B', ['Feelgood', 'Melancólica'])]
         );
-        expect(v.availableTags.value).toEqual(['Acción', 'Comedia', 'Romance', 'Superhéroes']);
+        expect(v.availableTags.value).toEqual(['Atraco', 'Feelgood', 'Melancólica', 'Superhéroes']);
     });
 
     test('con varios resultados muestra las etiquetas conjuntas que permiten refinar', () => {
         const v = makeVm(
             [
-                show('s1', 'A', ['Acción', 'Superhéroes']),
-                show('s2', 'B', ['Acción', 'Comedia'])
+                show('s1', 'A', ['Atraco', 'Superhéroes']),
+                show('s2', 'B', ['Atraco', 'Feelgood'])
             ],
-            [movie('m1', 'C', ['Romance'])]
+            [movie('m1', 'C', ['Melancólica'])]
         );
-        v.toggleTagFilter('Acción');
+        v.toggleTagFilter('Atraco');
         // Hay 2 resultados (s1 y s2): se muestran las etiquetas conjuntas para poder seguir refinando
-        expect(v.availableTags.value).toEqual(['Acción', 'Comedia', 'Superhéroes']);
+        expect(v.availableTags.value).toEqual(['Atraco', 'Feelgood', 'Superhéroes']);
     });
 
     test('si todos los resultados filtrados comparten una etiqueta, no se ofrece por no discriminar', () => {
         const v = makeVm([
-            show('s1', 'Amagami', ['Comedia', 'Anime', 'Romance']),
-            show('s2', 'Grand Blue', ['Comedia', 'Anime', 'Deportes']),
-            show('s3', 'Polar Opposites', ['Comedia', 'Anime', 'Instituto'])
+            show('s1', 'Amagami', ['Feelgood', 'Vampiros', 'Melancólica']),
+            show('s2', 'Grand Blue', ['Feelgood', 'Vampiros', 'Juicios']),
+            show('s3', 'Polar Opposites', ['Feelgood', 'Vampiros', 'Distopía'])
         ]);
-        v.toggleTagFilter('Comedia');
-        // Los 3 resultados tienen 'Anime': seleccionar 'Anime' no acotaría nada,
-        // por lo que no se ofrece. 'Deportes', 'Instituto' y 'Romance' sí acotan.
-        expect(v.availableTags.value).toEqual(['Comedia', 'Deportes', 'Instituto', 'Romance']);
+        v.toggleTagFilter('Feelgood');
+        // Los 3 resultados tienen 'Vampiros': seleccionar 'Vampiros' no acotaría nada,
+        // por lo que no se ofrece. 'Juicios', 'Distopía' y 'Melancólica' sí acotan.
+        expect(v.availableTags.value).toEqual(['Feelgood', 'Juicios', 'Distopía', 'Melancólica']);
     });
 
     test('si al filtrar solo queda 1 resultado, desaparecen las demás opciones irrelevantes', () => {
         const v = makeVm(
-            [show('s1', 'A', ['Acción', 'Superhéroes'])],
-            [movie('m1', 'B', ['Comedia', 'Romance'])]
+            [show('s1', 'A', ['Atraco', 'Superhéroes'])],
+            [movie('m1', 'B', ['Feelgood', 'Melancólica'])]
         );
-        v.toggleTagFilter('Acción');
+        v.toggleTagFilter('Atraco');
         // Solo queda s1: 'Superhéroes' daría el mismo contenido, así que desaparece y solo queda la activa
-        expect(v.availableTags.value).toEqual(['Acción']);
+        expect(v.availableTags.value).toEqual(['Atraco']);
     });
 
     test('al desmarcar la etiqueta se restaura la lista completa de opciones', () => {
         const v = makeVm(
-            [show('s1', 'A', ['Acción', 'Superhéroes'])],
-            [movie('m1', 'B', ['Comedia', 'Romance'])]
+            [show('s1', 'A', ['Atraco', 'Superhéroes'])],
+            [movie('m1', 'B', ['Feelgood', 'Melancólica'])]
         );
-        v.toggleTagFilter('Acción');
-        expect(v.availableTags.value).toEqual(['Acción']);
-        v.toggleTagFilter('Acción');
-        expect(v.availableTags.value).toEqual(['Acción', 'Comedia', 'Romance', 'Superhéroes']);
+        v.toggleTagFilter('Atraco');
+        expect(v.availableTags.value).toEqual(['Atraco']);
+        v.toggleTagFilter('Atraco');
+        expect(v.availableTags.value).toEqual(['Atraco', 'Feelgood', 'Melancólica', 'Superhéroes']);
     });
 
     test('al filtrar por tipo (ej. películas) solo muestra etiquetas presentes en películas', () => {
         const v = makeVm(
-            [show('s1', 'A', ['Acción', 'Superhéroes'])],
-            [movie('m1', 'B', ['Comedia', 'Romance'])]
+            [show('s1', 'A', ['Atraco', 'Superhéroes'])],
+            [movie('m1', 'B', ['Feelgood', 'Melancólica'])]
         );
         v.toggleTypeFilter('peliculas');
-        expect(v.availableTags.value).toEqual(['Comedia', 'Romance']);
+        expect(v.availableTags.value).toEqual(['Feelgood', 'Melancólica']);
     });
 });
 
@@ -248,16 +248,16 @@ describe('etiquetas y géneros: filtrado', () => {
     });
     test('el chip de una automática filtra', () => {
         const v = makeVm(
-            [show('s1', 'A', [], ['Anime'])],
-            [movie('m1', 'B', [], ['Western'])]
+            [show('s1', 'A', [], ['Vampiros'])],
+            [movie('m1', 'B', [], ['Trepidante'])]
         );
-        v.toggleTagFilter('Anime');
+        v.toggleTagFilter('Vampiros');
         expect(ids(v)).toEqual(['s1']);
     });
 
     test('`#` encuentra las automáticas de una sola palabra', () => {
-        const v = makeVm([show('s1', 'A', [], ['Anime']), show('s2', 'B')]);
-        v.setQuery('#anime');
+        const v = makeVm([show('s1', 'A', [], ['Vampiros']), show('s2', 'B')]);
+        v.setQuery('#vampiros');
         expect(ids(v)).toEqual(['s1']);
     });
 
@@ -276,70 +276,70 @@ describe('etiquetas y géneros: filtrado', () => {
     test('los keywords de TMDB se siguen pudiendo filtrar aunque no se pinten', () => {
         // Es el desahogo de esconderlos: dejan de estorbar en la fila, pero no
         // se pierde la capacidad de llegar a ellos.
-        const v = makeVm([show('s1', 'A', ['anime']), show('s2', 'B')]);
-        v.setQuery('#anime');
+        const v = makeVm([show('s1', 'A', ['vampiros']), show('s2', 'B')]);
+        v.setQuery('#vampiros');
         expect(ids(v)).toEqual(['s1']);
     });
 
     test('una automática y una del servidor se acumulan', () => {
         const v = makeVm([
-            show('s1', 'A', ['Comedia'], ['Anime']),
-            show('s2', 'B', [], ['Anime'])
+            show('s1', 'A', ['Feelgood'], ['Vampiros']),
+            show('s2', 'B', [], ['Vampiros'])
         ]);
-        v.toggleTagFilter('Anime');
-        v.setQuery('#comedia');
+        v.toggleTagFilter('Vampiros');
+        v.setQuery('#feelgood');
         expect(ids(v)).toEqual(['s1']);
     });
 });
 
 describe('varias etiquetas a la vez', () => {
     const vm = () => makeVm([
-        show('s1', 'A', [], ['Anime', 'Instituto', 'Romance']),
-        show('s2', 'B', [], ['Anime', 'Aventura']),
-        show('s3', 'C', [], ['Instituto'])
+        show('s1', 'A', [], ['Vampiros', 'Distopía', 'Melancólica']),
+        show('s2', 'B', [], ['Vampiros', 'Aventura']),
+        show('s3', 'C', [], ['Distopía'])
     ]);
 
     test('dos chips se cruzan en Y, no en O', () => {
         const v = vm();
-        v.toggleTagFilter('Anime');
-        v.toggleTagFilter('Instituto');
+        v.toggleTagFilter('Vampiros');
+        v.toggleTagFilter('Distopía');
         expect(ids(v)).toEqual(['s1']);
     });
 
     test('tres chips siguen acotando', () => {
         const v = vm();
-        v.toggleTagFilter('Anime');
-        v.toggleTagFilter('Instituto');
-        v.toggleTagFilter('Romance');
+        v.toggleTagFilter('Vampiros');
+        v.toggleTagFilter('Distopía');
+        v.toggleTagFilter('Melancólica');
         expect(ids(v)).toEqual(['s1']);
     });
 
     test('una combinación sin coincidencias no devuelve nada', () => {
         const v = vm();
         v.toggleTagFilter('Aventura');
-        v.toggleTagFilter('Instituto');
+        v.toggleTagFilter('Distopía');
         expect(ids(v)).toEqual([]);
     });
 
     test('quitar uno de los dos ensancha el resultado', () => {
         const v = vm();
-        v.toggleTagFilter('Anime');
-        v.toggleTagFilter('Instituto');
-        v.toggleTagFilter('Instituto');
+        v.toggleTagFilter('Vampiros');
+        v.toggleTagFilter('Distopía');
+        v.toggleTagFilter('Distopía');
         expect(ids(v)).toEqual(['s1', 's2']);
     });
 
     test('hasTagFilter refleja lo puesto, ignorando mayúsculas', () => {
         const v = vm();
-        v.toggleTagFilter('Anime');
-        expect(v.hasTagFilter('anime')).toBe(true);
-        expect(v.hasTagFilter('Instituto')).toBe(false);
+        v.toggleTagFilter('Vampiros');
+        expect(v.hasTagFilter('vampiros')).toBe(true);
+        expect(v.hasTagFilter('Distopía')).toBe(false);
     });
 
     test('los chips y los `#` de la caja se suman todos', () => {
         const v = vm();
-        v.toggleTagFilter('Anime');
-        v.setQuery('#romance');
+        v.toggleTagFilter('Vampiros');
+        v.setQuery('#melancólica');
         expect(ids(v)).toEqual(['s1']);
     });
 });
@@ -347,9 +347,9 @@ describe('varias etiquetas a la vez', () => {
 describe('vistas guardadas con varias etiquetas', () => {
     test('currentView guarda todas las etiquetas', () => {
         const v = makeVm();
-        v.toggleTagFilter('Anime');
-        v.toggleTagFilter('Instituto');
-        expect(v.currentView('mi vista').tags).toEqual(['Anime', 'Instituto']);
+        v.toggleTagFilter('Vampiros');
+        v.toggleTagFilter('Distopía');
+        expect(v.currentView('mi vista').tags).toEqual(['Vampiros', 'Distopía']);
     });
 
     test('sin etiquetas no guarda el campo', () => {
@@ -360,9 +360,9 @@ describe('vistas guardadas con varias etiquetas', () => {
         const v = makeVm();
         v.applyView({
             id: '1', name: 'x', typeFilter: 'todo', stateFilter: 'todo',
-            tags: ['Anime', 'Instituto']
+            tags: ['Vampiros', 'Distopía']
         });
-        expect(v.tagFilters.value).toEqual(['Anime', 'Instituto']);
+        expect(v.tagFilters.value).toEqual(['Vampiros', 'Distopía']);
     });
 
     test('una vista del formato viejo (`tag` en singular) sigue funcionando', () => {
@@ -370,14 +370,14 @@ describe('vistas guardadas con varias etiquetas', () => {
         // invalidar por cambiar el formato.
         const v = makeVm();
         v.applyView({
-            id: '1', name: 'x', typeFilter: 'todo', stateFilter: 'todo', tag: 'Anime'
+            id: '1', name: 'x', typeFilter: 'todo', stateFilter: 'todo', tag: 'Vampiros'
         });
-        expect(v.tagFilters.value).toEqual(['Anime']);
+        expect(v.tagFilters.value).toEqual(['Vampiros']);
     });
 
     test('una vista sin etiquetas limpia las que hubiera', () => {
         const v = makeVm();
-        v.toggleTagFilter('Anime');
+        v.toggleTagFilter('Vampiros');
         v.applyView({ id: '1', name: 'x', typeFilter: 'todo', stateFilter: 'todo' });
         expect(v.tagFilters.value).toEqual([]);
     });
@@ -395,10 +395,10 @@ describe('capa de búsqueda', () => {
     });
 
     test('cerrarla deja los filtros limpios para la próxima vez', () => {
-        const v = makeVm([show('s1', 'A', [], ['Anime'])]);
+        const v = makeVm([show('s1', 'A', [], ['Vampiros'])]);
         v.openOverlay();
         v.setQuery('algo');
-        v.toggleTagFilter('Anime');
+        v.toggleTagFilter('Vampiros');
         v.setTypeFilter('series');
         v.setStateFilter('favs');
 
@@ -720,7 +720,7 @@ describe('filtro de valoración', () => {
 describe('búsqueda permisiva por título oficial, título original y metadatos', () => {
     const vm = () => makeVm(
         [
-            show('s1', 'Ataque a los titanes', [], [], ['Animación', 'Acción'], undefined, {
+            show('s1', 'Ataque a los titanes', [], [], ['Animación', 'Atraco'], undefined, {
                 originalTitle: 'Shingeki no Kyojin',
                 synopsis: 'La humanidad vive rodeada por enormes murallas.'
             })

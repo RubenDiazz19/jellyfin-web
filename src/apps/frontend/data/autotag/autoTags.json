@@ -1,10 +1,11 @@
 {
   "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
-  "_generatedAt": "2026-09-17T06:19:32.701Z",
+  "_generatedAt": "2026-09-17T07:24:48.977Z",
   "items": {
     "2581c8f29f2043730ea7921e9103ff09": [
       "Batman",
-      "Investigación policial"
+      "DC Comics",
+      "Cine negro"
     ],
     "9ec49ebd14f6a75ff339be859cafe2db": [
       "Drama",
@@ -44,14 +45,15 @@
       "Mayoría de edad"
     ],
     "1d41dc84d2f39f97e3f69ae5a013d74e": [
-      "Recuentos de la vida"
+      "Recuentos de la vida",
+      "Instituto"
     ],
     "f708e9f991d1f3a8cae182e83358da1b": [
       "Recuentos de la vida"
     ],
     "9d128f24a3cb664570318cf06e81e050": [
       "Recuentos de la vida",
-      "Instituto"
+      "Amistad"
     ],
     "b335f98c16c3428f2fc0d9f7d51eee2c": [
       "Acción",
@@ -87,32 +89,34 @@
       "Instituto"
     ],
     "b14b9360520538bc3a20fb4108354c83": [
+      "Hechos reales",
       "Época histórica",
       "Corrupción y poder",
       "Supervivencia"
     ],
     "598e538251367d71845079bdeaba0dd4": [
-      "Star Wars",
       "Space opera"
     ],
-    "50745da76815e18665b68e8bf8ec7d90": [],
+    "50745da76815e18665b68e8bf8ec7d90": [
+      "Identidad"
+    ],
     "97e3319dd3ab29353847ee66cdd8f325": [
-      "Batman"
+      "Batman",
+      "DC Comics"
     ],
     "362ebf6081db28484134feb33991ad27": [
       "El Señor de los Anillos",
-      "Época histórica"
+      "Supervivencia"
     ],
     "f0ab39cd60938edca247b9b0504dbdec": [
       "El Señor de los Anillos",
-      "Época histórica"
+      "Amistad"
     ],
     "2c04f6f56065d6f4bfae469f1cf276fc": [
       "El Señor de los Anillos",
-      "Época histórica"
+      "Supervivencia"
     ],
     "234d0e57e9f60b7f6c6b8c06eda04eeb": [
-      "Star Wars",
       "Space opera"
     ]
   }

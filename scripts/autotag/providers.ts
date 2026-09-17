@@ -8,7 +8,7 @@
 // los retiran cada pocos meses. Va por env (`AUTOTAG_MODEL`) con un valor por
 // defecto razonable, y si el proveedor contesta 404 el error lo dice.
 
-export type ProviderName = 'groq' | 'gemini' | 'ollama' | 'openai';
+export type ProviderName = 'groq' | 'gemini' | 'ollama' | 'openai' | 'openrouter';
 
 export type ProviderConfig = {
     provider: ProviderName;
@@ -27,7 +27,8 @@ export const DEFAULT_MODELS: Record<ProviderName, string> = {
     groq: 'llama-3.3-70b-versatile',
     gemini: 'gemini-2.5-flash',
     ollama: 'llama3.1:8b',
-    openai: 'gpt-4o-mini'
+    openai: 'gpt-4o-mini',
+    openrouter: 'microsoft/mai-ds-r1:free'
 };
 
 /** Proveedores que no necesitan clave: el modelo corre en la propia máquina. */
@@ -87,7 +88,7 @@ async function postJson(url: string, body: unknown, headers: Record<string, stri
 }
 
 /** Groq, OpenRouter, OpenAI y compañía: mismo cuerpo, distinta URL. */
-function openAiCompatible(cfg: ProviderConfig, baseUrl: string, label: string): Provider {
+function openAiCompatible(cfg: ProviderConfig, baseUrl: string, label: string, extraHeaders?: Record<string, string>): Provider {
     return {
         label,
         complete: (system, user) => withRetry(async () => {
@@ -102,7 +103,7 @@ function openAiCompatible(cfg: ProviderConfig, baseUrl: string, label: string): 
                         { role: 'user', content: user }
                     ]
                 },
-                { Authorization: `Bearer ${cfg.apiKey}` }
+                { Authorization: `Bearer ${cfg.apiKey}`, ...extraHeaders }
             ) as { choices?: { message?: { content?: string } }[] };
             const text = data.choices?.[0]?.message?.content;
             if (!text) throw new Error('Respuesta sin contenido');
@@ -166,6 +167,16 @@ export function createProvider(cfg: ProviderConfig): Provider {
                 cfg,
                 cfg.baseUrl ?? 'https://api.openai.com/v1',
                 `OpenAI-compatible (${cfg.model})`
+            );
+        case 'openrouter':
+            return openAiCompatible(
+                cfg,
+                'https://openrouter.ai/api/v1',
+                `OpenRouter (${cfg.model})`,
+                {
+                    'HTTP-Referer': 'https://github.com/jellyfin/jellyfin-web',
+                    'X-Title': 'Jellyfin Web Autotag'
+                }
             );
         case 'gemini':
             return gemini(cfg);

@@ -32,11 +32,10 @@ export function buildSystemPrompt(): string {
     const list = VOCABULARY.map((e) => `- ${e.tag}: ${e.hint}`).join('\n');
     return `Eres un catalogador de una videoteca. Etiquetas películas y series en CASTELLANO.
 
-Elige etiquetas SOLO de esta lista cerrada. No inventes ninguna, no traduzcas,
-no cambies la grafía: copia la etiqueta tal cual aparece aquí.
+Elige etiquetas de esta lista base. Intenta reutilizarlas copiando la grafía exacta.
 
 ${list}
-
+LISTA_DINAMICA_PLACEHOLDER
 Reglas:
 1. Máximo ${MAX_TAGS_PER_ITEM} etiquetas por título. Menos es mejor que más.
 2. Pon SIEMPRE el género o géneros principales (Acción, Comedia, Drama,
@@ -46,13 +45,16 @@ Reglas:
    («Sci-Fi & Fantasy»); tradúcelos a la etiqueta castellana que corresponda.
 3. Con las plazas que queden, añade lo que el género NO dice: tono, tema,
    subgénero o ambientación. Ahí sí, si ninguna encaja con seguridad, déjalo:
-   una lista más corta es preferible a forzar una etiqueta dudosa, y si no
-   encaja NADA la lista vacía es una respuesta correcta.
-4. Usa la sinopsis como fuente principal. Los keywords vienen de TMDB, están en
+   una lista más corta es preferible a forzar una etiqueta dudosa.
+4. Si crees que el título necesita imperativamente una etiqueta que NO está en
+   la lista base ni en la dinámica, puedes proponerla en el campo "nuevas".
+   SOLO hazlo si aporta valor real y no es un sinónimo de las que ya existen.
+5. Usa la sinopsis como fuente principal. Los keywords vienen de TMDB, están en
    inglés y son ruidosos: úsalos como pista, no como verdad.
-5. Responde SOLO con este JSON, sin texto alrededor:
-   {"results":[{"n":<número del título>,"tags":["<etiqueta>"]}]}
-   Una entrada por cada título recibido, usando su número tal cual.`;
+6. Responde SOLO con este JSON estricto, sin markdown ni backticks:
+   {"results":[{"n":<número>,"tags":["<etiqueta_existente>"],"nuevas":["<nueva_etiqueta>"]}]}
+   Una entrada por cada título recibido. Si no hay nuevas, deja "nuevas" vacío.
+   No incluyas razonamiento ni texto de pensamiento en tu salida, solo JSON.`;
 }
 
 export function buildUserPrompt(items: readonly PromptItem[]): string {

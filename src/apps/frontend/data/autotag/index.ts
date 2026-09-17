@@ -12,12 +12,18 @@
 // parte de `item.tags`.
 
 import rawFile from './autoTags.json';
-import { canonicalTag, dropRedundant, MAX_TAGS_PER_ITEM, translateEnglishTag } from './vocabulary';
+import { addDynamicTags, canonicalTag, dropRedundant, MAX_TAGS_PER_ITEM, translateEnglishTag } from './vocabulary';
 
 type AutoTagsFile = {
     _generatedAt?: string | null;
     items?: Record<string, string[]>;
+    promotedTags?: string[];
 };
+
+const rawFileTyped = rawFile as AutoTagsFile;
+if (Array.isArray(rawFileTyped.promotedTags)) {
+    addDynamicTags(rawFileTyped.promotedTags);
+}
 
 let cache: Map<string, string[]> | null = null;
 
@@ -29,7 +35,7 @@ let cache: Map<string, string[]> | null = null;
 function ensure(): Map<string, string[]> {
     if (cache) return cache;
     cache = new Map();
-    const items = (rawFile as AutoTagsFile).items;
+    const items = rawFileTyped.items;
     if (!items || typeof items !== 'object') return cache;
 
     for (const [itemId, tags] of Object.entries(items)) {
@@ -61,7 +67,7 @@ export function autoTaggedCount(): number {
 
 /** Cuándo se generó el fichero, en ISO. `null` si nunca se ha pasado. */
 export function autoTagsGeneratedAt(): string | null {
-    return (rawFile as AutoTagsFile)._generatedAt ?? null;
+    return rawFileTyped._generatedAt ?? null;
 }
 
 export { canonicalTag, isVocabularyTag, VOCABULARY, VOCABULARY_TAGS } from './vocabulary';

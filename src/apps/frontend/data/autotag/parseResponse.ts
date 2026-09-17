@@ -20,6 +20,8 @@ const STRICT = !!process.env.AUTOTAG_STRICT;
 export type ParsedTags = {
     /** itemId -> etiquetas canónicas del vocabulario. */
     tags: Map<string, string[]>;
+    /** itemId -> etiquetas nuevas propuestas por el modelo. */
+    newTags: Map<string, string[]>;
     /** Etiquetas inventadas que se han descartado (para avisar por consola). */
     rejectedTags: string[];
     /** Números fuera del lote que el modelo se ha sacado de la manga. */
@@ -33,13 +35,16 @@ export type ParsedTags = {
  * modo JSON, y recorta a lo que hay entre la primera llave y la última.
  */
 function stripFences(raw: string): string {
-    const text = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
+    let text = raw.trim();
+    // Eliminar bloque de razonamiento de modelos como DeepSeek-R1
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    text = text.replace(/^```(?:json)?\s*/i, '').replace(/```$/, '').trim();
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');
     return start >= 0 && end > start ? text.slice(start, end + 1) : text;
 }
 
-type ResultEntry = { n?: unknown; tags?: unknown };
+type ResultEntry = { n?: unknown; tags?: unknown; nuevas?: unknown };
 
 /**
  * Acepta las dos formas que salen en la práctica: la pedida
@@ -61,6 +66,7 @@ function toRef(value: unknown): number | undefined {
 
 export function parseTagResponse(raw: string, batchIds: readonly string[]): ParsedTags {
     const tags = new Map<string, string[]>();
+    const newTags = new Map<string, string[]>();
     const rejectedTags: string[] = [];
     const strayRefs: number[] = [];
 
@@ -104,6 +110,15 @@ export function parseTagResponse(raw: string, batchIds: readonly string[]): Pars
         // etiquetas que se van a caer.
         const useful = dropRedundant(clean);
         if (useful.length > 0) tags.set(itemId, useful.slice(0, MAX_TAGS_PER_ITEM));
+
+        const cleanNew: string[] = [];
+        for (const rawNew of Array.isArray(entry.nuevas) ? entry.nuevas : []) {
+            if (typeof rawNew !== 'string' || !rawNew.trim()) continue;
+            // Normalizar a mayúscula inicial para no tener "anime" y "Anime" como diferentes
+            const tag = rawNew.trim().charAt(0).toUpperCase() + rawNew.trim().slice(1);
+            if (!cleanNew.includes(tag) && !canonicalTag(tag)) cleanNew.push(tag);
+        }
+        if (cleanNew.length > 0) newTags.set(itemId, cleanNew);
     }
 
     // If strict mode is enabled, fail on any rejected or stray tags
@@ -112,6 +127,7 @@ export function parseTagResponse(raw: string, batchIds: readonly string[]): Pars
     }
     return {
         tags,
+        newTags,
         rejectedTags,
         strayRefs,
         missingIds: batchIds.filter((id) => !tags.has(id))

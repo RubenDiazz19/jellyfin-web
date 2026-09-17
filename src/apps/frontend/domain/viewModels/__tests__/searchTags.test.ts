@@ -14,13 +14,13 @@ describe('searchTags', () => {
     describe('computeAllTags', () => {
         it('extrae, normaliza y ordena etiquetas de series y películas deduplicando', () => {
             const items = [
-                mockShow('s1', ['Anime', 'Comedia']),
-                mockMovie('m1', ['anime', 'Drama'])
+                mockShow('s1', ['Space opera', 'Venganza']),
+                mockMovie('m1', ['space opera', 'Melancólica'])
             ];
 
             const result = computeAllTags(items);
             // Deduplicado ignorando mayúsculas y ordenado alfabéticamente
-            expect(result).toEqual(['Anime', 'Comedia', 'Drama']);
+            expect(result).toEqual(['Melancólica', 'Space opera', 'Venganza']);
         });
 
         it('devuelve array vacío si no hay etiquetas', () => {
@@ -30,13 +30,13 @@ describe('searchTags', () => {
     });
 
     describe('computeAvailableTags', () => {
-        const allTags = ['Acción', 'Anime', 'Comedia', 'Drama'];
+        const allTags = ['Melancólica', 'Space opera', 'Trepidante', 'Venganza'];
 
         it('devuelve todas las etiquetas si no hay ningún filtro activo', () => {
             const result = computeAvailableTags({
                 allTags,
                 activeTags: [],
-                currentResults: [mockMovie('m1', ['Anime'])],
+                currentResults: [mockMovie('m1', ['Space opera'])],
                 hasOtherFilters: false
             });
 
@@ -44,23 +44,23 @@ describe('searchTags', () => {
         });
 
         it('mantiene activas las etiquetas seleccionadas y añade las que discriminan', () => {
-            const m1 = mockMovie('m1', ['Anime', 'Acción']);
-            const m2 = mockMovie('m2', ['Anime', 'Comedia']);
+            const m1 = mockMovie('m1', ['Space opera', 'Trepidante']);
+            const m2 = mockMovie('m2', ['Space opera', 'Venganza']);
 
             const result = computeAvailableTags({
                 allTags,
-                activeTags: ['Anime'],
+                activeTags: ['Space opera'],
                 currentResults: [m1, m2],
                 hasOtherFilters: true
             });
 
-            expect(result).toContain('Anime');
-            expect(result).toContain('Acción');
-            expect(result).toContain('Comedia');
+            expect(result).toContain('Space opera');
+            expect(result).toContain('Trepidante');
+            expect(result).toContain('Venganza');
         });
 
         it('filtra etiquetas no presentes cuando solo hay filtros de categoría/tipo', () => {
-            const m1 = mockMovie('m1', ['Acción']);
+            const m1 = mockMovie('m1', ['Trepidante']);
 
             const result = computeAvailableTags({
                 allTags,
@@ -69,7 +69,7 @@ describe('searchTags', () => {
                 hasOtherFilters: true
             });
 
-            expect(result).toEqual(['Acción']);
+            expect(result).toEqual(['Trepidante']);
         });
     });
 });

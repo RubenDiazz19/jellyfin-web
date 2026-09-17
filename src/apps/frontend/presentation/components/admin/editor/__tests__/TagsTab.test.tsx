@@ -24,7 +24,7 @@ vi.mock('../../../../../domain/tags', async (importOriginal) => {
     return {
         ...actual,
         autoTagsFor: vi.fn((id: string | undefined) => {
-            if (id === 'item-1') return ['Bélico', 'Época histórica'];
+            if (id === 'item-1') return ['Venganza', 'Época histórica'];
             return [];
         })
     };
@@ -54,7 +54,7 @@ describe('TagsTab', () => {
     beforeEach(() => {
         mockGetItemRaw.mockResolvedValue({
             Id: 'item-1',
-            Tags: ['Drama']
+            Tags: ['Melancólica']
         });
         mockSetItemTags.mockResolvedValue(undefined);
     });
@@ -62,8 +62,8 @@ describe('TagsTab', () => {
     test('combina etiquetas del servidor con autoTags', async () => {
         await render({ itemId: 'item-1' });
 
-        expect(host?.textContent).toContain('Drama');
-        expect(host?.textContent).toContain('Bélico');
+        expect(host?.textContent).toContain('Melancólica');
+        expect(host?.textContent).toContain('Venganza');
         expect(host?.textContent).toContain('Época histórica');
     });
 
@@ -71,13 +71,13 @@ describe('TagsTab', () => {
         const onClose = vi.fn();
         await render({ itemId: 'item-1', onClose });
 
-        const deleteDramaBtn = host?.querySelector('button[aria-label="Delete Drama"]') as HTMLButtonElement;
+        const deleteDramaBtn = host?.querySelector('button[aria-label="Delete Melancólica"]') as HTMLButtonElement;
         expect(deleteDramaBtn).not.toBeNull();
         await act(async () => {
             deleteDramaBtn.click();
         });
 
-        expect(host?.querySelector('button[aria-label="Delete Drama"]')).toBeNull();
+        expect(host?.querySelector('button[aria-label="Delete Melancólica"]')).toBeNull();
 
         const saveBtn = Array.from(host?.querySelectorAll('button') ?? []).find(
             (b) => b.textContent?.trim() === globalize.translate('Save')
@@ -88,7 +88,7 @@ describe('TagsTab', () => {
             saveBtn?.click();
         });
 
-        expect(mockSetItemTags).toHaveBeenCalledWith('item-1', ['Bélico', 'Época histórica']);
+        expect(mockSetItemTags).toHaveBeenCalledWith('item-1', ['Época histórica', 'Venganza']);
         expect(onClose).toHaveBeenCalled();
     });
 });

@@ -24,7 +24,7 @@ vi.mock('../../../../domain/tags', async (importOriginal) => {
     return {
         ...actual,
         autoTagsFor: vi.fn((id: string | undefined) => {
-            if (id === 'shogun-id') return ['Bélico', 'Época histórica'];
+            if (id === 'shogun-id') return ['Venganza', 'Época histórica'];
             return [];
         })
     };
@@ -70,23 +70,23 @@ describe('TagsDialog', () => {
         await render({ itemId: 'shogun-id', itemTitle: 'Shōgun', onClose });
 
         const d = dialog();
-        expect(d.textContent).toContain('Bélico');
+        expect(d.textContent).toContain('Venganza');
         expect(d.textContent).toContain('Época histórica');
     });
 
     test('combina serverTags válidos y autoTags deduplicando', async () => {
         mockGetItemRaw.mockResolvedValue({
             Id: 'shogun-id',
-            Tags: ['bélico', 'Drama', 'aftercreditsstinger'] // aftercreditsstinger se descarta
+            Tags: ['venganza', 'Melancólica', 'aftercreditsstinger'] // aftercreditsstinger se descarta
         });
 
         const onClose = vi.fn();
         await render({ itemId: 'shogun-id', itemTitle: 'Shōgun', onClose });
 
         const d = dialog();
-        expect(d.textContent).toContain('Bélico');
+        expect(d.textContent).toContain('Venganza');
         expect(d.textContent).toContain('Época histórica');
-        expect(d.textContent).toContain('Drama');
+        expect(d.textContent).toContain('Melancólica');
         expect(d.textContent).not.toContain('aftercreditsstinger');
     });
 
@@ -104,14 +104,14 @@ describe('TagsDialog', () => {
         const onClose = vi.fn();
         await render({ itemId: 'shogun-id', itemTitle: 'Shōgun', onClose });
 
-        // Quitar Bélico
-        const deleteBelicoBtn = dialog().querySelector('button[aria-label="Delete Bélico"]') as HTMLButtonElement;
+        // Quitar Venganza
+        const deleteBelicoBtn = dialog().querySelector('button[aria-label="Delete Venganza"]') as HTMLButtonElement;
         expect(deleteBelicoBtn).not.toBeNull();
         await act(async () => {
             deleteBelicoBtn.click();
         });
 
-        expect(dialog().textContent).not.toContain('Bélico');
+        expect(dialog().textContent).not.toContain('Venganza');
         expect(dialog().textContent).toContain('Época histórica');
 
         // Guardar

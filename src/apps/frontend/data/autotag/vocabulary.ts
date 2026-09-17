@@ -104,6 +104,15 @@ export const VOCABULARY_TAGS: readonly string[] = VOCABULARY.map((e) => e.tag);
 // «Anime», que es como se pinta en los chips.
 const BY_KEY = new Map(VOCABULARY.map((e) => [e.tag.toLowerCase(), e.tag]));
 
+/** Añade etiquetas al vocabulario en tiempo de ejecución (por ejemplo, las autogeneradas). */
+export function addDynamicTags(tags: readonly string[]) {
+    for (const tag of tags) {
+        if (typeof tag !== 'string') continue;
+        const clean = tag.trim();
+        if (clean) BY_KEY.set(clean.toLowerCase(), clean);
+    }
+}
+
 /**
  * Devuelve la etiqueta canónica del vocabulario, o `undefined` si no está.
  * Es el único punto por el que entra una etiqueta automática: lo que no
