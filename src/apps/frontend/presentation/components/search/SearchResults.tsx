@@ -5,14 +5,25 @@ import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { SearchResultCard } from '../cards/SearchResultCard';
-import { SelectToggle } from '../controls/SelectToggle';
+import { SortControl } from '../controls/SortControl';
 import { EmptyState } from '../skeleton/Skeleton';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 import type { CatalogItem } from '../../../domain/models';
 
+import type { SearchSortKey } from '../../../domain/viewModels/SearchViewModel';
+
 const PAGE_SIZE = 48;
+
+const SEARCH_SORT_LABELS: { id: SearchSortKey; key: string }[] = [
+    { id: 'relevance', key: 'Relevancia' },
+    { id: 'title', key: 'Name' },
+    { id: 'year', key: 'LabelYear' },
+    { id: 'rating', key: 'CommunityRating' },
+    { id: 'runtime', key: 'Runtime' },
+    { id: 'random', key: 'OptionRandom' }
+];
 
 export function SearchResults({ navigate }: { navigate: Navigate }) {
     useVmSignals(searchVM, (vm) => [vm.query, vm.results, vm.searching, vm.anyFilterActive]);
@@ -98,7 +109,13 @@ export function SearchResults({ navigate }: { navigate: Navigate }) {
                         globalize.translate('SearchResultsCount', filtered.length) :
                         globalize.translate('HeaderMyLibrary')}
                 </div>
-                <SelectToggle pushRight />
+                <div style={{ marginLeft: 'auto' }}>
+                    <SortControl
+                        value={searchVM.sortKey.value}
+                        onChange={searchVM.setSort}
+                        options={SEARCH_SORT_LABELS}
+                    />
+                </div>
             </div>
             {moviesAndSeries.length > 0 && (
                 <div style={{

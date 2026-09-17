@@ -16,6 +16,7 @@ import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { useToast } from '../toast/ToastProvider';
 import { searchVM, type FilterCategory, type StateFilter, type TypeFilter } from '../../../domain/viewModels/SearchViewModel';
+import { ALL_GENRES } from '../../../domain/genres';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { VIEWS, type SavedView } from '../../../domain/stores';
 import { AddFilterButton, MainPill, OptionPill } from './SearchPills';
@@ -204,8 +205,45 @@ export function SearchFilters() {
                                 if (activeOptions.length === 0) {
                                     return (
                                         <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
-                                            {globalize.translate('MessageNoResultsFound')}
+                                            {globalize.translate('MessageNoResults')}
                                         </span>
+                                    );
+                                }
+
+                                if (categoryMode === 'generos') {
+                                    const genresList = activeOptions.filter(opt => ALL_GENRES.includes(opt.id));
+                                    const tagsList = activeOptions.filter(opt => !ALL_GENRES.includes(opt.id));
+
+                                    return (
+                                        <>
+                                            {genresList.map((opt, index) => (
+                                                <OptionPill
+                                                    key={opt.id}
+                                                    index={index}
+                                                    label={opt.label}
+                                                    selected={opt.selected}
+                                                    onClick={opt.toggle}
+                                                />
+                                            ))}
+                                            {genresList.length > 0 && tagsList.length > 0 && (
+                                                <div style={{
+                                                    width: 1,
+                                                    height: 16,
+                                                    background: 'rgba(255,255,255,0.18)',
+                                                    flexShrink: 0,
+                                                    margin: '0 4px'
+                                                }} />
+                                            )}
+                                            {tagsList.map((opt, index) => (
+                                                <OptionPill
+                                                    key={opt.id}
+                                                    index={genresList.length + index}
+                                                    label={opt.label}
+                                                    selected={opt.selected}
+                                                    onClick={opt.toggle}
+                                                />
+                                            ))}
+                                        </>
                                     );
                                 }
 

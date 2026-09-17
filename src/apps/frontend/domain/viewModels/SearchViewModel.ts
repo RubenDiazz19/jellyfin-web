@@ -17,6 +17,7 @@ import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { WATCHED } from '../../data/stores/watchedStore';
 import type { SavedView } from '../../data/stores/viewsStore';
+import type { SortKey } from '../../data/stores/librarySortStore';
 import { MUTATION_DEBOUNCE_MS } from './mutationSubscription';
 import { registerTagSource } from './knownTags';
 import { guardedLoad } from './guardedLoad';
@@ -79,6 +80,26 @@ export function parseQuery(raw: string): { text: string; tags: string[] } {
     return { text: words.join(' ').toLowerCase(), tags };
 }
 
+export type SearchSortKey = 'relevance' | SortKey;
+
+const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+function runtimeMinutes(item: any): number {
+    return parseInt(item.runtime, 10) || 0;
+}
+
+function compareBy(key: SearchSortKey, seed: number) {
+    return (a: any, b: any): number => {
+        switch (key) {
+            case 'year': return (b.year || 0) - (a.year || 0) || COLLATOR.compare(a.title, b.title);
+            case 'rating': return (b.imdb || 0) - (a.imdb || 0) || COLLATOR.compare(a.title, b.title);
+            case 'runtime': return runtimeMinutes(a) - runtimeMinutes(b) || COLLATOR.compare(a.title, b.title);
+            case 'title': return COLLATOR.compare(a.title, b.title);
+            default: return 0; // relevance or random handled differently
+        }
+    };
+}
+
 function isMovieWatched(movie: Movie): boolean {
     return (movie.watched ?? 0) >= 1 || WATCHED.has(movieKey(movie.id));
 }
@@ -124,6 +145,7 @@ export function matchesFilters(
         kind: 'show' | 'movie' | 'collection';
         id: string;
         tags: readonly string[];
+        genres?: readonly string[];
         imdb: number;
     },
     isWatched: () => boolean,
@@ -137,7 +159,7 @@ export function matchesFilters(
     }
 
     if (criteria.requiredTags.length > 0) {
-        if (!criteria.requiredTags.every((t) => item.tags.includes(t))) return false;
+        if (!criteria.requiredTags.every((t) => item.tags.includes(t) || item.genres?.includes(t))) return false;
     }
 
     if (criteria.states.length > 0) {
@@ -257,6 +279,7 @@ function calculateMatchScore(entry: IndexedItem, q: string, qWords: string[]): n
 
 export class SearchViewModel {
     query = signal('');
+    sortKey = signal<SearchSortKey>('relevance');
     typeFilters = signal<TypeFilter[]>([]);
     stateFilters = signal<StateFilter[]>([]);
     /**
@@ -396,10 +419,10 @@ export class SearchViewModel {
                 entry,
                 () => {
                     if (entry.kind === 'show') {
-                        return !!entry.seriesEpisodeKeys && entry.seriesEpisodeKeys.length > 0 && entry.seriesEpisodeKeys.every((k) => WATCHED.has(k));
+                        return isShowFullyWatched(entry.item as any);
                     }
                     if (entry.kind === 'movie') {
-                        return (('watched' in entry.item ? (entry.item.watched ?? 0) : 0) >= 1 || WATCHED.has(movieKey(entry.id)));
+                        return isMovieWatched(entry.item as any);
                     }
                     return false; // Collections no tienen estado de visto
                 },
@@ -416,8 +439,16 @@ export class SearchViewModel {
             localScored.push({ item: entry.item, score });
         }
 
-        if (normQ) {
+        const sortKeyValue = this.sortKey.value;
+        if (sortKeyValue === 'relevance' && normQ) {
             localScored.sort((a, b) => b.score - a.score);
+        } else if (sortKeyValue !== 'relevance') {
+            const cmp = compareBy(sortKeyValue, 0);
+            localScored.sort((a, b) => {
+                const itemA = { ...a.item, title: a.item.kind === 'collection' ? a.item.name : (a.item as any).title, imdb: 'rating' in a.item ? (a.item.rating?.imdb ?? 0) : 0 };
+                const itemB = { ...b.item, title: b.item.kind === 'collection' ? b.item.name : (b.item as any).title, imdb: 'rating' in b.item ? (b.item.rating?.imdb ?? 0) : 0 };
+                return cmp(itemA, itemB);
+            });
         }
         const local = localScored.map((l) => l.item);
 
@@ -432,9 +463,10 @@ export class SearchViewModel {
             if (known.has(item.id)) continue;
 
             const itemTags = 'tags' in item ? getItemTags(item).map((t) => t.toLowerCase()) : [];
+            const itemGenres = 'genres' in item ? getItemGenres(item as any).map((t) => normalizeTagForSearch(t)) : [];
             const score = 'rating' in item ? (item.rating?.imdb ?? 0) : 0;
             const matches = matchesFilters(
-                { kind: item.kind, id: item.id, tags: itemTags, imdb: score },
+                { kind: item.kind, id: item.id, tags: itemTags, genres: itemGenres, imdb: score },
                 () => item.kind === 'show' ? isShowFullyWatched(item) : item.kind === 'movie' ? isMovieWatched(item) : false,
                 criteria
             );
@@ -443,7 +475,16 @@ export class SearchViewModel {
             extra.push(item);
         }
 
-        return [...local, ...extra];
+        const combined = [...local, ...extra];
+        if (sortKeyValue !== 'relevance') {
+            const cmp = compareBy(sortKeyValue, 0);
+            combined.sort((a, b) => {
+                const itemA = { ...a, title: a.kind === 'collection' ? a.name : (a as any).title, imdb: 'rating' in a ? (a.rating?.imdb ?? 0) : 0 };
+                const itemB = { ...b, title: b.kind === 'collection' ? b.name : (b as any).title, imdb: 'rating' in b ? (b.rating?.imdb ?? 0) : 0 };
+                return cmp(itemA, itemB);
+            });
+        }
+        return combined;
     });
 
     /**
@@ -507,6 +548,8 @@ export class SearchViewModel {
     };
     hasTypeFilter = (t: TypeFilter): boolean => this.typeFilters.value.includes(t);
     hasStateFilter = (s: StateFilter): boolean => this.stateFilters.value.includes(s);
+
+    setSort = (k: SearchSortKey) => { this.sortKey.value = k; };
 
     clearTypeFilters = () => { this.typeFilters.value = []; };
     clearStateFilters = () => { this.stateFilters.value = []; };
@@ -599,6 +642,7 @@ export class SearchViewModel {
         this.stateFilters.value = [];
         this.tagFilters.value = [];
         this.ratingFilters.value = [];
+        this.sortKey.value = 'relevance';
     };
 
     /** Los filtros actuales, listos para guardarlos como vista. */

@@ -1,21 +1,15 @@
 // Vocabulario CERRADO de etiquetas automáticas, en castellano.
-//
+
 // Es la pieza que hace que el etiquetado sirva de algo. Los keywords que
 // vienen de TMDB son cola larga —«aftercreditsstinger», «blind girl»— y como
 // filtro no valen: cada uno casa con uno o dos items. Un modelo que genere
 // texto libre reproduce ese mismo problema traducido, así que aquí se le
 // obliga a elegir de esta lista y de ninguna otra.
-//
-// Incluye los géneros generales (Comedia, Terror, Ciencia ficción…) aunque
-// Jellyfin ya traiga un campo `Genres`. Dos razones: ese campo no se pinta como
-// chip en la búsqueda, y viene con los idiomas mezclados —en esta biblioteca
-// conviven «Animación» y «Sci-Fi & Fantasy»—, así que pasarlos por el
-// vocabulario es también lo que los deja todos en castellano.
-//
+
 // Encima del género van las etiquetas que el género NO dice: tono, tema,
 // subgénero y ambientación. Son las que hacen que el filtro sirva de algo más
 // que para repetir lo que ya sabías.
-//
+
 // Editar la lista es seguro: `data/autotag/index.ts` valida el JSON generado
 // contra este vocabulario al leerlo, así que quitar una etiqueta la hace
 // desaparecer de la UI sin tener que volver a pasar el script. Añadir una sí
@@ -28,29 +22,16 @@ export type VocabularyEntry = {
 };
 
 export const VOCABULARY: readonly VocabularyEntry[] = [
-    // ── Género ───────────────────────────────────────────────────────────────
-    { tag: 'Acción', hint: 'peleas, persecuciones, set pieces' },
-    { tag: 'Aventura', hint: 'viaje o expedición hacia lo desconocido' },
-    { tag: 'Comedia', hint: 'busca la risa' },
-    { tag: 'Drama', hint: 'conflicto humano serio' },
-    { tag: 'Terror', hint: 'busca dar miedo' },
-    { tag: 'Suspense', hint: 'thriller; tensión sostenida' },
-    { tag: 'Misterio', hint: 'hay un enigma que resolver' },
-    { tag: 'Crimen', hint: 'delitos y quien los comete' },
-    { tag: 'Ciencia ficción', hint: 'especulación tecnológica o futura' },
-    { tag: 'Fantasía', hint: 'magia, mundos imaginarios' },
-    { tag: 'Romance', hint: 'la historia de amor es el eje' },
-    { tag: 'Familiar', hint: 'pensada para ver con niños' },
+    // ── Franquicias y Universos ──────────────────────────────────────────────
+    { tag: 'Star Wars', hint: 'perteneciente a la saga de La Guerra de las Galaxias' },
+    { tag: 'Batman', hint: 'relacionado con el superhéroe de DC o Gotham' },
+    { tag: 'El Señor de los Anillos', hint: 'Tierra Media, Tolkien, El Hobbit' },
+    { tag: 'Marvel', hint: 'superhéroes del universo Marvel (MCU o cómics)' },
+    { tag: 'DC Comics', hint: 'superhéroes del universo DC (Superman, Flash, Liga de la Justicia)' },
+    { tag: 'Harry Potter', hint: 'mundo mágico de Hogwarts' },
+    { tag: 'Spider-Man', hint: 'historias del hombre araña' },
 
     // ── Origen ───────────────────────────────────────────────────────────────
-    { tag: 'Anime', hint: 'animación japonesa' },
-    // Nota: la lista se amplió tras probarla contra el modelo. «Coherence» y
-    // «Amanece que no es poco» no encontraban ninguna etiqueta y el modelo
-    // devolvía lista vacía —correctamente— porque faltaban «Universos
-    // paralelos» y «Surrealista». Si ves muchos títulos sin etiquetar, el
-    // hueco suele estar aquí, no en el modelo.
-    { tag: 'Animación', hint: 'animada, no japonesa' },
-    { tag: 'Documental', hint: 'no ficción' },
     { tag: 'Hechos reales', hint: 'biografía o suceso que ocurrió' },
 
     // ── Tono ─────────────────────────────────────────────────────────────────
@@ -99,12 +80,8 @@ export const VOCABULARY: readonly VocabularyEntry[] = [
     { tag: 'Vampiros', hint: 'vampiros, hombres lobo y afines' },
     { tag: 'Monstruos gigantes', hint: 'kaiju, criaturas de gran tamaño' },
     { tag: 'Artes marciales', hint: 'combate cuerpo a cuerpo coreografiado' },
-    { tag: 'Western', hint: 'oeste americano' },
-    { tag: 'Bélico', hint: 'transcurre en una guerra' },
-    { tag: 'Musical', hint: 'los personajes cantan; o va de música' },
     { tag: 'Road movie', hint: 'un viaje por carretera estructura el relato' },
     { tag: 'Catástrofe', hint: 'desastre natural o accidente masivo' },
-    { tag: 'Deportes', hint: 'competición deportiva' },
 
     // ── Ambientación ─────────────────────────────────────────────────────────
     { tag: 'Época histórica', hint: 'ambientada en el pasado, antes de 1970' },
@@ -148,9 +125,7 @@ export function isVocabularyTag(raw: string): boolean {
  * aun diciéndole que «Animación» es la no japonesa, etiquetaba todo el anime
  * con las dos y se comía una plaza de las cinco para no decir nada nuevo.
  */
-const REDUNDANT_WITH: Readonly<Record<string, string>> = {
-    'Animación': 'Anime'
-};
+const REDUNDANT_WITH: Readonly<Record<string, string>> = {};
 
 /** Quita las etiquetas que no aportan porque ya está la más específica. */
 export function dropRedundant(tags: readonly string[]): string[] {

@@ -1,13 +1,10 @@
 {
   "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
-  "_generatedAt": "2026-09-14T11:43:23.355Z",
+  "_generatedAt": "2026-09-17T06:19:32.701Z",
   "items": {
     "2581c8f29f2043730ea7921e9103ff09": [
-      "Crimen",
-      "Misterio",
-      "Suspense",
-      "Superhéroes",
-      "Corrupción y poder"
+      "Batman",
+      "Investigación policial"
     ],
     "9ec49ebd14f6a75ff339be859cafe2db": [
       "Drama",
@@ -47,22 +44,14 @@
       "Mayoría de edad"
     ],
     "1d41dc84d2f39f97e3f69ae5a013d74e": [
-      "Comedia",
-      "Anime",
-      "Romance",
       "Recuentos de la vida"
     ],
     "f708e9f991d1f3a8cae182e83358da1b": [
-      "Anime",
-      "Drama",
-      "Aventura",
-      "Fantasía"
+      "Recuentos de la vida"
     ],
     "9d128f24a3cb664570318cf06e81e050": [
-      "Comedia",
-      "Anime",
       "Recuentos de la vida",
-      "Amistad"
+      "Instituto"
     ],
     "b335f98c16c3428f2fc0d9f7d51eee2c": [
       "Acción",
@@ -88,10 +77,8 @@
       "Familia disfuncional"
     ],
     "eb7209598370f44313250e623dcd2b0f": [
-      "Anime",
-      "Acción",
-      "Drama",
-      "Ciencia ficción"
+      "Venganza",
+      "Viajes en el tiempo"
     ],
     "a6469228e7905289c61afbb4305e6348": [
       "Anime",
@@ -100,56 +87,32 @@
       "Instituto"
     ],
     "b14b9360520538bc3a20fb4108354c83": [
-      "Drama",
-      "Hechos reales",
-      "Bélico",
+      "Época histórica",
       "Corrupción y poder",
-      "Época histórica"
+      "Supervivencia"
     ],
     "598e538251367d71845079bdeaba0dd4": [
-      "Aventura",
-      "Acción",
-      "Ciencia ficción",
-      "Space opera",
-      "Corrupción y poder"
+      "Star Wars",
+      "Space opera"
     ],
-    "50745da76815e18665b68e8bf8ec7d90": [
-      "Anime",
-      "Acción",
-      "Comedia",
-      "Romance"
-    ],
+    "50745da76815e18665b68e8bf8ec7d90": [],
     "97e3319dd3ab29353847ee66cdd8f325": [
-      "Animación",
-      "Acción",
-      "Aventura",
-      "Crimen",
-      "Drama"
+      "Batman"
     ],
     "362ebf6081db28484134feb33991ad27": [
-      "Aventura",
-      "Fantasía",
-      "Acción",
-      "Bélico"
+      "El Señor de los Anillos",
+      "Época histórica"
     ],
     "f0ab39cd60938edca247b9b0504dbdec": [
-      "Aventura",
-      "Fantasía",
-      "Acción",
-      "Amistad"
+      "El Señor de los Anillos",
+      "Época histórica"
     ],
     "2c04f6f56065d6f4bfae469f1cf276fc": [
-      "Aventura",
-      "Fantasía",
-      "Acción",
-      "Amistad",
-      "Bélico"
+      "El Señor de los Anillos",
+      "Época histórica"
     ],
     "234d0e57e9f60b7f6c6b8c06eda04eeb": [
-      "Aventura",
-      "Acción",
-      "Ciencia ficción",
-      "Bélico",
+      "Star Wars",
       "Space opera"
     ]
   }

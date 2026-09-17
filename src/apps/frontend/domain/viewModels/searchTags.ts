@@ -1,5 +1,6 @@
 import type { Movie, Show, ListEntry } from '../../data/models';
 import { canonicalTag, getItemTags, normalizeTagForSearch } from '../tags';
+import { getItemGenres } from '../genres';
 
 /**
  * Extrae y normaliza todas las etiquetas de las obras del catálogo,
@@ -8,7 +9,9 @@ import { canonicalTag, getItemTags, normalizeTagForSearch } from '../tags';
 export function computeAllTags(items: ReadonlyArray<Show | Movie | (ListEntry & { kind: 'collection' })>): string[] {
     const seen = new Map<string, string>();
     for (const item of items) {
-        for (const tag of getItemTags(item)) {
+        const itemGenres = 'genres' in item ? getItemGenres(item as any) : [];
+        const allItemTags = [...itemGenres, ...getItemTags(item)];
+        for (const tag of allItemTags) {
             const key = normalizeTagForSearch(tag);
             if (!seen.has(key)) seen.set(key, tag);
         }
@@ -45,11 +48,8 @@ export function computeAvailableTags<T extends Show | Movie | (ListEntry & { kin
 
     // 1. Siempre incluir las etiquetas activas para que sigan visibles y desmarcables
     for (const tag of activeTags) {
-        const canon = canonicalTag(tag);
-        if (canon) {
-            const key = normalizeTagForSearch(canon);
-            if (!seen.has(key)) seen.set(key, canon);
-        }
+        const key = normalizeTagForSearch(tag);
+        if (!seen.has(key)) seen.set(key, tag);
     }
 
     const totalResults = currentResults.length;
@@ -63,7 +63,9 @@ export function computeAvailableTags<T extends Show | Movie | (ListEntry & { kin
         if (totalResults > 1) {
             const tagFrequency = new Map<string, { canon: string; count: number }>();
             for (const item of currentResults) {
-                for (const tag of getItemTags(item)) {
+                const itemGenres = 'genres' in item ? getItemGenres(item as any) : [];
+                const allItemTags = [...itemGenres, ...getItemTags(item)];
+                for (const tag of allItemTags) {
                     const key = normalizeTagForSearch(tag);
                     const entry = tagFrequency.get(key);
                     if (entry) {
@@ -84,7 +86,9 @@ export function computeAvailableTags<T extends Show | Movie | (ListEntry & { kin
         // Sin etiquetas activas aún (solo filtros de tipo/estado/valoración/búsqueda):
         // Extraer todas las etiquetas presentes en las obras resultantes.
         for (const item of currentResults) {
-            for (const tag of getItemTags(item)) {
+            const itemGenres = 'genres' in item ? getItemGenres(item as any) : [];
+            const allItemTags = [...itemGenres, ...getItemTags(item)];
+            for (const tag of allItemTags) {
                 const key = normalizeTagForSearch(tag);
                 if (!seen.has(key)) seen.set(key, tag);
             }

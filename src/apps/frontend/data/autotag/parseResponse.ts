@@ -87,8 +87,9 @@ export function parseTagResponse(raw: string, batchIds: readonly string[]): Pars
             if (!tag) {
                 // Try English to Spanish translation
                 const translated = translateEnglishTag(rawTag);
-                if (translated) {
-                    tag = translated;
+                const canonicalTranslated = translated ? canonicalTag(translated) : undefined;
+                if (canonicalTranslated) {
+                    tag = canonicalTranslated;
                     logger.warn(`Translated English tag "${rawTag}" to Spanish "${tag}"`);
                 } else {
                     rejectedTags.push(rawTag);
