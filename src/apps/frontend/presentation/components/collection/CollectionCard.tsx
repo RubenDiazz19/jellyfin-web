@@ -95,8 +95,7 @@ export function CollectionCard({
                 outlineOffset: sel.selected ? -3 : undefined,
                 backgroundColor: customColor ?? (bgImage ? '#0f0f0f' : '#181818'),
                 boxShadow: hovered ? '0 12px 28px rgba(0,0,0,0.6)' : '0 4px 12px rgba(0,0,0,0.3)',
-                transform: hovered ? 'scale(1.025) translateY(-2px)' : 'scale(1) translateY(0)',
-                transition: 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease',
+                transition: 'box-shadow 0.25s ease',
                 ...style
             }}
         >
@@ -118,9 +117,7 @@ export function CollectionCard({
                             inset: 0,
                             width: '100%',
                             height: '100%',
-                            objectFit: 'cover',
-                            transform: hovered ? 'scale(1.05)' : 'scale(1)',
-                            transition: 'transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1)'
+                            objectFit: 'cover'
                         }}
                     />
                     {/* Gradiente oscuro solo si hay un logo o rótulo superpuesto */}
@@ -173,9 +170,6 @@ export function CollectionCard({
                             objectFit: 'contain',
                             objectPosition: 'left bottom',
                             filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.9))',
-                            transform: hovered ? 'scale(1.04)' : 'scale(1)',
-                            transformOrigin: 'bottom left',
-                            transition: 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
                             pointerEvents: 'none'
                         }}
                     />
@@ -200,9 +194,6 @@ export function CollectionCard({
                                 objectFit: 'contain',
                                 objectPosition: 'left bottom',
                                 filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.9))',
-                                transform: hovered ? 'scale(1.04)' : 'scale(1)',
-                                transformOrigin: 'bottom left',
-                                transition: 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
                                 pointerEvents: 'none'
                             }}
                         />

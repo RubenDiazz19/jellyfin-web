@@ -185,26 +185,54 @@ export function CollectionHero({
                             display: 'block',
                             transform: `scale(${backgroundScale})`,
                             filter: `blur(${backgroundBlur}px)`,
-                            transition: 'transform 0.1s ease-out, filter 0.1s ease-out'
+                            transition: 'transform 0.1s ease-out, filter 0.1s ease-out',
+                            maskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.4) 65%, rgba(0,0,0,0.1) 75%, transparent 85%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.4) 65%, rgba(0,0,0,0.1) 75%, transparent 85%)'
                         }}
                     />
                 </div>
             )}
 
-            {/* 2. Capas de degradado negro dinámico */}
+            {/* Capa A: Scrim superior para contraste y legibilidad de la barra de navegación */}
+            <div
+                style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, height: 140,
+                    background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 45%, rgba(0, 0, 0, 0.1) 80%, transparent 100%)',
+                    pointerEvents: 'none',
+                    zIndex: 1
+                }}
+            />
+
+            {/* Capa B: Viñeteado lateral para concentrar el foco en el centro */}
+            <div
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    height: headerHeight,
+                    background: 'linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, transparent 12%, transparent 88%, rgba(0, 0, 0, 0.5) 100%)',
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    willChange: 'height'
+                }}
+            />
+
+            {/* Capa C: Degradado ultrasuave inferior ajustado para terminar antes (Disney+) */}
             {hasItems && (
                 <div
                     style={{
                         position: 'fixed',
-                        top: 0, left: 0, right: 0,
+                        inset: 0,
                         height: headerHeight,
-                        background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0, 0.8) 55%, #000000 75%, #000000 100%)',
+                        background: 'linear-gradient(to bottom, transparent 0%, transparent 20%, rgba(0, 0, 0, 0.02) 28%, rgba(0, 0, 0, 0.06) 35%, rgba(0, 0, 0, 0.14) 42%, rgba(0, 0, 0, 0.28) 49%, rgba(0, 0, 0, 0.48) 55%, rgba(0, 0, 0, 0.70) 62%, rgba(0, 0, 0, 0.88) 68%, rgba(0, 0, 0, 0.98) 73%, #000000 78%)',
                         pointerEvents: 'none',
-                        zIndex: 1,
+                        zIndex: 2,
                         willChange: 'height'
                     }}
                 />
             )}
+
+            {/* Capa de oscurecimiento dinámica con el scroll */}
             <div
                 style={{
                     position: 'fixed',
@@ -219,39 +247,56 @@ export function CollectionHero({
             />
 
             {/* 3. Logo oficial: siempre centrado horizontalmente y pegado sobre el carrusel */}
-            {currentLogo && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        bottom: r.touch ? 265 : (hasItems ? (onlyCollections ? 485 : 345) : 265),
-                        left: '50%',
-                        transform: `translate(-50%, ${logoTranslateY}px) scale(${logoScale})`,
-                        zIndex: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        pointerEvents: 'none',
-                        transformOrigin: 'center center',
-                        willChange: 'transform'
-                    }}
-                >
+            <div
+                style={{
+                    position: 'fixed',
+                    bottom: r.touch ? 285 : (hasItems ? (onlyCollections ? 505 : 365) : 285),
+                    left: '50%',
+                    transform: `translate(-50%, ${logoTranslateY}px) scale(${logoScale})`,
+                    zIndex: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
+                    transformOrigin: 'center center',
+                    willChange: 'transform',
+                    width: '90%',
+                    maxWidth: 480
+                }}
+            >
+                {currentLogo ? (
                     <img
                         key={currentLogo}
                         src={currentLogo}
-                        alt=''
+                        alt={list?.name || ''}
                         onError={() => {
                             setLogoIndex((prev) => (prev + 1 < logoCandidates.length ? prev + 1 : prev));
                         }}
                         style={{
-                            width: r.touch ? '60vw' : '30vw',
-                            maxWidth: 420,
-                            maxHeight: r.touch ? '16vh' : '22vh',
+                            width: r.touch ? '72vw' : '38vw',
+                            maxWidth: 530,
+                            maxHeight: r.touch ? 120 : 176,
                             objectFit: 'contain',
                             filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.85))'
                         }}
                     />
-                </div>
-            )}
+                ) : (
+                    <div
+                        style={{
+                            fontFamily: T.ui,
+                            fontSize: r.touch ? 28 : 44,
+                            fontWeight: 800,
+                            color: '#ffffff',
+                            letterSpacing: 1.5,
+                            textTransform: 'uppercase',
+                            textShadow: '0 4px 24px rgba(0,0,0,0.9)',
+                            textAlign: 'center'
+                        }}
+                    >
+                        {list?.name}
+                    </div>
+                )}
+            </div>
 
             {/* 5. Carrusel de cards solapado, fijo en pantalla, traslada con el scroll y recortado bajo el logo */}
             {hasItems && (

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
@@ -23,27 +23,50 @@ type Props = {
 export function CollectionCardCarousel({ items, navigate, listId }: Props) {
     const r = useResponsive();
     const isSelecting = useSignalSelector(selectionVM.selecting, (s) => s);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     const cardWidth = r.touch ? 220 : 320;
     const gap = r.touch ? 16 : 24;
+
+    const checkScrollButtons = () => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        setCanScrollLeft(el.scrollLeft > 10);
+        setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
+    };
+
+    useEffect(() => {
+        checkScrollButtons();
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        el.addEventListener('scroll', checkScrollButtons, { passive: true });
+        window.addEventListener('resize', checkScrollButtons);
+        return () => {
+            el.removeEventListener('scroll', checkScrollButtons);
+            window.removeEventListener('resize', checkScrollButtons);
+        };
+    }, [items]);
+
+    const scrollByAmount = (direction: 'left' | 'right') => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const amount = (el.clientWidth * 0.75) * (direction === 'left' ? -1 : 1);
+        el.scrollBy({ left: amount, behavior: 'smooth' });
+    };
 
     if (!items || items.length === 0) return null;
 
     return (
         <div
-            className='collectionCarouselContainer'
+            className='collectionCarouselWrapper'
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             style={{
                 position: 'relative',
-                width: '100%',
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                padding: 0,
-                pointerEvents: 'auto',
-                display: 'flex',
-                gap: gap,
-                paddingBottom: 24, // un poco de margen para la sombra
-                scrollbarWidth: 'none', // hide scrollbar Firefox
-                msOverflowStyle: 'none' // hide scrollbar IE/Edge
+                width: '100%'
             }}
         >
             <style>{`
@@ -52,35 +75,125 @@ export function CollectionCardCarousel({ items, navigate, listId }: Props) {
                 }
                 
                 .collectionCardPremium {
-                    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-                    transform: scale(1) translateY(0);
+                    /* Base styles if needed */
                 }
                 .collectionCardPremium:hover,
                 .collectionCardPremium:focus-visible {
-                    transform: scale(1.04);
                     z-index: 10 !important;
                 }
                 .posterFramePremium {
-                    border: 2px solid transparent;
-                    box-shadow: 0 12px 32px rgba(0,0,0,0.75);
-                    transition: box-shadow 0.3s ease;
+                    border: 3px solid transparent;
+                    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+                    transition: border-color 0.25s ease, box-shadow 0.25s ease;
                 }
                 .collectionCardPremium:hover .posterFramePremium,
                 .collectionCardPremium:focus-visible .posterFramePremium {
-                    box-shadow: 0 12px 32px rgba(0,0,0,0.95);
+                    border-color: #ffffff !important;
+                    box-shadow: 0 0 0 1px #ffffff, 0 16px 36px rgba(0,0,0,0.9);
                 }
             `}</style>
 
-            {items.map((item, idx) => (
-                <CollectionVerticalCard
-                    key={`${item.id}-${idx}`}
-                    item={item}
-                    cardWidth={cardWidth}
-                    navigate={navigate}
-                    isSelecting={isSelecting}
-                    listId={listId}
-                />
-            ))}
+            {/* Flecha de navegación izquierda para escritorio */}
+            {!r.touch && canScrollLeft && (
+                <button
+                    type='button'
+                    aria-label='Desplazar a la izquierda'
+                    onClick={() => scrollByAmount('left')}
+                    style={{
+                        position: 'absolute',
+                        left: -18,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 44,
+                        height: 72,
+                        borderRadius: '0 8px 8px 0',
+                        background: 'rgba(9, 11, 16, 0.75)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderLeft: 'none',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 12,
+                        opacity: isHovered ? 1 : 0,
+                        transition: 'opacity 0.2s ease, background 0.2s ease, transform 0.15s ease',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.7)'
+                    }}
+                >
+                    <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <polyline points='15 18 9 12 15 6' />
+                    </svg>
+                </button>
+            )}
+
+            {/* Carrusel deslizable */}
+            <div
+                ref={scrollContainerRef}
+                className='collectionCarouselContainer'
+                style={{
+                    position: 'relative',
+                    width: '100%',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    padding: '16px 0 12px 0',
+                    pointerEvents: 'auto',
+                    display: 'flex',
+                    gap: gap,
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    scrollBehavior: 'smooth'
+                }}
+            >
+                {items.map((item, idx) => (
+                    <CollectionVerticalCard
+                        key={`${item.id}-${idx}`}
+                        item={item}
+                        cardWidth={cardWidth}
+                        navigate={navigate}
+                        isSelecting={isSelecting}
+                        listId={listId}
+                    />
+                ))}
+            </div>
+
+            {/* Flecha de navegación derecha para escritorio */}
+            {!r.touch && canScrollRight && (
+                <button
+                    type='button'
+                    aria-label='Desplazar a la derecha'
+                    onClick={() => scrollByAmount('right')}
+                    style={{
+                        position: 'absolute',
+                        right: -18,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 44,
+                        height: 72,
+                        borderRadius: '8px 0 0 8px',
+                        background: 'rgba(9, 11, 16, 0.75)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRight: 'none',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 12,
+                        opacity: isHovered ? 1 : 0,
+                        transition: 'opacity 0.2s ease, background 0.2s ease, transform 0.15s ease',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.7)'
+                    }}
+                >
+                    <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+                        <polyline points='9 18 15 12 9 6' />
+                    </svg>
+                </button>
+            )}
         </div>
     );
 }
