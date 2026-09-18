@@ -49,6 +49,7 @@ Reglas:
 4. Si crees que el título necesita imperativamente una etiqueta que NO está en
    la lista base ni en la dinámica, puedes proponerla en el campo "nuevas".
    SOLO hazlo si aporta valor real y no es un sinónimo de las que ya existen.
+   Las etiquetas nuevas DEBEN estar en CASTELLANO estricto, nunca en inglés (p.ej. usa "Ópera espacial" en vez de "Space Opera").
 5. Usa la sinopsis como fuente principal. Los keywords vienen de TMDB, están en
    inglés y son ruidosos: úsalos como pista, no como verdad.
 6. Responde SOLO con este JSON estricto, sin markdown ni backticks:

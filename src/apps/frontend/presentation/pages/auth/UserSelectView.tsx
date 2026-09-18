@@ -112,14 +112,6 @@ export function UserSelectView() {
                             <div style={{ fontSize: 14, color: 'rgba(255, 255, 255, 0.5)', marginBottom: 20 }}>
                                 {globalize.translate('LabelNoUsersFound')}
                             </div>
-                            <button
-                                type='button'
-                                onClick={loginVM.goToManualLogin}
-                                style={outlineActionBtnStyle}
-                            >
-                                <Ic.User size={15} stroke='currentColor' />
-                                {globalize.translate('ButtonManualLogin')}
-                            </button>
                         </div>
                     ) : (
                         <div style={circlesGridStyle}>
@@ -143,7 +135,7 @@ export function UserSelectView() {
                                 onClick={loginVM.goToManualLogin}
                                 style={ghostBtnStyle}
                             >
-                                <Ic.User size={14} stroke='rgba(255, 255, 255, 0.6)' />
+                                <Ic.User size={14} stroke='currentColor' />
                                 <span>{globalize.translate('ButtonManualLogin')}</span>
                             </button>
 
@@ -153,7 +145,7 @@ export function UserSelectView() {
                                     onClick={loginVM.startQuickConnect}
                                     style={ghostBtnStyle}
                                 >
-                                    <Ic.Key size={14} stroke='rgba(255, 255, 255, 0.6)' />
+                                    <Ic.Key size={14} stroke='currentColor' />
                                     <span>{globalize.translate('QuickConnect')}</span>
                                 </button>
                             )}
@@ -165,7 +157,7 @@ export function UserSelectView() {
                                 style={ghostBtnStyle}
                                 title={globalize.translate('ButtonChangeServer')}
                             >
-                                <Ic.Server size={14} stroke='rgba(255, 255, 255, 0.6)' />
+                                <Ic.Server size={14} stroke='currentColor' />
                                 <span>{serverName}</span>
                             </button>
                         </div>
@@ -395,10 +387,10 @@ const ghostBtnStyle: React.CSSProperties = {
     alignItems: 'center',
     gap: 7,
     background: 'transparent',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
     borderRadius: 999,
     padding: '8px 16px',
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 255, 255, 0.85)',
     fontFamily: 'inherit',
     fontSize: 12,
     letterSpacing: 0.2,

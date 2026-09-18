@@ -6,6 +6,7 @@ import { Ic } from '../theme/icons';
 import { formatRemainingCompact } from '../utils/format';
 import { PROTO_DATA, type CarouselSlide } from '../../domain/models';
 import { homeVM } from '../../domain/viewModels/HomeViewModel';
+import { COLLECTION_STYLES } from '../../domain/stores';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { useSession } from '../../domain/bridge/useSession';
 import { usePlayer } from '../components/player/PlayerProvider';
@@ -606,8 +607,19 @@ function HomeLibraryJellyfin({
     ]);
     const cw = homeVM.continueWatching.value;
     const recent = homeVM.recentlyAdded.value;
-    const collections = homeVM.collections.value;
+    const allCollections = homeVM.collections.value;
     const played = homeVM.mostPlayed.value;
+
+    const [styleRev, setStyleRev] = useState(0);
+    useEffect(() => {
+        const onStyleChange = () => setStyleRev(r => r + 1);
+        window.addEventListener(COLLECTION_STYLES.event, onStyleChange);
+        return () => window.removeEventListener(COLLECTION_STYLES.event, onStyleChange);
+    }, []);
+
+    const collections = useMemo(() => {
+        return allCollections.filter(c => COLLECTION_STYLES.getShowOnHome(c.id));
+    }, [allCollections, styleRev]);
 
     if (homeVM.rowsLoading.value || !homeVM.rowsReady.value) {
         return (
@@ -640,13 +652,7 @@ function HomeLibraryJellyfin({
                     </RowScroller>
                 </Row>
             )}
-            {recent.length > 0 && (
-                <Row title={globalize.translate('TabLatest')} headingStyle={headingStyle}>
-                    <RowScroller>
-                        {recent.map((it) => <CatalogCard key={it.id} item={it} navigate={navigate} />)}
-                    </RowScroller>
-                </Row>
-            )}
+
             {collections.length > 0 && (
                 <Row title={globalize.translate('Collections')} headingStyle={headingStyle}>
                     <RowScroller>
@@ -665,6 +671,15 @@ function HomeLibraryJellyfin({
                     </RowScroller>
                 </Row>
             )}
+
+            {recent.length > 0 && (
+                <Row title={globalize.translate('TabLatest')} headingStyle={headingStyle}>
+                    <RowScroller>
+                        {recent.map((it) => <CatalogCard key={it.id} item={it} navigate={navigate} />)}
+                    </RowScroller>
+                </Row>
+            )}
+
             {played.length > 0 && (
                 <Row title={globalize.translate('MostPlayed')} headingStyle={headingStyle}>
                     <RowScroller>

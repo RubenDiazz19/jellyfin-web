@@ -16,6 +16,7 @@ export type CollectionStyle = {
     customLogo?: string;
     imageVersion?: number;
     itemOrder?: string[];
+    showOnHome?: boolean;
 };
 
 type StylesMap = Record<string, CollectionStyle>;
@@ -142,6 +143,17 @@ export const COLLECTION_STYLES = {
         store.update((map) => ({
             ...map,
             [collectionId]: { ...map[collectionId], itemOrder: order }
+        }));
+    },
+
+    getShowOnHome(collectionId: string): boolean {
+        return store.get()[collectionId]?.showOnHome ?? false;
+    },
+
+    setShowOnHome(collectionId: string, show: boolean): void {
+        store.update((map) => ({
+            ...map,
+            [collectionId]: { ...map[collectionId], showOnHome: show }
         }));
     },
 

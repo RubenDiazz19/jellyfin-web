@@ -165,8 +165,8 @@ export function CollectionCard({
                         src={customLogo}
                         alt={title}
                         style={{
-                            maxWidth: '75%',
-                            maxHeight: '45%',
+                            width: '75%',
+                            height: '45%',
                             objectFit: 'contain',
                             objectPosition: 'left bottom',
                             filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.9))',
@@ -189,8 +189,8 @@ export function CollectionCard({
                             src={activeLogo}
                             alt={title}
                             style={{
-                                maxWidth: '75%',
-                                maxHeight: '45%',
+                                width: '75%',
+                                height: '45%',
                                 objectFit: 'contain',
                                 objectPosition: 'left bottom',
                                 filter: 'drop-shadow(0 2px 10px rgba(0,0,0,0.9))',

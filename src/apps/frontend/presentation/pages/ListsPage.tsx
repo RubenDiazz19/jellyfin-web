@@ -35,7 +35,7 @@ export function ListsPage({ navigate }: Props) {
     const [createPlaylistOpen, setCreatePlaylistOpen] = useState(false);
 
     const playlists = lists.filter((l) => l.kind === 'playlist');
-    const collections = lists.filter((l) => l.kind === 'collection' && LISTS.isRoot(l));
+    const collections = lists.filter((l) => l.kind === 'collection');
 
     return (
 

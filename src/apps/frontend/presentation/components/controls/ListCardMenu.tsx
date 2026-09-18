@@ -80,6 +80,7 @@ export function ListCardMenu({
 
     const custom = LISTS.hasCustomCover(kind, listId);
     const customColor = kind === 'collection' ? COLLECTION_STYLES.getColor(listId) : undefined;
+    const showOnHome = kind === 'collection' ? COLLECTION_STYLES.getShowOnHome(listId) : false;
 
     // Cerrar al hacer scroll o resize: el menú va en posición fija y
     // se quedaría flotando lejos de su tarjeta.
@@ -293,6 +294,14 @@ export function ListCardMenu({
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
                         <MenuEntry disabled={busy} onClick={() => { setOpen(false); setEditorTab('metadata'); }}>
                             {globalize.translate('EditMetadata')}
+                        </MenuEntry>
+                        <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
+                        <MenuEntry disabled={busy} onClick={() => {
+                            setOpen(false);
+                            COLLECTION_STYLES.setShowOnHome(listId, !showOnHome);
+                            onChanged();
+                        }}>
+                            {showOnHome ? 'Ocultar de inicio' : 'Destacar en inicio'}
                         </MenuEntry>
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
                         <MenuEntry

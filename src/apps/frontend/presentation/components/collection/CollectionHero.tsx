@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useResponsive } from '../../theme/responsive';
+import { T } from '../../theme/tokens';
 import { ListCardMenu, type ListMenuHandle } from '../controls/ListCardMenu';
 import { COLLECTION_STYLES, type ListRef } from '../../../domain/stores';
 import { CollectionCardCarousel } from './CollectionCardCarousel';
@@ -273,9 +274,9 @@ export function CollectionHero({
                             setLogoIndex((prev) => (prev + 1 < logoCandidates.length ? prev + 1 : prev));
                         }}
                         style={{
-                            width: r.touch ? '72vw' : '38vw',
+                            width: r.touch ? '55vw' : '38vw',
                             maxWidth: 530,
-                            maxHeight: r.touch ? 120 : 176,
+                            height: r.touch ? 70 : 176,
                             objectFit: 'contain',
                             filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.85))'
                         }}

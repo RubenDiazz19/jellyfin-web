@@ -35,6 +35,6 @@ services:
     # que desde el navegador parece que la web está rota, no que aún no ha
     # llegado el otro.
     depends_on:
-      jellyfin-backend:q
+      jellyfin-backend:
         condition: service_healthy
     restart: unless-stopped

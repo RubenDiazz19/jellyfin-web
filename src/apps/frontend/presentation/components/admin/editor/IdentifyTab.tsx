@@ -31,6 +31,7 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
     const [results, setResults] = useState<RemoteSearchResult[] | null>(null);
     const [searching, setSearching] = useState(false);
     const [applying, setApplying] = useState<number | null>(null);
+    const [loaded, setLoaded] = useState(false);
     const toast = useToast();
 
     const kindApi: RemoteSearchItemType =
@@ -90,25 +91,27 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
             if (rawType) {
                 setResolvedType(rawType);
             }
-            const initialName = it.Name ?? '';
-            setName(initialName);
-            const initialYear = it.ProductionYear ? String(it.ProductionYear) : '';
-            setYear(initialYear);
-            if (initialName) {
-                const initYearNum = initialYear ? Number(initialYear) : undefined;
-                void executeSearch(
-                    initialName,
-                    initYearNum && !isNaN(initYearNum) ? initYearNum : undefined,
-                    undefined,
-                    rawType ?? kindApi
-                );
-            }
-        }).catch(() => {});
+            setName('');
+            setYear('');
+            setLoaded(true);
+        }).catch(() => {
+            if (alive) setLoaded(true);
+        });
         return () => {
             alive = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [itemId]);
+
+    // Búsqueda interactiva "as you type"
+    useEffect(() => {
+        if (!loaded) return;
+        const timer = setTimeout(() => {
+            doSearch();
+        }, 600);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [name, year, tmdbId, imdbId, tvdbId, loaded]);
 
     const apply = async (i: number) => {
         if (!results) return;
