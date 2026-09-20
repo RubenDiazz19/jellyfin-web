@@ -9,6 +9,7 @@ import { useCollectionScrollTransition } from './useCollectionScrollTransition';
 
 import { imageUrl, type PlaylistItem } from '../../../domain/api';
 import { analyzeImage } from '../../theme/dynamicColor';
+import { logger } from '../../../shared/logger';
 import type { Navigate } from '../../../app/router';
 
 type Props = {
@@ -133,7 +134,9 @@ export function CollectionHero({
             if (active) {
                 setBgDynamic(res.seed || '#000000');
             }
-        }).catch(() => {});
+        }).catch((e) => {
+            logger.debug('Error analyzing backdrop image', e);
+        });
         return () => { active = false; };
     }, [currentBackdrop]);
 

@@ -10,6 +10,7 @@ import { FAVS } from '../../data/stores/favsStore';
 import { episodeKey, movieKey, parseItemKey, seasonKey } from '../../data/stores/itemKeys';
 import type { Episode, Movie, Season, Show } from '../../data/models';
 import { CatalogViewModel } from './CatalogViewModel';
+import { logger } from '../../shared/logger';
 
 export type FavSeason = { show: Show; season: Season };
 export type FavEpisode = { show: Show; season: Season; episode: Episode };
@@ -35,7 +36,9 @@ export class FavoritesViewModel extends CatalogViewModel {
         // se abre justamente para ver «todo lo que he marcado». Si el servidor
         // no contesta seguimos con lo que hubiera en local en vez de no
         // enseñar nada.
-        await this.api.items.hydrateFavorites().catch(() => {});
+        await this.api.items.hydrateFavorites().catch((e) => {
+            logger.debug('Failed to hydrate favorites', e);
+        });
         if (!isLatest()) return;
 
         const ids = FAVS.all();

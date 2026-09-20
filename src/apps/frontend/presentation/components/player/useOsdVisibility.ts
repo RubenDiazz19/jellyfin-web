@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
-import { pointInRect } from './VideoPlayer';
+import { pointInRect } from '../../../shared/math';
 
 const HIDE_CONTROLS_MS = 3000;
 const SKIP_VISIBLE_MS = 3000;

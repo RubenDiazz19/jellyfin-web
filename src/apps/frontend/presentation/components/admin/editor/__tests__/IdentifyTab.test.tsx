@@ -35,6 +35,7 @@ function mount(ui: React.ReactNode) {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
     getItemRaw.mockResolvedValue({
         Id: 'col-1',
         Name: 'Star Wars Colección',
@@ -57,11 +58,16 @@ afterEach(() => {
     host?.remove();
     root = null;
     host = null;
+    vi.useRealTimers();
 });
 
 describe('IdentifyTab', () => {
     test('usa BoxSet como tipo de búsqueda para colecciones y auto-busca al abrir', async () => {
         await mount(<IdentifyTab itemId='col-1' kind='collection' onClose={vi.fn()} />);
+
+        await act(async () => {
+            vi.advanceTimersByTime(600);
+        });
 
         expect(getItemRaw).toHaveBeenCalledWith('col-1');
         expect(remoteSearch).toHaveBeenCalledWith('col-1', 'BoxSet', {
@@ -109,6 +115,10 @@ describe('IdentifyTab', () => {
             nativeInputValueSetter?.call(yearInput, '');
             yearInput.dispatchEvent(new Event('input', { bubbles: true }));
         });
+        
+        await act(async () => {
+            vi.advanceTimersByTime(600);
+        });
 
         const searchBtn = Array.from(host?.querySelectorAll('button') ?? [])
             .find((b) => b.textContent?.includes('Buscar') || b.textContent?.includes('Search'));
@@ -138,6 +148,10 @@ describe('IdentifyTab', () => {
 
         await mount(<IdentifyTab itemId='show-1' kind='movie' onClose={vi.fn()} />);
 
+        await act(async () => {
+            vi.advanceTimersByTime(600);
+        });
+
         // Aunque kind sea 'movie', it.Type='Series' resuelve que se busque como Series
         expect(remoteSearch).toHaveBeenCalledWith('show-1', 'Series', {
             name: 'Star Wars: The Clone Wars',
@@ -149,6 +163,10 @@ describe('IdentifyTab', () => {
     test('permite aplicar el resultado de identificación', async () => {
         const onClose = vi.fn();
         await mount(<IdentifyTab itemId='col-1' kind='collection' onClose={onClose} />);
+
+        await act(async () => {
+            vi.advanceTimersByTime(600);
+        });
 
         // Botón de aplicar resultado
         const applyBtn = Array.from(host?.querySelectorAll('button') ?? [])

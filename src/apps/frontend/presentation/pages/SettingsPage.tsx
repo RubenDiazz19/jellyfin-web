@@ -7,6 +7,8 @@ import {
     getCurrentUser, setSessionUser, updateUserConfig,
     type CurrentUser, type UserConfig
 } from '../../domain/api';
+import { sessionVM } from '../../domain/viewModels/SessionViewModel';
+import { logger } from '../../shared/logger';
 import { useSession } from '../../domain/bridge/useSession';
 import { Nav } from '../components/layout/Nav';
 import { useToast } from '../components/toast/ToastProvider';
@@ -102,7 +104,9 @@ export function SettingsPage({ navigate, initial = 'perfil' }: { navigate: Navig
                             // sin esto, cambiar la foto aquí no se vería arriba
                             // hasta recargar la página.
                             setSessionUser(u.name, u.avatarTag);
-                        }).catch(() => {});
+                        }).catch((e) => {
+                            logger.debug('Error refreshing user avatar', e);
+                        });
                     }}
                     logout={logout}
                 />

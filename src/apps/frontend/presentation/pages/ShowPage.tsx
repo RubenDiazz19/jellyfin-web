@@ -1,6 +1,6 @@
 import globalize from 'lib/globalize';
 
-import { formatDateLong, formatRemaining } from '../utils/format';
+import { formatDateLong, formatEpisodeCode, formatRemaining } from '../utils/format';
 import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
 import { translateStatus } from '../../domain/status';
 import { isShowFullyWatched } from '../../domain/showWatched';
@@ -27,6 +27,7 @@ import { SeasonCard } from '../components/cards/SeasonCard';
 import { DetailPageShell } from '../components/layout/DetailPageShell';
 import { DetailOverviewSection } from '../components/layout/DetailOverviewSection';
 import { Similar } from '../components/similar/Similar';
+import { LazySection } from '../components/layout/LazySection';
 import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
@@ -50,12 +51,16 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     const target = cont ?
         { seasonN: cont.seasonN, epN: cont.epN } :
         { seasonN: show.seasons[0].n, epN: 1 };
-    const label = `T${target.seasonN}:E${String(target.epN).padStart(2, '0')}`;
+    const label = formatEpisodeCode(target.seasonN, target.epN);
+    const seasonLabel = globalize.translate('ValueSeason', target.seasonN);
     useWatchedVersion(show.id);
     const complete = isShowFullyWatched(show);
     const progress = complete ? 0 : cont ? cont.progress : 0;
     const inProgress = !complete && !!cont && progress > 0;
-    const epLabel = `T${target.seasonN} E${String(target.epN).padStart(2, '0')}`;
+
+    // Context menu base: usamos la miniatura del episodio para la cola de repro.
+    // El "S01E01" no lleva título si no lo tenemos aún.
+    const epLabel = formatEpisodeCode(target.seasonN, target.epN);
     const remaining = cont ? formatRemaining(cont.remaining, { suffix: '' }) : '';
     const { minimal, inlineJustify } = useHeroLayout(hero);
     const r = useResponsive();
@@ -74,7 +79,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
         if (targetEp?.jfId) {
             play({
                 itemId: targetEp.jfId,
-                title: `${show.title} · T${target.seasonN} E${String(target.epN).padStart(2, '0')} — ${targetEp.title ?? ''}`,
+                title: `${show.title} · ${formatEpisodeCode(target.seasonN, target.epN)} — ${targetEp.title ?? ''}`,
                 startTicks: ticksFromProgress(targetEp.runtime, cont?.progress ?? 0)
             });
         } else {
@@ -95,7 +100,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
         const choice = allEpisodes[randomArr[0] % allEpisodes.length];
         play({
             itemId: choice.episode.jfId!,
-            title: `${show.title} · T${choice.season.n} E${String(choice.episode.n).padStart(2, '0')} — ${choice.episode.title ?? ''}`,
+            title: `${show.title} · ${formatEpisodeCode(choice.season.n, choice.episode.n)} — ${choice.episode.title ?? ''}`,
             startTicks: 0
         });
     };
@@ -265,7 +270,9 @@ function ShowDetail({ show, navigate }: { show: Show; navigate: Navigate }) {
                 </div>
             </div>
 
-            <Similar currentId={show.id} navigate={navigate} />
+            <LazySection>
+                <Similar currentId={show.id} navigate={navigate} />
+            </LazySection>
         </DetailBody>
     );
 }

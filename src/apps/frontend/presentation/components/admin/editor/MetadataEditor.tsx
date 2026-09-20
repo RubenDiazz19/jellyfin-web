@@ -4,6 +4,7 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { T } from '../../../theme/tokens';
 import { Ic } from '../../../theme/icons';
+import { TabBar } from '../../controls/TabBar';
 import { useToast } from '../../toast/ToastProvider';
 import { refreshItemMetadata, type RefreshOptions } from '../../../../domain/api';
 import { tasksVM } from '../../../../domain/viewModels/TasksViewModel';
@@ -134,21 +135,18 @@ export function MetadataEditor({
                     </div>
                 </div>
 
-                <div style={{
-                    display: 'flex', gap: 4, padding: '6px 14px',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 13
-                }}>
-                    <TabButton label={globalize.translate('LabelMetadata')} active={tab === 'metadata'} onClick={() => setTab('metadata')} />
-                    {canIdentify && (
-                        <TabButton label={globalize.translate('Identify')} active={tab === 'identify'} onClick={() => setTab('identify')} />
-                    )}
-                    <TabButton label={globalize.translate('Images')} active={tab === 'images'} onClick={() => setTab('images')} />
-                    {canSubs && (
-                        <TabButton label={globalize.translate('Subtitles')} active={tab === 'subtitles'} onClick={() => setTab('subtitles')} />
-                    )}
-                    {canTags && (
-                        <TabButton label={globalize.translate('EditTags')} active={tab === 'tags'} onClick={() => setTab('tags')} />
-                    )}
+                <div style={{ flexShrink: 0 }}>
+                    <TabBar
+                        active={tab}
+                        onChange={(id) => setTab(id as Tab)}
+                        tabs={[
+                            { id: 'metadata', label: globalize.translate('HeaderMetadata') },
+                            ...(canIdentify ? [{ id: 'identify', label: globalize.translate('Identify') }] : []),
+                            { id: 'images', label: globalize.translate('Images') },
+                            ...(canSubs ? [{ id: 'subtitles', label: globalize.translate('HeaderSubtitles') }] : []),
+                            ...(canTags ? [{ id: 'tags', label: globalize.translate('EditTags') }] : [])
+                        ]}
+                    />
                 </div>
 
                 <div style={{ overflowY: 'auto', padding: 22, flex: 1 }}>
@@ -170,27 +168,5 @@ export function MetadataEditor({
             )}
         </div>,
         document.body
-    );
-}
-
-function TabButton({ label, active, onClick }: {
-    label: string; active: boolean; onClick: () => void;
-}) {
-    return (
-        <button
-            onClick={onClick}
-            style={{
-                padding: '10px 14px', background: 'none', border: 'none',
-                color: active ? '#fff' : T.dim, cursor: 'pointer',
-                fontFamily: T.ui, fontSize: 13, fontWeight: active ? 500 : 400,
-                position: 'relative'
-            }}
-        >
-            {label}
-            {active && <div style={{
-                position: 'absolute', bottom: 0, left: 10, right: 10, height: 2,
-                background: '#fff', borderRadius: 1
-            }} />}
-        </button>
     );
 }

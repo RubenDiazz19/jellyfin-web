@@ -1,0 +1,23 @@
+/* Estilos comunes para carruseles, extraídos de estilos inline */
+
+.collectionCarouselContainer::-webkit-scrollbar,
+.subCollectionsCarousel::-webkit-scrollbar {
+    display: none;
+}
+
+.collectionCardPremium:hover,
+.collectionCardPremium:focus-visible {
+    z-index: 10 !important;
+}
+
+.posterFramePremium {
+    border: 3px solid transparent;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.collectionCardPremium:hover .posterFramePremium,
+.collectionCardPremium:focus-visible .posterFramePremium {
+    border-color: #ffffff !important;
+    box-shadow: 0 0 0 1px #ffffff, 0 16px 36px rgba(0,0,0,0.9);
+}

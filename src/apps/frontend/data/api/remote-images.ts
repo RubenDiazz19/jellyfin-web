@@ -2,8 +2,10 @@
 // remote providers (TMDB/TVDB).
 
 import { clearShowCache } from './cache';
+import { fetchFanartLogosForItem } from './fanart';
 import { apiFetch, apiSend, uploadImage } from './http';
 import type { ImageType } from './images';
+import { getItemRaw } from './metadata';
 import { emitItemMutated } from './mutations';
 
 export type JFRemoteImage = {
@@ -29,10 +31,27 @@ export async function getItemImageInfos(itemId: string): Promise<JFImageInfo[]> 
 }
 
 export async function setImageByUrl(itemId: string, type: ImageType, url: string): Promise<void> {
-    await apiSend(
-        `/Items/${itemId}/RemoteImages/Download?Type=${type}&ImageUrl=${encodeURIComponent(url)}`,
-        'POST'
-    );
+    try {
+        await apiSend(
+            `/Items/${itemId}/RemoteImages/Download?Type=${type}&ImageUrl=${encodeURIComponent(url)}`,
+            'POST'
+        );
+    } catch (err) {
+        // Fallback: si el servidor Jellyfin no tiene acceso a internet exterior (ej. contenedor aislado),
+        // descargamos la imagen en el cliente y la subimos directamente.
+        try {
+            const res = await fetch(url);
+            if (res.ok) {
+                const blob = await res.blob();
+                const file = new File([blob], 'image.png', { type: blob.type || 'image/png' });
+                await uploadImageFile(itemId, type, file);
+                return;
+            }
+        } catch {
+            // Ignorar y relanzar el error original
+        }
+        throw err;
+    }
     // El servidor descarga la imagen asíncronamente tras responder 200.
     // Sin este margen el refetch llega antes de que se actualicen los tags
     // y vuelve a construir URLs idénticas → la caché del navegador sirve
@@ -82,9 +101,35 @@ export async function getRemoteImages(
         limit: String(opts.limit ?? 60),
         includeAllLanguages: String(opts.includeAllLanguages ?? true)
     });
-    const data = await apiFetch<{ Images: JFRemoteImage[]; Providers: string[] }>(
+
+    const serverPromise = apiFetch<{ Images: JFRemoteImage[]; Providers: string[] }>(
         `/Items/${itemId}/RemoteImages?${q.toString()}`
-    );
-    return { images: data.Images ?? [], providers: data.Providers ?? [] };
+    ).catch(() => ({ Images: [], Providers: [] }));
+
+    // Para logos, consultar en paralelo Fanart.tv utilizando la clave configurada
+    const fanartPromise = type === 'Logo' ?
+        getItemRaw(itemId).then((raw) => fetchFanartLogosForItem(raw)).catch(() => [] as JFRemoteImage[]) :
+        Promise.resolve([] as JFRemoteImage[]);
+
+    const [serverData, fanartLogos] = await Promise.all([serverPromise, fanartPromise]);
+
+    const serverImages = serverData.Images ?? [];
+    const providers = [...(serverData.Providers ?? [])];
+
+    if (fanartLogos.length > 0 && !providers.includes('Fanart.tv')) {
+        providers.push('Fanart.tv');
+    }
+
+    const seenUrls = new Set<string>();
+    const combined: JFRemoteImage[] = [];
+
+    // Priorizar logos de Fanart.tv sobre los de otros proveedores
+    for (const img of [...fanartLogos, ...serverImages]) {
+        if (!img.Url || seenUrls.has(img.Url)) continue;
+        seenUrls.add(img.Url);
+        combined.push(img);
+    }
+
+    return { images: combined, providers };
 }
 

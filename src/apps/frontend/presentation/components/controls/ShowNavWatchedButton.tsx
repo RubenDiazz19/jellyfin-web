@@ -2,7 +2,7 @@ import globalize from 'lib/globalize';
 import { WATCHED } from '../../../domain/stores';
 import { getShowEpisodeKeys, isShowFullyWatched } from '../../../domain/showWatched';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
-import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { showVM } from '../../../domain/viewModels/ShowViewModel';
 import { PROTO_DATA } from '../../../domain/models';
 import { WatchedToggle } from './WatchedToggle';
@@ -24,7 +24,7 @@ type Props = { showId: string; size?: number; badge?: boolean };
 
 export function ShowNavWatchedButton({ showId, size = 18, badge = false }: Props) {
     useWatchedVersion(showId);
-    useViewModel(showVM);
+    useVmSignals(showVM, (vm) => [vm.show]);
     const proto = PROTO_DATA.shows[showId];
     const show = proto ?? showVM.showFor(showId);
     const allEpIds = getShowEpisodeKeys(show);

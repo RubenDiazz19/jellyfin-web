@@ -12,7 +12,7 @@ import { selectionVM, type SelectableItem } from '../../../domain/viewModels/Sel
 import { useSignalSelector } from '../../../domain/bridge/useViewModel';
 import type { PlaylistItem } from '../../../domain/api';
 import type { Navigate } from '../../../app/router';
-
+import '../../styles/carousels.css';
 type Props = {
     items: PlaylistItem[];
     listId?: string;
@@ -28,7 +28,8 @@ export function CollectionCardCarousel({ items, navigate, listId }: Props) {
     const [canScrollRight, setCanScrollRight] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
 
-    const cardWidth = r.touch ? 220 : 320;
+    // Reducción del ~18% para aligerar la tarjeta apaisada, dar aire al banner/logo y permitir 4-5 tarjetas visibles en pantalla
+    const cardWidth = r.touch ? 200 : 316;
     const gap = r.touch ? 16 : 24;
 
     const checkScrollButtons = () => {
@@ -69,30 +70,6 @@ export function CollectionCardCarousel({ items, navigate, listId }: Props) {
                 width: '100%'
             }}
         >
-            <style>{`
-                .collectionCarouselContainer::-webkit-scrollbar {
-                    display: none;
-                }
-                
-                .collectionCardPremium {
-                    /* Base styles if needed */
-                }
-                .collectionCardPremium:hover,
-                .collectionCardPremium:focus-visible {
-                    z-index: 10 !important;
-                }
-                .posterFramePremium {
-                    border: 3px solid transparent;
-                    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
-                    transition: border-color 0.25s ease, box-shadow 0.25s ease;
-                }
-                .collectionCardPremium:hover .posterFramePremium,
-                .collectionCardPremium:focus-visible .posterFramePremium {
-                    border-color: #ffffff !important;
-                    box-shadow: 0 0 0 1px #ffffff, 0 16px 36px rgba(0,0,0,0.9);
-                }
-            `}</style>
-
             {/* Flecha de navegación izquierda para escritorio */}
             {!r.touch && canScrollLeft && (
                 <button

@@ -2,8 +2,8 @@
 // reproductor, no en la fila de transporte: es una acción de "dónde se ve",
 // no de reproducción, y abajo ocupaba sitio a los controles reales.
 import globalize from 'lib/globalize';
-
 import { useEffect } from 'react';
+import { logger } from '../../../shared/logger';
 import { castVM } from '../../../domain/viewModels/CastViewModel';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue } from '../../../domain/bridge/useViewModel';
@@ -23,7 +23,9 @@ export function CastButton({ itemId }: Props) {
 
     // El SDK de Cast se carga bajo demanda al montar el reproductor: es un
     // script externo y no debe pesar en el arranque de la app.
-    useEffect(() => { void castVM.init(); }, []);
+    useEffect(() => {
+        castVM.init().catch((e) => { logger.debug('CastVM init failed', e); });
+    }, []);
 
     // Emitir = mandar el item al receptor y parar aquí; volver a pulsar
     // cierra la sesión y devuelve la reproducción a este navegador.

@@ -23,9 +23,14 @@ export function parseRuntimeMinutes(runtime: RuntimeValue): number | undefined {
         if (total > 0) return total;
     }
 
-    // Número directo o con rango (ej. "47–51 min" → toma el primer valor)
+// Número directo o con rango (ej. "47–51 min" → toma el primer valor)
     const direct = parseInt(str, 10);
     return (!isNaN(direct) && direct > 0) ? direct : undefined;
+}
+
+/** Formatea una temporada y episodio (ej. "T01 E01" o "S01 E01") según idioma. */
+export function formatEpisodeCode(season: number, episode: number): string {
+    return globalize.translate('ValueSeasonEpisode', season, String(episode).padStart(2, '0'));
 }
 
 /** Formatea un número entero de minutos en formato "X h Y min", "X h", o "Y min". */

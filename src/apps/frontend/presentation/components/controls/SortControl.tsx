@@ -5,12 +5,29 @@ import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { PopupPanel } from './PopupPanel';
 import { MenuEntry } from './MenuEntry';
+
 import { BottomSheet } from '../m3/BottomSheet';
 import type { SortKey } from '../../../data/stores/librarySortStore';
+import { PillToggle } from './PillToggle';
 
-type SearchSortKey = 'relevance' | SortKey;
+function CheckIcon({ size }: { size: number }) {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2.4'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+        >
+            <polyline points='20 6 9 17 4 12' />
+        </svg>
+    );
+}
 
-export function SortControl({ value, onChange, options }: { value: any; onChange: (k: any) => void; options: { id: string, key: string }[] }) {
+export function SortControl<T extends string>({ value, onChange, options }: { value: T; onChange: (k: T) => void; options: { id: T, key: string }[] }) {
     const r = useResponsive();
     const [open, setOpen] = useState(false);
     const [pos, setPos] = useState<{ top?: number; bottom?: number; right?: number } | null>(null);
@@ -39,46 +56,16 @@ export function SortControl({ value, onChange, options }: { value: any; onChange
             display: 'inline-flex',
             animation: 'jfpPillsFadeIn 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both'
         }}>
-            <button
-                ref={btnRef}
-                type='button'
+            <PillToggle
+                active={open}
+                variant="ghost"
+                btnRef={btnRef}
                 onClick={toggle}
-                onMouseDown={(e) => e.preventDefault()}
-                aria-haspopup='menu'
-                aria-expanded={open}
+                onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
+                ariaHasPopup="menu"
+                ariaExpanded={open}
                 style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 7,
-                    padding: '6px 14px',
-                    borderRadius: 999,
-                    background: open ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.06)',
-                    color: open ? '#fff' : T.dim,
-                    border: open ? '1px solid rgba(255,255,255,0.35)' : '1px solid transparent',
-                    boxShadow: open ? '0 2px 12px rgba(0,0,0,0.3)' : 'none',
-                    fontFamily: T.ui,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    outline: 'none',
-                    transition: 'background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease',
-                    whiteSpace: 'nowrap'
-                }}
-                onMouseEnter={(e) => {
-                    if (!open) {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                        e.currentTarget.style.color = '#fff';
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                        e.currentTarget.style.transform = 'scale(1.02)';
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (!open) {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                        e.currentTarget.style.color = T.dim;
-                        e.currentTarget.style.borderColor = 'transparent';
-                        e.currentTarget.style.transform = 'scale(1)';
-                    }
+                    boxShadow: open ? '0 2px 12px rgba(0,0,0,0.3)' : 'none'
                 }}
             >
                 <span>{globalize.translate('SortByLabel')}</span>
@@ -99,7 +86,7 @@ export function SortControl({ value, onChange, options }: { value: any; onChange
                 >
                     <path d='M1 1L5 5L9 1' />
                 </svg>
-            </button>
+            </PillToggle>
 
             {!r.touch && (
                 <PopupPanel
@@ -138,20 +125,7 @@ export function SortControl({ value, onChange, options }: { value: any; onChange
                                 }}
                             >
                                 <span>{globalize.translate(s.key)}</span>
-                                {isSelected && (
-                                    <svg
-                                        width='13'
-                                        height='13'
-                                        viewBox='0 0 24 24'
-                                        fill='none'
-                                        stroke='currentColor'
-                                        strokeWidth='2.4'
-                                        strokeLinecap='round'
-                                        strokeLinejoin='round'
-                                    >
-                                        <polyline points='20 6 9 17 4 12' />
-                                    </svg>
-                                )}
+                                {isSelected && <CheckIcon size={13} />}
                             </MenuEntry>
                         );
                     })}
@@ -183,20 +157,7 @@ export function SortControl({ value, onChange, options }: { value: any; onChange
                                 }}
                             >
                                 <span>{globalize.translate(s.key)}</span>
-                                {isSelected && (
-                                    <svg
-                                        width='18'
-                                        height='18'
-                                        viewBox='0 0 24 24'
-                                        fill='none'
-                                        stroke='currentColor'
-                                        strokeWidth='2.4'
-                                        strokeLinecap='round'
-                                        strokeLinejoin='round'
-                                    >
-                                        <polyline points='20 6 9 17 4 12' />
-                                    </svg>
-                                )}
+                                {isSelected && <CheckIcon size={18} />}
                             </MenuEntry>
                         );
                     })}

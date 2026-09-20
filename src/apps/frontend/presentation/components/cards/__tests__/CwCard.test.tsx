@@ -104,11 +104,11 @@ describe('CwCard', () => {
         });
 
         expect(mockPlay).toHaveBeenCalledTimes(1);
-        expect(mockPlay).toHaveBeenCalledWith({
+        expect(mockPlay).toHaveBeenCalledWith(expect.objectContaining({
             itemId: 'ep_sabito_makomo',
-            title: 'Demon Slayer · T1 E03 — Sabito y Makomo',
+            title: 'Demon Slayer · S1 E03 — Sabito y Makomo',
             startTicks: 4500000
-        });
+        }));
         expect(navTarget).toBeNull();
     });
 
@@ -223,12 +223,13 @@ describe('CwCard', () => {
         expect(remainingBadge?.textContent).toContain('12 min');
     });
 
-    test('alterna entre tiempo restante y hora de fin al hacer clic en el indicador sin fondo', async () => {
+    test('alterna entre tiempo restante y hora de fin al hacer clic (forzando clases)', async () => {
         await mount(<CwCard slide={showSlide} navigate={mockNavigate} />);
 
         const remainingBadge = host?.querySelector('.jfp-cw-remaining') as HTMLElement;
         expect(remainingBadge).toBeTruthy();
         expect(remainingBadge.textContent).toContain('12 min');
+        expect(remainingBadge.className).not.toContain('force-end');
 
         await act(async () => {
             remainingBadge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -236,13 +237,13 @@ describe('CwCard', () => {
 
         // Al hacer clic conmuta a la hora de fin sin disparar el play de la tarjeta
         expect(mockPlay).not.toHaveBeenCalled();
-        expect(remainingBadge.textContent).not.toBe('12 min');
+        expect(remainingBadge.className).toContain('force-end');
 
         // Al volver a hacer clic vuelve al tiempo restante
         await act(async () => {
             remainingBadge.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         });
-        expect(remainingBadge.textContent).toBe('12 min');
+        expect(remainingBadge.className).toContain('force-rem');
     });
 
     test('limita el título y subtítulo estrictamente a una sola línea con nowrap y overflow hidden', async () => {

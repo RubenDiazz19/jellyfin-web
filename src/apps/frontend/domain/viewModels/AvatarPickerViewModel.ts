@@ -10,6 +10,7 @@ import globalize from 'lib/globalize';
 
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { normalizeName } from '../../data/api/characterArt';
+import { logger } from '../../shared/logger';
 import type { AvatarCandidate } from '../../data/api/avatars';
 import { guardedLoad } from './guardedLoad';
 import { LoadGuard } from './loadGuard';
@@ -98,7 +99,9 @@ export class AvatarPickerViewModel {
             this.enrichingSeries.add(series);
             void this.api.avatars.resolveSeriesArt(series)
                 .then((art) => this.applyArt(art, members))
-                .catch(() => {});
+                .catch((e) => {
+                    logger.debug('Error resolving series art', e);
+                });
         }
     }
 

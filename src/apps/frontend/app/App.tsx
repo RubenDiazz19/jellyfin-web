@@ -200,6 +200,14 @@ function AuthedApp() {
         window.addEventListener('scroll', onScroll, opts);
 
         const reset = () => {
+            // Guard: don't force scroll if the document hasn't rendered enough content yet
+            if (target > 0) {
+                const maxScroll = Math.max(
+                    document.body.scrollHeight, document.documentElement.scrollHeight
+                ) - window.innerHeight;
+                if (target > maxScroll) return;
+            }
+
             window.scrollTo(0, target);
             if (document.scrollingElement) document.scrollingElement.scrollTop = target;
             document.documentElement.scrollTop = target;
@@ -212,6 +220,7 @@ function AuthedApp() {
         let raf = requestAnimationFrame(function tick() {
             if (stopped) return;
             reset();
+            // Continuamos el bucle hasta 500ms, a menos que el usuario interactúe (stopped=true)
             if (performance.now() - start < 500) raf = requestAnimationFrame(tick);
         });
 

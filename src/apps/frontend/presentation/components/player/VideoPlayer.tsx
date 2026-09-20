@@ -8,58 +8,28 @@ import { QueuePanel } from '../queue/QueuePanel';
 import {
     segmentSkipLabelKey, subtitleTrackMode, type AspectRatio
 } from '../../../domain/player/format';
-import {
-    applyCueLine, applySubtitleAppearance, getSubtitleAppearance
-} from '../../../domain/player/subtitleStyle';
+import { formatTime, TICKS_PER_SECOND } from '../../../domain/player/format';
+import { pointInRect } from '../../../shared/math';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
 import { haptic } from '../../../shared/haptics';
-import { PlayerIc } from './playerIcons';import { CastButton } from './CastButton';
+import { PlayerIc } from './playerIcons';
+import { CastButton } from './CastButton';
 import { VideoControls } from './VideoControls';
 import { VideoGestures } from './VideoGestures';
 import { ShortcutsModal } from './ShortcutsModal';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { useOsdVisibility } from './useOsdVisibility';
 import { useSubtitleManager } from './useSubtitleManager';
+import { useTouchPlayback } from './useTouchPlayback';
+import { useVideoPlayerNotices } from './useVideoPlayerNotices';
+import { usePlayerSettings } from './usePlayerSettings';
 // El OSD entero se pinta desde aquí, así que sus estilos entran con él: solo
 // se descargan al abrir el reproductor, que es una ruta cargada bajo demanda.
 import '../../styles/player.css';
 
-const OSD_NOTICE_MS = 2200;
-const GESTURE_HINTS_MS = 4200;
-const SUGGEST_LANDSCAPE_MS = 3800;
-const HINTS_KEY = 'jfp-gesture-hints-seen';
 
-export function pointInRect(
-    point: { x: number; y: number } | null,
-    rect: { left: number; right: number; top: number; bottom: number }
-): boolean {
-    if (!point) return false;
-    return point.x >= rect.left && point.x <= rect.right
-        && point.y >= rect.top && point.y <= rect.bottom;
-}
-
-// Detección de reproductor táctil. El reproductor se monta fuera de
-// AppLayout (sin MobileThemeProvider), así que el modo se lee de las clases
-// de <html> directamente. `portrait` alterna el OSD compacto/esencial.
-function useTouchPlayback(): { touch: boolean; portrait: boolean } {
-    const [touch, setTouch] = useState(() => currentMobileLayout() !== null);
-    const [portrait, setPortrait] = useState(
-        () => typeof window.matchMedia === 'function'
-            && window.matchMedia('(orientation: portrait)').matches
-    );
-    useEffect(() => observeLayoutMode(() => setTouch(currentMobileLayout() !== null)), []);
-    useEffect(() => {
-        if (typeof window.matchMedia !== 'function') return;
-        const mq = window.matchMedia('(orientation: portrait)');
-        const apply = () => setPortrait(mq.matches);
-        apply();
-        mq.addEventListener('change', apply);
-        return () => mq.removeEventListener('change', apply);
-    }, []);
-    return { touch, portrait };
-}
 
 type Props = {
     itemId: string;
@@ -106,7 +76,7 @@ export function VideoPlayer({
         osdNoticeTimer.current = setTimeout(() => {
             setOsdNotice(null);
             osdNoticeTimer.current = null;
-        }, OSD_NOTICE_MS);
+        }, 2200); // OSD_NOTICE_MS
     }, []);
 
     const isFullscreen = videoPlayerVM.fullscreen.value;
@@ -142,8 +112,7 @@ export function VideoPlayer({
     // Controles bloqueados (solo táctil): oculta OSD e ignora gestos hasta
     // desbloquear. Overlay de hints de primer uso.
     const [locked, setLocked] = useState(false);
-    const [showHints, setShowHints] = useState(false);
-    const [suggestLandscape, setSuggestLandscape] = useState(false);
+    const { showHints, dismissHints, suggestLandscape } = useVideoPlayerNotices({ touch, portrait, showNotice });
     const [queueOpen, setQueueOpen] = useState(false);
 
     // startTicks/title solo importan al abrir; un cambio de itemId re-monta
@@ -173,81 +142,7 @@ export function VideoPlayer({
         if (osdNoticeTimer.current) clearTimeout(osdNoticeTimer.current);
     }, []);
 
-    // Hints de gestos en el primer uso táctil (una vez, persistido).
-    useEffect(() => {
-        if (!touch) return;
-        if (localStorage.getItem(HINTS_KEY)) return;
-        setShowHints(true);
-        const t = setTimeout(() => {
-            setShowHints(false);
-            localStorage.setItem(HINTS_KEY, '1');
-        }, GESTURE_HINTS_MS);
-        return () => clearTimeout(t);
-    }, [touch]);
-
-    const dismissHints = useCallback(() => {
-        setShowHints(false);
-        localStorage.setItem(HINTS_KEY, '1');
-    }, []);
-
-    // Sugerencia de landscape: chip breve al reproducir en vertical (una vez
-    // por sesión, y solo si no está ya en horizontal).
-    const suggestedRef = useRef(false);
-    useEffect(() => {
-        if (!touch || !portrait || suggestedRef.current) return;
-        suggestedRef.current = true;
-        setSuggestLandscape(true);
-        const t = setTimeout(() => setSuggestLandscape(false), SUGGEST_LANDSCAPE_MS);
-        return () => clearTimeout(t);
-    }, [touch, portrait]);
-
-    // Aviso de temporizador de apagado completado.
-    useEffect(() => {
-        const onSleepExpired = () => {
-            showNotice(globalize.translate('SleepTimerExpired'));
-        };
-        window.addEventListener('jfp-sleep-timer-expired', onSleepExpired);
-        return () => window.removeEventListener('jfp-sleep-timer-expired', onSleepExpired);
-    }, [showNotice]);
-
-    // Aplica el modo de los text tracks cuando cambia el subtítulo activo:
-    // solo se muestra la pista de la selección actual. El <track> anterior
-    // no se desmonta al instante (el remount por key es asíncrono), así que
-    // sin esto sus cues quedan "showing" y se pintan superpuestas a las
-    // nuevas.
-    useEffect(() => {
-        const video = videoRef.current;
-        if (!video) return;
-        const active = subtitleUrl ? subtitleTrackRef.current?.track ?? null : null;
-        for (const track of Array.from(video.textTracks)) {
-            track.mode = subtitleTrackMode(subtitleUrl, active, track);
-        }
-    }, [subtitleUrl, subtitleTrackRef]);
-
-    // Cómo se ven los subtítulos (tamaño, tipografía, color, altura).
-    //
-    // Se aplica al abrir el reproductor y cada vez que Ajustes lo cambia, que
-    // es lo que avisa por `jfp-subtitle-appearance`: así se puede tener el
-    // vídeo puesto en una pestaña y ver el efecto de cada cambio al momento,
-    // sin reabrir nada.
-    useEffect(() => {
-        const apply = () => {
-            const appearance = getSubtitleAppearance();
-            applySubtitleAppearance(appearance);
-            applyCueLine(subtitleTrackRef.current?.track?.cues ?? null, appearance.verticalPosition);
-        };
-        apply();
-        window.addEventListener('jfp-subtitle-appearance', apply);
-        return () => window.removeEventListener('jfp-subtitle-appearance', apply);
-    }, [subtitleUrl]);
-
-    // Longitud de los saltos y formato del reloj: lo mismo, desde Ajustes.
-    useEffect(() => {
-        const apply = videoPlayerVM.reloadPlaybackPrefs;
-        apply();
-        window.addEventListener('jfp-playback-prefs', apply);
-        return () => window.removeEventListener('jfp-playback-prefs', apply);
-    }, []);
+    usePlayerSettings({ subtitleUrl, subtitleTrackRef, videoRef });
 
     // Los subtítulos, al pasar a la ventana de picture-in-picture.
     //

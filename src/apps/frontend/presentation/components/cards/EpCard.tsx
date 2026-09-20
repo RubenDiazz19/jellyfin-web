@@ -10,6 +10,7 @@ import type { Navigate } from '../../../app/router';
 import { episodeKey } from '../../../domain/stores';
 import { useCardInteractions } from './useCardInteractions';
 import { LandscapeCardShell } from './LandscapeCardShell';
+import { formatEpisodeCode } from '../../utils/format';
 
 type Props = { show: Show; season: Season; ep: Episode; navigate: Navigate };
 
@@ -32,7 +33,7 @@ export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: P
         showId: show.id,
         seasonN: season.n,
         epN: ep.n,
-        queueSubtitle: `${show.title} · ${globalize.translate('ValueSeasonEpisode', season.n, String(ep.n).padStart(2, '0'))}`,
+        queueSubtitle: `${show.title} · ${formatEpisodeCode(season.n, ep.n)}`,
         queuePoster: ep.thumb ?? show.poster
     }, navigate);
 

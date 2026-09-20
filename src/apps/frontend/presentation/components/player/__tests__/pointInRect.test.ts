@@ -22,7 +22,7 @@ vi.mock('lib/jellyfin-apiclient', () => ({
     }
 }));
 
-import { pointInRect } from '../VideoPlayer';
+import { pointInRect } from '../../../../shared/math';
 
 // Una barra de controles al uso: pegada abajo, de lado a lado.
 const bar = { left: 0, right: 1920, top: 950, bottom: 1080 };

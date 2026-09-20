@@ -22,6 +22,17 @@ export type SelectableItem = {
     watchedKey?: string;
 };
 
+export function toSelectableItem(item: any): SelectableItem {
+    return {
+        id: item.id,
+        title: item.title || item.name || '',
+        kind: item.kind,
+        poster: item.poster || item.backdrop || item.seriesPoster,
+        year: item.year,
+        watchedKey: item.watchedKey
+    };
+}
+
 /**
  * Clave del item en el store local de «visto».
  *

@@ -19,6 +19,7 @@ import { usePlayer } from '../components/player/PlayerProvider';
 import { DetailPageShell } from '../components/layout/DetailPageShell';
 import { DetailOverviewSection } from '../components/layout/DetailOverviewSection';
 import { Similar } from '../components/similar/Similar';
+import { LazySection } from '../components/layout/LazySection';
 import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
@@ -239,7 +240,9 @@ function MovieDetail({ movie, navigate }: { movie: Movie; navigate: Navigate }) 
 
             {saga && <SagaSection saga={saga} currentMovieId={movie.id} navigate={navigate} />}
 
-            <Similar currentId={movie.id} navigate={navigate} />
+            <LazySection>
+                <Similar currentId={movie.id} navigate={navigate} />
+            </LazySection>
         </DetailBody>
     );
 }

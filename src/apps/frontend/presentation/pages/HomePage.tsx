@@ -3,7 +3,8 @@ import globalize from 'lib/globalize';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { C, T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { formatRemainingCompact } from '../utils/format';
+import { JellyfinBrandHeader } from './auth/JellyfinBrandHeader';
+import { formatEpisodeCode, formatRuntime, formatRemainingCompact } from '../utils/format';
 import { PROTO_DATA, type CarouselSlide } from '../../domain/models';
 import { homeVM } from '../../domain/viewModels/HomeViewModel';
 import { COLLECTION_STYLES } from '../../domain/stores';
@@ -31,6 +32,7 @@ import type { Navigate } from '../../app/router';
 const HERO_AUTOPLAY_MS = 8000;
 const WHEEL_THRESHOLD = 100;
 const WHEEL_LOCK_MS = 900;
+const WHEEL_RESET_MS = 150;
 
 const ROOT_PAGE_STYLE: React.CSSProperties = { position: 'relative', width: '100%', minHeight: '100vh', background: '#000' };
 const EMPTY_PAGE_STYLE: React.CSSProperties = { background: '#000', color: '#fff', minHeight: '100vh' };
@@ -132,7 +134,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
             e.preventDefault();
             if (wheelLockRef.current) {
                 if (resetTimer) clearTimeout(resetTimer);
-                resetTimer = setTimeout(() => { wheelAccum.current = 0; }, 150);
+                resetTimer = setTimeout(() => { wheelAccum.current = 0; }, WHEEL_RESET_MS);
                 return;
             }
             wheelAccum.current += e.deltaX;
@@ -145,7 +147,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                 lockTimer = setTimeout(() => { wheelLockRef.current = false; }, WHEEL_LOCK_MS);
             }
             if (resetTimer) clearTimeout(resetTimer);
-            resetTimer = setTimeout(() => { wheelAccum.current = 0; }, 150);
+            resetTimer = setTimeout(() => { wheelAccum.current = 0; }, WHEEL_RESET_MS);
         };
         el.addEventListener('wheel', onWheel, { passive: false });
         return () => {
@@ -350,7 +352,7 @@ const HeroSlide = React.memo(function HeroSlideBase({
             (slide.kind === 'movie' ? 'movie' : 'show'),
         itemTitle: slide.title,
         queueSubtitle: isContinue && slide.season != null && slide.episode != null ?
-            `T${slide.season} E${String(slide.episode).padStart(2, '0')}` :
+            formatEpisodeCode(slide.season, slide.episode) :
             String(slide.year),
         queuePoster: slide.poster
     });

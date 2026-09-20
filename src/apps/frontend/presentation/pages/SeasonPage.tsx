@@ -11,6 +11,7 @@ import { DetailPageShell } from '../components/layout/DetailPageShell';
 import { SynopsisText } from '../components/layout/SynopsisText';
 import { Nav } from '../components/layout/Nav';
 import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
+import { formatEpisodeCode, formatHM, formatRuntime } from '../utils/format';
 import { ShowMetadataRows } from '../components/layout/ShowMetadataRows';
 import { ScrollHint } from '../components/layout/ScrollHint';
 import { PlayBtn } from '../components/controls/PlayBtn';
@@ -58,7 +59,7 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
         if (nextEp.jfId) {
             play({
                 itemId: nextEp.jfId,
-                title: `${show.title} · T${season.n} E${String(nextEp.n).padStart(2, '0')} — ${nextEp.title ?? ''}`,
+                title: `${show.title} · ${formatEpisodeCode(season.n, nextEp.n)} — ${nextEp.title ?? ''}`,
                 startTicks: inProgress ? ticksFromProgress(nextEp.runtime, nextEp.watched) : undefined
             });
         } else {

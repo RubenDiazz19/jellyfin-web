@@ -7,6 +7,7 @@ import { clearShowCache } from './cache';
 import { apiSend, noSessionError, trimSlash } from './http';
 import { emitItemMutated } from './mutations';
 import { cachedPlayback } from './playbackCache';
+import { logger } from '../../shared/logger';
 import type { JFMediaStream } from './types';
 
 export type MediaStreamInfo = {
@@ -326,11 +327,12 @@ export async function reportPlaybackStop(
     if (playSessionId) {
         // Tell the server it can free the ffmpeg process. Deliberately after
         // resolving the barrier: freeing the encoder doesn't affect the data
-        // the next page reads.
         await apiSend(
             `/Videos/ActiveEncodings?deviceId=${encodeURIComponent(getDeviceId())}&playSessionId=${playSessionId}`,
             'DELETE'
-        ).catch(() => {});
+        ).catch((e) => {
+            logger.debug('Error stopping active encoding', e);
+        });
     }
 }
 

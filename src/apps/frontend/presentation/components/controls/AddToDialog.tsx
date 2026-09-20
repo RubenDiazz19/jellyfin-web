@@ -11,6 +11,8 @@ import {
 import { Dialog, DialogFooter, DialogHeader, DialogInputRow, DialogRow } from './Dialog';
 import { PillButton, TextField } from './fields';
 import { LoadState } from './LoadState';
+import { useAsyncToast } from '../../hooks/useAsyncToast';
+import { useFetch } from '../../hooks/useFetch';
 
 import { T } from '../../theme/tokens';
 
@@ -37,43 +39,21 @@ export function AddToDialog({
 }: Props) {
     const toast = useToast();
     const [activeKind, setActiveKind] = useState<'playlist' | 'collection'>(initialKind ?? kind);
-    const [entries, setEntries] = useState<ListEntry[] | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const isPlaylist = activeKind === 'playlist';
+    const ids = itemIds ? itemIds : (itemId ? [itemId] : []);
+    const idKey = ids.join(',');
     const [newName, setNewName] = useState('');
     const [busy, setBusy] = useState(false);
+    const labels = {
+        empty: globalize.translate(isPlaylist ? 'NoPlaylists' : 'NoCollections'),
+        create: globalize.translate(isPlaylist ? 'CreatePlaylist' : 'CreateCollection')
+    };
 
-    const ids = itemIds ?? (itemId ? [itemId] : []);
-
-    const isPlaylist = activeKind === 'playlist';
-    const labels = isPlaylist ?
-        {
-            title: globalize.translate('AddToPlaylist'),
-            empty: globalize.translate('MessageNoPlaylistsYet'),
-            create: globalize.translate('HeaderNewPlaylist')
-        } :
-        {
-            title: globalize.translate('AddToCollection'),
-            empty: globalize.translate('MessageNoCollectionsYet'),
-            create: globalize.translate('HeaderNewCollection')
-        };
-
-    const idKey = ids.join(',');
-
-    useEffect(() => {
-        let alive = true;
-        setEntries(null);
-        setError(null);
+    const { data: entries, error, mutate: setEntries } = useFetch(async () => {
         const fetchEntries = isPlaylist ? getPlaylists : getCollections;
-        fetchEntries()
-            .then((list) => {
-                if (!alive) return;
-                const excluded = new Set(idKey.split(','));
-                setEntries(list.filter((e) => !excluded.has(e.id)));
-            })
-            .catch((e) => { if (alive) setError((e as Error).message); });
-        return () => {
-            alive = false;
-        };
+        const list = await fetchEntries();
+        const excluded = new Set(idKey.split(','));
+        return list.filter((e) => !excluded.has(e.id));
     }, [isPlaylist, idKey]);
 
     const suffix = itemTitle ? ` · ${itemTitle}` : (ids.length > 1 ? ` · ${ids.length}` : '');
@@ -135,7 +115,7 @@ export function AddToDialog({
 
             <LoadState
                 loading={!entries && !error}
-                error={error}
+                error={error?.message}
                 count={entries ? entries.length : undefined}
                 emptyText={labels.empty}
             >
@@ -160,7 +140,7 @@ export function AddToDialog({
                             value={newName}
                             onChange={setNewName}
                             onEnter={doCreate}
-                            placeholder='Nombre de la nueva…'
+                            placeholder={globalize.translate('NewNamePlaceholder')}
                         />
                     }
                     action={

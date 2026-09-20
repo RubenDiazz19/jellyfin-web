@@ -22,7 +22,7 @@ import { MUTATION_DEBOUNCE_MS } from './mutationSubscription';
 import { registerTagSource } from './knownTags';
 import { guardedLoad } from './guardedLoad';
 import { LoadGuard } from './loadGuard';
-import { getItemGenres } from '../genres';
+import { getItemGenres, type GenresItem } from '../genres';
 import { isShowFullyWatched } from '../showWatched';
 import { getItemTags, normalizeTagForSearch } from '../tags';
 import {
@@ -46,6 +46,8 @@ export type {
 
 const CATALOG_TTL_MS = 60_000;
 
+import type { SelectableItem } from './SelectionViewModel';
+
 /**
  * Un título del catálogo con la marca de qué es. `kind` y no `_type`: así el
  * resultado cumple `CatalogItem` tal cual y las tarjetas lo pintan sin
@@ -55,6 +57,8 @@ export type SearchResult =
     | (Show & { kind: 'show' })
     | (Movie & { kind: 'movie' })
     | (ListEntry & { kind: 'collection' });
+
+
 
 /**
  * Separa los `#tag` del texto libre.
@@ -84,17 +88,22 @@ export type SearchSortKey = 'relevance' | SortKey;
 
 const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-function runtimeMinutes(item: any): number {
-    return parseInt(item.runtime, 10) || 0;
+function runtimeMinutes(item: { runtime?: string | number }): number {
+    if (!item.runtime) return 0;
+    return typeof item.runtime === 'number' ? item.runtime : parseInt(item.runtime as string, 10) || 0;
 }
 
+type SortableItem = { year?: number; title?: string; name?: string; runtime?: string | number; imdb?: number };
+
 function compareBy(key: SearchSortKey, seed: number) {
-    return (a: any, b: any): number => {
+    return (a: SortableItem, b: SortableItem): number => {
+        const titleA = a.title || a.name || '';
+        const titleB = b.title || b.name || '';
         switch (key) {
-            case 'year': return (b.year || 0) - (a.year || 0) || COLLATOR.compare(a.title, b.title);
-            case 'rating': return (b.imdb || 0) - (a.imdb || 0) || COLLATOR.compare(a.title, b.title);
-            case 'runtime': return runtimeMinutes(a) - runtimeMinutes(b) || COLLATOR.compare(a.title, b.title);
-            case 'title': return COLLATOR.compare(a.title, b.title);
+            case 'year': return (b.year || 0) - (a.year || 0) || COLLATOR.compare(titleA, titleB);
+            case 'rating': return (b.imdb || 0) - (a.imdb || 0) || COLLATOR.compare(titleA, titleB);
+            case 'runtime': return runtimeMinutes(a) - runtimeMinutes(b) || COLLATOR.compare(titleA, titleB);
+            case 'title': return COLLATOR.compare(titleA, titleB);
             default: return 0; // relevance or random handled differently
         }
     };
@@ -419,10 +428,10 @@ export class SearchViewModel {
                 entry,
                 () => {
                     if (entry.kind === 'show') {
-                        return isShowFullyWatched(entry.item as any);
+                        return isShowFullyWatched(entry.item as Show);
                     }
                     if (entry.kind === 'movie') {
-                        return isMovieWatched(entry.item as any);
+                        return isMovieWatched(entry.item as Movie);
                     }
                     return false; // Collections no tienen estado de visto
                 },
@@ -445,8 +454,8 @@ export class SearchViewModel {
         } else if (sortKeyValue !== 'relevance') {
             const cmp = compareBy(sortKeyValue, 0);
             localScored.sort((a, b) => {
-                const itemA = { ...a.item, title: a.item.kind === 'collection' ? a.item.name : (a.item as any).title, imdb: 'rating' in a.item ? (a.item.rating?.imdb ?? 0) : 0 };
-                const itemB = { ...b.item, title: b.item.kind === 'collection' ? b.item.name : (b.item as any).title, imdb: 'rating' in b.item ? (b.item.rating?.imdb ?? 0) : 0 };
+                const itemA = { ...a.item, title: 'title' in a.item ? a.item.title : a.item.name, imdb: 'rating' in a.item ? (a.item.rating?.imdb ?? 0) : 0 };
+                const itemB = { ...b.item, title: 'title' in b.item ? b.item.title : b.item.name, imdb: 'rating' in b.item ? (b.item.rating?.imdb ?? 0) : 0 };
                 return cmp(itemA, itemB);
             });
         }
@@ -463,7 +472,7 @@ export class SearchViewModel {
             if (known.has(item.id)) continue;
 
             const itemTags = 'tags' in item ? getItemTags(item).map((t) => t.toLowerCase()) : [];
-            const itemGenres = 'genres' in item ? getItemGenres(item as any).map((t) => normalizeTagForSearch(t)) : [];
+            const itemGenres = 'genres' in item ? getItemGenres(item as GenresItem).map((t) => normalizeTagForSearch(t)) : [];
             const score = 'rating' in item ? (item.rating?.imdb ?? 0) : 0;
             const matches = matchesFilters(
                 { kind: item.kind, id: item.id, tags: itemTags, genres: itemGenres, imdb: score },
@@ -479,8 +488,8 @@ export class SearchViewModel {
         if (sortKeyValue !== 'relevance') {
             const cmp = compareBy(sortKeyValue, 0);
             combined.sort((a, b) => {
-                const itemA = { ...a, title: a.kind === 'collection' ? a.name : (a as any).title, imdb: 'rating' in a ? (a.rating?.imdb ?? 0) : 0 };
-                const itemB = { ...b, title: b.kind === 'collection' ? b.name : (b as any).title, imdb: 'rating' in b ? (b.rating?.imdb ?? 0) : 0 };
+                const itemA = { ...a, title: 'title' in a ? a.title : a.name, imdb: 'rating' in a ? (a.rating?.imdb ?? 0) : 0 };
+                const itemB = { ...b, title: 'title' in b ? b.title : b.name, imdb: 'rating' in b ? (b.rating?.imdb ?? 0) : 0 };
                 return cmp(itemA, itemB);
             });
         }

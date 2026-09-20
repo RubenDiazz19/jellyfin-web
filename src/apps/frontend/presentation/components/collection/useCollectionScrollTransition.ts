@@ -62,10 +62,10 @@ export function useCollectionScrollTransition(touch = false, onlyCollections = f
     const headerHeight = windowHeight;
 
     // El logo sube a la par que el scroll (-scrollY) hasta que llega a su tope
-    // Asumimos que el logo empieza a `bottom: 320px` (o 240px).
+    // Asumimos que el logo empieza a `bottom: 365px` (o 285px en táctil).
     // Para que quede centrado en el cabecero final de 33vh, calculamos su recorrido máximo.
     // El usuario indicó que no quiere que suba "hasta arriba del todo", sino un poco más del 33% (1/3 de la pantalla).
-    const initialBottom = touch ? 240 : (onlyCollections ? 460 : 320);
+    const initialBottom = touch ? 285 : (onlyCollections ? 505 : 365);
     const logoCenterYInitial = windowHeight - initialBottom;
     const logoCenterYFinal = (windowHeight / 3) - 50; // Sube unos píxeles más para quedar algo más cerca de la cabecera
     const maxLogoTravel = Math.max(0, logoCenterYInitial - logoCenterYFinal);

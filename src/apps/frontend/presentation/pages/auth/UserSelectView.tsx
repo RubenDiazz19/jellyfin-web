@@ -7,6 +7,10 @@ import { Ic } from '../../theme/icons';
 import { loginVM, type PublicUser } from '../../../domain/viewModels/LoginViewModel';
 import { useToast } from '../../components/toast/ToastProvider';
 import { JellyfinBrandHeader } from './JellyfinBrandHeader';
+import {
+    circleBaseStyle, circlesGridStyle, ghostBtnStyle, inputStyle, labelStyle, listContainerStyle,
+    pageContainerStyle, primaryBtnStyle, profileItemStyle, secondaryBtnStyle, skeletonCircleStyle, titleStyle
+} from './styles';
 
 // Pantalla de selección de usuarios / perfiles estilo Netflix / Jellyfin:
 // - Cabecera oficial Jellyfin (icono + texto horizontal).
@@ -100,7 +104,7 @@ export function UserSelectView() {
                 </div>
             ) : (
                 /* Cuadrícula de perfiles circulares */
-                <div style={profilesSectionStyle}>
+                <div style={listContainerStyle}>
                     {loading ? (
                         <div style={circlesGridStyle}>
                             {[1, 2, 3].map((i) => (
@@ -277,67 +281,12 @@ function ProfileAvatarCircle({
     );
 }
 
-const pageContainerStyle: React.CSSProperties = {
-    minHeight: '100vh',
-    width: '100%',
-    background: '#000000',
-    color: T.fg,
-    fontFamily: T.ui,
+const footerActionsStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '48px 24px',
-    boxSizing: 'border-box'
-};
-
-const titleStyle: React.CSSProperties = {
-    fontSize: 22,
-    fontWeight: 400,
-    letterSpacing: -0.3,
-    margin: 0,
-    color: 'rgba(255, 255, 255, 0.85)',
-    textAlign: 'center'
-};
-
-const profilesSectionStyle: React.CSSProperties = {
-    width: '100%',
-    maxWidth: 800,
-    animation: 'jfp-fade-in 0.3s ease'
-};
-
-const passwordCardWrapperStyle: React.CSSProperties = {
-    width: '100%',
-    maxWidth: 340,
-    animation: 'jfp-fade-in 0.25s ease'
-};
-
-const circlesGridStyle: React.CSSProperties = {
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 32,
-    margin: '16px 0'
-};
-
-const profileItemStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    outline: 'none',
-    userSelect: 'none'
-};
-
-const circleBaseStyle: React.CSSProperties = {
-    width: 104,
-    height: 104,
-    borderRadius: '50%',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'border-color 0.22s ease, background 0.22s ease'
+    marginTop: 36
 };
 
 const lockBadgeCircleStyle: React.CSSProperties = {
@@ -368,36 +317,6 @@ const lockBadgeOverlayStyle: React.CSSProperties = {
     justifyContent: 'center'
 };
 
-const skeletonCircleStyle: React.CSSProperties = {
-    width: 104,
-    height: 104,
-    borderRadius: '50%'
-};
-
-const footerActionsStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 36
-};
-
-const ghostBtnStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 7,
-    background: 'transparent',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    borderRadius: 999,
-    padding: '8px 16px',
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontFamily: 'inherit',
-    fontSize: 12,
-    letterSpacing: 0.2,
-    cursor: 'pointer',
-    transition: 'all .2s'
-};
-
 const outlineActionBtnStyle: React.CSSProperties = {
     ...ghostBtnStyle,
     color: '#ffffff',
@@ -406,47 +325,8 @@ const outlineActionBtnStyle: React.CSSProperties = {
     fontSize: 13
 };
 
-const labelStyle: React.CSSProperties = {
-    fontSize: 11,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    color: 'rgba(255, 255, 255, 0.5)',
-    display: 'block',
-    marginBottom: 8
-};
-
-const inputStyle: React.CSSProperties = {
+const passwordCardWrapperStyle: React.CSSProperties = {
     width: '100%',
-    boxSizing: 'border-box',
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.14)',
-    borderRadius: 8,
-    padding: '12px 14px',
-    color: T.fg,
-    fontFamily: T.ui,
-    fontSize: 14,
-    outline: 'none',
-    transition: 'border-color .2s'
-};
-
-const primaryBtnStyle: React.CSSProperties = {
-    width: '100%',
-    marginTop: 20,
-    padding: '12px 18px',
-    background: '#ffffff',
-    color: '#000000',
-    border: 'none',
-    borderRadius: 999,
-    fontFamily: 'inherit',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer'
-};
-
-const secondaryBtnStyle: React.CSSProperties = {
-    ...primaryBtnStyle,
-    marginTop: 10,
-    background: 'transparent',
-    color: 'rgba(255, 255, 255, 0.6)',
-    border: '1px solid rgba(255, 255, 255, 0.14)'
+    maxWidth: 340,
+    animation: 'jfp-fade-in 0.25s ease'
 };

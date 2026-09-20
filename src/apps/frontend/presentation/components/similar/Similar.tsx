@@ -6,7 +6,7 @@ import { T } from '../../theme/tokens';
 import { PosterCard } from '../cards/PosterCard';
 import { MovieCard } from '../cards/MovieCard';
 import { similarVM } from '../../../domain/viewModels/DiscoverViewModel';
-import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
 // La fila desaparece si no hay nada que sugerir — y mientras carga, que es
 // otra forma de no tener nada todavía.
 export function Similar({ currentId, navigate }: Props) {
-    useViewModel(similarVM);
+    useVmSignals(similarVM, (vm) => [vm.shows, vm.movies]);
     useEffect(() => {
         void similarVM.load(currentId);
     }, [currentId]);

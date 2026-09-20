@@ -42,7 +42,8 @@ vi.mock('../SearchFilters', () => ({ SearchFilters: () => null }));
 vi.mock('../SearchResults', () => ({ SearchResults: () => null }));
 vi.mock('../../controls/SelectionBar', () => ({ SelectionBar: () => null }));
 vi.mock('../../../../domain/viewModels/SelectionViewModel', () => ({
-    selectionVM: { stop: () => undefined, setVisibleItems: () => undefined }
+    selectionVM: { stop: () => undefined, setVisibleItems: () => undefined },
+    toSelectableItem: (i: any) => ({ id: i.id, title: i.title || i.name || '', kind: i.kind, poster: i.poster, year: i.year })
 }));
 
 let root: Root | null = null;

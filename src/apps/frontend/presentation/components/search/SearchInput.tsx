@@ -16,6 +16,8 @@ type Props = {
     onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 };
 
+const FOCUS_DELAY_MS = 80;
+
 export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
     useVmSignals(searchVM, (vm) => [vm.categoryMode, vm.categoryQuery, vm.query]);
     const r = useResponsive();
@@ -31,7 +33,7 @@ export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
         if (!autoFocus) return;
         // Con retardo: si se enfoca en el mismo frame en que arranca la
         // animación de entrada, Safari y Chrome se saltan la transición.
-        const t = setTimeout(() => inputRef.current?.focus(), 80);
+        const t = setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY_MS);
         return () => clearTimeout(t);
     }, [autoFocus]);
 
@@ -47,7 +49,7 @@ export function SearchInput({ autoFocus, maxWidth, onKeyDown }: Props) {
         if (categoryMode === 'tipo') return `${globalize.translate('Search')} ${globalize.translate('LabelType').toLowerCase()}...`;
         if (categoryMode === 'estado') return `${globalize.translate('Search')} ${globalize.translate('LabelStatus').toLowerCase()}...`;
         if (categoryMode === 'generos') return `${globalize.translate('Search')} ${globalize.translate('Genres').toLowerCase()}...`;
-        if (categoryMode === 'valoracion') return `${globalize.translate('Search')} ${globalize.translate('Rating').toLowerCase()} (ej. 7.5)...`;
+        if (categoryMode === 'valoracion') return `${globalize.translate('Search')} ${globalize.translate('Rating').toLowerCase()} ${globalize.translate('ExampleRating')}...`;
         return globalize.translate('SearchPlaceholder');
     };
 

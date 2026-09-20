@@ -4,6 +4,7 @@ import type { CastMember } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';
 import { CastList } from '../cast/CastList';
 import { SynopsisText } from './SynopsisText';
+import { LazySection } from './LazySection';
 
 type Props = {
     synopsis?: string | null;
@@ -29,9 +30,11 @@ export function DetailOverviewSection({
         <div>
             <SynopsisText label={label} text={synopsis} />
             {cast && cast.length > 0 && (
-                <div style={{ marginTop: 48 }}>
-                    <CastList cast={cast} navigate={navigate} label={castLabel} />
-                </div>
+                <LazySection>
+                    <div style={{ marginTop: 48 }}>
+                        <CastList cast={cast} navigate={navigate} label={castLabel} />
+                    </div>
+                </LazySection>
             )}
             {children}
         </div>

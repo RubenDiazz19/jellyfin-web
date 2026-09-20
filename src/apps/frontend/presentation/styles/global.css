@@ -550,22 +550,44 @@ html.layout-tablet body.jf-frontend-active {
 }
 
 /* Transición suave al alternar entre tiempo restante y hora de fin en tarjetas de reanudación */
-@keyframes jfp-cw-time-in {
-    0% {
-        opacity: 0;
-        transform: translateY(4px);
-    }
-
-    100% {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.jfp-cw-time-container {
+    display: grid;
+    place-items: end;
 }
 
-.jfp-cw-time-animated {
-    display: inline-block;
-    animation: jfp-cw-time-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: opacity, transform;
+.jfp-cw-time-text {
+    grid-area: 1 / 1;
+}
+
+.jfp-cw-time-rem {
+    animation: jfp-cw-fade-rem 12s infinite;
+}
+
+.jfp-cw-time-end {
+    animation: jfp-cw-fade-end 12s infinite;
+}
+
+.jfp-cw-remaining.paused-anim .jfp-cw-time-rem,
+.jfp-cw-remaining.paused-anim .jfp-cw-time-end {
+    animation: none !important;
+}
+
+.jfp-cw-remaining.force-end .jfp-cw-time-rem { opacity: 0; }
+.jfp-cw-remaining.force-end .jfp-cw-time-end { opacity: 1; }
+
+.jfp-cw-remaining.force-rem .jfp-cw-time-rem { opacity: 1; }
+.jfp-cw-remaining.force-rem .jfp-cw-time-end { opacity: 0; }
+
+@keyframes jfp-cw-fade-rem {
+    0%, 45% { opacity: 1; transform: translateY(0); }
+    50%, 95% { opacity: 0; transform: translateY(-2px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes jfp-cw-fade-end {
+    0%, 45% { opacity: 0; transform: translateY(2px); }
+    50%, 95% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(2px); }
 }
 
 .jfp-cw-remaining {

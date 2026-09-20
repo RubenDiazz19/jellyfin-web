@@ -570,9 +570,9 @@ export class VideoPlayerViewModel {
         const el = this.container;
         if (!el) return;
         if (document.fullscreenElement) {
-            void document.exitFullscreen?.().catch(() => {});
+            void document.exitFullscreen?.().catch((e) => { logger.debug('Error exiting fullscreen', e); });
         } else {
-            void el.requestFullscreen?.().catch(() => {});
+            void el.requestFullscreen?.().catch((e) => { logger.debug('Error requesting fullscreen', e); });
         }
     };
 
@@ -580,9 +580,9 @@ export class VideoPlayerViewModel {
         const v = this.video;
         if (!v || !this.pipAvailable.value) return;
         if (document.pictureInPictureElement === v) {
-            void document.exitPictureInPicture().catch(() => {});
+            void document.exitPictureInPicture().catch((e) => { logger.debug('Error exiting PiP', e); });
         } else {
-            void v.requestPictureInPicture().catch(() => {});
+            void v.requestPictureInPicture().catch((e) => { logger.debug('Error requesting PiP', e); });
         }
     };
 
@@ -722,7 +722,7 @@ export class VideoPlayerViewModel {
         if (this.video && videoOwner(this.video) === this.instanceId) {
             // La ventana PiP no debe sobrevivir a la salida del reproductor.
             if (document.pictureInPictureElement === this.video) {
-                void document.exitPictureInPicture().catch(() => {});
+                void document.exitPictureInPicture().catch((e) => { logger.debug('Error exiting PiP on dispose', e); });
             }
             this.video.pause();
             this.video.removeAttribute('src');

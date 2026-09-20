@@ -13,7 +13,7 @@ import { SearchFilters } from '../components/search/SearchFilters';
 import { SearchInput } from '../components/search/SearchInput';
 import { SearchResults } from '../components/search/SearchResults';
 import { searchVM } from '../../domain/viewModels/SearchViewModel';
-import { selectionVM, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
+import { selectionVM, toSelectableItem, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
 import { useSignalValue } from '../../domain/bridge/useViewModel';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
@@ -37,9 +37,7 @@ export function SearchPage({ navigate }: { navigate: Navigate }) {
 
     const selectable: SelectableItem[] = useMemo(() => {
         const results = rawResults ?? [];
-        return results.map((i: any) => ({
-            id: i.id, title: i.title || i.name || '', kind: i.kind, poster: i.poster, year: i.year
-        }));
+        return results.map(toSelectableItem);
     }, [rawResults]);
 
     useEffect(() => {

@@ -2,6 +2,7 @@
 // Gestiona el estado de conexión con receptores remotos, la disponibilidad y los prompts.
 
 import { signal } from '@preact/signals-core';
+import { logger } from '../../shared/logger';
 
 export class CastBinding {
     /** Hay receptores de Remote Playback (Chromecast/AirPlay) alcanzables. */
@@ -30,13 +31,16 @@ export class CastBinding {
         })
             .then((id) => {
                 if (cleaned) {
-                    void remote.cancelWatchAvailability(id).catch(() => {});
+                    void remote.cancelWatchAvailability(id).catch((e) => {
+                        logger.debug('Error canceling watch availability', e);
+                    });
                 } else {
                     watchId = id;
                 }
             })
-            .catch(() => {
+            .catch((e) => {
                 if (!cleaned) this.castAvailable.value = false;
+                logger.debug('Error in watchAvailability', e);
             });
 
         return () => {
@@ -44,7 +48,9 @@ export class CastBinding {
             remote.removeEventListener('connecting', onConnecting);
             remote.removeEventListener('connect', onConnect);
             remote.removeEventListener('disconnect', onDisconnect);
-            if (watchId != null) void remote.cancelWatchAvailability(watchId).catch(() => {});
+            if (watchId != null) void remote.cancelWatchAvailability(watchId).catch((e) => {
+                logger.debug('Error canceling watch availability on cleanup', e);
+            });
         };
     }
 
@@ -52,7 +58,9 @@ export class CastBinding {
     prompt(video: HTMLVideoElement | null): void {
         const remote = video?.remote;
         if (!remote) return;
-        void remote.prompt().catch(() => {});
+        void remote.prompt().catch((e) => {
+            logger.debug('Error prompting for cast', e);
+        });
     }
 
     /**

@@ -10,9 +10,9 @@ import {
     setImageByUrl,
     uploadImageFile
 } from '../../../../domain/api';
+import { logger } from '../../../../shared/logger';
 import { T } from '../../../theme/tokens';
 import { useToast } from '../../toast/ToastProvider';
-import { PillButton } from '../../controls/fields';
 import { BackdropTile } from './BackdropTile';
 import { ConfirmDeleteButton, type ImgType } from './primitives';
 import {
@@ -44,7 +44,9 @@ export function ImagesTab({ itemId }: { itemId: string }) {
                 .map(img => ({ tag: img.ImageTag!, index: img.ImageIndex ?? 0 }));
 
             setBackdropTags(backdrops);
-        }).catch(() => {});
+        }).catch((e) => {
+            logger.debug('Error loading image info', e);
+        });
         return () => { cancelled = true; };
     }, [itemId, refreshTick]);
 
@@ -353,26 +355,101 @@ function SearchIcon() {
     );
 }
 
-/** Campo desplegable minimalista para añadir imágenes por URL directa desde la lupa. */
-function UrlSearchExpand({ onApply }: { onApply: (url: string) => void }) {
+/** Icono de terminal estilo '>_' minimalista stroke */
+function TerminalIcon() {
+    return (
+        <svg
+            width='13'
+            height='13'
+            viewBox='0 0 24 24'
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='2.2'
+            strokeLinecap='round'
+            strokeLinejoin='round'
+        >
+            <polyline points='4 17 10 12 4 7' />
+            <line x1='12' y1='19' x2='20' y2='19' />
+        </svg>
+    );
+}
+
+/** Hook para cerrar desplegables al pulsar fuera. */
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () => void, enabled: boolean) {
+    useEffect(() => {
+        if (!enabled) return;
+        const onPointerDown = (e: MouseEvent | TouchEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                onClose();
+            }
+        };
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('touchstart', onPointerDown);
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('touchstart', onPointerDown);
+        };
+    }, [ref, onClose, enabled]);
+}
+
+/** Botón minimalista con icono de lupa para buscar alternativas por internet (API). */
+function SearchIconButton({
+    onClick, loading, showing
+}: {
+    onClick: () => void;
+    loading: boolean;
+    showing?: boolean;
+}) {
+    return (
+        <button
+            type='button'
+            onClick={onClick}
+            disabled={loading}
+            title={loading ? globalize.translate('Searching') : showing ? globalize.translate('Close') : globalize.translate('Search')}
+            aria-label={loading ? globalize.translate('Searching') : showing ? globalize.translate('Close') : globalize.translate('Search')}
+            style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: showing ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${showing ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                color: showing ? '#fff' : T.dim,
+                cursor: loading ? 'wait' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                flexShrink: 0,
+                padding: 0,
+                transition: 'background .2s, border-color .2s, color .15s'
+            }}
+            onMouseEnter={(e) => {
+                if (!showing && !loading) {
+                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.22)';
+                }
+            }}
+            onMouseLeave={(e) => {
+                if (!showing && !loading) {
+                    e.currentTarget.style.color = T.dim;
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                }
+            }}
+        >
+            <SearchIcon />
+        </button>
+    );
+}
+
+/** Campo desplegable minimalista para añadir imágenes por URL directa con icono de terminal. */
+function UrlInputExpand({ onApply }: { onApply: (url: string) => void }) {
     const [open, setOpen] = useState(false);
     const [url, setUrl] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        if (!open) return;
-        const onPointerDownOutside = (e: MouseEvent | TouchEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', onPointerDownOutside);
-        document.addEventListener('touchstart', onPointerDownOutside);
-        return () => {
-            document.removeEventListener('mousedown', onPointerDownOutside);
-            document.removeEventListener('touchstart', onPointerDownOutside);
-        };
-    }, [open]);
+    useClickOutside(containerRef, () => setOpen(false), open);
 
     const handleApply = () => {
         const trimmed = url.trim();
@@ -433,8 +510,14 @@ function UrlSearchExpand({ onApply }: { onApply: (url: string) => void }) {
                     padding: 0,
                     transition: 'color .15s'
                 }}
+                onMouseEnter={(e) => {
+                    if (!open) e.currentTarget.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                    if (!open) e.currentTarget.style.color = T.dim;
+                }}
             >
-                <SearchIcon />
+                <TerminalIcon />
             </button>
             {open && (
                 <div
@@ -492,8 +575,8 @@ function UrlSearchExpand({ onApply }: { onApply: (url: string) => void }) {
     );
 }
 
-/** El título de una sección y su botón de buscar alternativas con filtro opcional de idioma y URL desplegable. */
-function SectionHeader({
+/** El título de una sección y sus botones de buscar alternativas por API y añadir por URL con filtro opcional de idioma. */
+export function SectionHeader({
     label, onSearch, loading, showing, lang, setLang, langs, onApplyUrl
 }: {
     label: string;
@@ -511,8 +594,13 @@ function SectionHeader({
                 fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: T.dim
             }}>{label}</div>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SearchIconButton
+                    onClick={onSearch}
+                    loading={loading}
+                    showing={showing}
+                />
                 {onApplyUrl && (
-                    <UrlSearchExpand onApply={onApplyUrl} />
+                    <UrlInputExpand onApply={onApplyUrl} />
                 )}
                 {showing && langs && langs.length > 1 && setLang && (
                     <select
@@ -536,22 +624,6 @@ function SectionHeader({
                         {langs.map((l) => (<option key={l} value={l}>{l}</option>))}
                     </select>
                 )}
-                <PillButton
-                    variant={showing ? 'primary' : 'ghost'}
-                    onClick={onSearch}
-                    busy={loading}
-                    style={{
-                        height: 28,
-                        padding: '0 12px',
-                        fontSize: 11,
-                        lineHeight: '26px',
-                        fontWeight: showing ? 600 : 500,
-                        letterSpacing: 0,
-                        boxSizing: 'border-box'
-                    }}
-                >
-                    {loading ? 'Buscando…' : showing ? 'Ocultar sugerencias' : 'Buscar alternativas'}
-                </PillButton>
             </div>
         </div>
     );

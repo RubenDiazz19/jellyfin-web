@@ -18,6 +18,8 @@ type Props = {
     onChange: (genres: string[]) => void;
 };
 
+const FOCUS_DELAY_MS = 60;
+
 /** Límite de sugerencias para no desbordar verticalmente el modal de edición. */
 const MAX_SUGGESTIONS = 14;
 
@@ -144,7 +146,7 @@ export function GenreEditor({ label, genres, onChange }: Props) {
                             onClick={() => {
                                 if (!open) {
                                     setOpen(true);
-                                    setTimeout(() => inputRef.current?.focus(), 60);
+                                    setTimeout(() => inputRef.current?.focus(), FOCUS_DELAY_MS);
                                 } else if (!query) {
                                     setOpen(false);
                                 }

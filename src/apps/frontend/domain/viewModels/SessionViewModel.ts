@@ -4,6 +4,7 @@
 
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService, type Session } from '../../data/api/ApiService';
+import { logger } from '../../shared/logger';
 
 export class SessionViewModel {
     session = signal<Session | null>(null);
@@ -66,7 +67,9 @@ export class SessionViewModel {
         const otherUser = session?.userId !== this.session.peek()?.userId;
         this.session.value = session;
         if (session?.accessToken && otherUser) {
-            void this.api.items.hydrateFavorites().catch(() => {});
+            void this.api.items.hydrateFavorites().catch((e) => {
+                logger.debug('Failed to hydrate favorites on session adopt', e);
+            });
         }
         this.ensureUserProfile(session);
     }

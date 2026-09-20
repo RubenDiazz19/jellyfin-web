@@ -4,6 +4,7 @@
 // Vive aquí y no en cada tarjeta para que las tres rejillas (series,
 // películas y resultados de búsqueda) se comporten igual.
 
+import { useCallback, useMemo } from 'react';
 import { useSignalSelector, useSignalValue } from '../../../domain/bridge/useViewModel';
 import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 
@@ -13,12 +14,15 @@ export function useSelectionMode(item: SelectableItem, navigate: () => void) {
     // marcado, y suscribirse a ella repintaba TODAS las tarjetas de la rejilla
     // por cada click. Aquí solo repinta la tarjeta cuyo booleano cambió.
     const selected = useSignalSelector(selectionVM.selectedIds, (ids) => ids.has(item.id));
-    return {
+    
+    const onClick = useCallback(() => {
+        if (selecting) selectionVM.toggle(item);
+        else navigate();
+    }, [selecting, item, navigate]);
+
+    return useMemo(() => ({
         selecting,
         selected: selecting && selected,
-        onClick: () => {
-            if (selecting) selectionVM.toggle(item);
-            else navigate();
-        }
-    };
+        onClick
+    }), [selecting, selected, onClick]);
 }

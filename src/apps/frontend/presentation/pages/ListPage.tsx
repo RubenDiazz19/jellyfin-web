@@ -26,7 +26,7 @@ import { useListSync } from '../../domain/bridge/useLists';
 import { useResponsive } from '../theme/responsive';
 import type { Navigate, Route } from '../../app/router';
 import { useSelectionMode } from '../components/controls/useSelectionMode';
-import { selectionVM, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
+import { selectionVM, toSelectableItem, type SelectableItem } from '../../domain/viewModels/SelectionViewModel';
 
 type Props = { kind: ListKind; listId: string; navigate: Navigate };
 
@@ -71,13 +71,7 @@ export function ListPage({ kind, listId, navigate }: Props) {
 
     useEffect(() => {
         if (!items) return;
-        const selectable: SelectableItem[] = items.map((item) => ({
-            id: item.id,
-            title: item.title,
-            kind: item.kind,
-            poster: item.poster || item.backdrop || item.seriesPoster,
-            year: item.year
-        }));
+        const selectable: SelectableItem[] = items.map(toSelectableItem);
         selectionVM.setVisibleItems(selectable);
         return () => {
             selectionVM.setVisibleItems([]);

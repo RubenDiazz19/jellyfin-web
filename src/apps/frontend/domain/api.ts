@@ -96,6 +96,8 @@ export {
     getRemoteImages,
     imageUrl,
     getItemImageInfos,
+    fetchFanartLogosById,
+    fetchFanartLogosForItem,
     type JFRemoteImage
 } from '../data/api';
 export {

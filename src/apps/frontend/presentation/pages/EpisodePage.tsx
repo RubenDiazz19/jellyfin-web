@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { formatDateLong, formatRemainingCompact } from '../utils/format';
+import { formatEpisodeCode, formatDateLong, formatHM, formatRemainingCompact, formatRuntime } from '../utils/format';
 import { findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { useWatched } from '../../domain/bridge/useWatched';
 import { HeroFrame, HeroMeta } from '../components/layout/DetailHero';
@@ -75,7 +75,7 @@ function EpisodeHero({
         if (!ep.jfId) return;
         play({
             itemId: ep.jfId,
-            title: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')} — ${ep.title ?? ''}`,
+            title: `${show.title} · ${formatEpisodeCode(season.n, ep.n)} — ${ep.title ?? ''}`,
             startTicks: ep.watched < 1 ? ticksFromProgress(ep.runtime, ep.watched) : undefined
         });
     };
@@ -85,7 +85,7 @@ function EpisodeHero({
         id: ep.jfId ?? episodeKey(show.id, season.n, ep.n),
         type: 'episode',
         itemTitle: ep.title ?? `${show.title} · E${ep.n}`,
-        queueSubtitle: `${show.title} · T${season.n} E${String(ep.n).padStart(2, '0')}`,
+        queueSubtitle: `${show.title} · ${formatEpisodeCode(season.n, ep.n)}`,
         queuePoster: ep.thumb ?? show.poster
     });
     return (
@@ -130,7 +130,7 @@ function EpisodeHero({
                         maxWidth: '100%', overflow: 'hidden',
                         whiteSpace: 'nowrap', textOverflow: 'ellipsis'
                     }}>
-                        {show.title} · T{season.n} · E{String(ep.n).padStart(2, '0')}
+                        {show.title} · {formatEpisodeCode(season.n, ep.n)}
                     </div>
 
                     <div style={{
@@ -310,7 +310,7 @@ function EpisodeDetail({
                                         position: 'absolute', left: 16, bottom: 12,
                                         fontFamily: T.ui, fontSize: 22
                                     }}>
-                                        {String(nextEp.n).padStart(2, '0')} · {nextEp.title}
+                                        {formatEpisodeCode(season.n, nextEp.n).split(' ')[1]} · {nextEp.title}
                                     </div>
                                 </div>
                                 <div style={{

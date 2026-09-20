@@ -6,7 +6,7 @@
 // mismos argumentos derivados del item. Aquí además vive la única regla que
 // se repetía a mano en las cuatro: a qué ficha lleva cada tipo.
 
-import type { MouseEvent, ReactNode } from 'react';
+import { useCallback, useMemo, type MouseEvent, type ReactNode } from 'react';
 import type { Navigate } from '../../../app/router';
 import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
@@ -51,7 +51,7 @@ export function useCardInteractions(item: CardItem, navigate: Navigate): CardInt
         watchedKey: item.watchedKey
     };
 
-    const onOpen = () => {
+    const onOpen = useCallback(() => {
         if (item.onOpen) {
             item.onOpen();
             return;
@@ -67,7 +67,7 @@ export function useCardInteractions(item: CardItem, navigate: Navigate): CardInt
         } else if (item.kind === 'collection') {
             navigate({ page: 'list', kind: 'collection', listId: item.id });
         }
-    };
+    }, [item.onOpen, item.kind, item.id, item.showId, item.seasonN, item.epN, navigate]);
 
     const sel = useSelectionMode(selectable, onOpen);
 
@@ -81,11 +81,11 @@ export function useCardInteractions(item: CardItem, navigate: Navigate): CardInt
         selectable
     });
 
-    return {
+    return useMemo(() => ({
         onClick: sel.onClick,
         selecting: sel.selecting,
         selected: sel.selected,
         onContextMenu: ctx.onContextMenu,
         contextMenu: ctx.menu
-    };
+    }), [sel.onClick, sel.selecting, sel.selected, ctx.onContextMenu, ctx.menu]);
 }

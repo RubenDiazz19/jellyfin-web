@@ -6,7 +6,7 @@ import globalize from 'lib/globalize';
 
 import { useEffect } from 'react';
 
-import { useViewModel } from '../../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { queueVM, type QueueEntry } from '../../../domain/viewModels/QueueViewModel';
 import { T } from '../../theme/tokens';
 
@@ -18,7 +18,7 @@ type Props = {
 };
 
 export function QueuePanel({ onPlay, dense = false }: Props) {
-    useViewModel(queueVM);
+    useVmSignals(queueVM, (vm) => [vm.items]);
     useEffect(() => queueVM.start(), []);
 
     const items = queueVM.items.value;

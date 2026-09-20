@@ -5,7 +5,7 @@ import globalize from 'lib/globalize';
 import { T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
 import { loginVM } from '../../domain/viewModels/LoginViewModel';
-import { useViewModel } from '../../domain/bridge/useViewModel';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { useToast } from '../components/toast/ToastProvider';
 import { ServerSelectView } from './auth/ServerSelectView';
 import { UserSelectView } from './auth/UserSelectView';
@@ -18,7 +18,10 @@ import { JellyfinBrandHeader } from './auth/JellyfinBrandHeader';
 // - Quick Connect: código aprobado desde otra sesión.
 
 export function LoginPage() {
-    useViewModel(loginVM);
+    useVmSignals(loginVM, (vm) => [
+        vm.step, vm.serverUrl, vm.serverName, vm.username, 
+        vm.password, vm.busy, vm.quickConnectCode, vm.publicUsers
+    ]);
     const toast = useToast();
 
     const step = loginVM.step.value;

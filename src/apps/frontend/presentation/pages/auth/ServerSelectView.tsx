@@ -7,6 +7,51 @@ import { Ic } from '../../theme/icons';
 import { loginVM, type DiscoveredServer } from '../../../domain/viewModels/LoginViewModel';
 import { useToast } from '../../components/toast/ToastProvider';
 import { JellyfinBrandHeader } from './JellyfinBrandHeader';
+import {
+    circleBaseStyle, circlesGridStyle, ghostBtnStyle, inputStyle, labelStyle,
+    pageContainerStyle, primaryBtnStyle, profileItemStyle, skeletonCircleStyle, titleStyle
+} from './styles';
+
+const serverItemStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    outline: 'none',
+    userSelect: 'none'
+};
+
+const removePillStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 22,
+    height: 22,
+    borderRadius: '50%',
+    background: 'rgba(0, 0, 0, 0.75)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    padding: 0
+};
+
+const formWrapperStyle: React.CSSProperties = {
+    marginTop: 36,
+    width: '100%',
+    maxWidth: 400,
+    animation: 'jfp-fade-in 0.25s ease'
+};
+
+const formStyle: React.CSSProperties = {
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: 14,
+    padding: 18,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12
+};
 
 // Vista de selección de servidores Jellyfin:
 // - Cabecera oficial Jellyfin (icono + texto horizontal).
@@ -90,7 +135,7 @@ export function ServerSelectView() {
 
             {/* Si no hay servidores encendidos disponibles */}
             {!checking && availableServers.length === 0 && (
-                <div style={noServersContainerStyle}>
+                <div style={emptyStateStyle}>
                     <div style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.45)', marginBottom: 14 }}>
                         {globalize.translate('MessageNoServersAvailable')}
                     </div>
@@ -119,22 +164,14 @@ export function ServerSelectView() {
                             style={inputStyle}
                         />
                         <div style={{ display: 'flex', gap: 10 }}>
-                            <button
-                                type='submit'
-                                disabled={connecting || !manualUrl.trim()}
-                                style={connectBtnStyle}
-                            >
+                            <button type='submit' style={primaryBtnStyle} disabled={connecting}>
                                 {connecting ? (
-                                    <span className='jfp-skeleton' style={{ width: 14, height: 14, borderRadius: 999 }} />
+                                    <div className='jfp-spinner' style={{ width: 16, height: 16, borderWidth: 2 }} />
                                 ) : (
                                     globalize.translate('ButtonConnect')
                                 )}
                             </button>
-                            <button
-                                type='button'
-                                onClick={() => setShowAddForm(false)}
-                                style={cancelBtnStyle}
-                            >
+                            <button type='button' style={ghostBtnStyle} onClick={() => setShowAddForm(false)}>
                                 {globalize.translate('ButtonCancel')}
                             </button>
                         </div>
@@ -279,141 +316,7 @@ function AddServerCircle({
     );
 }
 
-const pageContainerStyle: React.CSSProperties = {
-    minHeight: '100vh',
-    width: '100%',
-    background: '#000000',
-    color: T.fg,
-    fontFamily: T.ui,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '48px 24px',
-    boxSizing: 'border-box'
-};
-
-const titleStyle: React.CSSProperties = {
-    fontSize: 22,
-    fontWeight: 400,
-    letterSpacing: -0.3,
-    margin: '0 0 40px',
-    color: 'rgba(255, 255, 255, 0.85)',
-    textAlign: 'center'
-};
-
-const circlesGridStyle: React.CSSProperties = {
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    gap: 32,
-    maxWidth: 800,
-    margin: '0 auto',
-    animation: 'jfp-fade-in 0.3s ease'
-};
-
-const serverItemStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    outline: 'none',
-    userSelect: 'none'
-};
-
-const circleBaseStyle: React.CSSProperties = {
-    width: 104,
-    height: 104,
-    borderRadius: '50%',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'border-color 0.22s ease, background 0.22s ease'
-};
-
-const removePillStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 22,
-    height: 22,
-    borderRadius: '50%',
-    background: 'rgba(0, 0, 0, 0.75)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    padding: 0
-};
-
-const formWrapperStyle: React.CSSProperties = {
-    marginTop: 36,
-    width: '100%',
-    maxWidth: 400,
-    animation: 'jfp-fade-in 0.25s ease'
-};
-
-const formStyle: React.CSSProperties = {
-    background: 'rgba(255, 255, 255, 0.03)',
-    border: '1px solid rgba(255, 255, 255, 0.12)',
-    borderRadius: 14,
-    padding: 18,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12
-};
-
-const inputStyle: React.CSSProperties = {
-    width: '100%',
-    boxSizing: 'border-box',
-    background: 'rgba(255, 255, 255, 0.05)',
-    border: '1px solid rgba(255, 255, 255, 0.14)',
-    borderRadius: 8,
-    padding: '12px 14px',
-    color: T.fg,
-    fontFamily: T.ui,
-    fontSize: 14,
-    outline: 'none',
-    transition: 'border-color .2s'
-};
-
-const connectBtnStyle: React.CSSProperties = {
-    flex: 1,
-    padding: '11px 18px',
-    background: '#ffffff',
-    color: '#000000',
-    border: 'none',
-    borderRadius: 999,
-    fontFamily: 'inherit',
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-};
-
-const cancelBtnStyle: React.CSSProperties = {
-    padding: '11px 18px',
-    background: 'transparent',
-    color: 'rgba(255, 255, 255, 0.6)',
-    border: '1px solid rgba(255, 255, 255, 0.14)',
-    borderRadius: 999,
-    fontFamily: 'inherit',
-    fontSize: 13,
-    cursor: 'pointer'
-};
-
-const skeletonCircleStyle: React.CSSProperties = {
-    width: 104,
-    height: 104,
-    borderRadius: '50%'
-};
-
-const noServersContainerStyle: React.CSSProperties = {
+const emptyStateStyle: React.CSSProperties = {
     textAlign: 'center',
     marginTop: 28,
     animation: 'jfp-fade-in 0.3s ease'

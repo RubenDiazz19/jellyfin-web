@@ -6,7 +6,7 @@ interface AsyncActionOpts {
     onClose?: () => void;
 }
 
-export function useAsyncAction<Args extends any[], R>(action: (...args: Args) => Promise<R>, opts?: AsyncActionOpts) {
+export function useAsyncAction<Args extends unknown[], R>(action: (...args: Args) => Promise<R>, opts?: AsyncActionOpts) {
     const [busy, setBusy] = useState(false);
     const toast = useToast();
 

@@ -17,7 +17,7 @@ import { SearchInput } from './SearchInput';
 import { SearchResults } from './SearchResults';
 import { NAV_BOTTOM_VAR } from '../nav/navMetrics';
 import { searchVM } from '../../../domain/viewModels/SearchViewModel';
-import { selectionVM, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
+import { selectionVM, toSelectableItem, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
 import type { Navigate } from '../../../app/router';
 
@@ -140,9 +140,7 @@ function SearchSelectionSync() {
     const rawResults = useSignalValue(searchVM.results);
     const selectable: SelectableItem[] = useMemo(() => {
         const results = rawResults ?? [];
-        return results.map((i: any) => ({
-            id: i.id, title: i.title || i.name || '', kind: i.kind, poster: i.poster, year: i.year
-        }));
+        return results.map(toSelectableItem);
     }, [rawResults]);
     useEffect(() => {
         selectionVM.setVisibleItems(selectable);

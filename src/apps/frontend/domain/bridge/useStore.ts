@@ -88,8 +88,12 @@ export function useStoreVersion(event: string, scope?: string): number {
  * pantalla de Favoritos cuando se desmarca un item.
  */
 export function useStoreListener(event: string, onChange: () => void): void {
+    const latest = useRef(onChange);
+    latest.current = onChange;
+
     useEffect(() => {
-        window.addEventListener(event, onChange);
-        return () => window.removeEventListener(event, onChange);
-    }, [event, onChange]);
+        const handler = (e: Event) => latest.current();
+        window.addEventListener(event, handler);
+        return () => window.removeEventListener(event, handler);
+    }, [event]);
 }

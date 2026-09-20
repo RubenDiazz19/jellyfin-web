@@ -23,7 +23,7 @@ vi.mock('lib/jellyfin-apiclient', () => ({
     }
 }));
 
-import { movedTo } from '../ImagesTab';
+import { movedTo, SectionHeader } from '../ImagesTab';
 import { ConfirmDeleteButton } from '../primitives';
 
 describe('movedTo', () => {
@@ -141,3 +141,42 @@ describe('ConfirmDeleteButton', () => {
         expect(button().disabled).toBe(false);
     });
 });
+
+describe('SectionHeader', () => {
+    test('renderiza botones de iconos para buscar y para URL, sin botón de texto Buscar alternativas', async () => {
+        const onSearch = vi.fn();
+        const onApplyUrl = vi.fn();
+
+        await render(
+            <SectionHeader
+                label='LOGO'
+                onSearch={onSearch}
+                loading={false}
+                showing={false}
+                onApplyUrl={onApplyUrl}
+            />
+        );
+
+        // No debe haber botón con texto "Buscar alternativas"
+        const buttons = host?.querySelectorAll('button') ?? [];
+        const textBtn = Array.from(buttons).find((b) => b.textContent?.includes('Buscar alternativas'));
+        expect(textBtn).toBeUndefined();
+
+        // Debe haber dos botones de icono pequeños
+        expect(buttons.length).toBe(2);
+
+        // El primer botón de icono ejecuta onSearch (alternativas por API)
+        await act(async () => {
+            buttons[0]?.click();
+        });
+        expect(onSearch).toHaveBeenCalledTimes(1);
+
+        // El segundo botón de icono (terminal) expande el campo de URL
+        expect(host?.querySelector('input[type="url"]')).toBeNull();
+        await act(async () => {
+            buttons[1]?.click();
+        });
+        expect(host?.querySelector('input[type="url"]')).not.toBeNull();
+    });
+});
+

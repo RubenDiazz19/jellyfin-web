@@ -10,8 +10,9 @@ import type { CarouselSlide } from '../../../domain/models';
 import { episodeKey } from '../../../domain/stores';
 import { useCardInteractions } from './useCardInteractions';
 import { LandscapeCardShell } from './LandscapeCardShell';
-import { formatEndTime, formatRemainingCompact } from '../../utils/format';
+import { formatEndTime, formatRemainingCompact, formatEpisodeCode } from '../../utils/format';
 import { usePlayer } from '../player/PlayerProvider';
+import { logger } from '../../../shared/logger';
 
 type Props = { slide: CarouselSlide; navigate: Navigate };
 
@@ -28,7 +29,7 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
     const onPlay = useCallback((e?: React.MouseEvent) => {
         e?.stopPropagation();
         const epTitle = slide.season != null && slide.episode != null ?
-            `${slide.title} · T${slide.season} E${String(slide.episode).padStart(2, '0')} — ${slide.episodeTitle}` :
+            `${slide.title} · ${formatEpisodeCode(slide.season as number, slide.episode as number)} — ${slide.episodeTitle}` :
             slide.title;
         play({
             itemId: slide.jfEpisodeId ?? slide.id,
@@ -68,7 +69,7 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
         year: slide.year,
         watchedKey: wKey,
         queueSubtitle: slide.season != null && slide.episode != null ?
-            `T${slide.season} E${String(slide.episode).padStart(2, '0')}` :
+            formatEpisodeCode(slide.season as number, slide.episode as number) :
             String(slide.year),
         queuePoster: slide.poster,
         onOpen: onPlay
@@ -87,27 +88,13 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
         (formatRemainingCompact(slide.remaining) || (slide.remaining.includes('min') ? slide.remaining : `${slide.remaining} min`)) :
         '';
 
-    const [showEndTime, setShowEndTime] = useState(false);
-    const [timerTick, setTimerTick] = useState(0);
+    const [manualState, setManualState] = useState<'rem' | 'end' | null>(null);
 
-    // Alternar cada 6 segundos entre minutos restantes y hora de fin estimada
-    useEffect(() => {
-        if (!remainingText || !endTime) return;
-        const timer = setTimeout(() => {
-            setShowEndTime((prev) => !prev);
-            setTimerTick((t) => t + 1);
-        }, 6000);
-        return () => clearTimeout(timer);
-    }, [remainingText, endTime, timerTick]);
-
-    // Al hacer clic sobre el tiempo, cambia instantáneamente y reinicia el contador de 6 segundos
+    // Al hacer clic sobre el tiempo, alterna manualmente el estado y pausa la animación
     const onToggleTime = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
-        setShowEndTime((prev) => !prev);
-        setTimerTick((t) => t + 1);
+        setManualState((prev) => prev === 'end' ? 'rem' : 'end');
     }, []);
-
-    const displayedTime = showEndTime && endTime ? endTime : remainingText;
 
     // Medición de desbordamiento horizontal para scroll suave del título y subtítulo
     const titleContRef = useRef<HTMLDivElement>(null);
@@ -141,7 +128,9 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
         if (typeof document !== 'undefined' && document.fonts?.ready) {
             document.fonts.ready.then(() => {
                 if (active) measure();
-            }).catch(() => {});
+            }).catch((e) => {
+                logger.debug('Error waiting for document fonts', e);
+            });
         }
 
         return () => {
@@ -149,6 +138,10 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
             ro.disconnect();
         };
     }, [slide.title, epSubtitle, w]);
+
+    const onHoverPlay = useCallback(() => {
+        if (slide.jfEpisodeId) prewarm(slide.jfEpisodeId);
+    }, [slide.jfEpisodeId, prewarm]);
 
     return (
         <LandscapeCardShell
@@ -184,13 +177,13 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
                     <PlayBtn
                         size={52}
                         onClick={onPlay}
-                        onHover={() => slide.jfEpisodeId && prewarm(slide.jfEpisodeId)}
+                        onHover={onHoverPlay}
                     />
                 </div>
             ) : null}
             bottomOverlay={remainingText ? (
                 <div
-                    className='jfp-cw-remaining'
+                    className={`jfp-cw-remaining ${manualState ? 'paused-anim' : ''} ${manualState === 'end' ? 'force-end' : ''} ${manualState === 'rem' ? 'force-rem' : ''}`}
                     onClick={onToggleTime}
                     style={{
                         position: 'absolute',
@@ -209,11 +202,16 @@ export const CwCard = memo(function CwCardBase({ slide, navigate }: Props) {
                         zIndex: 2,
                         transition: 'opacity 0.2s ease'
                     }}
-                    title={showEndTime ? remainingText : (endTime || remainingText)}
+                    title={endTime || remainingText}
                 >
-                    <span key={showEndTime ? 'end' : 'rem'} className='jfp-cw-time-animated'>
-                        {displayedTime}
-                    </span>
+                    {endTime ? (
+                        <span className='jfp-cw-time-container'>
+                            <span className='jfp-cw-time-text jfp-cw-time-rem'>{remainingText}</span>
+                            <span className='jfp-cw-time-text jfp-cw-time-end'>{endTime}</span>
+                        </span>
+                    ) : (
+                        <span>{remainingText}</span>
+                    )}
                 </div>
             ) : null}
             footer={

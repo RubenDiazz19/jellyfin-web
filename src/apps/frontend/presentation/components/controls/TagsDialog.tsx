@@ -8,6 +8,7 @@ import { PillButton, TextField } from './fields';
 import { LoadState } from './LoadState';
 import { TagChips, TagSuggestions, useTagDraft } from './TagEditor';
 import { autoTagsFor, getItemTags } from '../../../domain/tags';
+import { useFetch } from '../../hooks/useFetch';
 
 type Props = {
     itemId: string;
@@ -28,25 +29,15 @@ type Props = {
  */
 export function TagsDialog({ itemId, itemTitle, onClose }: Props) {
     const toast = useToast();
-    const [tags, setTags] = useState<string[] | null>(null);
-    const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
 
-    useEffect(() => {
-        let alive = true;
-        getItemRaw(itemId)
-            .then((raw) => {
-                if (!alive) return;
-                // Combinar tags del servidor con autoTags y filtrar con el vocabulario cerrado
-                const serverTags = (raw.Tags ?? []) as string[];
-                const valid = getItemTags({
-                    tags: serverTags,
-                    autoTags: autoTagsFor(itemId)
-                });
-                setTags(valid);
-            })
-            .catch((e) => { if (alive) setError((e as Error).message); });
-        return () => { alive = false; };
+    const { data: tags, error, mutate: setTags } = useFetch(async () => {
+        const raw = await getItemRaw(itemId);
+        const serverTags = (raw.Tags ?? []) as string[];
+        return getItemTags({
+            tags: serverTags,
+            autoTags: autoTagsFor(itemId)
+        });
     }, [itemId]);
 
     const { draft, setDraft, matches, add } = useTagDraft({
@@ -76,7 +67,7 @@ export function TagsDialog({ itemId, itemTitle, onClose }: Props) {
 
             <LoadState
                 loading={!tags && !error}
-                error={error}
+                error={error?.message}
             >
                 {tags && (
                     <>

@@ -45,16 +45,17 @@ const MENU_W = 230;
 const MENU_H = 340;
 const GAP = 8;
 
+import { useAsyncToast } from '../../hooks/useAsyncToast';
+
 export function ListCardMenu({
     kind, listId, title, logo, onChanged, onDeleted, size = 26, hideTrigger, handle,
     selectable, onSelect, parentListId
 }: Props) {
-    const toast = useToast();
+    const { run, loading: busy, toast } = useAsyncToast();
     const btnRef = useRef<HTMLButtonElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     const [open, setOpen] = useState(false);
     const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-    const [busy, setBusy] = useState(false);
     const [askingUrl, setAskingUrl] = useState(false);
     const [url, setUrl] = useState('');
     const [addTo, setAddTo] = useState(false);
@@ -128,16 +129,10 @@ export function ListCardMenu({
     };
 
     const apply = async (fn: () => Promise<void>, ok: string) => {
-        setBusy(true);
-        try {
-            await fn();
-            toast(ok, 'success');
+        const res = await run(fn, { successMessage: ok });
+        if (res !== undefined) {
             setOpen(false);
             onChanged();
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-        } finally {
-            setBusy(false);
         }
     };
 
@@ -263,15 +258,8 @@ export function ListCardMenu({
                         {parentListId && (
                             <MenuEntry disabled={busy} onClick={async () => {
                                 setOpen(false);
-                                setBusy(true);
-                                try {
-                                    await LISTS.toggle('collection', parentListId, listId);
-                                    onChanged();
-                                } catch (e) {
-                                    toast((e as Error).message, 'warn');
-                                } finally {
-                                    setBusy(false);
-                                }
+                                const res = await run(() => LISTS.toggle('collection', parentListId, listId));
+                                if (res !== undefined) onChanged();
                             }}>
                                 {globalize.translate('RemoveFromCollection')}
                             </MenuEntry>
@@ -279,15 +267,10 @@ export function ListCardMenu({
                         <div style={{ height: 1, background: T.hairline, margin: '4px 0' }} />
                         <MenuEntry disabled={busy} onClick={async () => {
                             setOpen(false);
-                            setBusy(true);
-                            try {
+                            await run(async () => {
                                 const item = await getItemRaw(listId);
                                 playbackManager.shuffle(item);
-                            } catch (e) {
-                                toast((e as Error).message, 'warn');
-                            } finally {
-                                setBusy(false);
-                            }
+                            });
                         }}>
                             {globalize.translate('ShufflePlay') || globalize.translate('Shuffle')}
                         </MenuEntry>
@@ -366,10 +349,11 @@ export function ListCardMenu({
                     message={globalize.translate(kind === 'collection' ? 'ConfirmDeleteCollection' : 'ConfirmDeletePlaylist')}
                     confirmLabel={globalize.translate('Delete')}
                     onConfirm={async () => {
-                        await LISTS.delete(kind, listId);
-                        toast(globalize.translate('Delete'), 'success');
-                        if (onDeleted) onDeleted();
-                        else onChanged();
+                        const res = await run(() => LISTS.delete(kind, listId), { successMessage: globalize.translate('Delete') });
+                        if (res !== undefined) {
+                            if (onDeleted) onDeleted();
+                            else onChanged();
+                        }
                     }}
                     onClose={() => setConfirmDelete(false)}
                 />
@@ -383,12 +367,17 @@ export function ListCardMenu({
                     itemTitle={title}
                     onClose={async () => {
                         setEditorTab(null);
-                        if (kind === 'collection') {
-                            LISTS.markCustomCover(kind, listId);
-                            COLLECTION_STYLES.touch(listId);
-                            await LISTS.refresh();
+                        try {
+                            if (kind === 'collection') {
+                                LISTS.markCustomCover(kind, listId);
+                                COLLECTION_STYLES.touch(listId);
+                                await LISTS.refresh();
+                            }
+                        } catch (e) {
+                            // Ignorar error de refresh
+                        } finally {
+                            onChanged();
                         }
-                        onChanged();
                     }}
                 />
             )}

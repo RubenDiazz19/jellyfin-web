@@ -37,6 +37,7 @@ import {
 import { analyzeImage, imageFocus, peekImageFocus } from './dynamicColor';
 
 const STYLE_ID = 'jfp-m3-tokens';
+const THEME_TRANSITION_MS = 400;
 
 /**
  * Paleta derivada junto con los parámetros que la produjeron. Van en el mismo
@@ -233,7 +234,7 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         }
         const root = document.documentElement;
         root.classList.add(M3_ANIM_CLASS);
-        const t = setTimeout(() => root.classList.remove(M3_ANIM_CLASS), 400);
+        const t = setTimeout(() => root.classList.remove(M3_ANIM_CLASS), THEME_TRANSITION_MS);
         return () => {
             clearTimeout(t);
             root.classList.remove(M3_ANIM_CLASS);

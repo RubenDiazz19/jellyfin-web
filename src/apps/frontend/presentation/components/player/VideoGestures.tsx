@@ -34,6 +34,7 @@ import { PlayerIc } from './playerIcons';
 
 const DOUBLE_TAP_MS = 300;
 const DEFAULT_FEEDBACK_MS = 650;
+const SHORT_FEEDBACK_MS = 500;
 
 type Feedback =
     | { kind: 'seek'; target: number; delta: number }
@@ -193,7 +194,7 @@ export function VideoGestures({ onClose, onWake }: Props) {
 
         if (s.axis === 'horizontal' && s.pendingSeek != null) {
             videoPlayerVM.seek(s.pendingSeek);
-            flashFeedback({ kind: 'seek', target: s.pendingSeek, delta: s.pendingSeek - s.startTime }, 500);
+            flashFeedback({ kind: 'seek', target: s.pendingSeek, delta: s.pendingSeek - s.startTime }, SHORT_FEEDBACK_MS);
             onWake();
             return;
         }
@@ -201,7 +202,7 @@ export function VideoGestures({ onClose, onWake }: Props) {
             if (s.closing) { haptic('select'); onClose(); return; }
             // El feedback de brillo/volumen se auto-oculta.
             if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
-            feedbackTimer.current = setTimeout(() => setFeedback(null), 500);
+            feedbackTimer.current = setTimeout(() => setFeedback(null), SHORT_FEEDBACK_MS);
             return;
         }
 

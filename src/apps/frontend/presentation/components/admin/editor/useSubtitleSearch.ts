@@ -13,6 +13,8 @@ import {
 } from '../../../../domain/api';
 import { useToast } from '../../toast/ToastProvider';
 
+const REFRESH_DELAY_MS = 350;
+
 export const POPULAR_LANGS = [
     { code: 'spa', label: 'Español (spa)' },
     { code: 'eng', label: 'English (eng)' },
@@ -90,7 +92,7 @@ export function useSubtitleSearch({ itemId, onSubtitleUpdated }: UseSubtitleSear
         try {
             await downloadSubtitle(itemId, id);
             toast(globalize.translate('MessageSubtitleDownloaded'), 'success');
-            await new Promise((resolve) => setTimeout(resolve, 350));
+            await new Promise((resolve) => setTimeout(resolve, REFRESH_DELAY_MS));
             await onSubtitleUpdated?.();
         } catch (e) {
             toast((e as Error).message, 'warn');
@@ -115,7 +117,7 @@ export function useSubtitleSearch({ itemId, onSubtitleUpdated }: UseSubtitleSear
             toast(globalize.translate('MessageSubtitleUploaded'), 'success');
             setFile(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
-            await new Promise((resolve) => setTimeout(resolve, 350));
+            await new Promise((resolve) => setTimeout(resolve, REFRESH_DELAY_MS));
             await onSubtitleUpdated?.();
         } catch (e) {
             toast((e as Error).message, 'warn');

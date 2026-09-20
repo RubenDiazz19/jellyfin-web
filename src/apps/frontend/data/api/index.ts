@@ -144,3 +144,10 @@ export {
 } from './avatars';
 export { searchAniListCharacters } from './anilist';
 export { searchTmdbCharacters, isTmdbConfigured } from './tmdb';
+export {
+    fetchFanartLogosById,
+    fetchFanartLogosForItem,
+    fetchFanartMovieLogos,
+    fetchFanartTvLogos,
+    FANART_API_KEY
+} from './fanart';

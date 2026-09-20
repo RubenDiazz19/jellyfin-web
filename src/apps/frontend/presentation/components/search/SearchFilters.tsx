@@ -8,15 +8,15 @@
 // superposición que abre la lupa— y son exactamente los mismos filtros sobre
 // el mismo ViewModel.
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Children, useEffect, useMemo, useRef, useState } from 'react';
 
 import globalize from 'lib/globalize';
 
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
 import { useToast } from '../toast/ToastProvider';
-import { searchVM, type FilterCategory, type StateFilter, type TypeFilter } from '../../../domain/viewModels/SearchViewModel';
-import { PRIMARY_GENRES, getItemGenres } from '../../../domain/genres';
+import { searchVM, type FilterCategory, type StateFilter, type TypeFilter, type SearchResult } from '../../../domain/viewModels/SearchViewModel';
+import { PRIMARY_GENRES, getItemGenres, type GenresItem } from '../../../domain/genres';
 import { useVmSignals } from '../../../domain/bridge/useViewModel';
 import { VIEWS, type SavedView } from '../../../domain/stores';
 import { AddFilterButton, MainPill, OptionPill } from './SearchPills';
@@ -59,13 +59,13 @@ export function SearchFilters() {
     const availableTags = searchVM.availableTags.value;
     const activeTags = searchVM.tagFilters.value;
 
-    const filteredTypeOptions = TYPE_OPTIONS.filter((opt) =>
+    const filteredTypeOptions = useMemo(() => TYPE_OPTIONS.filter((opt) =>
         !categoryQuery || globalize.translate(opt.key).toLowerCase().includes(categoryQuery)
-    );
+    ), [categoryQuery]);
 
-    const filteredStateOptions = STATE_OPTIONS.filter((opt) =>
+    const filteredStateOptions = useMemo(() => STATE_OPTIONS.filter((opt) =>
         !categoryQuery || globalize.translate(opt.key).toLowerCase().includes(categoryQuery)
-    );
+    ), [categoryQuery]);
 
     // Las etiquetas seleccionadas van primero para facilitar desmarcarlas;
     // al desmarcarse vuelven a su orden alfabético natural.
@@ -190,7 +190,7 @@ export function SearchFilters() {
                                 } else if (categoryMode === 'generos') {
                                     const results = searchVM.results.value;
                                     const activeGenresSet = new Set(
-                                        results.flatMap(item => getItemGenres(item as any))
+                                        results.flatMap((item: SearchResult) => getItemGenres(item as GenresItem))
                                                .map(g => g.toLowerCase())
                                     );
 
@@ -426,7 +426,7 @@ function ScrollableFilterGroup({ children }: { children: React.ReactNode }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <button
                 onClick={() => scrollBy(-200)}
-                aria-label="Deslizar a la izquierda"
+                aria-label={globalize.translate('ScrollLeft')}
                 style={{
                     ...arrowStyle,
                     opacity: canScrollLeft ? 1 : 0,
@@ -450,7 +450,7 @@ function ScrollableFilterGroup({ children }: { children: React.ReactNode }) {
                     scrollSnapType: 'x mandatory',
                 }}
             >
-                {React.Children.map(children, (child) => (
+                {Children.map(children, (child) => (
                     <div style={{ scrollSnapAlign: 'start', display: 'inline-flex', flexShrink: 0 }}>
                         {child}
                     </div>
@@ -458,7 +458,7 @@ function ScrollableFilterGroup({ children }: { children: React.ReactNode }) {
             </div>
             <button
                 onClick={() => scrollBy(200)}
-                aria-label="Deslizar a la derecha"
+                aria-label={globalize.translate('ScrollRight')}
                 style={{
                     ...arrowStyle,
                     opacity: canScrollRight ? 1 : 0,

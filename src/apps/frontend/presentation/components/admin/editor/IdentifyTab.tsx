@@ -13,6 +13,7 @@ import { useToast } from '../../toast/ToastProvider';
 import type { IdentifiableKind } from './MetadataEditor';
 import { Muted, PillButton, TextField } from '../../controls/fields';
 import { Field } from './primitives';
+import { useAsyncToast } from '../../../hooks/useAsyncToast';
 
 type Props = {
     itemId: string;
@@ -32,7 +33,7 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
     const [searching, setSearching] = useState(false);
     const [applying, setApplying] = useState<number | null>(null);
     const [loaded, setLoaded] = useState(false);
-    const toast = useToast();
+    const { run, toast } = useAsyncToast();
 
     const kindApi: RemoteSearchItemType =
         kind === 'show' ? 'Series' : kind === 'movie' ? 'Movie' : kind === 'collection' ? 'BoxSet' : 'Episode';
@@ -91,8 +92,8 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
             if (rawType) {
                 setResolvedType(rawType);
             }
-            setName('');
-            setYear('');
+            setName(it.Name || '');
+            setYear(it.ProductionYear ? String(it.ProductionYear) : '');
             setLoaded(true);
         }).catch(() => {
             if (alive) setLoaded(true);
@@ -116,15 +117,11 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
     const apply = async (i: number) => {
         if (!results) return;
         setApplying(i);
-        try {
-            await applyRemoteSearchResult(itemId, results[i]);
-            toast(globalize.translate('MessageIdentifiedRefreshing'), 'success');
-            onClose();
-        } catch (e) {
-            toast((e as Error).message, 'warn');
-        } finally {
-            setApplying(null);
-        }
+        await run(() => applyRemoteSearchResult(itemId, results[i]), {
+            successMessage: globalize.translate('MessageIdentifiedRefreshing'),
+            onSuccess: () => onClose()
+        });
+        setApplying(null);
     };
 
     return (
@@ -170,14 +167,14 @@ export function IdentifyTab({ itemId, kind, onClose }: Props) {
                         border: '1px solid rgba(255,255,255,0.05)'
                     }}>
                         <Field label='TheMovieDb ID'>
-                            <TextField size='md' value={tmdbId} onChange={setTmdbId} placeholder='ej. 11' onEnter={doSearch} />
+                            <TextField size='md' value={tmdbId} onChange={setTmdbId} placeholder={globalize.translate('ExampleTmdbId')} onEnter={doSearch} />
                         </Field>
                         <Field label='IMDb ID'>
-                            <TextField size='md' value={imdbId} onChange={setImdbId} placeholder='ej. tt0076759' onEnter={doSearch} />
+                            <TextField size='md' value={imdbId} onChange={setImdbId} placeholder={globalize.translate('ExampleImdbId')} onEnter={doSearch} />
                         </Field>
                         {(effectiveKind === 'Series' || effectiveKind === 'Episode') && (
                             <Field label='TheTVDB ID'>
-                                <TextField size='md' value={tvdbId} onChange={setTvdbId} placeholder='ej. 261753' onEnter={doSearch} />
+                                <TextField size='md' value={tvdbId} onChange={setTvdbId} placeholder={globalize.translate('ExampleTvdbId')} onEnter={doSearch} />
                             </Field>
                         )}
                     </div>

@@ -5,6 +5,7 @@ import { useResponsive } from '../../theme/responsive';
 import { CollectionCard } from './CollectionCard';
 import type { PlaylistItem } from '../../../domain/api';
 import type { Navigate } from '../../../app/router';
+import '../../styles/carousels.css';
 
 type Props = {
     items: PlaylistItem[];
@@ -20,7 +21,7 @@ export function SubCollectionsCarousel({ items, navigate, listId }: Props) {
     const [isHovered, setIsHovered] = useState(false);
 
     // Tamaño base del póster: más grande que las tarjetas estándar para dar "gran protagonismo"
-    const cardWidth = r.touch ? 160 : 260;
+    const cardWidth = r.touch ? 148 : 240;
     const gap = r.touch ? 16 : 24;
 
     const checkScrollButtons = () => {
@@ -122,11 +123,6 @@ export function SubCollectionsCarousel({ items, navigate, listId }: Props) {
                     scrollBehavior: 'smooth'
                 }}
             >
-                <style>{`
-                    .subCollectionsCarousel::-webkit-scrollbar {
-                        display: none;
-                    }
-                `}</style>
 
                 {items.map((item) => (
                     <div key={item.id} style={{ flex: `0 0 ${cardWidth}px`, width: cardWidth }}>

@@ -46,4 +46,17 @@ describe('CollectionCardCarousel', () => {
         const cards = host?.querySelectorAll('.collectionCardPremium');
         expect(cards?.length).toBe(2);
     });
+
+    test('aplica el ancho estilizado a las tarjetas en escritorio', async () => {
+        const items: PlaylistItem[] = [
+            { id: '1', title: 'Película 1', kind: 'movie', year: 2021, poster: '/p1.jpg' }
+        ];
+
+        await mount(<CollectionCardCarousel items={items} navigate={vi.fn()} />);
+
+        const card = host?.querySelector<HTMLElement>('.collectionCardPremium');
+        expect(card).toBeTruthy();
+        expect(card?.style.width).toBe('316px');
+        expect(card?.style.flex).toBe('0 0 316px');
+    });
 });

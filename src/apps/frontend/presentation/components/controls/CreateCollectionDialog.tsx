@@ -8,6 +8,7 @@ import { Dialog, DialogFooter, DialogHeader } from './Dialog';
 import { PillButton, TextField } from './fields';
 import { apiSend } from '../../../data/api/http';
 import { applyRemoteSearchResult, type RemoteSearchResult } from '../../../domain/api';
+import { logger } from '../../../shared/logger';
 
 type Props = {
     kind?: ListKind;
@@ -67,7 +68,9 @@ export function CreateListDialog({
         try {
             const newId = await LISTS.create(kind, cleanName, undefined, parentId);
             if (selectedResult && !isPlaylist) {
-                await applyRemoteSearchResult(newId, selectedResult).catch(() => {});
+                await applyRemoteSearchResult(newId, selectedResult).catch((err) => {
+                    logger.debug('Error applying remote search result', err);
+                });
             }
             toast(globalize.translate('MessageCreated', cleanName), 'success');
             onCreated(newId);
@@ -94,7 +97,7 @@ export function CreateListDialog({
                         marginBottom: 10,
                         lineHeight: 1.5
                     }}>
-                        Busca en TheMovieDB para vincularla automáticamente (o escribe un nombre libre).
+                        {globalize.translate('SearchTmdbForCollection')}
                     </div>
                 )}
                 <TextField
