@@ -19,8 +19,8 @@ import { SeasonsHeading } from '../components/layout/SeasonsHeading';
 import { ShowMetadataRows } from '../components/layout/ShowMetadataRows';
 import { Nav } from '../components/layout/Nav';
 import { ScrollHint } from '../components/layout/ScrollHint';
-import { MoreButton } from '../components/controls/MoreButton';
-import { MyListButton } from '../components/controls/MyListButton';
+import { MoreButton } from '../components/controls/buttons/MoreButton';
+import { MyListButton } from '../components/controls/buttons/MyListButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { SeasonCard } from '../components/cards/SeasonCard';
@@ -32,7 +32,7 @@ import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
 import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
-import { useShowEntity } from './useDetailEntity';
+import { useShowEntity } from '../hooks/useDetailEntity';
 
 type PageProps = { showId: string; navigate: Navigate; hero?: HeroTweaks };
 

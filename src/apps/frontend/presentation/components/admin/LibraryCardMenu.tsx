@@ -2,7 +2,7 @@ import globalize from 'lib/globalize';
 
 import { useState } from 'react';
 import { Ic } from '../../theme/icons';
-import { IconButton } from '../controls/IconButton';
+import { IconButton } from '../controls/buttons/IconButton';
 import { useToast } from '../toast/ToastProvider';
 import { refreshItemMetadata, type RefreshOptions } from '../../../domain/api';
 import { tasksVM } from '../../../domain/viewModels/TasksViewModel';

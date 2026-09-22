@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+// eslint-disable-next-line import/no-restricted-paths
 import loading from 'components/loading/loading';
 import App from './App';
 import { toggleFullscreen } from '../shared/fullscreen';

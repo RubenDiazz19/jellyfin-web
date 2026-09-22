@@ -18,10 +18,10 @@ import { episodeKey, movieKey } from '../../data/stores/itemKeys';
 import { WATCHED } from '../../data/stores/watchedStore';
 import type { SavedView } from '../../data/stores/viewsStore';
 import type { SortKey } from '../../data/stores/librarySortStore';
-import { MUTATION_DEBOUNCE_MS } from './mutationSubscription';
-import { registerTagSource } from './knownTags';
-import { guardedLoad } from './guardedLoad';
-import { LoadGuard } from './loadGuard';
+import { MUTATION_DEBOUNCE_MS } from './utils/mutationSubscription';
+import { registerTagSource } from './utils/knownTags';
+import { guardedLoad } from './utils/guardedLoad';
+import { LoadGuard } from './utils/loadGuard';
 import { getItemGenres, type GenresItem } from '../genres';
 import { isShowFullyWatched } from '../showWatched';
 import { getItemTags, normalizeTagForSearch } from '../tags';
@@ -33,8 +33,8 @@ import {
     type RatingOperator,
     type StateFilter,
     type TypeFilter
-} from './searchViews';
-import { computeAllTags, computeAvailableTags } from './searchTags';
+} from './utils/searchViews';
+import { computeAllTags, computeAvailableTags } from './utils/searchTags';
 
 export type {
     FilterCategory,
@@ -46,8 +46,6 @@ export type {
 
 const CATALOG_TTL_MS = 60_000;
 
-import type { SelectableItem } from './SelectionViewModel';
-
 /**
  * Un título del catálogo con la marca de qué es. `kind` y no `_type`: así el
  * resultado cumple `CatalogItem` tal cual y las tarjetas lo pintan sin
@@ -57,8 +55,6 @@ export type SearchResult =
     | (Show & { kind: 'show' })
     | (Movie & { kind: 'movie' })
     | (ListEntry & { kind: 'collection' });
-
-
 
 /**
  * Separa los `#tag` del texto libre.
@@ -95,7 +91,7 @@ function runtimeMinutes(item: { runtime?: string | number }): number {
 
 type SortableItem = { year?: number; title?: string; name?: string; runtime?: string | number; imdb?: number };
 
-function compareBy(key: SearchSortKey, seed: number) {
+function compareBy(key: SearchSortKey) {
     return (a: SortableItem, b: SortableItem): number => {
         const titleA = a.title || a.name || '';
         const titleB = b.title || b.name || '';
@@ -452,7 +448,7 @@ export class SearchViewModel {
         if (sortKeyValue === 'relevance' && normQ) {
             localScored.sort((a, b) => b.score - a.score);
         } else if (sortKeyValue !== 'relevance') {
-            const cmp = compareBy(sortKeyValue, 0);
+            const cmp = compareBy(sortKeyValue);
             localScored.sort((a, b) => {
                 const itemA = { ...a.item, title: 'title' in a.item ? a.item.title : a.item.name, imdb: 'rating' in a.item ? (a.item.rating?.imdb ?? 0) : 0 };
                 const itemB = { ...b.item, title: 'title' in b.item ? b.item.title : b.item.name, imdb: 'rating' in b.item ? (b.item.rating?.imdb ?? 0) : 0 };
@@ -486,7 +482,7 @@ export class SearchViewModel {
 
         const combined = [...local, ...extra];
         if (sortKeyValue !== 'relevance') {
-            const cmp = compareBy(sortKeyValue, 0);
+            const cmp = compareBy(sortKeyValue);
             combined.sort((a, b) => {
                 const itemA = { ...a, title: 'title' in a ? a.title : a.name, imdb: 'rating' in a ? (a.rating?.imdb ?? 0) : 0 };
                 const itemB = { ...b, title: 'title' in b ? b.title : b.name, imdb: 'rating' in b ? (b.rating?.imdb ?? 0) : 0 };

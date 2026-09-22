@@ -17,7 +17,7 @@ vi.mock('lib/jellyfin-apiclient', () => ({
 }));
 
 import { ITEM_MUTATED_EVENT } from '../../../data/api/mutations';
-import { mutationOnLoad, MUTATION_DEBOUNCE_MS } from '../mutationSubscription';
+import { mutationOnLoad, MUTATION_DEBOUNCE_MS } from '../utils/mutationSubscription';
 
 function mutate(itemId?: string) {
     window.dispatchEvent(new CustomEvent(ITEM_MUTATED_EVENT, { detail: { itemId } }));

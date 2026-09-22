@@ -59,7 +59,6 @@ function closeAfter(notification, timeoutMs) {
 }
 
 function resetRegistration() {
-    /* eslint-disable-next-line compat/compat */
     const serviceWorker = navigator.serviceWorker;
     if (serviceWorker) {
         serviceWorker.ready.then(function (registration) {
@@ -76,7 +75,7 @@ function showPersistentNotification(title, options) {
 
 function showNonPersistentNotification(title, options, timeoutMs) {
     try {
-        const notif = new Notification(title, options); /* eslint-disable-line compat/compat */
+        const notif = new Notification(title, options);
 
         if (notif.show) {
             notif.show();

@@ -115,7 +115,7 @@ describe('IdentifyTab', () => {
             nativeInputValueSetter?.call(yearInput, '');
             yearInput.dispatchEvent(new Event('input', { bubbles: true }));
         });
-        
+
         await act(async () => {
             vi.advanceTimersByTime(600);
         });

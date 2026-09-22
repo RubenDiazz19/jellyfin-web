@@ -42,7 +42,7 @@ vi.mock('../../player/PlayerProvider', () => ({
 
 import { SelectionMark } from '../SelectionMark';
 import { selectionVM, type SelectableItem } from '../../../../domain/viewModels/SelectionViewModel';
-import { MoreButton, type ItemMenuHandle } from '../../controls/MoreButton';
+import { MoreButton, type ItemMenuHandle } from '../../controls/buttons/MoreButton';
 import { CollectionCard } from '../../collection/CollectionCard';
 import { SelectionBar } from '../../controls/SelectionBar';
 import { FAVS } from '../../../../domain/stores';

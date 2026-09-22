@@ -14,7 +14,7 @@ import type { Navigate } from '../../../app/router';
 import { cleanGenres } from '../../../domain/genres';
 import { MediaBadges } from '../media/MediaBadges';
 
-import { useHomeScrollTransition } from '../../pages/useHomeScrollTransition';
+import { useHomeScrollTransition } from '../../hooks/useHomeScrollTransition';
 
 /**
  * Alto del hero de ficha: la pantalla entera, igual que el de la portada. Lo

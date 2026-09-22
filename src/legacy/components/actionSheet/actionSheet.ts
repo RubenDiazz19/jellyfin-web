@@ -7,7 +7,7 @@ import '../../elements/emby-button/emby-button';
 import './actionSheet.scss';
 import 'material-design-icons-iconfont';
 import 'styles/scrollstyles.scss';
-import '../../components/listview/listview.scss';
+import '../../components/listView/listview.scss';
 
 interface OptionItem {
     asideText?: string;

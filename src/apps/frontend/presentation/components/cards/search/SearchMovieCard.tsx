@@ -3,10 +3,9 @@ import { memo } from 'react';
 import { PosterTile } from '../PosterTile';
 import { useCardInteractions } from '../useCardInteractions';
 import { movieKey } from '../../../../domain/stores';
-import { FavButton } from '../../controls/FavButton';
-import { MovieWatchedButton } from '../../controls/MovieWatchedButton';
-import type { CatalogItem } from '../../../../domain/models';
-import type { Movie } from '../../../../data/models';
+import { FavButton } from '../../controls/buttons/FavButton';
+import { MovieWatchedButton } from '../../controls/toggles/MovieWatchedButton';
+import type { CatalogItem, Movie } from '../../../../domain/models';
 import type { Navigate } from '../../../../app/router';
 
 type Props = { item: CatalogItem; navigate: Navigate };

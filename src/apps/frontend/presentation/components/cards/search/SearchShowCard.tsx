@@ -2,8 +2,8 @@ import globalize from 'lib/globalize';
 import { memo } from 'react';
 import { PosterTile } from '../PosterTile';
 import { useCardInteractions } from '../useCardInteractions';
-import { FavButton } from '../../controls/FavButton';
-import { ShowNavWatchedButton } from '../../controls/ShowNavWatchedButton';
+import { FavButton } from '../../controls/buttons/FavButton';
+import { ShowNavWatchedButton } from '../../controls/toggles/ShowNavWatchedButton';
 import type { CatalogItem } from '../../../../domain/models';
 import type { Navigate } from '../../../../app/router';
 

@@ -3,7 +3,7 @@ import { memo } from 'react';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
 import { useWatched } from '../../../domain/bridge/useWatched';
-import { FavButton } from '../controls/FavButton';
+import { FavButton } from '../controls/buttons/FavButton';
 import { SelectionMark } from './SelectionMark';
 import type { Show, Season, Episode } from '../../../domain/models';
 import type { Navigate } from '../../../app/router';

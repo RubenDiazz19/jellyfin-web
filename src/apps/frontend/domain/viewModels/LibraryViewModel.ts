@@ -6,8 +6,8 @@ import { computed, signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { PROTO_DATA, type Movie, type Show } from '../../data/models';
 import { DEFAULT_SORT, LIBRARY_SORT, type SortKey } from '../../data/stores/librarySortStore';
-import { mutationOnLoad } from './mutationSubscription';
-import { registerTagSource } from './knownTags';
+import { mutationOnLoad } from './utils/mutationSubscription';
+import { registerTagSource } from './utils/knownTags';
 
 import { fnv1a } from 'utils/hash';
 import { CatalogViewModel } from './CatalogViewModel';

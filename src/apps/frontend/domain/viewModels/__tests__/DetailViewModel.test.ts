@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DetailViewModel } from '../DetailViewModel';
 import type { ApiService } from '../../../data/api/ApiService';
-import * as mutationSub from '../mutationSubscription';
+import * as mutationSub from '../utils/mutationSubscription';
 
-vi.mock('../mutationSubscription', () => ({
+vi.mock('../utils/mutationSubscription', () => ({
     mutationOnLoad: vi.fn(() => vi.fn())
 }));
 

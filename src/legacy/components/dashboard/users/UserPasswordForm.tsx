@@ -5,7 +5,7 @@ import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import Dashboard from 'utils/dashboard';
 import globalize from 'lib/globalize';
-import confirm from '../../confirm/confirm';
+import confirm from '../../confirm';
 import loading from '../../loading/loading';
 import toast from '../../toast/toast';
 import Button from 'elements/emby-button/Button';

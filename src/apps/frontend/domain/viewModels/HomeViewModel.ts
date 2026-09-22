@@ -5,8 +5,8 @@
 import { signal } from '@preact/signals-core';
 import { apiService, type ApiService } from '../../data/api/ApiService';
 import { PROTO_DATA, type CarouselSlide, type CatalogItem, type ListEntry } from '../../data/models';
-import { mutationOnLoad } from './mutationSubscription';
-import { LoadGuard } from './loadGuard';
+import { mutationOnLoad } from './utils/mutationSubscription';
+import { LoadGuard } from './utils/loadGuard';
 import { ticksFromProgress } from '../player/format';
 
 /** Formatea temporada y episodio con la convención 'T{season} E{episode}' (ej. 'T1 E05'). */

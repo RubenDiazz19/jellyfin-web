@@ -48,9 +48,11 @@ export class CastBinding {
             remote.removeEventListener('connecting', onConnecting);
             remote.removeEventListener('connect', onConnect);
             remote.removeEventListener('disconnect', onDisconnect);
-            if (watchId != null) void remote.cancelWatchAvailability(watchId).catch((e) => {
-                logger.debug('Error canceling watch availability on cleanup', e);
-            });
+            if (watchId != null) {
+                void remote.cancelWatchAvailability(watchId).catch((e) => {
+                    logger.debug('Error canceling watch availability on cleanup', e);
+                });
+            }
         };
     }
 

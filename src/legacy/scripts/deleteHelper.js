@@ -4,7 +4,7 @@ import { getLibraryApi } from '@jellyfin/sdk/lib/utils/api/library-api';
 import { getLyricApi } from '@jellyfin/sdk/lib/utils/api/lyric-api';
 
 import alert from 'components/alert';
-import confirm from 'components/confirm/confirm';
+import confirm from 'components/confirm';
 import { appRouter } from 'components/router/appRouter';
 import globalize from 'lib/globalize';
 import { ServerConnections } from 'lib/jellyfin-apiclient';

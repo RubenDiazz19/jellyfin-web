@@ -6,7 +6,7 @@
 import { signal, type Signal } from '@preact/signals-core';
 import type { ApiService } from '../../data/api/ApiService';
 import { LoadableViewModel } from './LoadableViewModel';
-import { mutationOnLoad } from './mutationSubscription';
+import { mutationOnLoad } from './utils/mutationSubscription';
 
 export abstract class DetailViewModel<T extends { id: string }> extends LoadableViewModel {
     item: Signal<T | null> = signal<T | null>(null);

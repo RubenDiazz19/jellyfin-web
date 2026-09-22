@@ -7,7 +7,7 @@ import { appHost } from '../components/apphost';
 import { appRouter } from './router/appRouter';
 import * as inputManager from '../scripts/inputManager';
 import toast from '../components/toast/toast';
-import confirm from '../components/confirm/confirm';
+import confirm from '../components/confirm';
 import { ServerConnections } from 'lib/jellyfin-apiclient';
 import * as dashboard from '../../utils/dashboard';
 

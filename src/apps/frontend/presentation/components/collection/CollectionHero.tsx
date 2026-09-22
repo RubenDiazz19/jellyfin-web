@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useResponsive } from '../../theme/responsive';
 import { T } from '../../theme/tokens';
-import { ListCardMenu, type ListMenuHandle } from '../controls/ListCardMenu';
+import { ListCardMenu, type ListMenuHandle } from '../controls/menus/ListCardMenu';
 import { COLLECTION_STYLES, type ListRef } from '../../../domain/stores';
 import { CollectionCardCarousel } from './CollectionCardCarousel';
 import { SubCollectionsCarousel } from './SubCollectionsCarousel';

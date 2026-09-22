@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
-import { MoreButton, type ItemMenuHandle } from './MoreButton';
+import { MoreButton, type ItemMenuHandle } from './buttons/MoreButton';
 
 // Clic derecho sobre una tarjeta: abre el mismo menú que los tres puntos de la
 // ficha (reproducir, cola, descargar, editar metadatos, borrar…).

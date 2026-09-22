@@ -305,10 +305,9 @@ function executeCommand(item, id, options) {
     const api = ServerConnections.getApi(serverId);
 
     return new Promise(function (resolve, reject) {
-        // eslint-disable-next-line sonarjs/max-switch-cases
         switch (id) {
             case 'addtoplaylist':
-                import('./playlisteditor/playlisteditor').then(({ default: PlaylistEditor }) => {
+                import('./playlisteditor').then(({ default: PlaylistEditor }) => {
                     const playlistEditor = new PlaylistEditor();
                     playlistEditor.show({
                         items: [itemId],
@@ -398,7 +397,7 @@ function executeCommand(item, id, options) {
                 break;
             }
             case 'editplaylist':
-                import('./playlisteditor/playlisteditor').then(({ default: PlaylistEditor }) => {
+                import('./playlisteditor').then(({ default: PlaylistEditor }) => {
                     const playlistEditor = new PlaylistEditor();
                     playlistEditor.show({
                         id: itemId,
@@ -407,7 +406,7 @@ function executeCommand(item, id, options) {
                 });
                 break;
             case 'editimages':
-                import('./imageeditor/imageeditor').then((imageEditor) => {
+                import('./imageEditor/imageeditor').then((imageEditor) => {
                     imageEditor.show({
                         itemId: itemId,
                         serverId: serverId
@@ -582,7 +581,7 @@ function deleteItem(item) {
 }
 
 function refresh(item) {
-    import('./refreshdialog/refreshdialog').then(({ default: RefreshDialog }) => {
+    import('./refreshdialog').then(({ default: RefreshDialog }) => {
         new RefreshDialog({
             itemIds: [item.Id],
             serverId: item.ServerId,

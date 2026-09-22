@@ -62,7 +62,6 @@ class MediaSessionSubscriber extends PlaybackSubscriber {
 
         for (const action of actions) {
             try {
-                /* eslint-disable-next-line compat/compat */
                 navigator.mediaSession.setActionHandler(action, this.onMediaSessionAction.bind(this));
             } catch (err) {
                 // NOTE: Some legacy (TV) browsers lack support for the stop and seekto actions

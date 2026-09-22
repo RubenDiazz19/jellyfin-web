@@ -1,8 +1,8 @@
 import { memo, useMemo } from 'react';
 import { episodeKey, WATCHED } from '../../../domain/stores';
 import { useWatchedVersion } from '../../../domain/bridge/useWatched';
-import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
-import { FavButton } from '../controls/FavButton';
+import { ShowNavWatchedButton } from '../controls/toggles/ShowNavWatchedButton';
+import { FavButton } from '../controls/buttons/FavButton';
 import { PROTO_DATA } from '../../../domain/models';
 import { useResponsive } from '../../theme/responsive';
 import { POSTER_W, PosterShell } from './PosterShell';

@@ -16,7 +16,7 @@ import { useState } from 'react';
 import globalize from 'lib/globalize';
 
 import type { RefreshMode, RefreshOptions } from '../../../domain/api';
-import { Dialog, DialogFooter, DialogHeader } from '../controls/Dialog';
+import { Dialog, DialogFooter, DialogHeader } from '../controls/dialogs/Dialog';
 import { PillButton } from '../controls/fields';
 import { T } from '../../theme/tokens';
 

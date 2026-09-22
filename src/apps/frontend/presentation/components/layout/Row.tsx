@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { T } from '../../theme/tokens';
 import { useResponsive } from '../../theme/responsive';
-import { TextButton } from '../controls/TextButton';
+import { TextButton } from '../controls/buttons/TextButton';
 
 type Props = {
     title: string;

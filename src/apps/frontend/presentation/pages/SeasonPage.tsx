@@ -14,15 +14,15 @@ import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
 import { formatEpisodeCode, formatHM, formatRuntime } from '../utils/format';
 import { ShowMetadataRows } from '../components/layout/ShowMetadataRows';
 import { ScrollHint } from '../components/layout/ScrollHint';
-import { PlayBtn } from '../components/controls/PlayBtn';
-import { MoreButton } from '../components/controls/MoreButton';
+import { PlayBtn } from '../components/controls/buttons/PlayBtn';
+import { MoreButton } from '../components/controls/buttons/MoreButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
 import { useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
-import { useLeaveWhen, useShowEntity } from './useDetailEntity';
+import { useLeaveWhen, useShowEntity } from '../hooks/useDetailEntity';
 
 type PageProps = { showId: string; seasonN: number; navigate: Navigate };
 

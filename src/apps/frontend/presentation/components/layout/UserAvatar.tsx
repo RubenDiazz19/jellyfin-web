@@ -9,7 +9,7 @@ import { useToast } from '../toast/ToastProvider';
 import { BottomSheet } from '../m3/BottomSheet';
 import { useResponsive } from '../../theme/responsive';
 import { PopupPanel } from '../controls/PopupPanel';
-import { MenuEntry } from '../controls/MenuEntry';
+import { MenuEntry } from '../controls/menus/MenuEntry';
 import type { Navigate } from '../../../app/router';
 
 // Avatar circular con menú desplegable (perfil, ajustes, logout).

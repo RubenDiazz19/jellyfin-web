@@ -7,7 +7,7 @@ import focusManager from '../focusManager';
 import layoutManager from '../layoutManager';
 import dom from 'utils/dom';
 import globalize from 'lib/globalize';
-import './style.scss';
+import './alphaPicker.scss';
 import '../../elements/emby-button/paper-icon-button-light';
 import 'material-design-icons-iconfont';
 

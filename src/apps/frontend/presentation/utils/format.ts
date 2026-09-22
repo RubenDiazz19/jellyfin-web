@@ -23,7 +23,7 @@ export function parseRuntimeMinutes(runtime: RuntimeValue): number | undefined {
         if (total > 0) return total;
     }
 
-// Número directo o con rango (ej. "47–51 min" → toma el primer valor)
+    // Número directo o con rango (ej. "47–51 min" → toma el primer valor)
     const direct = parseInt(str, 10);
     return (!isNaN(direct) && direct > 0) ? direct : undefined;
 }

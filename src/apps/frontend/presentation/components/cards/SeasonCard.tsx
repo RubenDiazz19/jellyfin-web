@@ -2,8 +2,8 @@ import globalize from 'lib/globalize';
 
 import { memo } from 'react';
 import { T } from '../../theme/tokens';
-import { SeasonWatchedButton } from '../controls/SeasonWatchedButton';
-import { FavButton } from '../controls/FavButton';
+import { SeasonWatchedButton } from '../controls/toggles/SeasonWatchedButton';
+import { FavButton } from '../controls/buttons/FavButton';
 import { CardProgress } from './CardProgress';
 import { CardOverlay } from './CardOverlay';
 import { PosterFrame } from './PosterFrame';

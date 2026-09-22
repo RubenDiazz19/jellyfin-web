@@ -19,7 +19,7 @@ import { JellyfinBrandHeader } from './auth/JellyfinBrandHeader';
 
 export function LoginPage() {
     useVmSignals(loginVM, (vm) => [
-        vm.step, vm.serverUrl, vm.serverName, vm.username, 
+        vm.step, vm.serverUrl, vm.serverName, vm.username,
         vm.password, vm.busy, vm.quickConnectCode, vm.publicUsers
     ]);
     const toast = useToast();

@@ -1,7 +1,7 @@
-import { FavButton } from '../controls/FavButton';
-import { WatchedButton } from '../controls/WatchedButton';
-import { MovieWatchedButton } from '../controls/MovieWatchedButton';
-import { ShowNavWatchedButton } from '../controls/ShowNavWatchedButton';
+import { FavButton } from '../controls/buttons/FavButton';
+import { WatchedButton } from '../controls/toggles/WatchedButton';
+import { MovieWatchedButton } from '../controls/toggles/MovieWatchedButton';
+import { ShowNavWatchedButton } from '../controls/toggles/ShowNavWatchedButton';
 import type { Movie } from '../../../domain/models';
 
 export type NavActionData =

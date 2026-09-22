@@ -140,10 +140,10 @@ export function MetadataEditor({
                         active={tab}
                         onChange={(id) => setTab(id as Tab)}
                         tabs={[
-                            { id: 'metadata', label: globalize.translate('HeaderMetadata') },
+                            { id: 'metadata', label: globalize.translate('LabelMetadata') },
                             ...(canIdentify ? [{ id: 'identify', label: globalize.translate('Identify') }] : []),
                             { id: 'images', label: globalize.translate('Images') },
-                            ...(canSubs ? [{ id: 'subtitles', label: globalize.translate('HeaderSubtitles') }] : []),
+                            ...(canSubs ? [{ id: 'subtitles', label: globalize.translate('Subtitles') }] : []),
                             ...(canTags ? [{ id: 'tags', label: globalize.translate('EditTags') }] : [])
                         ]}
                     />

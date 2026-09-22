@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { T } from '../../theme/tokens';
-import { WatchedButton } from '../controls/WatchedButton';
-import { FavButton } from '../controls/FavButton';
-import { PlayBtn } from '../controls/PlayBtn';
+import { WatchedButton } from '../controls/toggles/WatchedButton';
+import { FavButton } from '../controls/buttons/FavButton';
+import { PlayBtn } from '../controls/buttons/PlayBtn';
 import { SelectionMark } from './SelectionMark';
 import { useResponsive } from '../../theme/responsive';
 import type { Navigate } from '../../../app/router';

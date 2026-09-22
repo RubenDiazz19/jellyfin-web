@@ -10,9 +10,9 @@ import { FAVS } from '../../../domain/stores';
 import { selectionVM, watchedKey, type SelectableItem } from '../../../domain/viewModels/SelectionViewModel';
 
 import { aboveNav } from '../nav/navMetrics';
-import { BulkTagsDialog } from './BulkTagsDialog';
-import { AddToDialog } from './AddToDialog';
-import { ConfirmDialog } from './ConfirmDialog';
+import { BulkTagsDialog } from './dialogs/BulkTagsDialog';
+import { AddToDialog } from './dialogs/AddToDialog';
+import { ConfirmDialog } from './dialogs/ConfirmDialog';
 
 type Props = {
     /** Todo lo visible ahora mismo, para «seleccionar todo». Opcional si se resuelve desde SelectionViewModel. */

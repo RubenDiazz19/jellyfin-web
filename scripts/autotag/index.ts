@@ -170,7 +170,7 @@ function readExisting(): OutFile {
     if (!existsSync(OUT_PATH)) return { items: {}, promotedTags: [], pendingTags: {} };
     try {
         const parsed = JSON.parse(readFileSync(OUT_PATH, 'utf8')) as Partial<OutFile>;
-        return { 
+        return {
             items: parsed.items ?? {},
             promotedTags: parsed.promotedTags ?? [],
             pendingTags: parsed.pendingTags ?? {}
@@ -208,7 +208,7 @@ async function runBatch(
 ) {
     // Pasar las tags promocionadas al prompt
     const systemWithDynamic = system.replace('LISTA_DINAMICA_PLACEHOLDER', out.promotedTags.length > 0 ? `\nTambién puedes usar estas etiquetas añadidas dinámicamente:\n${out.promotedTags.map(t => `- ${t}`).join('\n')}\n` : '');
-    
+
     const raw = await llm.complete(systemWithDynamic, buildUserPrompt(batch));
     const result = parseTagResponse(raw, batch.map((b) => b.id));
 
@@ -216,15 +216,15 @@ async function runBatch(
 
     for (const item of batch) {
         const tags = result.tags.get(item.id) ?? [];
-        
+
         // Procesar las etiquetas nuevas propuestas
         const itemNewTags = result.newTags.get(item.id) ?? [];
         for (const newTag of itemNewTags) {
             if (out.promotedTags.includes(newTag)) continue;
-            
+
             const currentCount = out.pendingTags[newTag] ?? 0;
             const newCount = currentCount + 1;
-            
+
             if (newCount >= PROMOTION_THRESHOLD) {
                 out.promotedTags.push(newTag);
                 delete out.pendingTags[newTag];
@@ -341,7 +341,7 @@ async function main() {
     if (out.promotedTags.length > 0) {
         addDynamicTags(out.promotedTags);
     }
-    
+
     const known = Object.keys(out.items).length;
     if (known > 0) console.log(`Ya etiquetados: ${known}`);
 

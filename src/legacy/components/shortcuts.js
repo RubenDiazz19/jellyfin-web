@@ -330,7 +330,7 @@ function executeAction(card, target, action) {
 }
 
 function addToPlaylist(item) {
-    import('./playlisteditor/playlisteditor').then(({ default: PlaylistEditor }) => {
+    import('./playlisteditor').then(({ default: PlaylistEditor }) => {
         const playlistEditor = new PlaylistEditor();
         playlistEditor.show({
             items: [item.Id],

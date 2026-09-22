@@ -4,7 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
-import { MenuEntry } from '../MenuEntry';
+import { MenuEntry } from '../menus/MenuEntry';
 import { PopupPanel } from '../PopupPanel';
 import { LoadState } from '../LoadState';
 

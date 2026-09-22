@@ -9,7 +9,7 @@ import ItemsContainer, {
 } from 'elements/emby-itemscontainer/ItemsContainer';
 import Scroller, { type ScrollerProps } from 'elements/emby-scroller/Scroller';
 import Cards from 'components/cardbuilder/Card/Cards';
-import Lists from 'components/listview/List/Lists';
+import Lists from 'components/listView/List/Lists';
 import type { CardOptions } from 'types/cardOptions';
 import type { ListOptions } from 'types/listOptions';
 import type { ItemDto } from 'types/base/models/item-dto';

@@ -12,7 +12,7 @@ import {
 } from '../../../domain/viewModels/AvatarPickerViewModel';
 import {
     Dialog, DialogFooter, DialogHeader
-} from '../../components/controls/Dialog';
+} from '../../components/controls/dialogs/Dialog';
 import { Muted, PillButton, TextField } from '../../components/controls/fields';
 import { useToast } from '../../components/toast/ToastProvider';
 import { T } from '../../theme/tokens';

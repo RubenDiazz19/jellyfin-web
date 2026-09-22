@@ -16,7 +16,7 @@ export default [
 
     // Legacy JS (less strict)
     {
-        files: [ 'src/**/*.{js,jsx}' ],
+        files: [ 'src/**/*.{js,jsx}', 'src/legacy/**/*.{ts,tsx}' ],
         rules: {
             '@typescript-eslint/no-floating-promises': 'off',
             '@typescript-eslint/no-this-alias': 'off',

@@ -27,6 +27,7 @@ let cached: LegacyUserSettings | null = null;
 
 async function legacySettings(): Promise<LegacyUserSettings> {
     if (!cached) {
+        // eslint-disable-next-line import/no-restricted-paths
         const mod = await import('scripts/settings/userSettings');
         cached = mod.currentSettings as unknown as LegacyUserSettings;
     }

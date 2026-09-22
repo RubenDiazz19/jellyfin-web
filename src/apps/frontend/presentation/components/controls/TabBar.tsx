@@ -1,10 +1,7 @@
 import { type ReactNode } from 'react';
 import { T } from '../../theme/tokens';
 
-type Tab = {
-    id: string;
-    label: string | ReactNode;
-};
+// Removed Tab
 
 type Props<T extends string> = {
     tabs: { id: T; label: string | ReactNode }[];
@@ -38,7 +35,7 @@ function TabButton({ label, active, onClick }: {
     return (
         <button
             onClick={onClick}
-            type="button"
+            type='button'
             style={{
                 padding: '10px 14px', background: 'none', border: 'none',
                 color: active ? '#fff' : T.dim, cursor: 'pointer',

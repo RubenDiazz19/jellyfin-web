@@ -91,7 +91,7 @@ function canPlayNativeHlsInFmp4() {
 
 function canPlayHlsWithMSE() {
     // text tracks don’t work with this in firefox
-    return window.MediaSource != null; /* eslint-disable-line compat/compat */
+    return window.MediaSource != null;
 }
 
 function supportsAc3(videoTestElement) {
@@ -435,7 +435,7 @@ function getSpeakerCount() {
 
     maxChannelCount = -1;
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext || false; /* eslint-disable-line compat/compat */
+    const AudioContext = window.AudioContext || window.webkitAudioContext || false;
 
     if (AudioContext) {
         const audioCtx = new AudioContext();

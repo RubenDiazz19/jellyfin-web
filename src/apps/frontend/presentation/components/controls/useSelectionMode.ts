@@ -14,7 +14,7 @@ export function useSelectionMode(item: SelectableItem, navigate: () => void) {
     // marcado, y suscribirse a ella repintaba TODAS las tarjetas de la rejilla
     // por cada click. Aquí solo repinta la tarjeta cuyo booleano cambió.
     const selected = useSignalSelector(selectionVM.selectedIds, (ids) => ids.has(item.id));
-    
+
     const onClick = useCallback(() => {
         if (selecting) selectionVM.toggle(item);
         else navigate();

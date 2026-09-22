@@ -10,13 +10,13 @@ import { ScrollHint } from '../components/layout/ScrollHint';
 
 import { ListBackLink } from './ListsPage';
 import { EditableTitle } from '../components/controls/EditableTitle';
-import { ListCardMenu, type ListMenuHandle } from '../components/controls/ListCardMenu';
+import { ListCardMenu, type ListMenuHandle } from '../components/controls/menus/ListCardMenu';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { PosterTile } from '../components/cards/PosterTile';
 import { CollectionCard } from '../components/collection/CollectionCard';
 import { CollectionHero } from '../components/collection/CollectionHero';
 import { PillButton } from '../components/controls/fields';
-import { CreateCollectionDialog } from '../components/controls/CreateCollectionDialog';
+import { CreateCollectionDialog } from '../components/controls/dialogs/CreateCollectionDialog';
 import { CardGrid } from '../components/layout/CardGrid';
 import { LoadState } from '../components/controls/LoadState';
 import { getCollectionAncestors, getCollectionItems, getPlaylistItems, type PlaylistItem } from '../../domain/api';

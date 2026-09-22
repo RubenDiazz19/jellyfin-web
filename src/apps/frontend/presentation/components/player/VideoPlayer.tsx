@@ -6,13 +6,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { queueVM, type QueueEntry } from '../../../domain/viewModels/QueueViewModel';
 import { QueuePanel } from '../queue/QueuePanel';
 import {
-    segmentSkipLabelKey, subtitleTrackMode, type AspectRatio
+    segmentSkipLabelKey, type AspectRatio
 } from '../../../domain/player/format';
-import { formatTime, TICKS_PER_SECOND } from '../../../domain/player/format';
-import { pointInRect } from '../../../shared/math';
 import { videoPlayerVM } from '../../../domain/viewModels/VideoPlayerViewModel';
 import { useSignalValue, useVmSignals } from '../../../domain/bridge/useViewModel';
-import { currentMobileLayout, observeLayoutMode } from '../../../shared/layoutMode';
+// removed layout mode
 import { haptic } from '../../../shared/haptics';
 import { PlayerIc } from './playerIcons';
 import { CastButton } from './CastButton';
@@ -28,8 +26,6 @@ import { usePlayerSettings } from './usePlayerSettings';
 // El OSD entero se pinta desde aquí, así que sus estilos entran con él: solo
 // se descargan al abrir el reproductor, que es una ruta cargada bajo demanda.
 import '../../styles/player.css';
-
-
 
 type Props = {
     itemId: string;

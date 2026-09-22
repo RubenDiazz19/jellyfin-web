@@ -3,9 +3,9 @@
 // Regla MVVM: esta clase no importa React ni nada de presentation/.
 
 import { type Signal } from '@preact/signals-core';
-import { guardedLoad, type GuardedBody, type GuardedOnError } from './guardedLoad';
-import { loadingError } from './loadingState';
-import { LoadGuard } from './loadGuard';
+import { guardedLoad, type GuardedBody, type GuardedOnError } from './utils/guardedLoad';
+import { loadingError } from './utils/loadingState';
+import { LoadGuard } from './utils/loadGuard';
 
 export abstract class LoadableViewModel {
     loading: Signal<boolean>;

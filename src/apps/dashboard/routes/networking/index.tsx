@@ -24,7 +24,7 @@ import { ServerConnections } from 'lib/jellyfin-apiclient';
 import { getSystemApi } from '@jellyfin/sdk/lib/utils/api/system-api';
 import { QUERY_KEY as CONFIG_QUERY_KEY } from 'hooks/useConfiguration';
 import { queryClient } from 'utils/query/queryClient';
-import { encodePublishedServerUris, getPublishedServerUris, PublishedServerUris, splitString } from 'apps/dashboard/features/networking/utils';
+import { encodePublishedServerUris, getPublishedServerUris, PublishedServerUris, splitString } from 'apps/dashboard/features/networking/utils/uriUtils';
 import { ActionData } from 'types/actionData';
 import Switch from '@mui/material/Switch';
 

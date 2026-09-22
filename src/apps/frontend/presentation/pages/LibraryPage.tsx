@@ -18,7 +18,7 @@ import { PageSection } from '../components/layout/PageSection';
 import { CardGrid } from '../components/layout/CardGrid';
 import { LoadState } from '../components/controls/LoadState';
 import { PopupPanel } from '../components/controls/PopupPanel';
-import { MenuEntry } from '../components/controls/MenuEntry';
+import { MenuEntry } from '../components/controls/menus/MenuEntry';
 import { BottomSheet } from '../components/m3/BottomSheet';
 import { SortControl } from '../components/controls/SortControl';
 import { useViewModelLoad } from '../../domain/bridge/useViewModel';

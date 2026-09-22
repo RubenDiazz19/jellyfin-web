@@ -1,14 +1,13 @@
 import { useRef, useState } from 'react';
 import globalize from 'lib/globalize';
 
-import { T } from '../../theme/tokens';
+// Removed T
 import { useResponsive } from '../../theme/responsive';
 import { PopupPanel } from './PopupPanel';
-import { MenuEntry } from './MenuEntry';
+import { MenuEntry } from './menus/MenuEntry';
 
 import { BottomSheet } from '../m3/BottomSheet';
-import type { SortKey } from '../../../data/stores/librarySortStore';
-import { PillToggle } from './PillToggle';
+import { PillToggle } from './toggles/PillToggle';
 
 function CheckIcon({ size }: { size: number }) {
     return (
@@ -58,11 +57,11 @@ export function SortControl<T extends string>({ value, onChange, options }: { va
         }}>
             <PillToggle
                 active={open}
-                variant="ghost"
+                variant='ghost'
                 btnRef={btnRef}
                 onClick={toggle}
                 onMouseDown={(e: React.MouseEvent) => e.preventDefault()}
-                ariaHasPopup="menu"
+                ariaHasPopup='menu'
                 ariaExpanded={open}
                 style={{
                     boxShadow: open ? '0 2px 12px rgba(0,0,0,0.3)' : 'none'

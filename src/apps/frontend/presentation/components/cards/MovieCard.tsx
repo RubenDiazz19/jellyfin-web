@@ -2,8 +2,8 @@ import globalize from 'lib/globalize';
 
 import { memo } from 'react';
 import { formatRuntime } from '../../utils/format';
-import { MovieWatchedButton } from '../controls/MovieWatchedButton';
-import { FavButton } from '../controls/FavButton';
+import { MovieWatchedButton } from '../controls/toggles/MovieWatchedButton';
+import { FavButton } from '../controls/buttons/FavButton';
 import { useResponsive } from '../../theme/responsive';
 import { POSTER_W, PosterShell } from './PosterShell';
 import { useCardInteractions } from './useCardInteractions';

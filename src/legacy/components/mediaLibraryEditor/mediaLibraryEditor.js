@@ -10,18 +10,18 @@ import { ServerConnections } from 'lib/jellyfin-apiclient';
 import loading from '../loading/loading';
 import dialogHelper from '../dialogHelper/dialogHelper';
 import dom from 'utils/dom';
-import libraryoptionseditor from '../libraryoptionseditor/libraryoptionseditor';
+import libraryoptionseditor from '../libraryOptionsEditor/libraryoptionseditor';
 import globalize from 'lib/globalize';
 import '../../elements/emby-button/emby-button';
-import '../listview/listview.scss';
+import '../listView/listview.scss';
 import '../../elements/emby-button/paper-icon-button-light';
 import '../formdialog.scss';
 import '../../elements/emby-toggle/emby-toggle';
 import 'styles/flexstyles.scss';
-import './style.scss';
+import './mediaLibraryEditor.scss';
 import alert from '../alert';
 import toast from '../toast/toast';
-import confirm from '../confirm/confirm';
+import confirm from '../confirm';
 import template from './mediaLibraryEditor.template.html';
 
 // eslint-disable-next-line sonarjs/no-invariant-returns

@@ -11,12 +11,12 @@ import {
 import { Nav } from '../components/layout/Nav';
 import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
 import { ScrollHint } from '../components/layout/ScrollHint';
-import { PlayBtn } from '../components/controls/PlayBtn';
+import { PlayBtn } from '../components/controls/buttons/PlayBtn';
 import { usePlayer } from '../components/player/PlayerProvider';
-import { MoreButton } from '../components/controls/MoreButton';
+import { MoreButton } from '../components/controls/buttons/MoreButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
-import { FavButton } from '../components/controls/FavButton';
-import { WatchedButton } from '../components/controls/WatchedButton';
+import { FavButton } from '../components/controls/buttons/FavButton';
+import { WatchedButton } from '../components/controls/toggles/WatchedButton';
 import { DetailPageShell } from '../components/layout/DetailPageShell';
 import { DetailOverviewSection } from '../components/layout/DetailOverviewSection';
 import { RuntimeDisplay } from '../components/media/RuntimeDisplay';
@@ -24,7 +24,7 @@ import { useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { episodeKey } from '../../domain/stores';
 import { ticksFromProgress } from '../../domain/player/format';
-import { useLeaveWhen, useShowEntity } from './useDetailEntity';
+import { useLeaveWhen, useShowEntity } from '../hooks/useDetailEntity';
 
 type PageProps = { showId: string; seasonN: number; epN: number; navigate: Navigate };
 

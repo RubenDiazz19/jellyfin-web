@@ -13,7 +13,7 @@ import SearchInput from 'apps/dashboard/components/SearchInput';
 import { usePluginDetails } from 'apps/dashboard/features/plugins/api/usePluginDetails';
 import NoPluginResults from 'apps/dashboard/features/plugins/components/NoPluginResults';
 import PluginCard from 'apps/dashboard/features/plugins/components/PluginCard';
-import { CATEGORY_LABELS } from 'apps/dashboard/features/plugins/constants/categoryLabels';
+import { CATEGORY_LABELS } from 'apps/dashboard/features/plugins/constants/pluginCategoryLabels';
 import { PluginCategory } from 'apps/dashboard/features/plugins/constants/pluginCategory';
 import { PluginStatusOption } from 'apps/dashboard/features/plugins/constants/pluginStatusOption';
 import Loading from 'components/loading/LoadingComponent';

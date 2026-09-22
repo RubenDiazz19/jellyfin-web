@@ -15,7 +15,7 @@ import { ServerConnections } from 'lib/jellyfin-apiclient';
 import '../../elements/emby-button/emby-button';
 import '../../elements/emby-select/emby-select';
 import '../formdialog.scss';
-import './style.scss';
+import './imageUploader.scss';
 import toast from '../toast/toast';
 import template from './imageUploader.template.html';
 

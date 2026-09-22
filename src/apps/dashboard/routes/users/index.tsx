@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import globalize from 'lib/globalize';
-import confirm from 'components/confirm/confirm';
+import confirm from 'components/confirm';
 import UserCardBox from 'components/dashboard/users/UserCardBox';
 import SectionTitleContainer from 'elements/SectionTitleContainer';
 import 'elements/emby-button/emby-button';

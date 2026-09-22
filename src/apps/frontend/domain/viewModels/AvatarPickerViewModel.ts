@@ -12,8 +12,8 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import { normalizeName } from '../../data/api/characterArt';
 import { logger } from '../../shared/logger';
 import type { AvatarCandidate } from '../../data/api/avatars';
-import { guardedLoad } from './guardedLoad';
-import { LoadGuard } from './loadGuard';
+import { guardedLoad } from './utils/guardedLoad';
+import { LoadGuard } from './utils/loadGuard';
 
 // El tipo de los candidatos también lo pinta la vista; se reexporta aquí
 // porque presentation no puede importar de data/ ni aunque sea un tipo.

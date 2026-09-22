@@ -9,7 +9,7 @@ import {
     type RemoteSearchResult
 } from '../../../../domain/api';
 import { T } from '../../../theme/tokens';
-import { useToast } from '../../toast/ToastProvider';
+// Removed useToast
 import type { IdentifiableKind } from './MetadataEditor';
 import { Muted, PillButton, TextField } from '../../controls/fields';
 import { Field } from './primitives';

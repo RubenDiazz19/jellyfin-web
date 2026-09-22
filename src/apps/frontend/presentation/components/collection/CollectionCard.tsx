@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { COLLECTION_STYLES } from '../../../domain/stores';
 import { imageUrl } from '../../../domain/api';
-import { ListCardMenu, type ListMenuHandle } from '../controls/ListCardMenu';
+import { ListCardMenu, type ListMenuHandle } from '../controls/menus/ListCardMenu';
 import { useSelectionMode } from '../controls/useSelectionMode';
 import { SelectionMark } from '../cards/SelectionMark';
 import type { SelectableItem } from '../../../domain/viewModels/SelectionViewModel';

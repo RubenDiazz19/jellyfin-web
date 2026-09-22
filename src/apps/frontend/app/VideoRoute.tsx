@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
+// eslint-disable-next-line import/no-restricted-paths
 import loading from 'components/loading/loading';
 
 import { queueVM, type QueueEntry } from '../domain/viewModels/QueueViewModel';

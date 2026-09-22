@@ -169,163 +169,165 @@ export function SearchFilters() {
                                 flexShrink: 0
                             }}
                         >
-                            {(() => {
-                                if (categoryMode === 'valoracion') return <RatingFilterBar />;
+                            {
+                                // eslint-disable-next-line sonarjs/function-return-type
+                                (() => {
+                                    if (categoryMode === 'valoracion') return <RatingFilterBar />;
 
-                                let activeOptions: { id: string; label: string; selected: boolean; toggle: () => void }[] | null = null;
-                                if (categoryMode === 'tipo') {
-                                    activeOptions = filteredTypeOptions.map(opt => ({
-                                        id: opt.id,
-                                        label: globalize.translate(opt.key),
-                                        selected: searchVM.hasTypeFilter(opt.id),
-                                        toggle: () => searchVM.toggleTypeFilter(opt.id)
-                                    }));
-                                } else if (categoryMode === 'estado') {
-                                    activeOptions = filteredStateOptions.map(opt => ({
-                                        id: opt.id,
-                                        label: globalize.translate(opt.key),
-                                        selected: searchVM.hasStateFilter(opt.id),
-                                        toggle: () => searchVM.toggleStateFilter(opt.id)
-                                    }));
-                                } else if (categoryMode === 'generos') {
-                                    const results = searchVM.results.value;
-                                    const activeGenresSet = new Set(
-                                        results.flatMap((item: SearchResult) => getItemGenres(item as GenresItem))
-                                               .map(g => g.toLowerCase())
-                                    );
+                                    let activeOptions: { id: string; label: string; selected: boolean; toggle: () => void }[] | null = null;
+                                    if (categoryMode === 'tipo') {
+                                        activeOptions = filteredTypeOptions.map(opt => ({
+                                            id: opt.id,
+                                            label: globalize.translate(opt.key),
+                                            selected: searchVM.hasTypeFilter(opt.id),
+                                            toggle: () => searchVM.toggleTypeFilter(opt.id)
+                                        }));
+                                    } else if (categoryMode === 'estado') {
+                                        activeOptions = filteredStateOptions.map(opt => ({
+                                            id: opt.id,
+                                            label: globalize.translate(opt.key),
+                                            selected: searchVM.hasStateFilter(opt.id),
+                                            toggle: () => searchVM.toggleStateFilter(opt.id)
+                                        }));
+                                    } else if (categoryMode === 'generos') {
+                                        const results = searchVM.results.value;
+                                        const activeGenresSet = new Set(
+                                            results.flatMap((item: SearchResult) => getItemGenres(item as GenresItem))
+                                                .map(g => g.toLowerCase())
+                                        );
 
-                                    const availableGenres = PRIMARY_GENRES.filter(g => {
-                                        if (categoryQuery && !g.toLowerCase().includes(categoryQuery)) return false;
-                                        // Con 1 resultado o menos, las opciones no seleccionadas no acotan nada
-                                        if (results.length <= 1 && !searchVM.hasTagFilter(g)) return false;
-                                        return searchVM.hasTagFilter(g) || activeGenresSet.has(g.toLowerCase());
-                                    });
+                                        const availableGenres = PRIMARY_GENRES.filter(g => {
+                                            if (categoryQuery && !g.toLowerCase().includes(categoryQuery)) return false;
+                                            // Con 1 resultado o menos, las opciones no seleccionadas no acotan nada
+                                            if (results.length <= 1 && !searchVM.hasTagFilter(g)) return false;
+                                            return searchVM.hasTagFilter(g) || activeGenresSet.has(g.toLowerCase());
+                                        });
 
-                                    const genreOptions = availableGenres.map(g => ({
-                                        id: g,
-                                        label: g,
-                                        selected: searchVM.hasTagFilter(g),
-                                        toggle: () => {
-                                            const isSelecting = !searchVM.hasTagFilter(g);
-                                            searchVM.toggleTagFilter(g);
-                                            if (isSelecting) scrollRowRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
-                                        }
-                                    })).sort((a, b) => {
-                                        // Seleccionados primero; al desmarcar vuelven a su orden original
-                                        if (a.selected && !b.selected) return -1;
-                                        if (!a.selected && b.selected) return 1;
-                                        return 0;
-                                    });
-
-                                    const tagOptions = filteredTags
-                                        .filter(tag => !PRIMARY_GENRES.includes(tag))
-                                        .map(tag => ({
-                                            id: tag,
-                                            label: tag,
-                                            selected: searchVM.hasTagFilter(tag),
+                                        const genreOptions = availableGenres.map(g => ({
+                                            id: g,
+                                            label: g,
+                                            selected: searchVM.hasTagFilter(g),
                                             toggle: () => {
-                                                const isSelecting = !searchVM.hasTagFilter(tag);
-                                                searchVM.toggleTagFilter(tag);
+                                                const isSelecting = !searchVM.hasTagFilter(g);
+                                                searchVM.toggleTagFilter(g);
                                                 if (isSelecting) scrollRowRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
                                             }
-                                        }));
+                                        })).sort((a, b) => {
+                                        // Seleccionados primero; al desmarcar vuelven a su orden original
+                                            if (a.selected && !b.selected) return -1;
+                                            if (!a.selected && b.selected) return 1;
+                                            return 0;
+                                        });
 
-                                    activeOptions = [...genreOptions, ...tagOptions];
-                                }
+                                        const tagOptions = filteredTags
+                                            .filter(tag => !PRIMARY_GENRES.includes(tag))
+                                            .map(tag => ({
+                                                id: tag,
+                                                label: tag,
+                                                selected: searchVM.hasTagFilter(tag),
+                                                toggle: () => {
+                                                    const isSelecting = !searchVM.hasTagFilter(tag);
+                                                    searchVM.toggleTagFilter(tag);
+                                                    if (isSelecting) scrollRowRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+                                                }
+                                            }));
 
-                                if (!activeOptions) return null;
+                                        activeOptions = [...genreOptions, ...tagOptions];
+                                    }
 
-                                if (activeOptions.length === 0) {
-                                    return (
-                                        <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
-                                            {globalize.translate('MessageNoResults')}
-                                        </span>
-                                    );
-                                }
+                                    if (!activeOptions) return null;
 
-                                if (categoryMode === 'generos') {
-                                    const genresList = activeOptions.filter(opt => PRIMARY_GENRES.includes(opt.id));
-                                    const tagsList = activeOptions.filter(opt => !PRIMARY_GENRES.includes(opt.id));
+                                    if (activeOptions.length === 0) {
+                                        return (
+                                            <span style={{ fontSize: 12, color: T.dim, whiteSpace: 'nowrap', padding: '6px 12px' }}>
+                                                {globalize.translate('MessageNoResults')}
+                                            </span>
+                                        );
+                                    }
 
-                                    // Separar seleccionadas (fijas) de no seleccionadas (en scroll)
-                                    const selectedGenres = genresList.filter(opt => opt.selected);
-                                    const unselectedGenres = genresList.filter(opt => !opt.selected);
-                                    const selectedTags = tagsList.filter(opt => opt.selected);
-                                    const unselectedTags = tagsList.filter(opt => !opt.selected);
+                                    if (categoryMode === 'generos') {
+                                        const genresList = activeOptions.filter(opt => PRIMARY_GENRES.includes(opt.id));
+                                        const tagsList = activeOptions.filter(opt => !PRIMARY_GENRES.includes(opt.id));
 
-                                    return (
-                                        <>
-                                            {/* Géneros seleccionados: siempre visibles fuera del scroll */}
-                                            {selectedGenres.map((opt) => (
-                                                <OptionPill
-                                                    key={opt.id}
-                                                    index={0}
-                                                    label={opt.label}
-                                                    selected
-                                                    onClick={opt.toggle}
-                                                    animateIn={false}
-                                                />
-                                            ))}
-                                            {unselectedGenres.length > 0 && (
-                                                <ScrollableFilterGroup>
-                                                    {unselectedGenres.map((opt, index) => (
-                                                        <OptionPill
-                                                            key={opt.id}
-                                                            index={index}
-                                                            label={opt.label}
-                                                            selected={false}
-                                                            onClick={opt.toggle}
-                                                        />
-                                                    ))}
-                                                </ScrollableFilterGroup>
-                                            )}
-                                            {(genresList.length > 0 || selectedTags.length > 0) && (unselectedTags.length > 0 || selectedTags.length > 0) && tagsList.length > 0 && (
-                                                <div style={{
-                                                    width: 1,
-                                                    height: 16,
-                                                    background: 'rgba(255,255,255,0.18)',
-                                                    flexShrink: 0,
-                                                    margin: '0 4px'
-                                                }} />
-                                            )}
-                                            {/* Etiquetas seleccionadas: siempre visibles fuera del scroll */}
-                                            {selectedTags.map((opt) => (
-                                                <OptionPill
-                                                    key={opt.id}
-                                                    index={0}
-                                                    label={opt.label}
-                                                    selected
-                                                    onClick={opt.toggle}
-                                                    animateIn={false}
-                                                />
-                                            ))}
-                                            {unselectedTags.length > 0 && (
-                                                <ScrollableFilterGroup>
-                                                    {unselectedTags.map((opt, index) => (
-                                                        <OptionPill
-                                                            key={opt.id}
-                                                            index={index}
-                                                            label={opt.label}
-                                                            selected={false}
-                                                            onClick={opt.toggle}
-                                                        />
-                                                    ))}
-                                                </ScrollableFilterGroup>
-                                            )}
-                                        </>
-                                    );
-                                }
+                                        // Separar seleccionadas (fijas) de no seleccionadas (en scroll)
+                                        const selectedGenres = genresList.filter(opt => opt.selected);
+                                        const unselectedGenres = genresList.filter(opt => !opt.selected);
+                                        const selectedTags = tagsList.filter(opt => opt.selected);
+                                        const unselectedTags = tagsList.filter(opt => !opt.selected);
 
-                                return activeOptions.map((opt, index) => (
-                                    <OptionPill
-                                        key={opt.id}
-                                        index={index}
-                                        label={opt.label}
-                                        selected={opt.selected}
-                                        onClick={opt.toggle}
-                                    />
-                                ));
-                            })()}
+                                        return (
+                                            <>
+                                                {/* Géneros seleccionados: siempre visibles fuera del scroll */}
+                                                {selectedGenres.map((opt) => (
+                                                    <OptionPill
+                                                        key={opt.id}
+                                                        index={0}
+                                                        label={opt.label}
+                                                        selected
+                                                        onClick={opt.toggle}
+                                                        animateIn={false}
+                                                    />
+                                                ))}
+                                                {unselectedGenres.length > 0 && (
+                                                    <ScrollableFilterGroup>
+                                                        {unselectedGenres.map((opt, index) => (
+                                                            <OptionPill
+                                                                key={opt.id}
+                                                                index={index}
+                                                                label={opt.label}
+                                                                selected={false}
+                                                                onClick={opt.toggle}
+                                                            />
+                                                        ))}
+                                                    </ScrollableFilterGroup>
+                                                )}
+                                                {(genresList.length > 0 || selectedTags.length > 0) && (unselectedTags.length > 0 || selectedTags.length > 0) && tagsList.length > 0 && (
+                                                    <div style={{
+                                                        width: 1,
+                                                        height: 16,
+                                                        background: 'rgba(255,255,255,0.18)',
+                                                        flexShrink: 0,
+                                                        margin: '0 4px'
+                                                    }} />
+                                                )}
+                                                {/* Etiquetas seleccionadas: siempre visibles fuera del scroll */}
+                                                {selectedTags.map((opt) => (
+                                                    <OptionPill
+                                                        key={opt.id}
+                                                        index={0}
+                                                        label={opt.label}
+                                                        selected
+                                                        onClick={opt.toggle}
+                                                        animateIn={false}
+                                                    />
+                                                ))}
+                                                {unselectedTags.length > 0 && (
+                                                    <ScrollableFilterGroup>
+                                                        {unselectedTags.map((opt, index) => (
+                                                            <OptionPill
+                                                                key={opt.id}
+                                                                index={index}
+                                                                label={opt.label}
+                                                                selected={false}
+                                                                onClick={opt.toggle}
+                                                            />
+                                                        ))}
+                                                    </ScrollableFilterGroup>
+                                                )}
+                                            </>
+                                        );
+                                    }
+
+                                    return activeOptions.map((opt, index) => (
+                                        <OptionPill
+                                            key={opt.id}
+                                            index={index}
+                                            label={opt.label}
+                                            selected={opt.selected}
+                                            onClick={opt.toggle}
+                                        />
+                                    ));
+                                })()}
                         </div>
 
                         {/* Divisor hacia el botón de añadir/mezclar otras categorías */}
@@ -432,8 +434,8 @@ function ScrollableFilterGroup({ children }: { children: React.ReactNode }) {
                     opacity: canScrollLeft ? 1 : 0,
                     pointerEvents: canScrollLeft ? 'auto' : 'none'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
             >
                 ‹
             </button>
@@ -447,7 +449,7 @@ function ScrollableFilterGroup({ children }: { children: React.ReactNode }) {
                     scrollbarWidth: 'none',
                     WebkitOverflowScrolling: 'touch',
                     maxWidth: 'min(480px, 50vw)',
-                    scrollSnapType: 'x mandatory',
+                    scrollSnapType: 'x mandatory'
                 }}
             >
                 {Children.map(children, (child) => (
@@ -464,8 +466,8 @@ function ScrollableFilterGroup({ children }: { children: React.ReactNode }) {
                     opacity: canScrollRight ? 1 : 0,
                     pointerEvents: canScrollRight ? 'auto' : 'none'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; }}
             >
                 ›
             </button>
