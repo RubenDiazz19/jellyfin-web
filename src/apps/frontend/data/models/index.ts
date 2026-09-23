@@ -140,6 +140,7 @@ export type CatalogItem = {
     genres?: string[];
     communityRating?: number;
     officialRating?: string;
+    localTrailerCount?: number;
 };
 
 export type ListEntry = {
@@ -177,6 +178,8 @@ export type CarouselSlide = {
     genres?: string[];
     communityRating?: number;
     officialRating?: string;
+    hasTrailer?: boolean;
+    localTrailerCount?: number;
 };
 
 export type ProtoData = {

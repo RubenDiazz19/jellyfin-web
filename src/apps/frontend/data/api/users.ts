@@ -13,6 +13,7 @@ export type UserConfig = {
     PlayDefaultAudioTrack: boolean;
     SubtitleLanguagePreference: string;
     SubtitleMode: SubtitleMode;
+    PlayTrailerAudio: boolean;
     DisplayMissingEpisodes: boolean;
     HidePlayedInLatest: boolean;
     RememberAudioSelections: boolean;
@@ -51,6 +52,7 @@ const DEFAULT_USER_CONFIG: UserConfig = {
     PlayDefaultAudioTrack: true,
     SubtitleLanguagePreference: '',
     SubtitleMode: 'Default',
+    PlayTrailerAudio: true,
     DisplayMissingEpisodes: false,
     HidePlayedInLatest: true,
     RememberAudioSelections: true,

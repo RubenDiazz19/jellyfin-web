@@ -79,6 +79,7 @@ export type JFItem = {
     ProductionLocations?: string[];
     Container?: string;
     MediaSources?: JFMediaSource[];
+    LocalTrailerCount?: number;
     UserData?: {
         Played?: boolean;
         PlayedPercentage?: number;
@@ -88,8 +89,9 @@ export type JFItem = {
 
 // `Tags` y `OriginalTitle` hay que pedirlos explícitamente: no vienen en la respuesta por
 // defecto, y sin ellos se omitirían en el buscador local y remoto.
+// `LocalTrailerCount` permite verificar si hay trailer local para el hero sin peticiones extra.
 export const FIELDS_LIST =
-    'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate,Tags,OriginalTitle';
+    'Overview,Genres,ProductionYear,Studios,CommunityRating,OfficialRating,ImageTags,BackdropImageTags,RunTimeTicks,PremiereDate,Tags,OriginalTitle,LocalTrailerCount';
 export const FIELDS_DETAIL = `${FIELDS_LIST},People,Taglines,EndDate,Status,ProductionLocations,MediaSources,MediaStreams`;
 
 /**

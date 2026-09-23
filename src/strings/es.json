@@ -470,6 +470,8 @@
   "LabelDay": "Día de la semana",
   "LabelDeathDate": "Fecha de muerte",
   "LabelDiscNumber": "Número de disco",
+  "PlayTrailerAudio": "Reproducir audio de los trailers",
+  "PlayTrailerAudioHelp": "Reproduce los trailers de fondo con el sonido activado por defecto.",
   "LabelDisplayMode": "Modo de visualización",
   "LabelDisplayName": "Nombre para mostrar",
   "LabelDisplayOrder": "Orden para mostrar",

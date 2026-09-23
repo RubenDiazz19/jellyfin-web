@@ -3,10 +3,10 @@ import globalize from 'lib/globalize';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { C, T } from '../theme/tokens';
 import { Ic } from '../theme/icons';
-import { JellyfinBrandHeader } from './auth/JellyfinBrandHeader';
-import { formatEpisodeCode, formatRuntime, formatRemainingCompact } from '../utils/format';
+import { formatEpisodeCode, formatRemainingCompact } from '../utils/format';
 import { PROTO_DATA, type CarouselSlide } from '../../domain/models';
 import { homeVM } from '../../domain/viewModels/HomeViewModel';
+import { heroTrailerVM, type HeroTrailerState, type TrailerSource } from '../../domain/viewModels/HeroTrailerViewModel';
 import { COLLECTION_STYLES } from '../../domain/stores';
 import { useVmSignals } from '../../domain/bridge/useViewModel';
 import { useSession } from '../../domain/bridge/useSession';
@@ -23,6 +23,7 @@ import { TextButton } from '../components/controls/buttons/TextButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { SkeletonRow } from '../components/skeleton/Skeleton';
 import { MobileHero } from '../components/home/MobileHero';
+import { HeroTrailerVideo } from '../components/home/HeroTrailerVideo';
 import { useResponsive } from '../theme/responsive';
 import { useHomeScrollTransition } from '../hooks/useHomeScrollTransition';
 import { HeroGenres } from '../components/layout/DetailHero';
@@ -53,6 +54,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     // viendo + últimas series); en modo prototipo, con PROTO_DATA.
     // Solo los signals del hero: cargar la biblioteca no re-pinta el carrusel.
     useVmSignals(homeVM, (vm) => [vm.slides, vm.heroLoading, vm.heroReady]);
+    useVmSignals(heroTrailerVM, (vm) => [vm.state, vm.trailerSource, vm.isMuted, vm.isPaused]);
     useEffect(() => {
         if (jellyfinMode) void homeVM.load();
     }, [jellyfinMode]);
@@ -73,16 +75,27 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     const slideCount = slides.length;
     const trans = useHomeScrollTransition();
 
-    // Pausa el carrusel durante arrastre, pausa manual o cuando el hero queda
-    // fuera de pantalla al hacer scroll, ahorrando ciclos de CPU/batería.
+    // Notifica el slide activo actual al ViewModel del trailer
     useEffect(() => {
-        if (paused || dragging || slideCount <= 1 || trans.isHeroOffscreen) return;
+        const curSlide = slides[idx];
+        heroTrailerVM.onSlideChanged(curSlide);
+        return () => {
+            heroTrailerVM.reset();
+        };
+    }, [idx, slides]);
+
+    // Pausa el carrusel durante arrastre, pausa manual, reproducción de trailer
+    // o cuando el hero queda fuera de pantalla al hacer scroll, ahorrando ciclos de CPU/batería.
+    const isTrailerPlaying = heroTrailerVM.state.value !== 'idle';
+    useEffect(() => {
+        if (paused || dragging || slideCount <= 1 || trans.isHeroOffscreen || isTrailerPlaying) return;
         const t = setTimeout(() => setIdx((n) => (n + 1) % slideCount), HERO_AUTOPLAY_MS);
         return () => clearTimeout(t);
-    }, [idx, paused, dragging, slideCount, trans.isHeroOffscreen]);
+    }, [idx, paused, dragging, slideCount, trans.isHeroOffscreen, isTrailerPlaying]);
 
     const goSlide = useCallback(
         (n: number) => {
+            heroTrailerVM.reset();
             setIdx(((n % slideCount) + slideCount) % slideCount);
         },
         [slideCount]
@@ -175,6 +188,9 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         }
     }, [slides, navigate, play]);
 
+    const onToggleMute = useCallback(() => heroTrailerVM.toggleMute(), []);
+    const onTrailerError = useCallback(() => heroTrailerVM.onError(), []);
+
     const baseTranslate = slideCount > 0 ? -idx * (100 / slideCount) : 0;
 
     // Mientras carga el carrusel real, reservamos el alto del hero para que la
@@ -224,6 +240,12 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                         navigate={navigate}
                         contentOpacity={trans.heroContentOpacity}
                         scrollHintOpacity={trans.scrollHintOpacity}
+                        trailerSource={heroTrailerVM.trailerSource.value}
+                        trailerState={heroTrailerVM.state.value}
+                        isMuted={heroTrailerVM.isMuted.value}
+                        isPaused={heroTrailerVM.isPaused.value}
+                        onToggleMute={onToggleMute}
+                        onError={onTrailerError}
                     />
                 </div>
                 <div style={TOUCH_SPACER_STYLE} />
@@ -271,12 +293,19 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                         willChange: 'transform'
                     }}
                 >
-                    {slides.map((s) => (
+                    {slides.map((s, i) => (
                         <HeroSlide
                             key={s.id} slide={s} width={`${100 / slideCount}%`}
                             navigate={navigate} onPlay={onPlay}
                             contentOpacity={trans.heroContentOpacity}
                             interactive={trans.heroInteractive}
+                            isActive={i === idx}
+                            trailerSource={i === idx ? heroTrailerVM.trailerSource.value : null}
+                            trailerState={i === idx ? heroTrailerVM.state.value : 'idle'}
+                            isMuted={heroTrailerVM.isMuted.value}
+                            isPaused={heroTrailerVM.isPaused.value}
+                            onToggleMute={onToggleMute}
+                            onError={onTrailerError}
                         />
                     ))}
                 </div>
@@ -324,7 +353,14 @@ const HeroSlide = React.memo(function HeroSlideBase({
     onPlay,
     contentOpacity = 1,
     contentTranslateY = 0,
-    interactive = true
+    interactive = true,
+    isActive = false,
+    trailerSource = null,
+    trailerState = 'idle',
+    isMuted = true,
+    isPaused = false,
+    onToggleMute,
+    onError
 }: {
     slide: CarouselSlide;
     width: string;
@@ -333,8 +369,16 @@ const HeroSlide = React.memo(function HeroSlideBase({
     contentOpacity?: number;
     contentTranslateY?: number;
     interactive?: boolean;
+    isActive?: boolean;
+    trailerSource?: TrailerSource | null;
+    trailerState?: HeroTrailerState;
+    isMuted?: boolean;
+    isPaused?: boolean;
+    onToggleMute?: () => void;
+    onError?: (err?: unknown) => void;
 }) {
     const isContinue = slide.type === 'continue';
+    const isTrailerActive = isActive && trailerState !== 'idle' && !!trailerSource;
     // Propio y no heredado del padre: el hero rota, y quien sabe qué item toca
     // adelantar es el slide que se está pintando.
     const { prewarm } = usePlayer();
@@ -380,6 +424,17 @@ const HeroSlide = React.memo(function HeroSlideBase({
                 vignette={0.32}
             />
 
+            {/* Video del trailer de fondo con fundido suave al activarse */}
+            {isActive && trailerSource && isTrailerActive && (
+                <HeroTrailerVideo
+                    source={trailerSource}
+                    isMuted={isMuted}
+                    isPaused={isPaused}
+                    onToggleMute={onToggleMute}
+                    onError={onError ?? (() => {})}
+                />
+            )}
+
             {/* Degradado cinematográfico envolvente tipo Netflix: funde de forma gradual y suave la imagen del hero a negro profundo */}
             <div style={HERO_VIGNETTE_STYLE} />
 
@@ -392,134 +447,174 @@ const HeroSlide = React.memo(function HeroSlideBase({
                 pointerEvents: interactive ? 'auto' : 'none',
                 willChange: 'opacity, transform'
             }}>
-                {heroGenres.length > 0 && (
-                    <HeroGenres
-                        genres={heroGenres}
-                        navigate={navigate}
-                        fontSize={12}
-                        marginBottom={15}
-                        justifyContent='center'
-                    />
-                )}
-
-                <TextButton
-                    onClick={goDetail}
-                    label={slide.title}
-                    style={{ display: 'block', marginBottom: 20 }}
+                {/* Contenedor animado de textos: se desplaza a la esquina inferior izquierda y reduce su escala en modo trailer */}
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        textAlign: 'center',
+                        maxWidth: '100%',
+                        transformOrigin: 'bottom left',
+                        transform: isTrailerActive ?
+                            'translate(calc(-50vw + 50% + 12px), 132px) scale(0.80)' :
+                            'translate(0, 0) scale(1)',
+                        transition: 'transform 550ms cubic-bezier(0.25, 1, 0.5, 1), opacity 550ms ease',
+                        willChange: 'transform',
+                        pointerEvents: 'auto'
+                    }}
                 >
-                    {logo ? (
-                        <img
-                            src={logo}
-                            alt={slide.title}
-                            decoding='async'
-                            style={{
-                                maxWidth: 518, maxHeight: 176, width: 'auto', height: 'auto',
-                                objectFit: 'contain', filter: 'drop-shadow(0 4px 50px rgba(0,0,0,0.6))'
-                            }}
-                        />
-                    ) : (
-                        <h1 style={{
-                            fontFamily: T.ui, fontSize: 'clamp(64px, 7.7vw, 128px)', lineHeight: 0.92,
-                            margin: 0, fontWeight: 250, letterSpacing: -2,
-                            textShadow: '0 4px 50px rgba(0,0,0,0.55)', textWrap: 'balance'
+                    {heroGenres.length > 0 && (
+                        <div style={{
+                            transform: isTrailerActive ? 'translateY(16px)' : 'translateY(0)',
+                            transition: 'transform 550ms cubic-bezier(0.25, 1, 0.5, 1)',
+                            willChange: 'transform'
                         }}>
-                            {slide.title}
-                        </h1>
+                            <HeroGenres
+                                genres={heroGenres}
+                                navigate={navigate}
+                                fontSize={12}
+                                marginBottom={15}
+                                justifyContent='center'
+                            />
+                        </div>
                     )}
-                </TextButton>
 
-                {/* Solo las series enseñan esta línea, porque lleva a algún
-                    sitio: la temporada y el episodio por los que se iba. En
-                    una película no había T·E que enseñar y quedaba un
-                    «Seguir viendo» suelto que no decía nada — el propio botón
-                    de reproducir ya avisa de que hay progreso, con su anillo y
-                    los minutos restantes al pasar por encima. */}
-                {isContinue && slide.season != null ? (
-                    <div style={{
-                        fontFamily: T.ui, fontSize: 15, color: 'rgba(255,255,255,0.72)',
-                        marginBottom: 22, display: 'flex', alignItems: 'center', gap: 13,
-                        flexWrap: 'wrap', justifyContent: 'center'
-                    }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                            <span style={{
-                                width: 5, height: 5, borderRadius: 999, background: '#fff',
-                                display: 'inline-block', animation: 'jfp-pulse 1.8s ease-in-out infinite'
-                            }} />
-                            <TextButton onClick={goSeason} highlight>
-                                {`T${slide.season}`}
-                            </TextButton>
-                            {/* "E6 · Inicio de semestre" es UN solo botón: el
-                                número y el nombre son la misma cosa (el
-                                capítulo) y llevaban ya al mismo sitio, así que
-                                separarlos solo daba dos dianas pequeñas para un
-                                único destino en vez de una cómoda. */}
-                            {slide.episode != null && (
+                    <TextButton
+                        onClick={goDetail}
+                        label={slide.title}
+                        style={{ display: 'block', marginBottom: 20 }}
+                    >
+                        {logo ? (
+                            <img
+                                src={logo}
+                                alt={slide.title}
+                                decoding='async'
+                                style={{
+                                    maxWidth: 518, maxHeight: 176, width: 'auto', height: 'auto',
+                                    objectFit: 'contain', filter: 'drop-shadow(0 4px 50px rgba(0,0,0,0.6))',
+                                    transform: isTrailerActive ? 'scale(0.90)' : 'scale(1)',
+                                    transformOrigin: 'bottom center',
+                                    transition: 'transform 550ms cubic-bezier(0.25, 1, 0.5, 1)'
+                                }}
+                            />
+                        ) : (
+                            <h1 style={{
+                                fontFamily: T.ui, fontSize: 'clamp(64px, 7.7vw, 128px)', lineHeight: 0.92,
+                                margin: 0, fontWeight: 250, letterSpacing: -2,
+                                textShadow: '0 4px 50px rgba(0,0,0,0.55)', textWrap: 'balance',
+                                transform: isTrailerActive ? 'scale(0.90)' : 'scale(1)',
+                                transformOrigin: 'bottom center',
+                                transition: 'transform 550ms cubic-bezier(0.25, 1, 0.5, 1)'
+                            }}>
+                                {slide.title}
+                            </h1>
+                        )}
+                    </TextButton>
+
+                    {/* Solo las series enseñan esta línea, porque lleva a algún
+                        sitio: la temporada y el episodio por los que se iba. En
+                        una película no había T·E que enseñar y quedaba un
+                        «Seguir viendo» suelto que no decía nada — el propio botón
+                        de reproducir ya avisa de que hay progreso, con su anillo y
+                        los minutos restantes al pasar por encima. */}
+                    {isContinue && slide.season != null ? (
+                        <div style={{
+                            fontFamily: T.ui, fontSize: 15, color: 'rgba(255,255,255,0.72)',
+                            marginBottom: 22, display: 'flex', alignItems: 'center', gap: 13,
+                            flexWrap: 'wrap', justifyContent: 'center'
+                        }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                                <span style={{
+                                    width: 5, height: 5, borderRadius: 999, background: '#fff',
+                                    display: 'inline-block', animation: 'jfp-pulse 1.8s ease-in-out infinite'
+                                }} />
+                                <TextButton onClick={goSeason} highlight>
+                                    {`T${slide.season}`}
+                                </TextButton>
+                                {slide.episode != null && (
+                                    <>
+                                        {' · '}
+                                        <TextButton
+                                            onClick={goEpisode}
+                                            highlight
+                                            style={{ display: 'flex', alignItems: 'center', gap: 13 }}
+                                        >
+                                            {`E${slide.episode}`}
+                                            {slide.episodeTitle && (
+                                                <>
+                                                    <Ic.Dot />
+                                                    <span style={{
+                                                        fontFamily: T.ui, fontSize: 20
+                                                    }}>
+                                                        {slide.episodeTitle}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </TextButton>
+                                    </>
+                                )}
+                            </span>
+                        </div>
+                    ) : (
+                        <div style={{
+                            fontFamily: T.ui, fontSize: 14, color: 'rgba(255,255,255,0.7)',
+                            marginBottom: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            gap: 13, flexWrap: 'wrap'
+                        }}>
+                            <span style={{ letterSpacing: 2, fontWeight: 500 }}>
+                                {slide.year}
+                            </span>
+
+                            {ageRating && (
                                 <>
-                                    {' · '}
-                                    <TextButton
-                                        onClick={goEpisode}
-                                        highlight
-                                        style={{ display: 'flex', alignItems: 'center', gap: 13 }}
-                                    >
-                                        {`E${slide.episode}`}
-                                        {slide.episodeTitle && (
-                                            <>
-                                                <Ic.Dot />
-                                                <span style={{
-                                                    fontFamily: T.ui, fontSize: 20
-                                                }}>
-                                                    {slide.episodeTitle}
-                                                </span>
-                                            </>
-                                        )}
-                                    </TextButton>
+                                    <Ic.Dot />
+                                    <span style={{
+                                        border: '1px solid rgba(255,255,255,0.35)',
+                                        padding: '2px 8px',
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        borderRadius: 3,
+                                        letterSpacing: 0.5,
+                                        lineHeight: 1,
+                                        color: 'rgba(255,255,255,0.9)'
+                                    }}>
+                                        {ageRating}
+                                    </span>
                                 </>
                             )}
-                        </span>
-                    </div>
-                ) : (
-                    <div style={{
-                        fontFamily: T.ui, fontSize: 14, color: 'rgba(255,255,255,0.7)',
-                        marginBottom: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        gap: 13, flexWrap: 'wrap'
-                    }}>
-                        <span style={{ letterSpacing: 2, fontWeight: 500 }}>
-                            {slide.year}
-                        </span>
 
-                        {ageRating && (
-                            <>
-                                <Ic.Dot />
-                                <span style={{
-                                    border: '1px solid rgba(255,255,255,0.35)',
-                                    padding: '2px 8px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    borderRadius: 3,
-                                    letterSpacing: 0.5,
-                                    lineHeight: 1,
-                                    color: 'rgba(255,255,255,0.9)'
-                                }}>
-                                    {ageRating}
-                                </span>
-                            </>
-                        )}
+                            {imdbRating != null && imdbRating > 0 && (
+                                <>
+                                    <Ic.Dot />
+                                    <span style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 7,
+                                        fontWeight: 600, fontSize: 14, color: 'rgba(255,255,255,0.95)'
+                                    }}>
+                                        <Ic.Imdb /> {imdbRating.toFixed(1)}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
 
-                        {imdbRating != null && imdbRating > 0 && (
-                            <>
-                                <Ic.Dot />
-                                <span style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 7,
-                                    fontWeight: 600, fontSize: 14, color: 'rgba(255,255,255,0.95)'
-                                }}>
-                                    <Ic.Imdb /> {imdbRating.toFixed(1)}
-                                </span>
-                            </>
-                        )}
-                    </div>
-                )}
-
-                <div style={{ marginBottom: isContinue ? 15 : 0 }}>
+                {/* Botón circular de Play: permanece en su posición y se atenúa en modo trailer manteniendo interactividad */}
+                <div
+                    style={{
+                        marginBottom: isContinue ? 15 : 0,
+                        opacity: isTrailerActive ? 0.35 : 1,
+                        transition: 'opacity 550ms ease',
+                        willChange: 'opacity'
+                    }}
+                    onMouseEnter={(e) => {
+                        if (isTrailerActive) e.currentTarget.style.opacity = '0.9';
+                    }}
+                    onMouseLeave={(e) => {
+                        if (isTrailerActive) e.currentTarget.style.opacity = '0.35';
+                    }}
+                >
                     <PlayBtn
                         size={106}
                         onClick={onPlay}
@@ -614,12 +709,13 @@ function HomeLibraryJellyfin({
 
     const [styleRev, setStyleRev] = useState(0);
     useEffect(() => {
-        const onStyleChange = () => setStyleRev(r => r + 1);
+        const onStyleChange = () => setStyleRev(prev => prev + 1);
         window.addEventListener(COLLECTION_STYLES.event, onStyleChange);
         return () => window.removeEventListener(COLLECTION_STYLES.event, onStyleChange);
     }, []);
 
     const collections = useMemo(() => {
+        if (styleRev < 0) return [];
         return allCollections.filter(c => COLLECTION_STYLES.getShowOnHome(c.id));
     }, [allCollections, styleRev]);
 

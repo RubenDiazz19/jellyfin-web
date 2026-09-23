@@ -375,7 +375,8 @@ export function mapCatalogItem(item: JFItem, fallbackKind?: 'show' | 'movie'): C
         watched: watchedFraction(item),
         genres: item.Genres ?? [],
         communityRating: item.CommunityRating,
-        officialRating: item.OfficialRating
+        officialRating: item.OfficialRating,
+        localTrailerCount: item.LocalTrailerCount
     };
 }
 

@@ -66,6 +66,11 @@ import {
 } from './playback';
 import { getNextEpisode, getPlaybackContext, getTrickplayThumbnail } from './playbackContext';
 import { prewarmPlayback } from './playbackPrewarm';
+import {
+    getLocalTrailers,
+    resolveTrailerSource,
+    clearTrailerCache
+} from './trailers';
 import { getMediaSegments } from './segments';
 import {
     getItemRaw,
@@ -179,6 +184,12 @@ const playbackService = {
     getMaxStreamingBitrate
 };
 
+const trailersService = {
+    getLocalTrailers,
+    resolveTrailerSource,
+    clearTrailerCache
+};
+
 const metadataService = {
     getItemRaw,
     updateItemMetadata,
@@ -235,6 +246,7 @@ export type DiscoverService = typeof discoverService;
 export type ImageService = typeof imageService;
 export type ItemService = typeof itemService;
 export type PlaybackService = typeof playbackService;
+export type TrailersService = typeof trailersService;
 export type MetadataService = typeof metadataService;
 export type RemoteImageService = typeof remoteImageService;
 export type SubtitleService = typeof subtitleService;
@@ -254,6 +266,7 @@ export class ApiService {
         readonly images: ImageService = imageService,
         readonly items: ItemService = itemService,
         readonly playback: PlaybackService = playbackService,
+        readonly trailers: TrailersService = trailersService,
         readonly metadata: MetadataService = metadataService,
         readonly remoteImages: RemoteImageService = remoteImageService,
         readonly subtitles: SubtitleService = subtitleService,

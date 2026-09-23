@@ -48,7 +48,7 @@ async function fetchResume(limit: number): Promise<CarouselSlide[]> {
     const resume = await apiFetch<{ Items: JFItem[] }>(
         // ImageTags/BackdropImageTags explícitos: sin ellos no podemos
         // construir URLs con tag y el hero se queda con imágenes cacheadas.
-        `/Users/${uid}/Items/Resume?Limit=${limit * 2}&MediaTypes=Video&Fields=Genres,ProductionYear,RunTimeTicks,ParentId,ImageTags,BackdropImageTags,ParentBackdropImageTags,ParentLogoItemId,ParentLogoImageTag&EnableImageTypes=Primary,Backdrop,Logo`
+        `/Users/${uid}/Items/Resume?Limit=${limit * 2}&MediaTypes=Video&Fields=Genres,ProductionYear,RunTimeTicks,ParentId,ImageTags,BackdropImageTags,ParentBackdropImageTags,ParentLogoItemId,ParentLogoImageTag,LocalTrailerCount&EnableImageTypes=Primary,Backdrop,Logo`
     ).catch(() => ({ Items: [] as JFItem[] }));
 
     const slides: CarouselSlide[] = [];
@@ -92,7 +92,9 @@ async function fetchResume(limit: number): Promise<CarouselSlide[]> {
                 positionTicks: it.UserData?.PlaybackPositionTicks,
                 genres: it.Genres ?? [],
                 communityRating: it.CommunityRating,
-                officialRating: it.OfficialRating
+                officialRating: it.OfficialRating,
+                hasTrailer: it.LocalTrailerCount != null && it.LocalTrailerCount > 0,
+                localTrailerCount: it.LocalTrailerCount
             });
         } else {
             // Película a medias: se reanuda directamente en el reproductor.
@@ -116,7 +118,9 @@ async function fetchResume(limit: number): Promise<CarouselSlide[]> {
                 positionTicks: it.UserData?.PlaybackPositionTicks,
                 genres: it.Genres ?? [],
                 communityRating: it.CommunityRating,
-                officialRating: it.OfficialRating
+                officialRating: it.OfficialRating,
+                hasTrailer: it.LocalTrailerCount != null && it.LocalTrailerCount > 0,
+                localTrailerCount: it.LocalTrailerCount
             });
         }
         if (slides.length >= limit) break;
@@ -223,7 +227,9 @@ async function fetchHomeCarousel(): Promise<CarouselSlide[]> {
             jfEpisodeId: it.kind === 'movie' ? it.id : undefined,
             genres: it.genres,
             communityRating: it.communityRating,
-            officialRating: it.officialRating
+            officialRating: it.officialRating,
+            hasTrailer: it.localTrailerCount != null && it.localTrailerCount > 0,
+            localTrailerCount: it.localTrailerCount
         });
         if (slides.length >= 6) break;
     }

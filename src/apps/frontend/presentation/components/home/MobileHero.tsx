@@ -32,6 +32,8 @@ import { HeroGenres } from '../layout/DetailHero';
 import { cleanGenres } from '../../../domain/genres';
 import type { Navigate } from '../../../app/router';
 import { SWIPE_DRAG_THRESHOLD, SWIPE_VERTICAL_TOLERANCE } from '../../../shared/gestures/thresholds';
+import type { TrailerSource, HeroTrailerState } from '../../../domain/viewModels/HeroTrailerViewModel';
+import { HeroTrailerVideo } from './HeroTrailerVideo';
 
 type Props = {
     slides: CarouselSlide[];
@@ -46,11 +48,19 @@ type Props = {
     contentTranslateY?: number;
     /** Opacidad del indicador de scroll. */
     scrollHintOpacity?: number;
+    trailerSource?: TrailerSource | null;
+    trailerState?: HeroTrailerState;
+    isMuted?: boolean;
+    isPaused?: boolean;
+    onToggleMute?: () => void;
+    onError?: (err?: unknown) => void;
 };
 
 export function MobileHero({
     slides, idx, tablet, goSlide, onPlay, navigate,
-    contentOpacity, contentTranslateY, scrollHintOpacity
+    contentOpacity, contentTranslateY, scrollHintOpacity,
+    trailerSource, trailerState = 'idle', isMuted = true, isPaused = false,
+    onToggleMute, onError
 }: Props) {
     const slide = slides[Math.min(idx, slides.length - 1)];
     const short = useShortViewport();
@@ -105,6 +115,8 @@ export function MobileHero({
         (slide.backdrop || slide.poster) :
         (slide.poster || slide.backdrop);
 
+    const isTrailerActive = trailerState === 'transitioning' || trailerState === 'playing';
+
     const side = tablet ? 32 : 20;
     const topPad = short ? 44 : 64;
     const gap = short ? 8 : (tablet ? 18 : 14);
@@ -134,6 +146,17 @@ export function MobileHero({
             }}
         >
             <Backdrop src={image} srcs={tablet ? slide.backdrops : undefined} vignette={0.2} sharp bottomFade={false} />
+
+            {/* Video del trailer de fondo con fundido suave al activarse */}
+            {trailerSource && isTrailerActive && (
+                <HeroTrailerVideo
+                    source={trailerSource}
+                    isMuted={isMuted}
+                    isPaused={isPaused}
+                    onToggleMute={onToggleMute}
+                    onError={onError ?? (() => {})}
+                />
+            )}
 
             {/* Velo inferior suave para lectura de textos */}
 
@@ -169,7 +192,10 @@ export function MobileHero({
                         minHeight: 0,
                         maxWidth: '100%',
                         gap: short ? 8 : (tablet ? 16 : 12),
-                        animation: 'jfp-fade-in 0.45s ease-out both'
+                        animation: 'jfp-fade-in 0.45s ease-out both',
+                        transform: isTrailerActive ? (tablet ? 'translateY(12px) scale(0.85)' : 'translateY(8px) scale(0.9)') : 'none',
+                        transition: 'transform 550ms cubic-bezier(0.25, 1, 0.5, 1)',
+                        willChange: 'transform'
                     }}
                 >
                     {heroGenres.length > 0 && (
@@ -283,11 +309,19 @@ export function MobileHero({
                         {remaining ? ` · ${remaining}` : ''}
                     </div>
 
-                    <PlayBtn
-                        size={playSize}
-                        onClick={onPlay}
-                        progress={isContinue ? slide.progress : null}
-                    />
+                    <div
+                        style={{
+                            opacity: isTrailerActive ? 0.35 : 1,
+                            transition: 'opacity 550ms cubic-bezier(0.25, 1, 0.5, 1)',
+                            pointerEvents: 'auto'
+                        }}
+                    >
+                        <PlayBtn
+                            size={playSize}
+                            onClick={onPlay}
+                            progress={isContinue ? slide.progress : null}
+                        />
+                    </div>
                 </div>
 
                 {/* Puntos del carrusel: último en la columna, nunca encima del

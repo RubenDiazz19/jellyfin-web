@@ -116,6 +116,16 @@ export function DisplaySection({
                     onChange={(v) => patch({ HidePlayedInLatest: v })}
                 />
             </SettingRow>
+
+            <SettingRow
+                label={globalize.translate('PlayTrailerAudio')}
+                hint={globalize.translate('PlayTrailerAudioHelp')}
+            >
+                <Toggle
+                    on={config.PlayTrailerAudio}
+                    onChange={(v) => patch({ PlayTrailerAudio: v })}
+                />
+            </SettingRow>
         </div>
     );
 }

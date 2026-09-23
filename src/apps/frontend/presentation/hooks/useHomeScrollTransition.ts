@@ -56,16 +56,14 @@ export function useHomeScrollTransition(): HomeScrollTransition {
 
     const progress = Math.max(0, Math.min(1, scrollY / (threshold || 1)));
 
-    // El contenido del hero (título, logo, botón play) se desvanece en los
-    // primeros compases del scroll para despejar el espacio a las tarjetas.
-    const heroContentOpacity = Math.max(0, Math.min(1, 1 - progress * 2.2));
-    const heroContentTranslateY = 0;
+    // El contenido del hero (título, logo, botón play) se desvanece suavemente
+    // y se desplaza hacia arriba con el scroll, dando la sensación de ser empujado.
+    const heroContentOpacity = Math.max(0, Math.min(1, 1 - progress * 1.5));
+    const heroContentTranslateY = -scrollY;
 
-    // El fondo (backdrop) permanece 100% visible al principio mientras las
-    // tarjetas emergen sobre la imagen sin fondo negro; a partir del ~25%
-    // de recorrido se va difuminando progresivamente a negro hasta que las
-    // tarjetas cubren la pantalla completa.
-    const backdropFade = progress <= 0.25 ? 0 : Math.min(1, (progress - 0.25) / 0.75);
+    // El fondo (backdrop) comienza a oscurecerse de forma intermedia,
+    // fundiendo a negro sin ser tan agresivo como antes.
+    const backdropFade = Math.min(1, progress * 1.5);
     const heroBackdropOpacity = 1 - backdropFade;
     const heroBackdropScale = 1;
 

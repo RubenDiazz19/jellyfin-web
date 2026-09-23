@@ -151,3 +151,10 @@ export {
     fetchFanartTvLogos,
     FANART_API_KEY
 } from './fanart';
+export {
+    getLocalTrailers,
+    resolveTrailerSource,
+    clearTrailerCache,
+    type TrailerSource,
+    type TrailerTarget
+} from './trailers';
