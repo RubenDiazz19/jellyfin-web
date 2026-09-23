@@ -13,6 +13,8 @@ import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import type { Navigate } from '../../../app/router';
 import { cleanGenres } from '../../../domain/genres';
 import { MediaBadges } from '../media/MediaBadges';
+import type { TrailerSource, HeroTrailerState } from '../../../domain/viewModels/HeroTrailerViewModel';
+import { HeroTrailerVideo } from '../home/HeroTrailerVideo';
 
 import { useHomeScrollTransition } from '../../hooks/useHomeScrollTransition';
 
@@ -88,6 +90,12 @@ type FrameProps = {
      * va sin un solo botón encima: el menú de la imagen se abre desde aquí.
      */
     onContextMenu?: (e: MouseEvent) => void;
+    trailerSource?: TrailerSource | null;
+    trailerState?: HeroTrailerState;
+    isMuted?: boolean;
+    isPaused?: boolean;
+    onToggleMute?: () => void;
+    onError?: (err?: unknown) => void;
 };
 
 /**
@@ -96,7 +104,8 @@ type FrameProps = {
  */
 export function HeroFrame({
     hero, backdrop, backdrops, nav, children, footer, pos, pad, scrim, blurred,
-    onContextMenu
+    onContextMenu, trailerSource, trailerState = 'idle', isMuted = true, isPaused = false,
+    onToggleMute, onError
 }: FrameProps) {
     const layout = useHeroLayout(hero);
     const place = pos ? HERO_POS[pos] : layout.pos;
@@ -132,6 +141,17 @@ export function HeroFrame({
                 }}
             >
                 <Backdrop src={backdrop} srcs={backdrops} sharp blurred={blurred} bottomFade={false} />
+                
+                {trailerSource && trailerState !== 'idle' && (
+                    <HeroTrailerVideo
+                        source={trailerSource}
+                        isMuted={isMuted}
+                        isPaused={isPaused}
+                        onToggleMute={onToggleMute}
+                        onError={onError ?? (() => {})}
+                    />
+                )}
+
                 {scrimAlpha > 0 && (
                     <div style={{
                         position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -199,7 +219,8 @@ export function HeroGenres({ genres, navigate, fontSize, marginBottom, justifyCo
         <div style={{
             fontFamily: T.ui, fontSize, letterSpacing: 4, textTransform: 'uppercase',
             color: 'rgba(255,255,255,0.7)', marginBottom,
-            display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent
+            display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent,
+            transition: 'all 550ms cubic-bezier(0.25, 1, 0.5, 1)'
         }}>
             {cleanList.map((g, i) => (
                 <span key={g} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -234,11 +255,13 @@ type TitleProps = {
     letterSpacing: number;
     /** El título de película equilibra líneas; el de serie no. */
     balance?: boolean;
+    /** Alineación del logo (útil si la caja es mayor que la imagen) o del texto fallback */
+    align?: 'center' | 'left';
 };
 
 /** El logo del item si lo tiene; si no, su título en grande. */
 export function HeroTitle({
-    logo, title, logoMaxWidth, logoMaxHeight, logoShadow, fontSize, letterSpacing, balance
+    logo, title, logoMaxWidth, logoMaxHeight, logoShadow, fontSize, letterSpacing, balance, align = 'center'
 }: TitleProps) {
     if (logo) {
         return (
@@ -249,7 +272,10 @@ export function HeroTitle({
                 style={{
                     maxWidth: logoMaxWidth, maxHeight: logoMaxHeight,
                     width: 'auto', height: 'auto',
-                    filter: `drop-shadow(0 4px 60px ${logoShadow})`, objectFit: 'contain'
+                    filter: `drop-shadow(0 4px 60px ${logoShadow})`, 
+                    objectFit: 'contain',
+                    objectPosition: align === 'left' ? 'left center' : 'center',
+                    transition: 'all 550ms cubic-bezier(0.25, 1, 0.5, 1)'
                 }}
             />
         );
@@ -259,6 +285,8 @@ export function HeroTitle({
             fontFamily: T.ui, fontSize, lineHeight: 0.92,
             margin: 0, fontWeight: 250, letterSpacing,
             textShadow: '0 4px 60px rgba(0,0,0,0.6)',
+            textAlign: align,
+            transition: 'all 550ms cubic-bezier(0.25, 1, 0.5, 1)',
             ...(balance ? { textWrap: 'balance' as const } : {})
         }}>
             {title}

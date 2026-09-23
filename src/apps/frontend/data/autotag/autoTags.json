@@ -1,6 +1,6 @@
 {
   "_comment": "Generado por `bun run autotag`. Mapa itemId -> etiquetas del vocabulario. Las claves que empiezan por _ se ignoran al leer.",
-  "_generatedAt": "2026-09-22T07:25:38.311Z",
+  "_generatedAt": "2026-09-25T11:01:26.328Z",
   "pendingTags": {
     "Romance": 1
   },
@@ -121,6 +121,13 @@
     "03d23efe985df2bad4404cfed0acc419": [
       "Feelgood",
       "Recuentos de la vida"
+    ],
+    "7c99272525a639c32d1a038c06024366": [
+      "Instituto",
+      "Recuentos de la vida"
+    ],
+    "c8249b859c801f051267ff8f7df2303e": [
+      "Space opera"
     ]
   }
 }

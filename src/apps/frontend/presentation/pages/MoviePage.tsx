@@ -1,3 +1,4 @@
+import { useEffect, useCallback } from 'react';
 import globalize from 'lib/globalize';
 
 import { formatDateLong, formatRemaining } from '../utils/format';
@@ -28,6 +29,9 @@ import { useMovieEntity } from '../hooks/useDetailEntity';
 import { movieKey } from '../../domain/stores';
 import { movieVM } from '../../domain/viewModels/MovieViewModel';
 import { ticksFromProgress } from '../../domain/player/format';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
+import { heroTrailerVM } from '../../domain/viewModels/HeroTrailerViewModel';
+import { useHomeScrollTransition } from '../hooks/useHomeScrollTransition';
 import { SagaSection } from '../components/collection/SagaSection';
 
 type PageProps = { movieId: string; navigate: Navigate; hero?: HeroTweaks };
@@ -73,6 +77,30 @@ function MovieHero({
             startTicks: inProgress ? ticksFromProgress(runtimeMin, progress) : undefined
         });
     };
+
+    useVmSignals(heroTrailerVM, (vm) => [vm.state, vm.trailerSource, vm.isMuted, vm.isPaused]);
+    const trailerState = heroTrailerVM.state.value;
+    const isTrailerActive = trailerState === 'playing' || trailerState === 'transitioning';
+    
+    useEffect(() => {
+        heroTrailerVM.onSlideChanged({ 
+            id: movie.id, 
+            hasTrailer: movie.hasTrailer, 
+            localTrailerCount: movie.localTrailerCount 
+        });
+        return () => {
+            heroTrailerVM.reset();
+        };
+    }, [movie.id, movie.hasTrailer, movie.localTrailerCount]);
+
+    const trans = useHomeScrollTransition();
+    useEffect(() => {
+        heroTrailerVM.onHeroOffscreen(trans.progress > 0);
+    }, [trans.progress]);
+
+    const onToggleMute = useCallback(() => heroTrailerVM.toggleMute(), []);
+    const onTrailerError = useCallback(() => heroTrailerVM.onError(), []);
+
     // Menú contextual sobre el hero: el mismo que el MoreButton visible, pero
     // se invoca con clic derecho sin tocar el botón.
     const ctx = useItemContextMenu({
@@ -84,10 +112,17 @@ function MovieHero({
     });
     return (
         <HeroFrame
+            pos={isTrailerActive ? 'Esquina' : undefined}
             hero={hero}
             backdrop={heroImage}
             backdrops={portraitPhone ? undefined : movie.backdrops}
             onContextMenu={ctx.onContextMenu}
+            trailerSource={heroTrailerVM.trailerSource.value}
+            trailerState={heroTrailerVM.state.value}
+            isMuted={heroTrailerVM.isMuted.value}
+            isPaused={heroTrailerVM.isPaused.value}
+            onToggleMute={onToggleMute}
+            onError={onTrailerError}
             nav={
                 <Nav
                     navigate={navigate}
@@ -106,7 +141,10 @@ function MovieHero({
                 colocación general del hero; la de serie lo alinea a la izquierda. */}
             <div style={{
                 display: 'flex', flexDirection: 'column',
-                alignItems: 'center', textAlign: 'center'
+                alignItems: isTrailerActive ? 'flex-start' : 'center',
+                textAlign: isTrailerActive ? 'left' : 'center',
+                transition: 'all 550ms cubic-bezier(0.25, 1, 0.5, 1)',
+                willChange: 'align-items, text-align, transform'
             }}>
                 {!minimal && (
                     <HeroGenres
@@ -114,25 +152,26 @@ function MovieHero({
                         navigate={navigate}
                         fontSize={r.touch ? 10 : 12}
                         marginBottom={short ? 8 : r.touch ? 16 : 26}
-                        justifyContent='center'
+                        justifyContent={isTrailerActive ? 'flex-start' : 'center'}
                     />
                 )}
 
                 <HeroTitle
                     logo={movie.logo}
                     title={movie.title}
-                    logoMaxWidth={r.touch ? 'min(78vw, 325px)' : 520}
-                    logoMaxHeight={r.touch ? (short ? 'min(20vh, 58px)' : 'min(15vh, 100px)') : 180}
+                    align={isTrailerActive ? 'left' : 'center'}
+                    logoMaxWidth={r.touch ? 'min(78vw, 325px)' : (isTrailerActive ? 320 : 520)}
+                    logoMaxHeight={r.touch ? (short ? 'min(20vh, 58px)' : 'min(15vh, 100px)') : (isTrailerActive ? 110 : 180)}
                     logoShadow='rgba(0,0,0,0.6)'
                     fontSize={
                         short ? 'clamp(22px, 5.5vh, 36px)' :
-                            r.touch ? 'clamp(33px, 8vw, 58px)' : 'clamp(74px, 9vw, 135px)'
+                            r.touch ? 'clamp(33px, 8vw, 58px)' : (isTrailerActive ? 'clamp(44px, 6vw, 85px)' : 'clamp(74px, 9vw, 135px)')
                     }
                     letterSpacing={r.touch ? -1 : -2}
                     balance
                 />
 
-                {!minimal && (
+                {!minimal && !isTrailerActive && (
                     <HeroMeta
                         items={[
                             movie.year,
@@ -147,7 +186,7 @@ function MovieHero({
                 )}
 
                 <HeroActionsRow
-                    center
+                    center={!isTrailerActive}
                     myList={<MyListButton itemId={movie.id} itemTitle={movie.title} />}
                     more={
                         // id real del server: descarga/metadata/imágenes lo

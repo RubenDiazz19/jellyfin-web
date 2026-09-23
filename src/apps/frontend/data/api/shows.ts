@@ -58,7 +58,9 @@ export function mapShow(item: JFItem): Show {
         // El servidor ya agrega el «visto» de la serie entera en su UserData;
         // sin leerlo aquí, una serie vista solo se sabía abriendo su ficha y
         // mirando episodio por episodio.
-        watched: watchedFraction(item)
+        watched: watchedFraction(item),
+        hasTrailer: item.LocalTrailerCount != null && item.LocalTrailerCount > 0,
+        localTrailerCount: item.LocalTrailerCount
     };
 }
 

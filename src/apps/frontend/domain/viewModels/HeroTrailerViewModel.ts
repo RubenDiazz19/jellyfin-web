@@ -53,7 +53,7 @@ export class HeroTrailerViewModel {
      * Cancela temporizadores previos, reinicia el estado a 'idle' e inicia
      * la precarga diferida y el temporizador si el contenido tiene trailer.
      */
-    onSlideChanged(slide: CarouselSlide | undefined): void {
+    onSlideChanged(slide: { id: string; hasTrailer?: boolean; localTrailerCount?: number } | undefined): void {
         this.clearTimers();
         this.state.value = 'idle';
         this.timerFired = false;

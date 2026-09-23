@@ -38,7 +38,9 @@ export function mapMovie(item: JFItem): Movie {
         video: summarizeVideo(streams),
         audio: summarizeAudio(streams),
         subtitles: summarizeSubtitles(streams),
-        container: source?.Container ?? item.Container
+        container: source?.Container ?? item.Container,
+        hasTrailer: item.LocalTrailerCount != null && item.LocalTrailerCount > 0,
+        localTrailerCount: item.LocalTrailerCount
     };
 }
 

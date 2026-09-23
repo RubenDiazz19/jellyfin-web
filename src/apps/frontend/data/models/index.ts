@@ -75,6 +75,8 @@ export type Show = {
     poster?: string;
     logo?: string | null;
     mediaBadges?: string[];
+    hasTrailer?: boolean;
+    localTrailerCount?: number;
 };
 
 export type Movie = {
@@ -106,6 +108,8 @@ export type Movie = {
     poster?: string;
     logo?: string | null;
     mediaBadges?: string[];
+    hasTrailer?: boolean;
+    localTrailerCount?: number;
     video?: string;
     audio?: string;
     subtitles?: string;

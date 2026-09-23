@@ -1,3 +1,4 @@
+import { useEffect, useCallback } from 'react';
 import globalize from 'lib/globalize';
 
 import { formatDateLong, formatEpisodeCode, formatRemaining } from '../utils/format';
@@ -33,6 +34,9 @@ import { useLandscape, useResponsive, useShortViewport } from '../theme/responsi
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
 import { useShowEntity } from '../hooks/useDetailEntity';
+import { useVmSignals } from '../../domain/bridge/useViewModel';
+import { heroTrailerVM } from '../../domain/viewModels/HeroTrailerViewModel';
+import { useHomeScrollTransition } from '../hooks/useHomeScrollTransition';
 
 type PageProps = { showId: string; navigate: Navigate; hero?: HeroTweaks };
 
@@ -107,6 +111,29 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
 
     const showBadges = targetEp?.mediaBadges ?? show.mediaBadges;
 
+    useVmSignals(heroTrailerVM, (vm) => [vm.state, vm.trailerSource, vm.isMuted, vm.isPaused]);
+    const trailerState = heroTrailerVM.state.value;
+    const isTrailerActive = trailerState === 'playing' || trailerState === 'transitioning';
+    
+    useEffect(() => {
+        heroTrailerVM.onSlideChanged({ 
+            id: show.id, 
+            hasTrailer: show.hasTrailer, 
+            localTrailerCount: show.localTrailerCount 
+        });
+        return () => {
+            heroTrailerVM.reset();
+        };
+    }, [show.id, show.hasTrailer, show.localTrailerCount]);
+
+    const trans = useHomeScrollTransition();
+    useEffect(() => {
+        heroTrailerVM.onHeroOffscreen(trans.progress > 0);
+    }, [trans.progress]);
+
+    const onToggleMute = useCallback(() => heroTrailerVM.toggleMute(), []);
+    const onTrailerError = useCallback(() => heroTrailerVM.onError(), []);
+
     // Menú contextual sobre el hero: el mismo que el MoreButton visible, pero
     // se invoca con clic derecho sin tocar el botón.
     const ctx = useItemContextMenu({
@@ -124,10 +151,17 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     });
     return (
         <HeroFrame
+            pos={isTrailerActive ? 'Esquina' : undefined}
             hero={hero}
             backdrop={heroImage}
             backdrops={portraitPhone ? undefined : show.backdrops}
             onContextMenu={ctx.onContextMenu}
+            trailerSource={heroTrailerVM.trailerSource.value}
+            trailerState={heroTrailerVM.state.value}
+            isMuted={heroTrailerVM.isMuted.value}
+            isPaused={heroTrailerVM.isPaused.value}
+            onToggleMute={onToggleMute}
+            onError={onTrailerError}
             nav={
                 <Nav
                     navigate={navigate}
@@ -138,33 +172,40 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
             }
             footer={<ScrollHint label={globalize.translate('Episodes')} />}
         >
-            <>
+            <div style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: isTrailerActive ? 'flex-start' : (inlineJustify === 'center' ? 'center' : 'flex-start'),
+                textAlign: isTrailerActive ? 'left' : (inlineJustify === 'center' ? 'center' : 'left'),
+                transition: 'all 550ms cubic-bezier(0.25, 1, 0.5, 1)',
+                willChange: 'align-items, text-align, transform'
+            }}>
                 {!minimal && (
                     <HeroGenres
                         genres={getHeroGenres(show)}
                         navigate={navigate}
                         fontSize={10}
                         marginBottom={short ? 8 : 18}
-                        justifyContent={inlineJustify}
+                        justifyContent={isTrailerActive ? 'flex-start' : inlineJustify}
                     />
                 )}
 
                 <HeroTitle
                     logo={show.logo}
                     title={show.title}
-                    logoMaxWidth={r.touch ? 'min(78vw, 305px)' : 450}
+                    align={isTrailerActive ? 'left' : (inlineJustify === 'center' ? 'center' : 'left')}
+                    logoMaxWidth={r.touch ? 'min(78vw, 305px)' : (isTrailerActive ? 280 : 450)}
                     // En táctil el tope va en vh: lo que no debe pasar es que
                     // el logo se coma el alto que necesitan el dato y el botón.
-                    logoMaxHeight={r.touch ? (short ? 'min(20vh, 58px)' : 'min(14vh, 94px)') : 153}
+                    logoMaxHeight={r.touch ? (short ? 'min(20vh, 58px)' : 'min(14vh, 94px)') : (isTrailerActive ? 100 : 153)}
                     logoShadow='rgba(0,0,0,0.5)'
                     fontSize={
                         short ? 'clamp(22px, 5.5vh, 34px)' :
-                            r.touch ? 'clamp(31px, 7vw, 54px)' : 'clamp(68px, 8vw, 120px)'
+                            r.touch ? 'clamp(31px, 7vw, 54px)' : (isTrailerActive ? 'clamp(44px, 6vw, 85px)' : 'clamp(68px, 8vw, 120px)')
                     }
                     letterSpacing={r.touch ? -1 : -3}
                 />
 
-                {!minimal && (
+                {!minimal && !isTrailerActive && (
                     <HeroMeta
                         items={[show.year, `${show.seasons.length} temporadas`]}
                         ageRating={show.rating.age}
@@ -211,7 +252,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
                         )}
                     />
                 </HeroActionsRow>
-            </>
+            </div>
             {ctx.menu}
         </HeroFrame>
     );

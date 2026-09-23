@@ -93,6 +93,11 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
         return () => clearTimeout(t);
     }, [idx, paused, dragging, slideCount, trans.isHeroOffscreen, isTrailerPlaying]);
 
+    // Pausar el tráiler si se hace scroll hacia abajo en la Home
+    useEffect(() => {
+        heroTrailerVM.onHeroOffscreen(trans.progress > 0);
+    }, [trans.progress]);
+
     const goSlide = useCallback(
         (n: number) => {
             heroTrailerVM.reset();
