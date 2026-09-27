@@ -15,6 +15,10 @@ type Props = {
     blurred?: boolean;
     /** Si incluye el degradado inferior a negro. Por defecto true. */
     bottomFade?: boolean;
+    /** Alineación vertical de la imagen (ej: 'top', 'center'). Por defecto 'center'. */
+    bgPosY?: string;
+    /** Tamaño del fondo ('cover', 'contain', etc). Por defecto 'cover'. */
+    bgSize?: string;
 };
 
 // Fondo de hero: imagen a pantalla completa con veladura + vignette + fade
@@ -24,10 +28,11 @@ type Props = {
 // Rendimiento: solo viven en el DOM la imagen activa y (durante el fade) la
 // anterior — antes se montaban TODOS los backdrops y el navegador los
 // descargaba aunque estuvieran a opacity 0. La siguiente del ciclo se
-// precarga con `new Image()` para que el crossfade no parpadee.
+// la precarga con `new Image()` para que el crossfade no parpadee.
 export function Backdrop({
     src, srcs, intervalMs = 8000, fadeMs = 1500,
-    vignette = 0.38, sharp = false, blurred = false, bottomFade = true
+    vignette = 0.38, sharp = false, blurred = false, bottomFade = true,
+    bgPosY = 'center', bgSize = 'cover'
 }: Props) {
     const pool = (srcs && srcs.length > 0 ? srcs : [src]).filter(Boolean);
     const [idx, setIdx] = useState(0);
@@ -94,6 +99,8 @@ export function Backdrop({
                 fadeMs={fadeMs}
                 filter={filter}
                 transform={transform}
+                bgPosY={bgPosY}
+                bgSize={bgSize}
             />
             <div style={{
                 position: 'absolute', inset: 0,
@@ -123,9 +130,9 @@ export function Backdrop({
 // entrante monta a opacity 0 y transiciona a 1; la saliente se desmonta al
 // terminar el fade.
 function Crossfade({
-    url, fadeMs, filter, transform
+    url, fadeMs, filter, transform, bgPosY, bgSize
 }: {
-    url: string; fadeMs: number; filter: string; transform: string;
+    url: string; fadeMs: number; filter: string; transform: string; bgPosY: string; bgSize: string;
 }) {
     const keyRef = useRef(0);
     const [layers, setLayers] = useState<{ url: string; key: number }[]>(
@@ -157,6 +164,8 @@ function Crossfade({
                     fadeMs={fadeMs}
                     filter={filter}
                     transform={transform}
+                    bgPosY={bgPosY}
+                    bgSize={bgSize}
                 />
             ))}
         </>
@@ -179,10 +188,10 @@ const REVEAL_MS = 260;
 const FOCUS_DEADLINE_MS = 1200;
 
 function FadeLayer({
-    url, fadeIn, fadeMs, filter, transform
+    url, fadeIn, fadeMs, filter, transform, bgPosY, bgSize
 }: {
     url: string; fadeIn: boolean; fadeMs: number;
-    filter: string; transform: string;
+    filter: string; transform: string; bgPosY: string; bgSize: string;
 }) {
     const { peekFocusX, imageFocusX } = useMobileTheme();
 
@@ -254,8 +263,8 @@ function FadeLayer({
             // rail montado; en móvil es el safe-area y en escritorio, 0.
             left: 'var(--jfp-nav-left, 0px)',
             backgroundImage: `url(${url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: `${focusPos}% center`,
+            backgroundSize: bgSize,
+            backgroundPosition: `${focusPos}% ${bgPosY}`,
             filter, transform,
             opacity,
             // La transición de posición ya no debería verse nunca: la capa no

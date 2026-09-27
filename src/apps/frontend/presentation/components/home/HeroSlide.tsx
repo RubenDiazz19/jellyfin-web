@@ -10,6 +10,7 @@ import { TextButton } from '../controls/buttons/TextButton';
 import { useItemContextMenu } from '../controls/useItemContextMenu';
 import { HeroTrailerVideo } from './HeroTrailerVideo';
 import { HeroGenres } from '../layout/DetailHero';
+import { useLandscape, useHeroBackdrop } from '../../theme/responsive';
 import { cleanGenres } from '../../../domain/genres';
 import type { HeroTrailerState, TrailerSource } from '../../../domain/viewModels/HeroTrailerViewModel';
 import type { Navigate } from '../../../app/router';
@@ -80,13 +81,17 @@ export const HeroSlide = React.memo(function HeroSlideBase({
         navigate({ page: 'episode', showId: slide.id, seasonN: slide.season, epN: slide.episode });
     };
 
+    const landscape = useLandscape();
+    const useBackdrop = useHeroBackdrop();
+    const image = useBackdrop ? (slide.backdrop || slide.poster) : (slide.poster || slide.backdrop);
+
     return (
         <div
             style={{ width, height: '100%', position: 'relative', flexShrink: 0 }}
             onContextMenu={ctx.onContextMenu}
         >
             <Backdrop
-                src={slide.backdrop} srcs={slide.backdrops}
+                src={image} srcs={useBackdrop ? slide.backdrops : undefined}
                 sharp
                 bottomFade
                 vignette={0.32}

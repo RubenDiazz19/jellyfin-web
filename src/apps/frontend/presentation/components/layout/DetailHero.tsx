@@ -96,6 +96,10 @@ type FrameProps = {
     isPaused?: boolean;
     onToggleMute?: () => void;
     onError?: (err?: unknown) => void;
+    /** Alto personalizado para el hero (por defecto 100vh) */
+    height?: string;
+    /** Alto personalizado para la imagen de fondo (por defecto 100%) */
+    backdropHeight?: string;
 };
 
 /**
@@ -105,7 +109,7 @@ type FrameProps = {
 export function HeroFrame({
     hero, backdrop, backdrops, nav, children, footer, pos, pad, scrim, blurred,
     onContextMenu, trailerSource, trailerState = 'idle', isMuted = true, isPaused = false,
-    onToggleMute, onError
+    onToggleMute, onError, height, backdropHeight
 }: FrameProps) {
     const layout = useHeroLayout(hero);
     const place = pos ? HERO_POS[pos] : layout.pos;
@@ -124,7 +128,7 @@ export function HeroFrame({
                     top: 0,
                     left: 0,
                     right: 0,
-                    height: heroHeight(r.touch),
+                    height: height ?? heroHeight(r.touch),
                     // A sangre en táctil: el body reserva el hueco del rail (tablet) y
                     // del safe-area, y aquí se devuelve para que el fondo del hero
                     // llegue al borde; la IMAGEN se recorta al área útil desde
@@ -140,24 +144,30 @@ export function HeroFrame({
                     willChange: 'opacity'
                 }}
             >
-                <Backdrop src={backdrop} srcs={backdrops} sharp blurred={blurred} bottomFade={false} />
-                
-                {trailerSource && trailerState !== 'idle' && (
-                    <HeroTrailerVideo
-                        source={trailerSource}
-                        isMuted={isMuted}
-                        isPaused={isPaused}
-                        onToggleMute={onToggleMute}
-                        onError={onError ?? (() => {})}
-                    />
-                )}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: backdropHeight ?? '100%', overflow: 'hidden' }}>
+                    <Backdrop src={backdrop} srcs={backdrops} sharp blurred={blurred} bottomFade={false} />
+                    
+                    {trailerSource && trailerState !== 'idle' && (
+                        <HeroTrailerVideo
+                            source={trailerSource}
+                            isMuted={isMuted}
+                            isPaused={isPaused}
+                            onToggleMute={onToggleMute}
+                            onError={onError ?? (() => {})}
+                        />
+                    )}
 
-                {scrimAlpha > 0 && (
-                    <div style={{
-                        position: 'absolute', inset: 0, pointerEvents: 'none',
-                        background: `linear-gradient(to top, rgba(0,0,0,${scrimAlpha}) 0%, rgba(0,0,0,${(scrimAlpha * 0.45).toFixed(2)}) 24%, transparent 56%)`
-                    }} />
-                )}
+                    {scrimAlpha > 0 && (
+                        <div style={{
+                            position: 'absolute', inset: 0, pointerEvents: 'none',
+                            // Degradado más agresivo si hay backdropHeight (para fundir con el negro del resto del hero)
+                            background: backdropHeight 
+                                ? `linear-gradient(to top, #000 0%, rgba(0,0,0,0.8) 15%, transparent 60%)`
+                                : `linear-gradient(to top, rgba(0,0,0,${scrimAlpha}) 0%, rgba(0,0,0,${(scrimAlpha * 0.45).toFixed(2)}) 24%, transparent 56%)`
+                        }} />
+                    )}
+                </div>
+
                 {/* jfp-hero-content: en táctil impide que los hijos encojan. Un
                     flex en columna reparte el recorte entre todos cuando no cabe
                     el bloque, y encoger la CAJA de un texto no encoge el texto:
@@ -171,12 +181,12 @@ export function HeroFrame({
                         // Ahora el hero ocupa la pantalla entera, así que la
                         // píldora de navegación flota sobre su parte de abajo: el
                         // bloque de texto le deja su hueco.
-                        padding: r.touch ?
+                        padding: pad !== undefined ? pad : (r.touch ?
                             'calc(56px + env(safe-area-inset-top, 0px))'
                                 + ` calc(${r.pagePad + 4}px + env(safe-area-inset-right, 0px))`
                                 + ` calc(var(${NAV_BOTTOM_VAR}, 24px) + ${short ? 8 : 20}px)`
                                 + ` calc(${r.pagePad + 4}px + var(${NAV_LEFT_VAR}, 0px))` :
-                            pad ?? place.pad,
+                            place.pad),
                         display: 'flex', flexDirection: 'column',
                         alignItems: place.align, justifyContent: place.justify,
                         textAlign: place.text,
@@ -199,7 +209,7 @@ export function HeroFrame({
                 )}
             </section>
             {/* Espaciador en el flujo del documento para reservar el alto de pantalla del hero */}
-            <div style={{ height: heroHeight(r.touch), pointerEvents: 'none' }} />
+            <div style={{ height: height ?? heroHeight(r.touch), pointerEvents: 'none' }} />
         </>
     );
 }

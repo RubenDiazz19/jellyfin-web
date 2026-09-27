@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 // eslint-disable-next-line import/no-restricted-paths
 import loading from 'components/loading/loading';
 import App from './App';
@@ -21,7 +21,7 @@ import '../presentation/styles/global.css';
 // contaminar la UI de admin/wizard si el usuario navega allí.
 export const Component = () => {
     const cleanupRefs = useRef<Array<() => void>>([]);
-    useEffect(() => {
+    useLayoutEffect(() => {
         document.body.classList.add('jf-frontend-active');
         // index.jsx hace loading.show() antes de renderizar el árbol React y
         // deja que el consumidor lo oculte cuando termina de montarse. El

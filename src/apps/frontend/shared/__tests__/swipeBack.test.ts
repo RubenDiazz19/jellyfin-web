@@ -58,4 +58,17 @@ describe('swipeBack', () => {
         swipe(8, 200);
         expect(back).not.toHaveBeenCalled();
     });
+
+    it('mobile: swipe desde el borde derecho navega atrás', () => {
+        document.documentElement.classList.add('layout-mobile');
+        // Simulate window width for this test if needed. jsdom innerWidth is 1024 by default.
+        swipe(1020, 800); // 1024 - 1020 = 4px from edge. dx = -220, valid.
+        expect(back).toHaveBeenCalledTimes(1);
+    });
+
+    it('un swipe que no arranca en el borde derecho no navega', () => {
+        document.documentElement.classList.add('layout-mobile');
+        swipe(900, 700); // 1024 - 900 = 124px from edge (not an edge).
+        expect(back).not.toHaveBeenCalled();
+    });
 });

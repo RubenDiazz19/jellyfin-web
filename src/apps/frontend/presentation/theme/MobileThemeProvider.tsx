@@ -250,7 +250,7 @@ export function MobileThemeProvider({ children }: { children: ReactNode }) {
         // paga la decodificación de imagen aunque el estado esté desfasado.
         if (!currentMobileLayout() || !url) return;
         void analyzeImage(url).then(({ seed: hex }) => {
-            if (hex) themeVM.applyDynamicSeed(hex);
+            if (hex && currentMobileLayout()) themeVM.applyDynamicSeed(hex);
         });
     }, []);
 

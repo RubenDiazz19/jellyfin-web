@@ -235,6 +235,18 @@ function AuthedApp() {
         };
     }, [location.pathname, mobileLayout]);
 
+    // Detecta si la navegación es hacia atrás comparando el índice del
+    // historial (React Router guarda `idx` en history.state). Es más fiable
+    // que useNavigationType() con HashRouter.
+    const prevIdxRef = useRef(window.history.state?.idx ?? 0);
+    const currentIdx: number = window.history.state?.idx ?? 0;
+    const isBack = currentIdx < prevIdxRef.current;
+    // Actualizar DESPUÉS del render (en layout effect) para que StrictMode
+    // no lo consuma en el render doble.
+    useLayoutEffect(() => { prevIdxRef.current = currentIdx; }, [currentIdx]);
+
+    const slideMotion = 'jfp-slide-in 0.28s cubic-bezier(0.05, 0.7, 0.1, 1)';
+
     return (
         <>
             <div
@@ -244,16 +256,13 @@ function AuthedApp() {
                 onAnimationEnd={(e) => {
                     e.currentTarget.style.animation = 'none';
                 }}
-                // Mobile/tablet: slide corto M3. El transform solo existe
-                // durante los ~280 ms de animación (termina en `none`), así
-                // que la ventana de riesgo del containing-block para menús
-                // fixed (ver global.css) queda acotada. Desktop: fade actual.
                 style={{
-                    animation: mobileLayout ?
-                        'jfp-slide-in var(--md-sys-motion-duration-medium1, 0.28s) var(--md-sys-motion-easing-emphasized-decelerate, cubic-bezier(0.05, 0.7, 0.1, 1))' :
-                        'jfp-fade-in 0.65s ease',
+                    // --jfp-slide-x controla la dirección del slide.
+                    // Positivo = avance (desde la derecha), negativo = retroceso (desde la izquierda).
+                    '--jfp-slide-x': isBack ? '-20px' : '20px',
+                    animation: mobileLayout ? slideMotion : 'jfp-fade-in 0.65s ease',
                     outline: 'none'
-                }}
+                } as React.CSSProperties}
             >
                 {/* key por ruta también en la barrera: navegar resetea el error. */}
                 <ErrorBoundary>

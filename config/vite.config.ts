@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { transformSync } from 'esbuild';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 import { JF_PROXY_PATTERN } from '../scripts/apiRoots';
@@ -205,18 +206,37 @@ function workerImports(): Plugin {
     };
 }
 
-// Emits serviceworker.js (sin hash, en la raíz) into the build output. Vite
-// only bundles modules reachable from index.html, and the SW must keep a
-// stable URL for navigator.serviceWorker.register('/serviceworker.js').
 function emitServiceWorker(): Plugin {
     return {
         name: 'jf-emit-serviceworker',
         apply: 'build',
-        generateBundle() {
+        generateBundle(_options, bundle) {
+            let source = fs.readFileSync(path.join(SRC_DIR, 'serviceworker.js'), 'utf-8');
+            
+            const shellAssets = ['/'];
+            for (const file of Object.values(bundle)) {
+                if (file.type === 'chunk' && (file.isEntry || file.name.startsWith('vendor-'))) {
+                    shellAssets.push(`/${file.fileName}`);
+                } else if (file.type === 'asset' && file.fileName.endsWith('.css')) {
+                    shellAssets.push(`/${file.fileName}`);
+                }
+            }
+
+            source = source.replace(
+                'const VERSION = 1;',
+                `const VERSION = ${Date.now()};`
+            );
+            source = source.replace(
+                "cache.addAll(['/'])",
+                `cache.addAll(${JSON.stringify(shellAssets)})`
+            );
+
+            source = transformSync(source, { minify: true, drop: ['console'] }).code;
+
             this.emitFile({
                 type: 'asset',
                 fileName: 'serviceworker.js',
-                source: fs.readFileSync(path.join(SRC_DIR, 'serviceworker.js'), 'utf-8')
+                source
             });
         }
     };
@@ -267,7 +287,7 @@ function devStaticAssets(): Plugin {
                     filePath = path.join(
                         NODE_MODULES_DIR, '@jellyfin/ux-web/favicons', url.slice('/favicons/'.length)
                     );
-                } else if (url === '/serviceworker.js') {
+                } else if (url.split('?')[0] === '/serviceworker.js') {
                     filePath = path.join(SRC_DIR, 'serviceworker.js');
                 }
                 if (!filePath) return next();

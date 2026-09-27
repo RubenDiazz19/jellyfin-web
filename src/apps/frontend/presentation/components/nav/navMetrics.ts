@@ -31,8 +31,8 @@ export const RAIL_MARGIN = 12;
 export const NAV_BOTTOM_VAR = '--jfp-nav-bottom';
 export const NAV_LEFT_VAR = '--jfp-nav-left';
 
-const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)';
-const SAFE_LEFT = 'env(safe-area-inset-left, 0px)';
+export const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)';
+export const SAFE_LEFT = 'env(safe-area-inset-left, 0px)';
 
 /** Valor de --jfp-nav-bottom / --jfp-nav-left según el layout activo. */
 export function navSpace(isRail: boolean): { bottom: string; left: string } {

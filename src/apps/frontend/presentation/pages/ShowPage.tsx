@@ -72,9 +72,9 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
     const landscape = useLandscape();
     const { play, prewarm } = usePlayer();
     // En vertical manda el póster: el backdrop es 16:9 y a `cover` en una
-    // pantalla alargada solo se ve su franja central. Tumbado o en tablet, el
-    // backdrop encaja y es el que se usa (con su rotación de fondos).
-    const portraitPhone = r.mobile && !landscape;
+    // pantalla alargada solo se ve su franja central. Tumbado manda el
+    // backdrop encajado (con su rotación de fondos).
+    const portraitPhone = !landscape;
     const heroImage = portraitPhone ? (show.poster || show.backdrop || '') : (show.backdrop || '');
     const targetEp = show.seasons
         .find((s) => s.n === target.seasonN)

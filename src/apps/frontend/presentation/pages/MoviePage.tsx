@@ -67,8 +67,8 @@ function MovieHero({
     const landscape = useLandscape();
     const { play, prewarm } = usePlayer();
     // Mismo criterio que la ficha de serie: en vertical el póster llena la
-    // pantalla sin recortar; tumbado o en tablet manda el backdrop.
-    const portraitPhone = r.mobile && !landscape;
+    // pantalla sin recortar; tumbado manda el backdrop.
+    const portraitPhone = !landscape;
     const heroImage = portraitPhone ? (movie.poster || movie.backdrop || '') : (movie.backdrop || '');
     const startPlay = () => {
         play({

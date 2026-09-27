@@ -99,9 +99,10 @@ export function ListPage({ kind, listId, navigate }: Props) {
                 }}
                 style={{
                     position: 'relative',
-                    width: '100vw',
-                    minHeight: hasItems ? '190vh' : '100vh',
-                    background: 'transparent'
+                    width: '100%',
+                    minHeight: '100vh',
+                    background: '#000000',
+                    overflowX: 'hidden'
                 }}
             >
                 <Nav navigate={navigate} active='lists' />
@@ -114,7 +115,6 @@ export function ListPage({ kind, listId, navigate }: Props) {
                     onChanged={refresh}
                     menuRef={collectionMenuRef}
                 />
-                {hasItems && <div style={{ height: '190vh', pointerEvents: 'none' }} />}
             </div>
         );
     }

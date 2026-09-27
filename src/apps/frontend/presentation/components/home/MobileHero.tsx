@@ -21,12 +21,11 @@ import globalize from 'lib/globalize';
 import { PROTO_DATA, type CarouselSlide } from '../../../domain/models';
 import { T } from '../../theme/tokens';
 import { Ic } from '../../theme/icons';
-import { useShortViewport } from '../../theme/responsive';
+import { useLandscape, useShortViewport, useHeroBackdrop } from '../../theme/responsive';
 import { formatRemainingCompact } from '../../utils/format';
 import { Backdrop } from '../layout/Backdrop';
-import { PlayBtn } from '../controls/buttons/PlayBtn';
 import { TextButton, TEXT_BTN_TAP } from '../controls/buttons/TextButton';
-import { ScrollHint } from '../layout/ScrollHint';
+
 import { NAV_BOTTOM_VAR, NAV_LEFT_VAR } from '../nav/navMetrics';
 import { HeroGenres } from '../layout/DetailHero';
 import { cleanGenres } from '../../../domain/genres';
@@ -110,18 +109,19 @@ export function MobileHero({
 
     // El Backdrop alimenta la seed del dynamic color con lo que se ve, así
     // que el tema (y con él la píldora de navegación) toma el color de esta
-    // misma imagen.
-    const image = tablet ?
-        (slide.backdrop || slide.poster) :
-        (slide.poster || slide.backdrop);
+    // misma imagen. Usamos el backdrop si estamos en horizontal o en un
+    // dispositivo con una proporción más ancha (ej. iPad vertical).
+    const landscape = useLandscape();
+    const useBackdrop = useHeroBackdrop();
+    const image = useBackdrop ? (slide.backdrop || slide.poster) : (slide.poster || slide.backdrop);
 
     const isTrailerActive = trailerState === 'transitioning' || trailerState === 'playing';
 
     const side = tablet ? 32 : 20;
     const topPad = short ? 44 : 64;
-    const gap = short ? 8 : (tablet ? 18 : 14);
-    const playSize = short ? 58 : (tablet ? 94 : 76);
-    const logoMax = short ? 'min(28vh, 78px)' : (tablet ? 'min(20vh, 145px)' : 'min(16vh, 100px)');
+    const gap = !landscape ? 12 : (short ? 8 : (tablet ? 18 : 14));
+    const logoMax = !landscape ? 'min(17vh, 102px)' : (short ? 'min(24vh, 66px)' : (tablet ? 'min(17vh, 123px)' : 'min(14vh, 85px)'));
+    const logoMaxWidth = !landscape ? (tablet ? 'min(55vw, 272px)' : 'min(72vw, 272px)') : (tablet ? 'min(60vw, 374px)' : 'min(66vw, 272px)');
 
     return (
         <section
@@ -129,7 +129,7 @@ export function MobileHero({
             onTouchEnd={onTouchEnd}
             style={{
                 position: 'relative',
-                height: 'var(--jfp-viewport-h, 100vh)',
+                height: '100%',
                 // A sangre: el body lleva reservado el hueco del rail (tablet)
                 // y el safe-area, y aquí se devuelve para que el fondo del hero
                 // (degradados, viñeta) llegue al borde. La IMAGEN se recorta
@@ -145,7 +145,13 @@ export function MobileHero({
                 userSelect: 'none'
             }}
         >
-            <Backdrop src={image} srcs={tablet ? slide.backdrops : undefined} vignette={0.2} sharp bottomFade={false} />
+            <Backdrop
+                src={image}
+                srcs={useBackdrop ? slide.backdrops : undefined}
+                vignette={0.2}
+                sharp
+                bgPosY={!useBackdrop ? '60%' : 'center'}
+            />
 
             {/* Video del trailer de fondo con fundido suave al activarse */}
             {trailerSource && isTrailerActive && (
@@ -178,7 +184,7 @@ export function MobileHero({
                 // píldora y a la izquierda el rail en tablet.
                 padding: `calc(${topPad}px + env(safe-area-inset-top, 0px))`
                     + ` calc(${side}px + env(safe-area-inset-right, 0px))`
-                    + ` calc(var(${NAV_BOTTOM_VAR}, 24px) + ${short ? 8 : (tablet ? 24 : 16)}px)`
+                    + ` calc(${landscape ? `var(${NAV_BOTTOM_VAR}, 24px) + ` : ''}${short ? -24 : (tablet ? 12 : -28)}px)`
                     + ` calc(${side}px + var(${NAV_LEFT_VAR}, 0px))`
             }}
             >
@@ -191,7 +197,7 @@ export function MobileHero({
                         alignItems: 'center',
                         minHeight: 0,
                         maxWidth: '100%',
-                        gap: short ? 8 : (tablet ? 16 : 12),
+                        gap: !landscape ? 12 : (short ? 8 : (tablet ? 16 : 12)),
                         animation: 'jfp-fade-in 0.45s ease-out both',
                         transform: isTrailerActive ? (tablet ? 'translateY(12px) scale(0.85)' : 'translateY(8px) scale(0.9)') : 'none',
                         transition: 'transform 550ms cubic-bezier(0.25, 1, 0.5, 1)',
@@ -202,7 +208,7 @@ export function MobileHero({
                         <HeroGenres
                             genres={heroGenres}
                             navigate={navigate}
-                            fontSize={10}
+                            fontSize={13}
                             marginBottom={0}
                             justifyContent='center'
                         />
@@ -219,7 +225,7 @@ export function MobileHero({
                                 alt={slide.title}
                                 decoding='async'
                                 style={{
-                                    maxWidth: tablet ? 'min(70vw, 440px)' : 'min(78vw, 320px)',
+                                    maxWidth: logoMaxWidth,
                                     maxHeight: logoMax,
                                     width: 'auto',
                                     height: 'auto',
@@ -230,8 +236,8 @@ export function MobileHero({
                         ) : (
                             <h1 style={{
                                 fontFamily: T.ui,
-                                fontSize: short ? 'clamp(24px, 5vh, 34px)' :
-                                    (tablet ? 'clamp(40px, 6vw, 72px)' : 'clamp(30px, 9vw, 46px)'),
+                                fontSize: !landscape ? 'clamp(20px, 6vw, 32px)' : (short ? 'clamp(24px, 5vh, 34px)' :
+                                    (tablet ? 'clamp(40px, 6vw, 72px)' : 'clamp(30px, 9vw, 46px)')),
                                 lineHeight: 1.02,
                                 margin: 0,
                                 fontWeight: 300,
@@ -250,7 +256,7 @@ export function MobileHero({
                     </TextButton>
 
                     <div style={{
-                        fontSize: 'var(--md-sys-typescale-label-large-size, 14px)',
+                        fontSize: '16px',
                         color: 'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.7))',
                         maxWidth: '100%',
                         overflow: 'hidden',
@@ -287,7 +293,7 @@ export function MobileHero({
                                         <span style={{
                                             border: '1px solid rgba(255,255,255,0.35)',
                                             padding: '1px 5px',
-                                            fontSize: 10,
+                                            fontSize: 12,
                                             borderRadius: 3,
                                             fontWeight: 600,
                                             lineHeight: 1
@@ -308,20 +314,6 @@ export function MobileHero({
                         )}
                         {remaining ? ` · ${remaining}` : ''}
                     </div>
-
-                    <div
-                        style={{
-                            opacity: isTrailerActive ? 0.35 : 1,
-                            transition: 'opacity 550ms cubic-bezier(0.25, 1, 0.5, 1)',
-                            pointerEvents: 'auto'
-                        }}
-                    >
-                        <PlayBtn
-                            size={playSize}
-                            onClick={onPlay}
-                            progress={isContinue ? slide.progress : null}
-                        />
-                    </div>
                 </div>
 
                 {/* Puntos del carrusel: último en la columna, nunca encima del
@@ -332,7 +324,8 @@ export function MobileHero({
                         display: 'flex',
                         gap: 6,
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        marginBottom: !landscape ? -16 : 0
                     }}
                     >
                         {slides.map((s, i) => (
@@ -367,19 +360,6 @@ export function MobileHero({
                     </div>
                 )}
 
-                {/* Indicador de scroll adaptado al flujo del hero táctil */}
-                <ScrollHint
-                    label={globalize.translate('HeaderMyLibrary')}
-                    opacity={scrollHintOpacity ?? contentOpacity ?? 1}
-                    style={{
-                        position: 'relative',
-                        left: 'auto',
-                        bottom: 'auto',
-                        transform: 'none',
-                        marginTop: short ? 0 : 4,
-                        marginBottom: 0
-                    }}
-                />
             </div>
         </section>
     );

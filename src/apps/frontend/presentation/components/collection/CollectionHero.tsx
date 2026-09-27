@@ -5,7 +5,6 @@ import { ListCardMenu, type ListMenuHandle } from '../controls/menus/ListCardMen
 import { COLLECTION_STYLES, type ListRef } from '../../../domain/stores';
 import { CollectionCardCarousel } from './CollectionCardCarousel';
 import { SubCollectionsCarousel } from './SubCollectionsCarousel';
-import { useCollectionScrollTransition } from './useCollectionScrollTransition';
 
 import { imageUrl, type PlaylistItem } from '../../../domain/api';
 import { analyzeImage } from '../../theme/dynamicColor';
@@ -43,22 +42,7 @@ export function CollectionHero({
     // Separamos subcolecciones (BoxSet hijos) de películas/series
     const collectionItems = useMemo(() => items?.filter(i => i.kind === 'collection') || [], [items]);
     const mediaItems = useMemo(() => items?.filter(i => i.kind !== 'collection') || [], [items]);
-    const onlyCollections = hasItems && mediaItems.length === 0 && collectionItems.length > 0;
 
-    const internalMenu = useRef<ListMenuHandle | null>(null);
-    const activeMenu = menuRef ?? internalMenu;
-
-    const {
-        scrollY,
-        logoTranslateY,
-        logoScale,
-        headerHeight,
-        backgroundBlur,
-        backgroundScale,
-        gradientOpacity,
-        backdropOpacity,
-        logoBottomFromTop
-    } = useCollectionScrollTransition(r.touch, onlyCollections);
 
     const [styleState, setStyleState] = useState(() => ({
         color: COLLECTION_STYLES.getColor(listId),
@@ -140,6 +124,9 @@ export function CollectionHero({
         return () => { active = false; };
     }, [currentBackdrop]);
 
+    const internalMenu = useRef<ListMenuHandle | null>(null);
+    const activeMenu = menuRef ?? internalMenu;
+
     return (
         <section
             className='collectionHero'
@@ -149,204 +136,185 @@ export function CollectionHero({
             }}
             style={{
                 position: 'relative',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                overflow: 'hidden',
+                width: '100%',
+                minHeight: '100vh',
                 backgroundColor: '#000000',
                 '--bg-dynamic': bgDynamic,
-                transition: 'background 0.5s ease-in-out',
                 userSelect: 'none',
-                zIndex: 0
+                boxSizing: 'border-box'
             } as React.CSSProperties}
         >
-            {/* 1. Imagen a pantalla completa que se recorta a encabezado al hacer scroll */}
-            {currentBackdrop && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0,
-                    height: headerHeight,
-                    zIndex: 0,
+            {/* 1. Hero Header con imagen, tratamiento multicapa y logo centrado */}
+            <div
+                style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: r.touch ? '54vh' : '64vh',
+                    minHeight: r.touch ? 360 : 480,
+                    maxHeight: r.touch ? 480 : 680,
                     overflow: 'hidden',
-                    pointerEvents: 'none',
-                    opacity: backdropOpacity,
-                    willChange: 'height, opacity'
-                }}>
-                    <img
-                        key={currentBackdrop}
-                        src={currentBackdrop}
-                        alt=''
-                        onError={() => {
-                            // Si falla la imagen actual (ej. 404 del Backdrop), probar el siguiente candidato
-                            setBackdropIndex((prev) => (prev + 1 < backdropCandidates.length ? prev + 1 : prev));
-                        }}
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            objectPosition: 'top center',
-                            display: 'block',
-                            transform: `scale(${backgroundScale})`,
-                            filter: `blur(${backgroundBlur}px)`,
-                            transition: 'transform 0.1s ease-out, filter 0.1s ease-out',
-                            maskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.4) 65%, rgba(0,0,0,0.1) 75%, transparent 85%)',
-                            WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 30%, rgba(0,0,0,0.9) 45%, rgba(0,0,0,0.7) 55%, rgba(0,0,0,0.4) 65%, rgba(0,0,0,0.1) 75%, transparent 85%)'
-                        }}
-                    />
-                </div>
-            )}
-
-            {/* Capa A: Scrim superior para contraste y legibilidad de la barra de navegación */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0, height: 140,
-                    background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 45%, rgba(0, 0, 0, 0.1) 80%, transparent 100%)',
-                    pointerEvents: 'none',
-                    zIndex: 1
-                }}
-            />
-
-            {/* Capa B: Viñeteado lateral para concentrar el foco en el centro */}
-            <div
-                style={{
-                    position: 'fixed',
-                    inset: 0,
-                    height: headerHeight,
-                    background: 'linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, transparent 12%, transparent 88%, rgba(0, 0, 0, 0.5) 100%)',
-                    pointerEvents: 'none',
-                    zIndex: 1,
-                    willChange: 'height'
-                }}
-            />
-
-            {/* Capa C: Degradado ultrasuave inferior ajustado para terminar antes (Disney+) */}
-            {hasItems && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        height: headerHeight,
-                        background: 'linear-gradient(to bottom, transparent 0%, transparent 20%, rgba(0, 0, 0, 0.02) 28%, rgba(0, 0, 0, 0.06) 35%, rgba(0, 0, 0, 0.14) 42%, rgba(0, 0, 0, 0.28) 49%, rgba(0, 0, 0, 0.48) 55%, rgba(0, 0, 0, 0.70) 62%, rgba(0, 0, 0, 0.88) 68%, rgba(0, 0, 0, 0.98) 73%, #000000 78%)',
-                        pointerEvents: 'none',
-                        zIndex: 2,
-                        willChange: 'height'
-                    }}
-                />
-            )}
-
-            {/* Capa de oscurecimiento dinámica con el scroll */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 0, left: 0, right: 0,
-                    height: headerHeight,
-                    backgroundColor: `rgba(0,0,0,${Math.min(0.65, gradientOpacity)})`,
-                    pointerEvents: 'none',
-                    zIndex: 1,
-                    transition: 'background-color 0.1s ease-out',
-                    willChange: 'height'
-                }}
-            />
-
-            {/* 3. Logo oficial: siempre centrado horizontalmente y pegado sobre el carrusel */}
-            <div
-                style={{
-                    position: 'fixed',
-                    bottom: r.touch ? 285 : (hasItems ? (onlyCollections ? 505 : 365) : 285),
-                    left: '50%',
-                    transform: `translate(-50%, ${logoTranslateY}px) scale(${logoScale})`,
-                    zIndex: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    pointerEvents: 'none',
-                    transformOrigin: 'center center',
-                    willChange: 'transform',
-                    width: '90%',
-                    maxWidth: 480
+                    backgroundColor: '#000000'
                 }}
             >
-                {currentLogo ? (
-                    <img
-                        key={currentLogo}
-                        src={currentLogo}
-                        alt={list?.name || ''}
-                        onError={() => {
-                            setLogoIndex((prev) => (prev + 1 < logoCandidates.length ? prev + 1 : prev));
-                        }}
-                        style={{
-                            width: r.touch ? '55vw' : '38vw',
-                            maxWidth: 530,
-                            height: r.touch ? 70 : 176,
-                            objectFit: 'contain',
-                            filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.85))'
-                        }}
-                    />
-                ) : (
+                {currentBackdrop && (
                     <div
                         style={{
-                            fontFamily: T.ui,
-                            fontSize: r.touch ? 28 : 44,
-                            fontWeight: 800,
-                            color: '#ffffff',
-                            letterSpacing: 1.5,
-                            textTransform: 'uppercase',
-                            textShadow: '0 4px 24px rgba(0,0,0,0.9)',
-                            textAlign: 'center'
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: 0,
+                            overflow: 'hidden',
+                            pointerEvents: 'none'
                         }}
                     >
-                        {list?.name}
+                        <img
+                            key={currentBackdrop}
+                            src={currentBackdrop}
+                            alt=''
+                            onError={() => {
+                                setBackdropIndex((prev) => (prev + 1 < backdropCandidates.length ? prev + 1 : prev));
+                            }}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                objectPosition: 'center 22%',
+                                display: 'block'
+                            }}
+                        />
+
+                        {/* Atenuación sutil general para imágenes con zonas muy claras */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                backgroundColor: 'rgba(0, 0, 0, 0.20)',
+                                pointerEvents: 'none'
+                            }}
+                        />
+
+                        {/* Scrim superior para navegación */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: 140,
+                                background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.40) 50%, transparent 100%)',
+                                pointerEvents: 'none'
+                            }}
+                        />
+
+                        {/* Viñeteado lateral suave */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(to right, rgba(0, 0, 0, 0.42) 0%, transparent 18%, transparent 82%, rgba(0, 0, 0, 0.42) 100%)',
+                                pointerEvents: 'none'
+                            }}
+                        />
+
+                        {/* Veladura radial centrada detrás del logo para legibilidad sin franjas duras */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'radial-gradient(ellipse 70% 55% at 50% 45%, rgba(0, 0, 0, 0.35) 0%, transparent 75%)',
+                                pointerEvents: 'none'
+                            }}
+                        />
+
+                        {/* Transición larga y suave hacia el fondo negro sin línea dura detrás del logo */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(to bottom, transparent 0%, transparent 28%, rgba(0, 0, 0, 0.02) 36%, rgba(0, 0, 0, 0.08) 46%, rgba(0, 0, 0, 0.20) 56%, rgba(0, 0, 0, 0.40) 68%, rgba(0, 0, 0, 0.70) 80%, rgba(0, 0, 0, 0.92) 92%, #000000 100%)',
+                                pointerEvents: 'none'
+                            }}
+                        />
                     </div>
                 )}
+
+                {/* Logo oficial o título centrado visualmente en el hero */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        inset: 0,
+                        zIndex: 2,
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        justifyContent: 'center',
+                        padding: r.touch ? '0 24px 12px' : '0 48px 20px',
+                        pointerEvents: 'none',
+                        boxSizing: 'border-box'
+                    }}
+                >
+                    {currentLogo ? (
+                        <img
+                            key={currentLogo}
+                            src={currentLogo}
+                            alt={list?.name || ''}
+                            onError={() => {
+                                setLogoIndex((prev) => (prev + 1 < logoCandidates.length ? prev + 1 : prev));
+                            }}
+                            style={{
+                                width: r.touch ? '55vw' : '38vw',
+                                maxWidth: 530,
+                                maxHeight: r.touch ? 85 : 176,
+                                height: 'auto',
+                                objectFit: 'contain',
+                                filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.85)) drop-shadow(0 2px 8px rgba(0,0,0,0.65))'
+                            }}
+                        />
+                    ) : (
+                        <div
+                            style={{
+                                fontFamily: T.ui,
+                                fontSize: r.touch ? 32 : 46,
+                                fontWeight: 800,
+                                color: '#ffffff',
+                                letterSpacing: 1.5,
+                                textTransform: 'uppercase',
+                                textShadow: '0 4px 28px rgba(0,0,0,0.9)',
+                                textAlign: 'center',
+                                maxWidth: '90%'
+                            }}
+                        >
+                            {list?.name}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* 5. Carrusel de cards solapado, fijo en pantalla, traslada con el scroll y recortado bajo el logo */}
+            {/* 2. Carruseles en el flujo normal de la página, inmediatamente después del hero */}
             {hasItems && (
                 <div
                     style={{
-                        position: 'fixed',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        zIndex: 4,
-                        pointerEvents: 'none',
-                        maskImage: `linear-gradient(to bottom, transparent 0px, transparent ${logoBottomFromTop}px, black ${logoBottomFromTop + 80}px, black 100%)`,
-                        WebkitMaskImage: `linear-gradient(to bottom, transparent 0px, transparent ${logoBottomFromTop}px, black ${logoBottomFromTop + 80}px, black 100%)`
+                        position: 'relative',
+                        zIndex: 3,
+                        width: '100%',
+                        paddingLeft: r.touch ? 16 : '5vw',
+                        paddingRight: r.touch ? 16 : '5vw',
+                        paddingTop: r.touch ? 12 : 20,
+                        paddingBottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 32px)' : 64,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: r.touch ? 28 : 44,
+                        boxSizing: 'border-box'
                     }}
                 >
-                    <div style={{
-                        position: 'absolute',
-                        bottom: r.touch ? 'calc(var(--jfp-nav-bottom, 72px) + 8px)' : 24,
-                        left: 0,
-                        right: 0,
-                        paddingLeft: r.touch ? 16 : '5vw',
-                        pointerEvents: 'auto',
-                        transform: `translateY(${-scrollY}px)`,
-                        willChange: 'transform'
-                    }}>
-                        {mediaItems.length > 0 ? (
-                            <>
-                                <CollectionCardCarousel listId={listId} items={mediaItems} navigate={navigate} />
-                                {collectionItems.length > 0 && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: r.touch ? 'calc(100% + var(--jfp-nav-bottom, 72px) + 28px)' : 'calc(100% + 50px)',
-                                        left: 0,
-                                        right: 0,
-                                        paddingLeft: r.touch ? 16 : '5vw',
-                                        paddingRight: r.touch ? 16 : '5vw',
-                                        pointerEvents: 'auto'
-                                    }}>
-                                        <SubCollectionsCarousel items={collectionItems} navigate={navigate} listId={listId} />
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            collectionItems.length > 0 && (
-                                <SubCollectionsCarousel items={collectionItems} navigate={navigate} />
-                            )
-                        )}
-                    </div>
+                    {mediaItems.length > 0 && (
+                        <div>
+                            <CollectionCardCarousel listId={listId} items={mediaItems} navigate={navigate} />
+                        </div>
+                    )}
+                    {collectionItems.length > 0 && (
+                        <div>
+                            <SubCollectionsCarousel items={collectionItems} navigate={navigate} listId={listId} />
+                        </div>
+                    )}
                 </div>
             )}
 

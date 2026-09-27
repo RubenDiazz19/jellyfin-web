@@ -16,7 +16,7 @@ import { Nav } from '../components/layout/Nav';
 import { MobileHero } from '../components/home/MobileHero';
 import { HeroCarousel } from '../components/home/HeroCarousel';
 import { HomeLibrary } from '../components/home/HomeLibrary';
-import { useResponsive } from '../theme/responsive';
+import { useLandscape, useResponsive } from '../theme/responsive';
 import { useHomeScrollTransition } from '../hooks/useHomeScrollTransition';
 
 import type { Navigate } from '../../app/router';
@@ -39,6 +39,7 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
     const { session } = useSession();
     const { play } = usePlayer();
     const r = useResponsive();
+    const landscape = useLandscape();
     const jellyfinMode = !!session?.accessToken;
     // En modo Jellyfin el carrusel se construye con datos reales (continuar
     // viendo + últimas series); en modo prototipo, con PROTO_DATA.
@@ -214,12 +215,13 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
 
     // Mobile/tablet: hero táctil con transición suave y fijo al deslizar.
     if (r.touch) {
+        const touchHeroHeight = landscape ? 'var(--jfp-viewport-h, 100vh)' : 'calc(var(--jfp-viewport-h, 100vh) * 0.55)';
         return (
             <div style={ROOT_PAGE_STYLE}>
                 <Nav navigate={navigate} active='home' />
                 <div style={{
                     position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1,
-                    height: 'var(--jfp-viewport-h, 100vh)',
+                    height: touchHeroHeight,
                     overflow: 'hidden',
                     touchAction: 'pan-y',
                     opacity: trans.heroBackdropOpacity,
@@ -243,12 +245,12 @@ export function HomePage({ navigate }: { navigate: Navigate }) {
                         onError={onTrailerError}
                     />
                 </div>
-                <div style={TOUCH_SPACER_STYLE} />
+                <div style={{ height: touchHeroHeight, pointerEvents: 'none' }} />
                 <div style={{ position: 'relative', zIndex: 2, background: 'transparent', minHeight: '100vh' }}>
                     <HomeLibrary
                         navigate={navigate}
-                        titleOpacity={trans.titleOpacity}
-                        titleTranslateY={trans.titleTranslateY}
+                        titleOpacity={landscape ? trans.titleOpacity : 1}
+                        titleTranslateY={landscape ? trans.titleTranslateY : 0}
                     />
                 </div>
             </div>

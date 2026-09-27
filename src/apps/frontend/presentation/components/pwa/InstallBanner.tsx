@@ -20,8 +20,12 @@ const DISMISS_KEY = 'jfp-install-dismissed';
 const DISMISS_DAYS = 14;
 
 function dismissedRecently(): boolean {
-    const ts = Number(localStorage.getItem(DISMISS_KEY) || 0);
-    return ts > 0 && Date.now() - ts < DISMISS_DAYS * 86_400_000;
+    try {
+        const ts = Number(localStorage.getItem(DISMISS_KEY) || 0);
+        return ts > 0 && Date.now() - ts < DISMISS_DAYS * 86_400_000;
+    } catch {
+        return false;
+    }
 }
 
 export function InstallBanner() {
@@ -34,15 +38,25 @@ export function InstallBanner() {
         []
     );
 
-    const install = useCallback(() => {
-        haptic('select');
-        void promptInstall().then(() => setPromptReady(hasInstallPrompt()));
-    }, []);
-
     const dismiss = useCallback(() => {
-        localStorage.setItem(DISMISS_KEY, String(Date.now()));
+        try {
+            localStorage.setItem(DISMISS_KEY, String(Date.now()));
+        } catch {
+            // Ignore quota/private browsing errors
+        }
         setHidden(true);
     }, []);
+
+    const install = useCallback(() => {
+        haptic('select');
+        void promptInstall().then((outcome) => {
+            if (outcome === 'dismissed') {
+                dismiss();
+            } else {
+                setPromptReady(hasInstallPrompt());
+            }
+        });
+    }, [dismiss]);
 
     if (!layout || !promptReady || hidden || isStandalone()) return null;
 

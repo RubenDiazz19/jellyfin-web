@@ -98,7 +98,7 @@
     "start": "vite --config config/vite.config.ts",
     "dev": "vite --config config/vite.config.ts",
     "serve": "vite --config config/vite.config.ts",
-    "build": "vite build --config config/vite.config.ts",
+    "build": "bun run build:check && vite build --config config/vite.config.ts",
     "build:analyze": "ANALYZE=1 vite build --config config/vite.config.ts",
     "build:compress": "bun run scripts/precompress.ts",
     "build:check": "tsc --noEmit --project config/tsconfig.json",

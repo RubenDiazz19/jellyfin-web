@@ -92,27 +92,41 @@ function apply(): void {
  * Lo llaman AppLayout y VideoRoute; la primera llamada instala los listeners,
  * las siguientes solo reevalúan.
  */
+let activeCount = 0;
+let resizeTimer: number | null = null;
+
 export function initAdaptiveLayout(): () => void {
-    if (started) {
-        apply();
-        return () => { /* singleton: no se desmonta */ };
+    if (activeCount === 0) {
+        started = true;
+        base = document.documentElement.classList.contains('layout-tv') ? 'tv' :
+            document.documentElement.classList.contains('layout-mobile') ? 'mobile' :
+                'desktop';
+
+        onResize = () => {
+            if (resizeTimer !== null) clearTimeout(resizeTimer);
+            resizeTimer = window.setTimeout(() => {
+                resizeTimer = null;
+                apply();
+            }, 100);
+        };
+        window.addEventListener('resize', onResize, { passive: true });
+
+        bodyObserver = new MutationObserver(() => apply());
+        bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
     }
-    started = true;
-    base = document.documentElement.classList.contains('layout-tv') ? 'tv' :
-        document.documentElement.classList.contains('layout-mobile') ? 'mobile' :
-            'desktop';
-
-    onResize = () => apply();
-    window.addEventListener('resize', onResize, { passive: true });
-    window.addEventListener('orientationchange', onResize, { passive: true });
-
-    // El frontend se activa/desactiva vía clases en <body>; al entrar o salir
-    // (p. ej. navegar al dashboard, o a /video) reevaluamos.
-    bodyObserver = new MutationObserver(() => apply());
-    bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-
+    
+    activeCount++;
     apply();
-    return () => { /* singleton: no se desmonta */ };
+    
+    return () => {
+        activeCount--;
+        if (activeCount === 0) {
+            if (onResize) window.removeEventListener('resize', onResize);
+            if (resizeTimer !== null) clearTimeout(resizeTimer);
+            bodyObserver?.disconnect();
+            started = false;
+        }
+    };
 }
 
 /** Solo para tests: desmonta el singleton y resetea su estado. */

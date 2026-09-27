@@ -54,10 +54,12 @@ export function VideoGestures({ onClose, onWake }: Props) {
 
     const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const singleTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const rAF = useRef<number>(0);
 
     useEffect(() => () => {
         if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
         if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
+        if (rAF.current) cancelAnimationFrame(rAF.current);
     }, []);
 
     // Estado del gesto en curso (fuera de React: se lee/escribe cada move sin
@@ -99,7 +101,7 @@ export function VideoGestures({ onClose, onWake }: Props) {
         const width = rect?.width || window.innerWidth;
         const height = rect?.height || window.innerHeight;
 
-        if (e.touches.length === 2) {
+        if (e.touches.length >= 2) {
             g.current.pinching = true;
             g.current.active = false;
             g.current.pinchStart = touchDistance(e.touches[0], e.touches[1]);
@@ -109,35 +111,39 @@ export function VideoGestures({ onClose, onWake }: Props) {
         const t = e.touches[0];
         const x = t.clientX - (rect?.left ?? 0);
         const y = t.clientY - (rect?.top ?? 0);
-        g.current = {
-            ...g.current,
-            active: true,
-            pinching: false,
-            axis: 'none',
-            startClientX: t.clientX,
-            startClientY: t.clientY,
-            startX: x,
-            startY: y,
-            width,
-            height,
-            startTime: videoPlayerVM.currentTime.peek(),
-            startVolume: videoPlayerVM.volume.peek(),
-            startBrightness: videoPlayerVM.brightness.peek(),
-            control: verticalControl(x, width),
-            fromCloseBand: y < height * CLOSE_BAND,
-            closing: false,
-            pendingSeek: null,
-            moved: false
-        };
+        g.current.active = true;
+        g.current.pinching = false;
+        g.current.axis = 'none';
+        g.current.startClientX = t.clientX;
+        g.current.startClientY = t.clientY;
+        g.current.startX = x;
+        g.current.startY = y;
+        g.current.width = width;
+        g.current.height = height;
+        g.current.startTime = videoPlayerVM.currentTime.peek();
+        g.current.startVolume = videoPlayerVM.volume.peek();
+        g.current.startBrightness = videoPlayerVM.brightness.peek();
+        g.current.control = verticalControl(x, width);
+        g.current.fromCloseBand = y < height * CLOSE_BAND;
+        g.current.closing = false;
+        g.current.pendingSeek = null;
+        g.current.moved = false;
     };
 
     const onTouchMove = (e: React.TouchEvent) => {
         const s = g.current;
 
-        if (s.pinching && e.touches.length === 2) {
-            const scale = pinchScale(s.pinchStart, touchDistance(e.touches[0], e.touches[1]));
-            if (scale > 1.15) videoPlayerVM.setAspectRatio('cover');
-            else if (scale < 0.85) videoPlayerVM.setAspectRatio('auto');
+        if (s.pinching) {
+            if (e.touches.length >= 2) {
+                const scale = pinchScale(s.pinchStart, touchDistance(e.touches[0], e.touches[1]));
+                if (scale > 1.15) {
+                    videoPlayerVM.setAspectRatio('cover');
+                    s.pinchStart = touchDistance(e.touches[0], e.touches[1]);
+                } else if (scale < 0.85) {
+                    videoPlayerVM.setAspectRatio('auto');
+                    s.pinchStart = touchDistance(e.touches[0], e.touches[1]);
+                }
+            }
             return;
         }
         if (!s.active) return;
@@ -154,42 +160,75 @@ export function VideoGestures({ onClose, onWake }: Props) {
             if (s.axis === 'none') return;
         }
 
+        s.width = window.innerWidth;
+        s.height = window.innerHeight;
+
         if (s.axis === 'horizontal') {
             const duration = videoPlayerVM.duration.peek();
             if (duration <= 0) return;
             const target = clamp(s.startTime + seekDeltaFromDrag(dx, s.width), 0, duration);
             s.pendingSeek = target;
-            setFeedback({ kind: 'seek', target, delta: target - s.startTime });
+            if (!rAF.current) {
+                rAF.current = requestAnimationFrame(() => {
+                    rAF.current = 0;
+                    setFeedback({ kind: 'seek', target, delta: target - s.startTime });
+                });
+            }
             return;
         }
 
         // Vertical: swipe-abajo desde la banda superior → cerrar.
-        if (s.fromCloseBand && dy > CLOSE_DISTANCE) {
+        if (s.axis === 'vertical' && s.fromCloseBand && dy > CLOSE_DISTANCE) {
             s.closing = true;
-            setFeedback(null);
+            if (!rAF.current) {
+                rAF.current = requestAnimationFrame(() => {
+                    rAF.current = 0;
+                    setFeedback(null);
+                });
+            }
             return;
         }
         s.closing = false;
 
+        const currentControl = verticalControl(t.clientX, s.width);
+        if (currentControl !== s.control) {
+            s.control = currentControl;
+            s.startY = t.clientY;
+            s.startClientY = t.clientY;
+            s.startBrightness = videoPlayerVM.brightness.peek();
+            s.startVolume = videoPlayerVM.volume.peek();
+        }
+
         if (s.control === 'brightness') {
-            const v = clamp01(s.startBrightness + verticalDelta(dy, s.height));
+            const v = clamp01(s.startBrightness + verticalDelta(t.clientY - s.startClientY, s.height));
             videoPlayerVM.setBrightness(v);
-            setFeedback({ kind: 'brightness', value: videoPlayerVM.brightness.peek() });
+            if (!rAF.current) {
+                rAF.current = requestAnimationFrame(() => {
+                    rAF.current = 0;
+                    setFeedback({ kind: 'brightness', value: videoPlayerVM.brightness.peek() });
+                });
+            }
         } else {
-            const v = clamp01(s.startVolume + verticalDelta(dy, s.height));
+            const v = clamp01(s.startVolume + verticalDelta(t.clientY - s.startClientY, s.height));
             videoPlayerVM.setVolume(v);
-            setFeedback({ kind: 'volume', value: v });
+            if (!rAF.current) {
+                rAF.current = requestAnimationFrame(() => {
+                    rAF.current = 0;
+                    setFeedback({ kind: 'volume', value: v });
+                });
+            }
         }
     };
 
-    const onTouchEnd = () => {
+    const onTouchEnd = (e: React.TouchEvent) => {
         const s = g.current;
 
         if (s.pinching) {
-            s.pinching = false;
+            if (e.touches.length < 2) s.pinching = false;
             return;
         }
         if (!s.active) return;
+        if (e.touches.length > 0) return;
         s.active = false;
 
         if (s.axis === 'horizontal' && s.pendingSeek != null) {
@@ -236,13 +275,7 @@ export function VideoGestures({ onClose, onWake }: Props) {
         g.current.lastTapTime = now;
         g.current.lastTapX = x;
 
-        if (zone === 'center') {
-            // Centro: respuesta inmediata (no hay doble-tap de seek aquí).
-            videoPlayerVM.togglePlay();
-            onWake();
-            return;
-        }
-        // Laterales: espera por un posible segundo tap antes de play/pausa.
+        // Espera por un posible segundo tap antes de play/pausa.
         if (singleTapTimer.current) clearTimeout(singleTapTimer.current);
         singleTapTimer.current = setTimeout(() => {
             videoPlayerVM.togglePlay();

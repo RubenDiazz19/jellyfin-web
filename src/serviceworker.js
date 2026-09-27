@@ -27,6 +27,7 @@ const KNOWN_CACHES = [SHELL_CACHE, ASSETS_CACHE, IMAGES_CACHE, API_CACHE];
 
 const IMAGES_MAX_ENTRIES = 300;
 const API_MAX_ENTRIES = 200;
+const ASSETS_MAX_ENTRIES = 100;
 
 const OFFLINE_HTML = `<!doctype html>
 <html lang="es">
@@ -56,24 +57,24 @@ const OFFLINE_HTML = `<!doctype html>
 
 // ── Utilidades de caché ─────────────────────────────────────────────────
 
-/** Recorta la caché a `maxEntries` borrando las entradas más antiguas. */
 function trimCache(cache, maxEntries) {
     if (!maxEntries) return Promise.resolve();
     return cache.keys().then((keys) => {
         if (keys.length <= maxEntries) return null;
-        return Promise.all(
-            keys.slice(0, keys.length - maxEntries).map((key) => cache.delete(key))
-        );
+        return cache.delete(keys[0]).then(() => trimCache(cache, maxEntries));
     });
 }
 
-/** Guarda una copia de la respuesta si es cacheable (2xx no-opaca). */
 function cachePut(cacheName, request, response, maxEntries) {
     if (!response || !response.ok) return;
     const copy = response.clone();
     caches.open(cacheName)
         .then((cache) => cache.put(request, copy).then(() => trimCache(cache, maxEntries)))
-        .catch(() => null);
+        .catch((err) => {
+            if (err.name === 'QuotaExceededError') {
+                caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+            }
+        });
 }
 
 function cacheFirst(request, cacheName, maxEntries) {
@@ -82,7 +83,7 @@ function cacheFirst(request, cacheName, maxEntries) {
         return fetch(request).then((response) => {
             cachePut(cacheName, request, response, maxEntries);
             return response;
-        });
+        }).catch(() => new Response('', { status: 504, statusText: 'Gateway Timeout' }));
     });
 }
 
@@ -92,13 +93,13 @@ function networkFirst(request, cacheName, maxEntries) {
             cachePut(cacheName, request, response, maxEntries);
             return response;
         })
-        .catch(() => caches.match(request).then((hit) => hit || Response.error()));
+        .catch(() => caches.match(request).then((hit) => hit || new Response(null, { status: 503, statusText: 'Service Unavailable' })));
 }
 
-function staleWhileRevalidate(request, cacheName) {
+function staleWhileRevalidate(request, cacheName, maxEntries) {
     return caches.match(request).then((hit) => {
         const refresh = fetch(request).then((response) => {
-            cachePut(cacheName, request, response);
+            cachePut(cacheName, request, response, maxEntries);
             return response;
         });
         if (hit) {
@@ -130,16 +131,16 @@ function navigationNetworkFirst(request) {
 
 // ── Clasificación de peticiones ─────────────────────────────────────────
 
-/** Streams de vídeo/audio: Range requests y gigas — el SW no los toca. */
 function isMediaStream(url) {
-    return /\/(videos|audio)\//i.test(url.pathname)
-        || /\.(m3u8|ts|m4s|mp4|mkv|webm|aac|mp3|flac)$/i.test(url.pathname);
+    const p = url.pathname.toLowerCase();
+    return p.includes('/videos/') || p.includes('/audio/') || p.includes('/video/')
+        || /\.(m3u8|ts|m4s|mp4|mkv|webm|aac|mp3|flac)$/.test(p);
 }
 
-/** API Jellyfin autenticada (funciona también con el server en otro origen). */
 function isApiRequest(request) {
     return request.headers.has('X-Emby-Authorization')
-        || (request.headers.get('Authorization') || '').startsWith('MediaBrowser');
+        || (request.headers.get('Authorization') || '').startsWith('MediaBrowser')
+        || (request.headers.get('Accept') || '').includes('application/json');
 }
 
 // ── Ciclo de vida ───────────────────────────────────────────────────────
@@ -152,8 +153,13 @@ sw.addEventListener('install', (event) => {
         caches.open(SHELL_CACHE)
             .then((cache) => cache.addAll(['/']))
             .catch(() => null) // instalable aunque el precache falle
-            .then(() => sw.skipWaiting())
     );
+});
+
+sw.addEventListener('message', (event) => {
+    if (event.data === 'skipWaiting') {
+        sw.skipWaiting();
+    }
 });
 
 sw.addEventListener('activate', (event) => {
@@ -164,7 +170,6 @@ sw.addEventListener('activate', (event) => {
                     .filter((key) => key.startsWith('jfp-') && !KNOWN_CACHES.includes(key))
                     .map((key) => caches.delete(key))
             ))
-            .then(() => sw.clients.claim())
     );
 });
 
@@ -173,14 +178,14 @@ sw.addEventListener('fetch', (event) => {
     if (request.method !== 'GET') return;
 
     const url = new URL(request.url);
-    if (isMediaStream(url)) return;
+    if (isMediaStream(url) || request.headers.has('range')) return;
 
     if (request.mode === 'navigate') {
         event.respondWith(navigationNetworkFirst(request));
         return;
     }
 
-    if (request.destination === 'image') {
+    if (request.destination === 'image' || url.pathname.toLowerCase().includes('/images/')) {
         event.respondWith(cacheFirst(request, IMAGES_CACHE, IMAGES_MAX_ENTRIES));
         return;
     }
@@ -190,9 +195,9 @@ sw.addEventListener('fetch', (event) => {
         return;
     }
 
-    if (url.origin === sw.location.origin
-        && ['script', 'style', 'font', 'worker'].includes(request.destination)) {
-        event.respondWith(staleWhileRevalidate(request, ASSETS_CACHE));
+    if (['script', 'style', 'font', 'worker'].includes(request.destination)) {
+        event.respondWith(staleWhileRevalidate(request, ASSETS_CACHE, ASSETS_MAX_ENTRIES));
+        return;
     }
     // Todo lo demás pasa directo a la red.
 });
@@ -207,5 +212,17 @@ sw.addEventListener('fetch', (event) => {
 // ocurría en el único camino que funcionaba, y es lo que se hace ahora.
 sw.addEventListener('notificationclick', function (event) {
     event.notification.close();
-    event.waitUntil(clients.openWindow('/'));
+    const urlToOpen = new URL((event.notification.data && event.notification.data.url) || '/', sw.location.origin).href;
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            for (let client of windowClients) {
+                if (client.url === urlToOpen && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(urlToOpen);
+            }
+        })
+    );
 }, false);

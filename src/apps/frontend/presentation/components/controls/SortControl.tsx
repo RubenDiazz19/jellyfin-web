@@ -131,7 +131,7 @@ export function SortControl<T extends string>({ value, onChange, options }: { va
                 </PopupPanel>
             )}
 
-            {r.touch && (
+            {r.touch && open && (
                 <BottomSheet
                     title={globalize.translate('SortByLabel')}
                     onClose={() => setOpen(false)}

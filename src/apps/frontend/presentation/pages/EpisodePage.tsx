@@ -1,7 +1,7 @@
 import globalize from 'lib/globalize';
 
 import { T } from '../theme/tokens';
-import { formatEpisodeCode, formatDateLong, formatHM, formatRemainingCompact, formatRuntime } from '../utils/format';
+import { formatEpisodeCode, formatDateLong, formatRemainingCompact } from '../utils/format';
 import { findSeason, type Show, type Season, type Episode } from '../../domain/models';
 import { useWatched } from '../../domain/bridge/useWatched';
 import { HeroFrame, HeroMeta } from '../components/layout/DetailHero';
@@ -11,7 +11,9 @@ import {
 import { Nav } from '../components/layout/Nav';
 import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
 import { ScrollHint } from '../components/layout/ScrollHint';
+import { HeroActionsRow, HeroPlayButton } from '../components/layout/HeroActions';
 import { PlayBtn } from '../components/controls/buttons/PlayBtn';
+import { MyListButton } from '../components/controls/buttons/MyListButton';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { MoreButton } from '../components/controls/buttons/MoreButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
@@ -29,6 +31,10 @@ import { useLeaveWhen, useShowEntity } from '../hooks/useDetailEntity';
 type PageProps = { showId: string; seasonN: number; epN: number; navigate: Navigate };
 
 export function EpisodePage({ showId, seasonN, epN, navigate }: PageProps) {
+    const r = useResponsive();
+    const short = useShortViewport();
+    const isMobilePortrait = r.touch && !short;
+
     const { item: show, error } = useShowEntity(showId, navigate);
     const season = show ? findSeason(show, seasonN) : null;
     const ep = season ? season.episodes.find((e) => e.n === epN) : null;
@@ -44,7 +50,10 @@ export function EpisodePage({ showId, seasonN, epN, navigate }: PageProps) {
     }
     const nextEp = season.episodes.find((e) => e.n === epN + 1);
     return (
-        <DetailPageShell hero={<EpisodeHero show={show} season={season} ep={ep} navigate={navigate} />}>
+        <DetailPageShell
+            hero={<EpisodeHero show={show} season={season} ep={ep} navigate={navigate} />}
+            style={{ background: isMobilePortrait ? '#000' : undefined }}
+        >
             <EpisodeDetail show={show} season={season} ep={ep} nextEp={nextEp} navigate={navigate} />
         </DetailPageShell>
     );
@@ -58,6 +67,7 @@ function EpisodeHero({
     const { play, prewarm } = usePlayer();
     const r = useResponsive();
     const short = useShortViewport();
+    const isMobilePortrait = r.touch && !short;
     // El tick del Nav escribe en el store local; leerlo aquí mantiene el play
     // en sincronía al instante (sin esperar a que se recargue la serie).
     const [localWatched] = useWatched(episodeKey(show.id, season.n, ep.n));
@@ -91,10 +101,12 @@ function EpisodeHero({
     return (
         <HeroFrame
             // El fondo es el fotograma del propio episodio: nítido y sin
-            // degradado extra, que el texto ya va sobre la parte de abajo.
-            scrim={0}
+            // degradado extra en desktop, pero en móvil pide uno oscuro para los botones.
+            scrim={isMobilePortrait ? 1 : 0}
+            height={isMobilePortrait ? 'calc(var(--jfp-viewport-h, 100vh) * 70 / 100)' : undefined}
+            backdropHeight={isMobilePortrait ? 'calc(var(--jfp-viewport-h, 100vh) * 0.55)' : undefined}
             pos='Inferior'
-            pad='0 56px 100px'
+            pad={isMobilePortrait ? '0 24px 0' : '0 56px 100px'}
             backdrop={ep.thumbHD || ep.thumb || ''}
             onContextMenu={ctx.onContextMenu}
             nav={
@@ -105,96 +117,77 @@ function EpisodeHero({
                     actionData={ep.jfId ? { type: 'episode', id: ep.jfId } : undefined}
                 />
             }
-            footer={<ScrollHint label={globalize.translate('HeaderDetails')} />}
+            footer={isMobilePortrait ? null : <ScrollHint label={globalize.translate('HeaderDetails')} />}
         >
-            <>
-                <PlayBtn
-                    size={short ? 58 : r.touch ? 76 : 96}
-                    onClick={startPlay}
-                    onHover={() => ep.jfId && prewarm(ep.jfId)}
-                    progress={inProgress ? ep.watched : null}
-                    watched={watched}
-                    hoverText={hoverText}
+            <div style={{
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', textAlign: 'center',
+                width: '100%',
+                transition: 'all 550ms cubic-bezier(0.25, 1, 0.5, 1)',
+                willChange: 'align-items, text-align, transform'
+            }}>
+                <div style={{
+                    fontFamily: T.ui, fontSize: r.touch ? 10 : 11,
+                    letterSpacing: r.touch ? 2.5 : 4, textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,0.55)',
+                    marginBottom: short ? 6 : 12,
+                    maxWidth: '100%', overflow: 'hidden',
+                    whiteSpace: 'nowrap', textOverflow: 'ellipsis'
+                }}>
+                    {show.title} · {formatEpisodeCode(season.n, ep.n)}
+                </div>
+
+                <h1 style={{
+                    fontFamily: T.ui,
+                    fontSize: short ? 'clamp(20px, 5vh, 30px)' :
+                        r.touch ? 'clamp(24px, 6vw, 38px)' : 'clamp(29px, 3.6vw, 52px)',
+                    lineHeight: 1.05,
+                    margin: 0, fontWeight: 300, letterSpacing: -0.5,
+                    textWrap: 'balance',
+                    minWidth: 0,
+                    overflow: 'hidden', display: '-webkit-box',
+                    WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
+                }}>
+                    {ep.title}
+                </h1>
+
+                <HeroMeta
+                    items={[
+                        ep.runtime != null ? <RuntimeDisplay runtime={ep.runtime} autoCycle>{`${ep.runtime} min`}</RuntimeDisplay> : null,
+                        ep.date ? formatDateLong(ep.date) : null
+                    ]}
+                    badges={ep.mediaBadges}
+                    badgeSize={r.touch ? 'sm' : 'md'}
+                    align='center'
+                    color='rgba(255,255,255,0.75)'
+                    marginTop={short ? 8 : 12}
                 />
 
-                <div style={{
-                    marginTop: short ? 12 : r.touch ? 18 : 28,
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', gap: short ? 4 : 8,
-                    maxWidth: '100%'
-                }}>
-                    <div style={{
-                        fontFamily: T.ui, fontSize: r.touch ? 10 : 11,
-                        letterSpacing: r.touch ? 2.5 : 4, textTransform: 'uppercase',
-                        color: 'rgba(255,255,255,0.55)',
-                        maxWidth: '100%', overflow: 'hidden',
-                        whiteSpace: 'nowrap', textOverflow: 'ellipsis'
-                    }}>
-                        {show.title} · {formatEpisodeCode(season.n, ep.n)}
-                    </div>
-
-                    <div style={{
-                        display: 'grid',
-                        // El hueco simétrico del menú solo se reserva donde hay
-                        // sitio: en móvil se lo comía todo el título.
-                        gridTemplateColumns: r.touch ? 'minmax(0, 1fr) auto' : '1fr auto 1fr',
-                        alignItems: 'center', columnGap: r.touch ? 8 : 16, width: '100%'
-                    }}>
-                        {!r.touch && (
-                            <span aria-hidden='true' style={{
-                                visibility: 'hidden', justifySelf: 'end',
-                                display: 'inline-flex', fontSize: 'clamp(29px, 3.6vw, 52px)',
-                                transform: 'translateY(0.15em)'
-                            }}>
-                                <MoreButton id={ep.jfId ?? 'spacer'} size={28} type='episode' />
-                            </span>
+                <HeroActionsRow
+                    center
+                    myList={<MyListButton itemId={ep.jfId ?? episodeKey(show.id, season.n, ep.n)} itemTitle={ep.title ?? ''} size='sm' />}
+                    more={
+                        <MoreButton
+                            id={ep.jfId ?? episodeKey(show.id, season.n, ep.n)}
+                            size={18} type='episode' itemTitle={ep.title}
+                            queueSubtitle={`${show.title} · ${globalize.translate('ValueSeasonEpisode', season.n, ep.n)}`}
+                            queuePoster={ep.thumb ?? show.poster}
+                        />
+                    }
+                >
+                    <HeroPlayButton
+                        onClick={startPlay}
+                        onHover={() => ep.jfId && prewarm(ep.jfId)}
+                        complete={watched}
+                        progress={inProgress ? ep.watched : 0}
+                        label={(hover) => (
+                            inProgress ? (hover && hoverText ? hoverText : formatEpisodeCode(season.n, ep.n)) :
+                                watched ? globalize.translate(hover ? 'WatchAgain' : 'Watched') :
+                                    formatEpisodeCode(season.n, ep.n)
                         )}
-                        <h1 style={{
-                            fontFamily: T.ui,
-                            fontSize: short ? 'clamp(20px, 5vh, 30px)' :
-                                r.touch ? 'clamp(24px, 6vw, 38px)' : 'clamp(29px, 3.6vw, 52px)',
-                            lineHeight: 1.05,
-                            margin: 0, fontWeight: 300, letterSpacing: -0.5,
-                            textWrap: 'balance',
-                            minWidth: 0,
-                            // Un título largo no puede empujar al resto fuera
-                            // del hero: como mucho, dos líneas.
-                            overflow: 'hidden', display: '-webkit-box',
-                            WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
-                        }}>
-                            {ep.title}
-                        </h1>
-                        <span style={{
-                            justifySelf: 'start',
-                            display: 'inline-flex', fontSize: 'clamp(29px, 3.6vw, 52px)',
-                            transform: 'translateY(0.15em)'
-                        }}>
-                            <MoreButton
-                                id={ep.jfId ?? episodeKey(show.id, season.n, ep.n)}
-                                size={28} type='episode' itemTitle={ep.title}
-                                queueSubtitle={`${show.title} · ${globalize.translate('ValueSeasonEpisode', season.n, ep.n)}`}
-                                queuePoster={ep.thumb ?? show.poster}
-                            />
-                        </span>
-                    </div>
-
-                    <HeroMeta
-                        items={[
-                            ep.runtime != null ? (
-                                <RuntimeDisplay runtime={ep.runtime} autoCycle>
-                                    {`${ep.runtime} min`}
-                                </RuntimeDisplay>
-                            ) : null,
-                            ep.date ? formatDateLong(ep.date) : null
-                        ]}
-                        badges={ep.mediaBadges}
-                        badgeSize='md'
-                        align='center'
-                        color='rgba(255,255,255,0.75)'
-                        marginTop={short ? 8 : 12}
                     />
-                </div>
-            </>
+                </HeroActionsRow>
+            </div>
             {ctx.menu}
         </HeroFrame>
     );

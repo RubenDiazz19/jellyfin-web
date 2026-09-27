@@ -19,7 +19,7 @@ import { MoreButton } from '../components/controls/buttons/MoreButton';
 import { useItemContextMenu } from '../components/controls/useItemContextMenu';
 import { usePlayer } from '../components/player/PlayerProvider';
 import { EpCard } from '../components/cards/EpCard';
-import { useResponsive, useShortViewport } from '../theme/responsive';
+import { useLandscape, useResponsive, useShortViewport } from '../theme/responsive';
 import type { Navigate } from '../../app/router';
 import { ticksFromProgress } from '../../domain/player/format';
 import { useLeaveWhen, useShowEntity } from '../hooks/useDetailEntity';
@@ -52,6 +52,8 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
     const inProgress = nextEp && nextEp.watched > 0 && nextEp.watched < 1;
     const r = useResponsive();
     const short = useShortViewport();
+    const landscape = useLandscape();
+    const portraitPhone = !landscape;
     const playSize = short ? 58 : r.touch ? 76 : PLAY_SIZE;
     const { play, prewarm } = usePlayer();
     const startPlay = () => {
@@ -80,11 +82,12 @@ function SeasonHero({ show, season, navigate }: { show: Show; season: Season; na
         <HeroFrame
             // La imagen es la de la serie, no la de la temporada: desenfocada
             // pasa a ser textura y el número gigante manda en la pantalla.
+            // En vertical manda el póster para no hacer zoom a un trozo del backdrop.
             blurred
             scrim={0}
             pos='Centro'
-            pad='0 48px'
-            backdrop={show.backdrop || ''}
+            pad={r.touch ? undefined : '0 48px'}
+            backdrop={portraitPhone ? (show.poster || show.backdrop || '') : (show.backdrop || '')}
             onContextMenu={ctx.onContextMenu}
             nav={
                 <Nav

@@ -23,7 +23,7 @@
 // indicador activo primary-container, y esos tokens los deriva el tema del
 // backdrop/póster que se esté viendo (dynamicColor.ts).
 
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, type CSSProperties, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import globalize from 'lib/globalize';
@@ -48,6 +48,8 @@ import {
     NAV_LEFT_VAR,
     NAV_MARGIN,
     RAIL_MARGIN,
+    SAFE_BOTTOM,
+    SAFE_LEFT,
     navSpace
 } from './navMetrics';
 
@@ -144,9 +146,9 @@ export function MobileNav() {
     const searching = useSignalValue(searchVM.overlayOpen);
 
     const visible = layout !== null && !!session?.accessToken;
-    const isRail = layout === 'tablet' && !landscape && tallTablet;
+    const isRail = false; // layout === 'tablet' && !landscape && tallTablet;
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const root = document.documentElement;
         document.body.classList.toggle(NAV_CLASS, visible);
         if (visible) {
@@ -158,6 +160,7 @@ export function MobileNav() {
             root.style.removeProperty(NAV_LEFT_VAR);
         }
         return () => {
+            if (!visible) return; // Cleanup only runs when effectively removed or unmounted
             document.body.classList.remove(NAV_CLASS);
             root.style.removeProperty(NAV_BOTTOM_VAR);
             root.style.removeProperty(NAV_LEFT_VAR);
@@ -179,7 +182,7 @@ export function MobileNav() {
             position: 'fixed',
             zIndex: 120,
             top: '50%',
-            left: `calc(${RAIL_MARGIN}px + env(safe-area-inset-left, 0px))`,
+            left: `calc(${RAIL_MARGIN}px + ${SAFE_LEFT})`,
             transform: 'translateY(-50%)',
             animation: `jfp-rail-in 0.42s ${ENTER_EASING} both`,
             display: 'flex',
@@ -192,9 +195,9 @@ export function MobileNav() {
             zIndex: 120,
             left: 0,
             right: 0,
-            bottom: `calc(${NAV_MARGIN}px + env(safe-area-inset-bottom, 0px))`,
+            bottom: `calc(${NAV_MARGIN}px + ${SAFE_BOTTOM})`,
             width: 'fit-content',
-            maxWidth: `calc(100% - ${NAV_MARGIN * 2}px)`,
+            maxWidth: `calc(100% - ${NAV_MARGIN * 2}px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))`,
             margin: '0 auto',
             animation: `jfp-nav-in 0.42s ${ENTER_EASING} both`,
             display: 'flex',
@@ -214,7 +217,6 @@ export function MobileNav() {
                         // La búsqueda no es una página: se anuncia como una capa
                         // que se abre, no como el sitio donde uno está.
                         aria-current={isActive && tab.route ? 'page' : undefined}
-                        aria-expanded={tab.route ? undefined : searching}
                         // El nombre accesible no depende de que se vea la
                         // etiqueta: en reposo el segmento es solo el icono.
                         aria-label={label}
@@ -226,9 +228,10 @@ export function MobileNav() {
                             // cierra aquí y no solo al cambiar de página: si ya
                             // estabas en el destino la URL no cambia, y la capa
                             // se quedaría puesta obligando a buscar la X.
-                            if (searching) searchVM.closeOverlay();
+                            const isSearchOpen = searchVM.overlayOpen.peek();
+                            if (isSearchOpen) searchVM.closeOverlay();
                             if (tab.route) navigate(toAppPath(routeToPath(tab.route)));
-                            else if (!searching) searchVM.openOverlay();
+                            else if (!isSearchOpen) searchVM.openOverlay();
                         }}
                         style={{
                             ...SEGMENT,

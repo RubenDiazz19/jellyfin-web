@@ -6,6 +6,7 @@
 // mediante requestAnimationFrame para un rendimiento óptimo a 60/120 fps.
 
 import { useScrollY } from '../../domain/bridge/useScrollY';
+import { useLandscape } from '../theme/responsive';
 
 export type HomeScrollTransition = {
     /** Posición vertical actual del scroll en píxeles. */
@@ -34,11 +35,12 @@ export type HomeScrollTransition = {
 
 export function useHomeScrollTransition(): HomeScrollTransition {
     const scrollY = useScrollY();
+    const landscape = useLandscape();
 
     // Umbral de transición: cubre la altura de la pantalla completa
-    // tanto en móvil como en escritorio.
+    // o el 55% en modo vertical (donde el hero es más corto).
     const threshold = typeof window !== 'undefined' ?
-        Math.max(window.innerHeight * 0.9, 600) :
+        Math.max(window.innerHeight * (landscape ? 0.9 : 0.55), landscape ? 600 : 350) :
         600;
 
     const progress = Math.max(0, Math.min(1, scrollY / (threshold || 1)));

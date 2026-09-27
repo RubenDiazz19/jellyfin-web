@@ -2,7 +2,9 @@
 // En desktop: no se registra el service worker, no se captura el prompt de
 // instalación (Chrome conserva su UI nativa) y no se añade ninguna clase.
 
-import { currentMobileLayout } from './layoutMode';
+import { currentMobileLayout, observeLayoutMode } from './layoutMode';
+
+declare const __WEBPACK_SERVE__: boolean;
 
 const SW_URL = '/serviceworker.js';
 
@@ -33,10 +35,10 @@ export function initPwa(): void {
     if (initialized) return;
     initialized = true;
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Solo secuestramos el prompt en mobile/tablet: en desktop el
-        // preventDefault suprimiría el icono de instalación del navegador.
-        if (!currentMobileLayout()) return;
-        e.preventDefault();
+        // En desktop no hacemos e.preventDefault() para que el navegador muestre
+        // su icono en la barra de direcciones, pero guardamos el evento por si
+        // la ventana se encoge a tamaño móvil.
+        if (currentMobileLayout()) e.preventDefault();
         deferredPrompt = e as BeforeInstallPromptEvent;
         notify();
     });
@@ -71,8 +73,7 @@ export async function promptInstall(): Promise<'accepted' | 'dismissed' | null> 
 
 /** true si la app corre instalada (standalone / homescreen de iOS). */
 export function isStandalone(): boolean {
-    return window.matchMedia?.('(display-mode: standalone)').matches === true
-        || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+    return window.matchMedia?.('(display-mode: standalone)').matches === true;
 }
 
 /**
@@ -90,8 +91,10 @@ export function watchStandalone(): () => void {
     apply();
     const mql = window.matchMedia?.('(display-mode: standalone)');
     mql?.addEventListener('change', apply);
+    const unobserve = observeLayoutMode(apply);
     return () => {
         mql?.removeEventListener('change', apply);
+        unobserve();
         document.documentElement.classList.remove(STANDALONE_CLASS);
     };
 }
@@ -103,7 +106,7 @@ export function watchStandalone(): () => void {
 export async function registerServiceWorker(): Promise<boolean> {
     if (currentMobileLayout() === null) return false;
     if (!('serviceWorker' in navigator)) return false;
-    if (__WEBPACK_SERVE__ && localStorage.getItem(DEV_OPTIN_KEY) !== '1') return false;
+    if (typeof __WEBPACK_SERVE__ !== 'undefined' && __WEBPACK_SERVE__ && localStorage.getItem(DEV_OPTIN_KEY) !== '1') return false;
     try {
         await navigator.serviceWorker.register(SW_URL);
         return true;

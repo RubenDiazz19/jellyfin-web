@@ -273,13 +273,14 @@ html.layout-tablet body.jf-frontend-active {
 }
 
 /* Entrada de página en mobile/tablet (App.tsx la elige solo con layout
-   táctil): slide corto tipo shared-axis M3. Termina en `transform: none`,
-   así el wrapper deja de ser containing block de los `position: fixed`
-   en cuanto acaba la animación (ver nota de jfp-fade-in arriba). */
+   táctil): slide corto tipo shared-axis M3. La dirección se controla con
+   --jfp-slide-x en el elemento (positivo = avance, negativo = retroceso).
+   Termina en `transform: none`, así el wrapper deja de ser containing block
+   de los `position: fixed` en cuanto acaba la animación. */
 @keyframes jfp-slide-in {
     from {
         opacity: 0;
-        transform: translateX(28px);
+        transform: translateX(var(--jfp-slide-x, 20px));
     }
 
     to {

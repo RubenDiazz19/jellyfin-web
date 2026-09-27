@@ -23,9 +23,26 @@ export function initSwipeBack(): () => void {
         if (!currentMobileLayout()) return;
         if (e.touches.length !== 1) return;
         const t = e.touches[0];
-        if (t.clientX > SWIPE_BACK_EDGE_PX) return;
-        // El reproductor tiene (fase 5) sus propios gestos: no interferimos.
-        if (e.target instanceof Element && e.target.closest('.jfp-video')) return;
+
+        const isRtl = document.dir === 'rtl' || document.documentElement.dir === 'rtl';
+        const isLeftEdge = t.clientX <= SWIPE_BACK_EDGE_PX;
+        const isRightEdge = window.innerWidth - t.clientX <= SWIPE_BACK_EDGE_PX;
+        if ((!isRtl && !isLeftEdge) || (isRtl && !isRightEdge)) return;
+
+        if (e.target instanceof Element) {
+            // El reproductor tiene (fase 5) sus propios gestos: no interferimos.
+            if (e.target.closest('.jfp-video, .jfp-video-gestures')) return;
+
+            // No interferir con carruseles (scroll horizontal)
+            let el: Element | null = e.target;
+            while (el && el !== document.body && el !== document.documentElement) {
+                if (el.scrollWidth > el.clientWidth) {
+                    const style = window.getComputedStyle(el);
+                    if (style.overflowX === 'auto' || style.overflowX === 'scroll') return;
+                }
+                el = el.parentElement;
+            }
+        }
         tracking = true;
         startX = t.clientX;
         startY = t.clientY;
@@ -39,7 +56,16 @@ export function initSwipeBack(): () => void {
         if (!t) return;
         const dx = t.clientX - startX;
         const dy = Math.abs(t.clientY - startY);
-        if (dx >= SWIPE_BACK_MIN_DX && dy <= SWIPE_BACK_MAX_DY && performance.now() - startT <= SWIPE_BACK_MAX_MS) {
+
+        const isRtl = document.dir === 'rtl' || document.documentElement.dir === 'rtl';
+        const isLeftEdge = startX <= SWIPE_BACK_EDGE_PX;
+        const isRightEdge = window.innerWidth - startX <= SWIPE_BACK_EDGE_PX;
+        
+        let validDx = false;
+        if (!isRtl && isLeftEdge && dx >= SWIPE_BACK_MIN_DX) validDx = true;
+        if (isRtl && isRightEdge && dx <= -SWIPE_BACK_MIN_DX) validDx = true;
+
+        if (validDx && dy <= SWIPE_BACK_MAX_DY && performance.now() - startT <= SWIPE_BACK_MAX_MS) {
             window.history.back();
         }
     };

@@ -70,7 +70,7 @@ export function useResponsive(): Responsive {
  * navegación, así que no vale la pena meterlas en `useResponsive()` y pagar un
  * listener en cada uno de sus (muchos) puntos de uso.
  */
-function useMediaQuery(query: string): boolean {
+export function useMediaQuery(query: string): boolean {
     const [matches, setMatches] = useState(
         () => typeof window.matchMedia === 'function' && window.matchMedia(query).matches
     );
@@ -105,7 +105,7 @@ export function useLandscape(): boolean {
  * negra vertical a la izquierda.
  */
 export function useTallTablet(): boolean {
-    return useMediaQuery('(min-aspect-ratio: 6/5)');
+    return useMediaQuery('(max-aspect-ratio: 5/6)');
 }
 
 /**
@@ -113,4 +113,13 @@ export function useTallTablet(): boolean {
  */
 export function useWidescreen(): boolean {
     return useMediaQuery('(min-aspect-ratio: 4/3) and (min-width: 900px)');
+}
+
+/**
+ * Verdadero si la pantalla es apaisada o es un dispositivo con proporción más "cuadrada"
+ * (como un iPad en vertical, aspect ratio >= 2/3), donde un póster vertical
+ * se recortaría demasiado.
+ */
+export function useHeroBackdrop(): boolean {
+    return useMediaQuery('(orientation: landscape) or (min-aspect-ratio: 2/3)');
 }
