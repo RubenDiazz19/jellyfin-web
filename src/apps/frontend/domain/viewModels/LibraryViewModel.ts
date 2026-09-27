@@ -11,6 +11,7 @@ import { registerTagSource } from './utils/knownTags';
 
 import { fnv1a } from 'utils/hash';
 import { CatalogViewModel } from './CatalogViewModel';
+import { runtimeMinutes } from '../utils/runtime';
 
 export type LibraryKind = 'series' | 'movies';
 export type { SortKey };
@@ -22,10 +23,7 @@ type Sortable = Pick<Show | Movie, 'id' | 'title' | 'year' | 'rating' | 'runtime
 // `sensitivity: 'base'` para que los acentos no manden a «Ángel» al final.
 const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-/** El runtime del modelo es texto («120 min», «—»); para ordenar hace falta el número. */
-function runtimeMinutes(item: Sortable): number {
-    return parseInt(item.runtime, 10) || 0;
-}
+
 
 function compareBy(key: SortKey, seed: number) {
     return (a: Sortable, b: Sortable): number => {
@@ -37,7 +35,7 @@ function compareBy(key: SortKey, seed: number) {
                 return (b.rating?.imdb || 0) - (a.rating?.imdb || 0)
                     || COLLATOR.compare(a.title, b.title);
             case 'runtime':
-                return runtimeMinutes(a) - runtimeMinutes(b) || COLLATOR.compare(a.title, b.title);
+                return runtimeMinutes(a.runtime) - runtimeMinutes(b.runtime) || COLLATOR.compare(a.title, b.title);
             case 'random': return fnv1a(a.id + seed) - fnv1a(b.id + seed);
             default: return COLLATOR.compare(a.title, b.title);
         }

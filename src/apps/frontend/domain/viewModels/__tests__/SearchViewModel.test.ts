@@ -16,7 +16,8 @@ vi.mock('lib/jellyfin-apiclient', () => ({
     }
 }));
 
-import { parseQuery, SearchViewModel } from '../SearchViewModel';
+import { SearchViewModel } from '../SearchViewModel';
+import { parseQuery } from '../search/SearchQueryParser';
 import type { ApiService } from '../../../data/api/ApiService';
 import type { Movie, Show } from '../../../data/models';
 

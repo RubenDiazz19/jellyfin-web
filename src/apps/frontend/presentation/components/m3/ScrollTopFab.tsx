@@ -2,13 +2,12 @@
 // bajar más de un viewport y sube la página al pulsarlo. En desktop no se
 // renderiza (el hover del ratón y la barra hacen menos necesario el atajo).
 
-import { useEffect, useState } from 'react';
-
 import { scrollBehavior } from 'utils/motion';
 
 import { useResponsive } from '../../theme/responsive';
 import { aboveNav } from '../nav/navMetrics';
 import { Fab } from './Fab';
+import { useIsScrolled } from '../../../domain/bridge/useScrollY';
 
 const SHOW_AFTER = 700;
 
@@ -25,17 +24,9 @@ function ArrowUp() {
 
 export function ScrollTopFab() {
     const r = useResponsive();
-    const [shown, setShown] = useState(false);
+    const scrolled = useIsScrolled(SHOW_AFTER);
 
-    useEffect(() => {
-        if (!r.touch) return;
-        const onScroll = () => setShown(window.scrollY > SHOW_AFTER);
-        onScroll();
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
-    }, [r.touch]);
-
-    if (!r.touch || !shown) return null;
+    if (!r.touch || !scrolled) return null;
 
     return (
         <div style={{

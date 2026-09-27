@@ -14,7 +14,7 @@ import { apiService, type ApiService } from '../../data/api/ApiService';
 import { ITEM_MUTATED_EVENT } from '../../data/api/mutations';
 import { PROTO_DATA, type Movie, type Show, type ListEntry } from '../../data/models';
 import { FAVS } from '../../data/stores/favsStore';
-import { episodeKey, movieKey } from '../../data/stores/itemKeys';
+import { episodeKey } from '../../data/stores/itemKeys';
 import { WATCHED } from '../../data/stores/watchedStore';
 import type { SavedView } from '../../data/stores/viewsStore';
 import type { SortKey } from '../../data/stores/librarySortStore';
@@ -23,18 +23,16 @@ import { registerTagSource } from './utils/knownTags';
 import { guardedLoad } from './utils/guardedLoad';
 import { LoadGuard } from './utils/loadGuard';
 import { getItemGenres, type GenresItem } from '../genres';
+import { runtimeMinutes } from '../utils/runtime';
 import { isShowFullyWatched } from '../showWatched';
 import { getItemTags, normalizeTagForSearch } from '../tags';
-import {
-    buildCurrentView,
-    extractAppliedViewFilters,
-    type FilterCategory,
-    type RatingFilter,
-    type RatingOperator,
-    type StateFilter,
-    type TypeFilter
-} from './utils/searchViews';
-import { computeAllTags, computeAvailableTags } from './utils/searchTags';
+import { SearchViewManager } from './search/SearchViewManager';
+import { RemoteSearchManager } from './search/RemoteSearchManager';
+import { LocalSearchEngine, type LocalSearchState } from './search/LocalSearchEngine';
+import { TagManager } from './search/TagManager';
+
+import { parseQuery, normalizeSearchText } from './search/SearchQueryParser';
+import { type FilterCriteria, matchesFilters, isMovieWatched } from './search/SearchFilters';
 
 export type {
     FilterCategory,
@@ -42,7 +40,7 @@ export type {
     RatingOperator,
     StateFilter,
     TypeFilter
-};
+} from './utils/searchViews';
 
 const CATALOG_TTL_MS = 60_000;
 
@@ -56,259 +54,36 @@ export type SearchResult =
     | (Movie & { kind: 'movie' })
     | (ListEntry & { kind: 'collection' });
 
-/**
- * Separa los `#tag` del texto libre.
- *
- * Escribir `#anime cine` busca «cine» entre lo etiquetado como anime. Un `#`
- * suelto o a medio escribir no filtra nada todavía: si no, al teclear la
- * almohadilla la lista se vaciaba de golpe.
- */
-export function parseQuery(raw: string): { text: string; tags: string[] } {
-    const tags: string[] = [];
-    const words: string[] = [];
-    for (const word of raw.trim().split(/\s+/)) {
-        if (!word) continue;
-        if (word.startsWith('#')) {
-            // Una almohadilla sola se descarta del todo: como etiqueta aún no
-            // dice nada, y dejarla caer al texto libre buscaría «#» literal y
-            // vaciaría la lista mientras se teclea.
-            if (word.length > 1) tags.push(word.slice(1).toLowerCase());
-            continue;
-        }
-        words.push(word);
-    }
-    return { text: words.join(' ').toLowerCase(), tags };
-}
 
-export type SearchSortKey = 'relevance' | SortKey;
+
+import { SearchFilterState, type SearchSortKey } from './search/SearchFilterState';
+
+export type { SearchSortKey };
 
 const COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-function runtimeMinutes(item: { runtime?: string | number }): number {
-    if (!item.runtime) return 0;
-    return typeof item.runtime === 'number' ? item.runtime : parseInt(item.runtime as string, 10) || 0;
-}
 
-type SortableItem = { year?: number; title?: string; name?: string; runtime?: string | number; imdb?: number };
 
-function compareBy(key: SearchSortKey) {
-    return (a: SortableItem, b: SortableItem): number => {
-        const titleA = a.title || a.name || '';
-        const titleB = b.title || b.name || '';
-        switch (key) {
-            case 'year': return (b.year || 0) - (a.year || 0) || COLLATOR.compare(titleA, titleB);
-            case 'rating': return (b.imdb || 0) - (a.imdb || 0) || COLLATOR.compare(titleA, titleB);
-            case 'runtime': return runtimeMinutes(a) - runtimeMinutes(b) || COLLATOR.compare(titleA, titleB);
-            case 'title': return COLLATOR.compare(titleA, titleB);
-            default: return 0; // relevance or random handled differently
-        }
-    };
-}
 
-function isMovieWatched(movie: Movie): boolean {
-    return (movie.watched ?? 0) >= 1 || WATCHED.has(movieKey(movie.id));
-}
-
-function matchesRating(score: number, filters: readonly RatingFilter[]): boolean {
-    for (const rf of filters) {
-        switch (rf.operator) {
-            case '>=': if (score < rf.value) return false; break;
-            case '>': if (score <= rf.value) return false; break;
-            case '<=': if (score > rf.value) return false; break;
-            case '<': if (score >= rf.value) return false; break;
-            case '=': if (Math.abs(score - rf.value) >= 0.05) return false; break;
-        }
-    }
-    return true;
-}
-
-function matchesState(
-    kind: 'show' | 'movie' | 'collection',
-    id: string,
-    isWatched: boolean,
-    states: readonly StateFilter[]
-): boolean {
-    const isFav = (kind === 'show' || kind === 'collection') ? FAVS.has(id) : FAVS.has(movieKey(id));
-    if (states.includes('favs') && !isFav) return false;
-    if (states.includes('vistos') && !states.includes('no-vistos') && !isWatched) return false;
-    if (states.includes('no-vistos') && !states.includes('vistos') && isWatched) return false;
-    return true;
-}
-
-export type FilterCriteria = {
-    types: readonly TypeFilter[];
-    states: readonly StateFilter[];
-    requiredTags: readonly string[];
-    ratingFilters: readonly RatingFilter[];
-};
-
-/**
- * Comprueba si un elemento cumple con los criterios de filtrado seleccionados.
- */
-export function matchesFilters(
-    item: {
-        kind: 'show' | 'movie' | 'collection';
-        id: string;
-        tags: readonly string[];
-        genres?: readonly string[];
-        imdb: number;
-    },
-    isWatched: () => boolean,
-    criteria: FilterCriteria
-): boolean {
-    if (criteria.types.length > 0) {
-        const matchesType = (criteria.types.includes('series') && item.kind === 'show')
-            || (criteria.types.includes('peliculas') && item.kind === 'movie')
-            || (criteria.types.includes('colecciones') && item.kind === 'collection');
-        if (!matchesType) return false;
-    }
-
-    if (criteria.requiredTags.length > 0) {
-        if (!criteria.requiredTags.every((t) => item.tags.includes(t) || item.genres?.includes(t))) return false;
-    }
-
-    if (criteria.states.length > 0) {
-        if (!matchesState(item.kind, item.id, isWatched(), criteria.states)) return false;
-    }
-
-    return criteria.ratingFilters.length === 0 || matchesRating(item.imdb, criteria.ratingFilters);
-}
-
-/**
- * Helper genérico para alternar elementos en señales con arrays.
- */
-export function toggleArrayItem<T>(
-    sig: Signal<T[]>,
-    item: T,
-    equals: (a: T, b: T) => boolean = (a, b) => a === b
-): void {
-    const current = sig.value;
-    sig.value = current.some((x) => equals(x, item)) ?
-        current.filter((x) => !equals(x, item)) :
-        [...current, item];
-}
-
-/**
- * A partir de cuántas letras se le pregunta al servidor. Con una sola el
- * ranking no dice nada y la petición se dispararía en cuanto se toca el campo.
- */
-const MIN_REMOTE_QUERY = 2;
-
-/**
- * Espera antes de salir a la red. Se teclea letra a letra: sin esto, escribir
- * «expediente» son diez búsquedas y solo importa la última.
- */
-const REMOTE_DEBOUNCE_MS = 400;
-
-/**
- * Normaliza texto para búsqueda libre e indexación:
- * - A minúsculas.
- * - Descompone y elimina acentos / marcas diacríticas (NFD).
- * - Reemplaza signos de puntuación y símbolos por espacios para buscar palabras limpias.
- * - Colapsa espacios en blanco repetidos.
- */
-export function normalizeSearchText(text: string | undefined | null): string {
-    if (!text) return '';
-    return text
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-type IndexedItem = {
-    item: SearchResult;
-    id: string;
-    kind: 'show' | 'movie' | 'collection';
-    normTitle: string;
-    normOriginalTitle: string;
-    normSynopsis: string;
-    genres: string[];
-    cast: string[];
-    tags: string[];
-    imdb: number;
-    seriesEpisodeKeys?: string[];
-};
-
-/**
- * Evalúa la coincidencia de una consulta contra un item indexado.
- * Devuelve una puntuación de relevancia (>0 si coincide, 0 si no coincide).
- * Permite buscar indistintamente por título oficial localizado o por título original,
- * tolerando omisión de palabras conectoras (ej: "guerra galaxias" o "star wars").
- */
-function calculateMatchScore(entry: IndexedItem, q: string, qWords: string[]): number {
-    if (!q) return 1;
-
-    // 1. Coincidencia exacta de la frase en título o título original
-    if (entry.normTitle === q || (entry.normOriginalTitle && entry.normOriginalTitle === q)) {
-        return 100;
-    }
-
-    // 2. Empieza por la frase de búsqueda
-    if (entry.normTitle.startsWith(q) || (entry.normOriginalTitle && entry.normOriginalTitle.startsWith(q))) {
-        return 80;
-    }
-
-    // 3. Contiene la frase completa de búsqueda en título o título original
-    if (entry.normTitle.includes(q) || (entry.normOriginalTitle && entry.normOriginalTitle.includes(q))) {
-        return 65;
-    }
-
-    // 4. Todas las palabras de la consulta están en el título o en el título original (ej: "guerra galaxias" o "star wars")
-    const inTitle = qWords.every((w) => entry.normTitle.includes(w));
-    const inOrig = entry.normOriginalTitle ? qWords.every((w) => entry.normOriginalTitle.includes(w)) : false;
-    if (inTitle || inOrig) {
-        return 50;
-    }
-
-    // 5. Palabras repartidas entre título, título original, géneros o reparto
-    const inMetadata = qWords.every((w) =>
-        entry.normTitle.includes(w)
-        || (entry.normOriginalTitle && entry.normOriginalTitle.includes(w))
-        || entry.genres.some((g) => g.includes(w))
-        || entry.cast.some((c) => c.includes(w))
-    );
-    if (inMetadata) {
-        return 30;
-    }
-
-    // 6. Coincidencia en la sinopsis
-    if (entry.normSynopsis.includes(q) || (qWords.length > 0 && qWords.every((w) => entry.normSynopsis.includes(w)))) {
-        return 10;
-    }
-
-    return 0;
-}
 
 export class SearchViewModel {
-    query = signal('');
-    sortKey = signal<SearchSortKey>('relevance');
-    typeFilters = signal<TypeFilter[]>([]);
-    stateFilters = signal<StateFilter[]>([]);
-    /**
-     * Categoría padre activa cuando se despliega su submenú horizontal.
-     * Si no es null, el buscador principal pasa a buscar en las subcategorías.
-     */
-    categoryMode = signal<FilterCategory | null>(null);
-    categoryQuery = signal<string>('');
-    ratingFilters = signal<RatingFilter[]>([]);
-    /**
-     * Etiquetas elegidas en la fila de chips. Se acumulan en Y: pulsar
-     * «Anime» y «Instituto» deja lo que tenga las dos, no la unión. Es lo que
-     * hace útil un vocabulario con géneros y matices a la vez — el género
-     * acota y el matiz afina.
-     */
-    tagFilters = signal<string[]>([]);
+    filters = new SearchFilterState();
+    views = new SearchViewManager(this.filters, () => this.load());
+    remoteManager: RemoteSearchManager;
+    localEngine: LocalSearchEngine;
+    tagManager: TagManager;
 
-    /**
-     * La búsqueda como superposición sobre la página actual, que es lo que
-     * abre la lupa de la barra. Vive aquí y no en la vista porque `/search`
-     * y la superposición comparten VM: al abrir una hay que saber si la otra
-     * ya tenía filtros puestos.
-     */
-    overlayOpen = signal(false);
+    get query() { return this.filters.query; }
+    get sortKey() { return this.filters.sortKey; }
+    get typeFilters() { return this.filters.typeFilters; }
+    get stateFilters() { return this.filters.stateFilters; }
+    get categoryMode() { return this.filters.categoryMode; }
+    get categoryQuery() { return this.filters.categoryQuery; }
+    get ratingFilters() { return this.filters.ratingFilters; }
+    get tagFilters() { return this.filters.tagFilters; }
+    get anyFilterActive() { return this.filters.anyFilterActive; }
+
+    get overlayOpen() { return this.views.overlayOpen; }
 
     /** Biblioteca real de Jellyfin (vacía sin sesión). */
     shows = signal<Show[]>([]);
@@ -316,367 +91,73 @@ export class SearchViewModel {
     collections = signal<ListEntry[]>([]);
     loading = signal(false);
 
-    /**
-     * Lo que ha encontrado el buscador del servidor para el texto actual. Se
-     * guarda aparte de la biblioteca cargada porque no se filtra igual: el
-     * servidor ya ha decidido que casan con el texto, y volver a comprobarlo
-     * aquí descartaría justo lo que él encuentra mejor que nosotros —«senyor»
-     * contra «Señor»—.
-     */
-    remote = signal<SearchResult[]>([]);
-    /** true mientras el servidor contesta a la búsqueda actual. */
-    searching = signal(false);
+    get remote() { return this.remoteManager.remote; }
+    get searching() { return this.remoteManager.searching; }
 
     // Los stores de favoritos/vistos notifican por eventos del DOM; estos
     // contadores los convierten en dependencias reactivas del computed.
     private favsVersion = signal(0);
     private watchedVersion = signal(0);
-    // Las etiquetas viven en el servidor, así que no basta con re-filtrar:
-    // hay que volver a traer la biblioteca para verlas.
-    private mutationVersion = signal(0);
 
     private loads = new LoadGuard();
-    private remoteLoads = new LoadGuard();
-    private remoteTimer: ReturnType<typeof setTimeout> | null = null;
-    private mutationTimer: ReturnType<typeof setTimeout> | null = null;
 
     constructor(private api: ApiService) {
+        this.remoteManager = new RemoteSearchManager(api);
+        this.localEngine = new LocalSearchEngine({
+            shows: this.shows,
+            movies: this.movies,
+            collections: this.collections,
+            filters: this.filters,
+            remoteManager: this.remoteManager,
+            favsVersion: this.favsVersion,
+            watchedVersion: this.watchedVersion
+        });
+        this.tagManager = new TagManager(this.shows, this.movies, this.filters, this.results, (opts) => this.load(opts));
         registerTagSource(() => [...this.shows.peek(), ...this.movies.peek()]);
     }
 
-    /**
-     * Índice pre-calculado del catálogo local.
-     * Solo se recalcula cuando cambian `shows` o `movies`, de modo que teclear
-     * o filtrar por etiquetas no genera ninguna asignación ni recorridos pesados.
-     */
-    private catalog = computed<IndexedItem[]>(() => {
-        const jf = this.shows.value.map((s) => ({ ...s, kind: 'show' as const }));
-        const jfIds = new Set(jf.map((s) => s.id));
-        const protoShows = Object.values(PROTO_DATA.shows)
-            .filter((s) => !jfIds.has(s.id))
-            .map((s) => ({ ...s, kind: 'show' as const }));
-        const jfMovies = this.movies.value.map((m) => ({ ...m, kind: 'movie' as const }));
-        const jfMovieIds = new Set(jfMovies.map((m) => m.id));
-        const protoMovies = Object.values(PROTO_DATA.movies)
-            .filter((m) => !jfMovieIds.has(m.id))
-            .map((m) => ({ ...m, kind: 'movie' as const }));
-        const jfCollections = this.collections.value.map((c) => ({ ...c, kind: 'collection' as const }));
-        const all: SearchResult[] = [...jf, ...protoShows, ...jfMovies, ...protoMovies, ...jfCollections];
+    get knownCatalogIds() { return this.localEngine.knownCatalogIds; }
+    get results() { return this.localEngine.results; }
 
-        return all.map((item) => {
-            const rawGenres = 'genres' in item ? getItemGenres(item) : [];
-            const genres = [
-                ...rawGenres.map((g) => normalizeTagForSearch(g)),
-                ...rawGenres.map((g) => normalizeSearchText(g))
-            ].filter(Boolean);
-            const tags = 'tags' in item ? getItemTags(item).map((t) => normalizeTagForSearch(t)) : [];
-            const seriesEpisodeKeys = item.kind === 'show' ?
-                (item.seasons || []).flatMap((s) => (s.episodes || []).map((e) => episodeKey(item.id, s.n, e.n))) :
-                undefined;
+    get allTags() { return this.tagManager.allTags; }
+    get availableTags() { return this.tagManager.availableTags; }
 
-            return {
-                item,
-                id: item.id,
-                kind: item.kind,
-                normTitle: normalizeSearchText('title' in item ? item.title : item.name),
-                normOriginalTitle: 'originalTitle' in item ? normalizeSearchText(item.originalTitle) : '',
-                normSynopsis: 'synopsis' in item ? normalizeSearchText(item.synopsis) : '',
-                genres,
-                cast: ('cast' in item && item.cast ? item.cast : []).map((c) => normalizeSearchText(c.name)).filter(Boolean),
-                tags,
-                imdb: 'rating' in item ? (item.rating?.imdb ?? 0) : 0,
-                seriesEpisodeKeys
-            };
-        });
-    });
+    setQuery = this.filters.setQuery;
+    setTypeFilter = this.filters.setTypeFilter;
+    setStateFilter = this.filters.setStateFilter;
+    toggleTypeFilter = this.filters.toggleTypeFilter;
+    toggleStateFilter = this.filters.toggleStateFilter;
+    hasTypeFilter = this.filters.hasTypeFilter;
+    hasStateFilter = this.filters.hasStateFilter;
 
-    knownCatalogIds = computed<Set<string>>(() => new Set(this.catalog.value.map((i) => i.id)));
+    setSort = this.filters.setSort;
 
-    results = computed<SearchResult[]>(() => {
-        // Lecturas intencionadas: registran los contadores como dependencias
-        // del computed para re-filtrar cuando cambian favoritos/vistos.
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        this.favsVersion.value;
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        this.watchedVersion.value;
+    clearTypeFilters = this.filters.clearTypeFilters;
+    clearStateFilters = this.filters.clearStateFilters;
+    clearQuery = this.filters.clearQuery;
 
-        const indexedCatalog = this.catalog.value;
-        const types = this.typeFilters.value;
-        const states = this.stateFilters.value;
-        const { text: rawText, tags: queryTags } = parseQuery(this.query.value);
-        const normQ = normalizeSearchText(rawText);
-        const qWords = normQ ? normQ.split(' ').filter(Boolean) : [];
-        const requiredTags = [
-            ...queryTags,
-            ...this.tagFilters.value.map((t) => t.toLowerCase())
-        ];
-        const rFilters = this.ratingFilters.value;
-        const criteria: FilterCriteria = {
-            types,
-            states,
-            requiredTags,
-            ratingFilters: rFilters
-        };
-
-        const localScored: { item: SearchResult; score: number }[] = [];
-        for (const entry of indexedCatalog) {
-            const matches = matchesFilters(
-                entry,
-                () => {
-                    if (entry.kind === 'show') {
-                        return isShowFullyWatched(entry.item as Show);
-                    }
-                    if (entry.kind === 'movie') {
-                        return isMovieWatched(entry.item as Movie);
-                    }
-                    return false; // Collections no tienen estado de visto
-                },
-                criteria
-            );
-            if (!matches) continue;
-
-            let score = 1;
-            if (normQ) {
-                score = calculateMatchScore(entry, normQ, qWords);
-                if (score === 0) continue;
-            }
-
-            localScored.push({ item: entry.item, score });
-        }
-
-        const sortKeyValue = this.sortKey.value;
-        if (sortKeyValue === 'relevance' && normQ) {
-            localScored.sort((a, b) => b.score - a.score);
-        } else if (sortKeyValue !== 'relevance') {
-            const cmp = compareBy(sortKeyValue);
-            localScored.sort((a, b) => {
-                const itemA = { ...a.item, title: 'title' in a.item ? a.item.title : a.item.name, imdb: 'rating' in a.item ? (a.item.rating?.imdb ?? 0) : 0 };
-                const itemB = { ...b.item, title: 'title' in b.item ? b.item.title : b.item.name, imdb: 'rating' in b.item ? (b.item.rating?.imdb ?? 0) : 0 };
-                return cmp(itemA, itemB);
-            });
-        }
-        const local = localScored.map((l) => l.item);
-
-        // Lo del servidor que no estuviera ya cargado, al final: son los
-        // títulos que la búsqueda local no podía encontrar.
-        const remoteItems = this.remote.value;
-        if (remoteItems.length === 0) return local;
-
-        const known = this.knownCatalogIds.value;
-        const extra: SearchResult[] = [];
-        for (const item of remoteItems) {
-            if (known.has(item.id)) continue;
-
-            const itemTags = 'tags' in item ? getItemTags(item).map((t) => t.toLowerCase()) : [];
-            const itemGenres = 'genres' in item ? getItemGenres(item as GenresItem).map((t) => normalizeTagForSearch(t)) : [];
-            const score = 'rating' in item ? (item.rating?.imdb ?? 0) : 0;
-            const matches = matchesFilters(
-                { kind: item.kind, id: item.id, tags: itemTags, genres: itemGenres, imdb: score },
-                () => item.kind === 'show' ? isShowFullyWatched(item) : item.kind === 'movie' ? isMovieWatched(item) : false,
-                criteria
-            );
-            if (!matches) continue;
-
-            extra.push(item);
-        }
-
-        const combined = [...local, ...extra];
-        if (sortKeyValue !== 'relevance') {
-            const cmp = compareBy(sortKeyValue);
-            combined.sort((a, b) => {
-                const itemA = { ...a, title: 'title' in a ? a.title : a.name, imdb: 'rating' in a ? (a.rating?.imdb ?? 0) : 0 };
-                const itemB = { ...b, title: 'title' in b ? b.title : b.name, imdb: 'rating' in b ? (b.rating?.imdb ?? 0) : 0 };
-                return cmp(itemA, itemB);
-            });
-        }
-        return combined;
-    });
-
-    /**
-     * Las etiquetas que se pintan como chips. NO son todas las del item: de
-     * `tags` solo pasan las que el usuario haya escrito a mano, porque ahí
-     * dentro vienen también los cientos de keywords de TMDB —«adventurer»,
-     * «aftercreditsstinger», «blind girl»— que como filtro no sirven de nada:
-     * casan con uno o dos items y convierten la fila en una tira infinita.
-     *
-     * Lo que se descarta aquí sigue siendo buscable escribiendo `#keyword`.
-     * Se agrupan ignorando mayúsculas y se enseña la primera grafía vista.
-     */
-    allTags = computed<string[]>(() => {
-        // Depende de las mutaciones: al etiquetar un item, la lista de chips
-        // tiene que incluir la etiqueta nueva.
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        this.mutationVersion.value;
-        return computeAllTags([...this.shows.value, ...this.movies.value]);
-    });
-
-    /**
-     * Etiquetas disponibles según los resultados actuales de la búsqueda.
-     * Si no hay filtros activos que acoten, devuelve todas las etiquetas (allTags).
-     * Si hay filtros activos, solo devuelve las etiquetas que tienen las obras
-     * resultantes (más las etiquetas ya seleccionadas, para poder desmarcarlas).
-     */
-    availableTags = computed<string[]>(() => {
-        const hasOtherFilters = this.typeFilters.value.length > 0
-            || this.stateFilters.value.length > 0
-            || this.ratingFilters.value.length > 0
-            || !!this.query.value.trim();
-
-        return computeAvailableTags({
-            allTags: this.allTags.value,
-            activeTags: this.tagFilters.value,
-            currentResults: this.results.value,
-            hasOtherFilters
-        });
-    });
-
-    anyFilterActive = computed(() =>
-        this.typeFilters.value.length > 0
-        || this.stateFilters.value.length > 0
-        || this.tagFilters.value.length > 0
-        || this.ratingFilters.value.length > 0
-        || !!this.query.value.trim()
-    );
-
-    setQuery = (q: string) => { this.query.value = q; };
-    setTypeFilter = (f: TypeFilter) => {
-        this.typeFilters.value = (f === 'todo' || !f) ? [] : [f];
-    };
-    setStateFilter = (f: StateFilter) => {
-        this.stateFilters.value = (f === 'todo' || !f) ? [] : [f];
-    };
-    toggleTypeFilter = (t: TypeFilter) => {
-        toggleArrayItem(this.typeFilters, t);
-    };
-    toggleStateFilter = (s: StateFilter) => {
-        toggleArrayItem(this.stateFilters, s);
-    };
-    hasTypeFilter = (t: TypeFilter): boolean => this.typeFilters.value.includes(t);
-    hasStateFilter = (s: StateFilter): boolean => this.stateFilters.value.includes(s);
-
-    setSort = (k: SearchSortKey) => { this.sortKey.value = k; };
-
-    clearTypeFilters = () => { this.typeFilters.value = []; };
-    clearStateFilters = () => { this.stateFilters.value = []; };
-    clearQuery = () => { this.query.value = ''; };
-
-    openCategory = (cat: FilterCategory) => {
-        this.categoryMode.value = cat;
-        this.categoryQuery.value = '';
-    };
-
-    closeCategory = () => {
-        this.categoryMode.value = null;
-        this.categoryQuery.value = '';
-    };
-
-    toggleCategory = (cat: FilterCategory) => {
-        if (this.categoryMode.value === cat) {
-            this.closeCategory();
-        } else {
-            this.openCategory(cat);
-        }
-    };
-
-    setCategoryQuery = (q: string) => {
-        this.categoryQuery.value = q;
-    };
+    openCategory = this.filters.openCategory;
+    closeCategory = this.filters.closeCategory;
+    toggleCategory = this.filters.toggleCategory;
+    setCategoryQuery = this.filters.setCategoryQuery;
 
     /** True si esa etiqueta está entre los filtros activos. */
-    hasTagFilter = (tag: string): boolean => {
-        const key = normalizeTagForSearch(tag);
-        return this.tagFilters.value.some((t) => normalizeTagForSearch(t) === key);
-    };
-
+    hasTagFilter = this.filters.hasTagFilter;
     /** Añade o quita una etiqueta del filtro. */
-    toggleTagFilter = (tag: string) => {
-        toggleArrayItem(
-            this.tagFilters,
-            tag,
-            (a, b) => normalizeTagForSearch(a) === normalizeTagForSearch(b)
-        );
-    };
+    toggleTagFilter = this.filters.toggleTagFilter;
+    clearTagFilters = this.filters.clearTagFilters;
 
-    clearTagFilters = () => { this.tagFilters.value = []; };
+    setRatingFilter = this.filters.setRatingFilter;
+    addRatingFilter = this.filters.addRatingFilter;
+    removeRatingFilter = this.filters.removeRatingFilter;
+    clearRatingFilter = this.filters.clearRatingFilter;
 
-    setRatingFilter = (operator: RatingOperator, value: number, index = 0) => {
-        const current = [...this.ratingFilters.value];
-        if (index < current.length) {
-            current[index] = { operator, value };
-        } else {
-            current.push({ operator, value });
-        }
-        this.ratingFilters.value = current;
-    };
-
-    addRatingFilter = (operator: RatingOperator, value: number) => {
-        this.ratingFilters.value = [...this.ratingFilters.value, { operator, value }];
-    };
-
-    removeRatingFilter = (index: number) => {
-        const current = [...this.ratingFilters.value];
-        if (index >= 0 && index < current.length) {
-            current.splice(index, 1);
-            this.ratingFilters.value = current;
-        }
-    };
-
-    clearRatingFilter = () => {
-        this.ratingFilters.value = [];
-    };
-
-    openOverlay = () => {
-        void this.load();
-        this.overlayOpen.value = true;
-    };
-
-    /**
-     * Cierra la superposición y deja los filtros como estaban al abrirla.
-     *
-     * Se limpia a propósito: la superposición se abre encima de otra página y
-     * al cerrarla el usuario vuelve a lo que estaba viendo. Conservar la
-     * búsqueda anterior haría que la siguiente vez se abriera con resultados
-     * viejos de algo que ya no recuerda haber pedido.
-     */
-    closeOverlay = () => {
-        this.overlayOpen.value = false;
-        this.query.value = '';
-        this.categoryMode.value = null;
-        this.categoryQuery.value = '';
-        this.typeFilters.value = [];
-        this.stateFilters.value = [];
-        this.tagFilters.value = [];
-        this.ratingFilters.value = [];
-        this.sortKey.value = 'relevance';
-    };
-
-    /** Los filtros actuales, listos para guardarlos como vista. */
-    currentView(name: string): Omit<SavedView, 'id'> {
-        return buildCurrentView(name, {
-            typeFilters: this.typeFilters.value,
-            stateFilters: this.stateFilters.value,
-            tagFilters: this.tagFilters.value,
-            query: this.query.value,
-            ratingFilters: this.ratingFilters.value
-        });
-    }
-
-    /**
-     * Aplica una vista guardada. Los filtros se validan contra los valores
-     * que el VM entiende: una vista vieja puede apuntar a un filtro que ya no
-     * existe, y aplicarla a ciegas dejaría la búsqueda en un estado imposible.
-     */
-    applyView(view: SavedView) {
-        const state = extractAppliedViewFilters(view);
-        this.typeFilters.value = state.typeFilters;
-        this.stateFilters.value = state.stateFilters;
-        this.tagFilters.value = state.tagFilters;
-        this.query.value = state.query;
-        this.ratingFilters.value = state.ratingFilters;
-    }
+    openOverlay = this.views.openOverlay;
+    closeOverlay = this.views.closeOverlay;
+    currentView = (name: string) => this.views.currentView(name);
+    applyView = (view: SavedView) => this.views.applyView(view);
 
     private guarded = guardedLoad(this.loading, undefined, this.loads).guarded;
-    private remoteGuarded = guardedLoad(this.searching, undefined, this.remoteLoads).guarded;
     private lastLoadedAt = 0;
 
     /** Carga la biblioteca real para buscar sobre ella (si hay sesión). */
@@ -706,40 +187,7 @@ export class SearchViewModel {
         });
     }
 
-    /**
-     * Programa la búsqueda en el servidor para `text`. No sale a la red hasta
-     * que se deja de teclear, y por debajo del mínimo se limpia lo anterior:
-     * borrar la caja tiene que borrar también lo que trajo el servidor.
-     */
-    private scheduleRemoteSearch(text: string) {
-        if (this.remoteTimer) clearTimeout(this.remoteTimer);
-        if (text.length < MIN_REMOTE_QUERY) {
-            // Invalida la petición en vuelo: si no, su respuesta repoblaría
-            // los resultados de una búsqueda que el usuario ya ha borrado.
-            this.remoteLoads.begin();
-            this.remoteTimer = null;
-            this.searching.value = false;
-            this.remote.value = [];
-            return;
-        }
-        this.remoteTimer = setTimeout(() => { void this.searchRemote(text); }, REMOTE_DEBOUNCE_MS);
-    }
 
-    private async searchRemote(text: string) {
-        if (!this.api.session.load()?.accessToken) return;
-        this.searching.value = true;
-        await this.remoteGuarded(async (isLatest) => {
-            const { shows, movies } = await this.api.discover.searchCatalog(text);
-            if (!isLatest()) return;
-            this.remote.value = [
-                ...shows.map((s) => ({ ...s, kind: 'show' as const })),
-                ...movies.map((m) => ({ ...m, kind: 'movie' as const }))
-            ];
-        }, () => {
-            this.remote.value = [];
-            return false;
-        });
-    }
 
     private activeSubs = 0;
     private cleanupEvents: (() => void) | null = null;
@@ -753,35 +201,18 @@ export class SearchViewModel {
         if (this.activeSubs === 1) {
             const bumpFavs = () => { this.favsVersion.value++; };
             const bumpWatched = () => { this.watchedVersion.value++; };
-            const onMutated = () => {
-                this.mutationVersion.value++;
-                // Refetch, no solo re-filtrado: una etiqueta nueva no está en los
-                // datos que ya tenemos en memoria. Agrupado como el de la
-                // biblioteca: etiquetar diez items de una selección son diez
-                // mutaciones y una sola recarga. Ver MUTATION_DEBOUNCE_MS.
-                if (this.mutationTimer) clearTimeout(this.mutationTimer);
-                this.mutationTimer = setTimeout(() => {
-                    this.mutationTimer = null;
-                    void this.load({ force: true });
-                }, MUTATION_DEBOUNCE_MS);
-            };
+            
             window.addEventListener(FAVS.event, bumpFavs);
             window.addEventListener(WATCHED.event, bumpWatched);
-            window.addEventListener(ITEM_MUTATED_EVENT, onMutated);
-            // Se vigila el signal y no se engancha a `setQuery`: la caja no es el
-            // único sitio desde donde cambia el texto (aplicar una vista guardada,
-            // cerrar la superposición), y todos tienen que buscar igual.
-            const stopWatchingQuery = effect(() => {
-                this.scheduleRemoteSearch(parseQuery(this.query.value).text);
-            });
+            window.addEventListener(ITEM_MUTATED_EVENT, this.tagManager.onMutated);
+            this.remoteManager.startAutoSearch(this.filters.query);
 
             this.cleanupEvents = () => {
                 window.removeEventListener(FAVS.event, bumpFavs);
                 window.removeEventListener(WATCHED.event, bumpWatched);
-                window.removeEventListener(ITEM_MUTATED_EVENT, onMutated);
-                stopWatchingQuery();
-                if (this.remoteTimer) clearTimeout(this.remoteTimer);
-                if (this.mutationTimer) clearTimeout(this.mutationTimer);
+                window.removeEventListener(ITEM_MUTATED_EVENT, this.tagManager.onMutated);
+                this.remoteManager.cleanup();
+                this.tagManager.cleanup();
             };
         }
 

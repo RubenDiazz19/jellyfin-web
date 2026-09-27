@@ -10,7 +10,7 @@ type Props = {
     style?: CSSProperties;
 };
 
-export function entryColor(disabled?: boolean, danger?: boolean, sheet?: boolean) {
+function entryColor(disabled?: boolean, danger?: boolean, sheet?: boolean) {
     if (disabled) {
         return sheet ?
             'var(--md-sys-color-on-surface-variant, rgba(255,255,255,0.35))' :

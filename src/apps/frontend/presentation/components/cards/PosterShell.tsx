@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { T } from '../../theme/tokens';
+import { posterDefault } from '../../theme/gradients';
 import { CardProgress } from './CardProgress';
 import { CardOverlay } from './CardOverlay';
 import { PosterFrame } from './PosterFrame';
@@ -47,7 +48,6 @@ type Props = {
     aspectRatio?: string;
 };
 
-const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))';
 
 /**
  * Ancho del póster en desktop. Compactado a 185px para dar mayor densidad
@@ -56,7 +56,7 @@ const DEFAULT_GRADIENT = 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.
 export const POSTER_W = 185;
 
 export function PosterShell({
-    cover, onClick, width = null, gradient = DEFAULT_GRADIENT,
+    cover, onClick, width = null, gradient = posterDefault,
     watchedButton, favButton, logo, title, progress = 0, caption,
     selecting = false, selected = false, onContextMenu, contextMenu,
     variant = 'full', kindLabel, borderRadius, centerOverlay, bottomOverlay,

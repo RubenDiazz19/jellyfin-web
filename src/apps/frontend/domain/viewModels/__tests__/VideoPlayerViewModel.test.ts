@@ -55,6 +55,10 @@ function decision(overrides: Partial<PlaybackDecision> = {}): PlaybackDecision {
 function mockApi(dec = decision(), segments: MediaSegment[] = []): ApiService {
     return {
         playback: {
+            getPlaybackContext: vi.fn(() => Promise.resolve({
+                chapters: [],
+                runtime: 1000 * 10000 * 60 // 1 min in ticks
+            })),
             getPlaybackDecision: vi.fn(() => Promise.resolve(dec)),
             subtitleVttUrl: vi.fn((itemId: string, msId: string, idx: number) =>
                 `http://server/Videos/${itemId}/${msId}/Subtitles/${idx}/0/Stream.vtt`),

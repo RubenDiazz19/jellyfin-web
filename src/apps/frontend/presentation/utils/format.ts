@@ -147,3 +147,10 @@ export function formatDateLong(date: string | undefined): string {
     dateCache.set(date, formatted);
     return formatted;
 }
+
+/** Formatea el texto de cantidad de temporadas (ej. "1 temporada" o "3 temporadas") según el idioma. */
+export function formatSeasonsCount(count: number): string {
+    return count === 1
+        ? (globalize.translate('Season') ? `1 ${globalize.translate('Season').toLowerCase()}` : '1 temporada')
+        : (globalize.translate('HeaderSeasons') ? `${count} ${globalize.translate('HeaderSeasons').toLowerCase()}` : `${count} temporadas`);
+}

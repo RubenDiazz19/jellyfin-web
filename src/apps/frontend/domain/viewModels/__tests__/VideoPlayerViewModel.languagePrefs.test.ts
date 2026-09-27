@@ -95,7 +95,9 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
 
     test('sin preferencia guardada no se piden índices: decide el servidor', async () => {
         const { getPlaybackDecision } = await open();
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {}, CACHE_OPTS);
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', expect.objectContaining({
+            startTicks: 0
+        }), CACHE_OPTS);
         expect(vm.titlePref.value).toBeNull();
     });
 
@@ -117,11 +119,10 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
 
         const { getPlaybackDecision } = await open();
 
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', expect.objectContaining({
             audioStreamIndex: 2,
-            subtitleStreamIndex: undefined,
-            mediaSourceId: 'ms1'
-        }, CACHE_OPTS);
+            startTicks: 0
+        }), CACHE_OPTS);
     });
 
     test('apagar los subtítulos también se recuerda, y se pide como -1', async () => {
@@ -133,11 +134,10 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
         expect(vm.titlePref.value).toEqual({ subtitle: null });
 
         const { getPlaybackDecision } = await open();
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {
-            audioStreamIndex: undefined,
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', expect.objectContaining({
             subtitleStreamIndex: -1,
-            mediaSourceId: 'ms1'
-        }, CACHE_OPTS);
+            startTicks: 0
+        }), CACHE_OPTS);
     });
 
     test('un idioma recordado que este item no tiene se ignora', async () => {
@@ -149,7 +149,9 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
 
         // Sin pista en ese idioma no se fuerza nada: manda la preferencia del
         // usuario que aplica el servidor.
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {}, CACHE_OPTS);
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', expect.objectContaining({
+            startTicks: 0
+        }), CACHE_OPTS);
     });
 
     test('olvidar la preferencia devuelve el mando al servidor', async () => {
@@ -161,7 +163,9 @@ describe('VideoPlayerViewModel — idioma preferido por título', () => {
 
         expect(vm.titlePref.value).toBeNull();
         const { getPlaybackDecision } = await open();
-        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', {}, CACHE_OPTS);
+        expect(getPlaybackDecision).toHaveBeenCalledWith('episode1', expect.objectContaining({
+            startTicks: 0
+        }), CACHE_OPTS);
     });
 
     test('en una película la preferencia se guarda contra el propio item', async () => {

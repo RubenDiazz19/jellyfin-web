@@ -15,6 +15,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { T } from '../../theme/tokens';
+import { observeElement } from '../../../shared/useIntersectionObserver';
 
 /**
  * Cuánto se adelanta el montaje al borde del viewport. Con casi una pantalla
@@ -30,21 +31,6 @@ const ROOT_MARGIN = '900px 0px';
  * sobra para la primera pantalla de cualquier rejilla.
  */
 export const EAGER_CARDS = 30;
-
-// Un solo observer para toda la rejilla: uno por tarjeta serían mil
-// suscripciones al scroll haciendo el mismo trabajo.
-let observer: IntersectionObserver | null = null;
-const listeners = new WeakMap<Element, (visible: boolean) => void>();
-
-function sharedObserver(): IntersectionObserver {
-    observer ??= new IntersectionObserver(
-        (entries) => {
-            for (const entry of entries) listeners.get(entry.target)?.(entry.isIntersecting);
-        },
-        { rootMargin: ROOT_MARGIN }
-    );
-    return observer;
-}
 
 type Props = {
     /** Ancho fijo de la tarjeta, o null si llena la columna de la rejilla. */
@@ -66,13 +52,7 @@ export function LazyCard({ width, eager = false, children }: Props) {
             setVisible(true);
             return;
         }
-        listeners.set(el, setVisible);
-        const io = sharedObserver();
-        io.observe(el);
-        return () => {
-            io.unobserve(el);
-            listeners.delete(el);
-        };
+        return observeElement(el, ROOT_MARGIN, setVisible);
     }, []);
 
     return (

@@ -1,4 +1,5 @@
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
+import { landscapeDefault } from '../../theme/gradients';
 import { CardOverlay } from './CardOverlay';
 import { CardProgress } from './CardProgress';
 
@@ -42,7 +43,7 @@ export function LandscapeCardShell({
     selected = false,
     outline,
     outlineOffset,
-    gradient = 'linear-gradient(to top, rgba(0,0,0,0.85), transparent 55%)',
+    gradient = landscapeDefault,
     topLeft,
     topRight,
     centerOverlay,

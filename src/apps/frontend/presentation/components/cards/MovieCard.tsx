@@ -5,6 +5,7 @@ import { formatRuntime } from '../../utils/format';
 import { MovieWatchedButton } from '../controls/toggles/MovieWatchedButton';
 import { FavButton } from '../controls/buttons/FavButton';
 import { useResponsive } from '../../theme/responsive';
+import { gridPoster } from '../../theme/gradients';
 import { POSTER_W, PosterShell } from './PosterShell';
 import { useCardInteractions } from './useCardInteractions';
 import type { Navigate } from '../../../app/router';
@@ -28,9 +29,7 @@ type Props = {
     fluid?: boolean;
 };
 
-// En rejilla el degradado arranca más abajo que en fila: las cards son más
-// pequeñas y con el corte al 25% el título perdía contraste.
-const GRID_GRADIENT = 'linear-gradient(180deg, transparent 45%, rgba(0,0,0,0.9))';
+
 
 // Póster vertical de película. En fila (home, similares) fija ancho y el pie
 // dice la duración; en rejilla (biblioteca, género, favoritos) llena la
@@ -48,7 +47,7 @@ export const MovieCard = memo(function MovieCardBase({ movie, navigate, fluid }:
             {...card}
             cover={movie.poster || movie.backdrop}
             width={fluid ? null : w}
-            gradient={fluid ? GRID_GRADIENT : undefined}
+            gradient={fluid ? gridPoster : undefined}
             watchedButton={<MovieWatchedButton movie={movie} size={16} badge />}
             favButton={<FavButton id={movieKey(movie.id)} size={16} />}
             logo={movie.logo}

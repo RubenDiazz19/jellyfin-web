@@ -15,7 +15,7 @@ import { T } from '../../theme/tokens';
 export const DANGER = '#d64545';
 
 /** Rojo de los mensajes de error: más claro, para leerse sobre el panel. */
-export const ERROR_FG = '#ff6b6b';
+const ERROR_FG = '#ff6b6b';
 
 /**
  * Qué papel juega el botón:

@@ -76,7 +76,7 @@ function ListsNavIcon() {
     );
 }
 
-export const NAV_CLASS = 'jfp-has-nav';
+const NAV_CLASS = 'jfp-has-nav';
 
 /** Un segmento lleva a una página, o —la búsqueda— abre su capa encima. */
 type Tab = { id: string; key: string; icon: ReactNode; route?: Route };

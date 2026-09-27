@@ -6,8 +6,8 @@ export type StateFilter = 'todo' | 'favs' | 'vistos' | 'no-vistos';
 export type FilterCategory = 'tipo' | 'estado' | 'generos' | 'valoracion';
 export type RatingFilter = { operator: RatingOperator; value: number };
 
-export const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas', 'colecciones'];
-export const STATE_FILTERS: readonly string[] = ['todo', 'favs', 'vistos', 'no-vistos'];
+const TYPE_FILTERS: readonly string[] = ['todo', 'series', 'peliculas', 'colecciones'];
+const STATE_FILTERS: readonly string[] = ['todo', 'favs', 'vistos', 'no-vistos'];
 
 export function isTypeFilter(v: string): v is TypeFilter {
     return TYPE_FILTERS.includes(v);

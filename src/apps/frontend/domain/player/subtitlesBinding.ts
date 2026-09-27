@@ -58,6 +58,60 @@ export class SubtitlesBinding {
         this.setSubtitleOffset(this.subtitleOffset.value + delta);
     }
 
+    cycleSubtitles = (onReload: (opts: { subtitleStreamIndex: number }) => Promise<void>) => {
+        const tracks = this.subtitleTracks.value;
+        if (tracks.length === 0) return;
+        const current = this.selectedSubtitle.value;
+        if (current == null) {
+            this.setSubtitleTrack(tracks[0].index, onReload);
+        } else {
+            const idx = tracks.findIndex((t) => t.index === current);
+            if (idx >= 0 && idx < tracks.length - 1) {
+                this.setSubtitleTrack(tracks[idx + 1].index, onReload);
+            } else {
+                this.setSubtitleTrack(null, onReload);
+            }
+        }
+    };
+
+    toggleSubtitles = (onReload: (opts: { subtitleStreamIndex: number }) => Promise<void>) => {
+        const tracks = this.subtitleTracks.value;
+        if (tracks.length === 0) return;
+        if (this.selectedSubtitle.value == null) {
+            const defaultTrack = tracks.find((t) => t.isDefault) ?? tracks[0];
+            this.setSubtitleTrack(defaultTrack.index, onReload);
+        } else {
+            this.setSubtitleTrack(null, onReload);
+        }
+    };
+
+    setSubtitleTrack = (
+        index: number | null,
+        onReload: (opts: { subtitleStreamIndex: number }) => Promise<void>,
+        rememberLanguage?: (patch: { subtitle: string | null }) => void,
+        vttUrlProvider?: (index: number) => string | null
+    ) => {
+        if (index === this.selectedSubtitle.value) return;
+        const stream = index == null ?
+            null :
+            this.subtitleTracks.value.find((s) => s.index === index) ?? null;
+
+        if (rememberLanguage) {
+            if (index == null) rememberLanguage({ subtitle: null });
+            else if (stream?.language) rememberLanguage({ subtitle: stream.language });
+        }
+
+        if (this.burnedSubtitle != null || (stream && !stream.isText)) {
+            void onReload({ subtitleStreamIndex: index ?? -1 });
+            return;
+        }
+
+        this.selectedSubtitle.value = index;
+        if (vttUrlProvider) {
+            this.publishSubtitle(stream ? vttUrlProvider(stream.index) : null, true);
+        }
+    };
+
     resetSubtitleOffset(): void {
         this.subtitleOffset.value = 0;
     }

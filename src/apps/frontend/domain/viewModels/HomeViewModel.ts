@@ -9,8 +9,10 @@ import { mutationOnLoad } from './utils/mutationSubscription';
 import { LoadGuard } from './utils/loadGuard';
 import { ticksFromProgress } from '../player/format';
 
-/** Formatea temporada y episodio con la convención 'T{season} E{episode}' (ej. 'T1 E05'). */
-export function formatEpisodeCode(season: number | string, episode: number | string): string {
+/** Formatea temporada y episodio con la convención 'T{season} E{episode}' (ej. 'T1 E05').
+ *  Duplicado local de presentation/utils/format.ts porque domain no puede
+ *  importar de presentation (regla MVVM). */
+function formatEpisodeCode(season: number | string, episode: number | string): string {
     return `T${season} E${String(episode).padStart(2, '0')}`;
 }
 

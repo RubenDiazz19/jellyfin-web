@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useScrollY } from '../../../domain/bridge/useScrollY';
 
 export type CollectionScrollTransition = {
     /** Posición vertical actual del scroll en píxeles. */
@@ -42,20 +42,7 @@ export type CollectionScrollTransition = {
  * - Es 100% bidireccional.
  */
 export function useCollectionScrollTransition(touch = false, onlyCollections = false): CollectionScrollTransition {
-    const [scrollY, setScrollY] = useState(0);
-
-    useEffect(() => {
-        let raf = 0;
-        const onScroll = () => {
-            cancelAnimationFrame(raf);
-            raf = requestAnimationFrame(() => setScrollY(window.scrollY));
-        };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => {
-            cancelAnimationFrame(raf);
-            window.removeEventListener('scroll', onScroll);
-        };
-    }, []);
+    const scrollY = useScrollY();
 
     // Altura del cabecero abarca siempre toda la pantalla
     const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 1000;

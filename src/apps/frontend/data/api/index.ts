@@ -148,8 +148,7 @@ export {
     fetchFanartLogosById,
     fetchFanartLogosForItem,
     fetchFanartMovieLogos,
-    fetchFanartTvLogos,
-    FANART_API_KEY
+    fetchFanartTvLogos
 } from './fanart';
 export {
     getLocalTrailers,

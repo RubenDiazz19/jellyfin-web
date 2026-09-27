@@ -5,7 +5,7 @@
 // completa) y deriva valores fluidos de opacidad, traslación y visibilidad
 // mediante requestAnimationFrame para un rendimiento óptimo a 60/120 fps.
 
-import { useEffect, useState } from 'react';
+import { useScrollY } from '../../domain/bridge/useScrollY';
 
 export type HomeScrollTransition = {
     /** Posición vertical actual del scroll en píxeles. */
@@ -33,20 +33,7 @@ export type HomeScrollTransition = {
 };
 
 export function useHomeScrollTransition(): HomeScrollTransition {
-    const [scrollY, setScrollY] = useState(0);
-
-    useEffect(() => {
-        let raf = 0;
-        const onScroll = () => {
-            cancelAnimationFrame(raf);
-            raf = requestAnimationFrame(() => setScrollY(window.scrollY));
-        };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => {
-            cancelAnimationFrame(raf);
-            window.removeEventListener('scroll', onScroll);
-        };
-    }, []);
+    const scrollY = useScrollY();
 
     // Umbral de transición: cubre la altura de la pantalla completa
     // tanto en móvil como en escritorio.

@@ -65,6 +65,15 @@ Y esta **avisa** (`warn`), pero se respeta en el código nuevo:
 - **Nada de `React.FC`.** Componentes como función normal, props tipadas en el
   parámetro: `function Foo({ a }: Props)`.
 
+## Gestión de Estado (State Management)
+
+| Caso | Qué Usar | Ejemplo |
+|------|----------|---------|
+| Estado del ViewModel (señales) | `useVmSignals(vm)` | `const { items, loading } = useVmSignals(libraryVM)` |
+| Estado UI efímero local | `useState` | `const [hovered, setHovered] = useState(false)` |
+| Selección fina de señal | `useSignalSelector` | `const title = useSignalSelector(vm.title)` |
+| Estado derivado computado | `computed(() => ...)` en VM | `vm.filteredItems = computed(() => ...)` |
+
 ## Estilo
 
 - **Idiomas, tal como está el repo**: los identificadores, en inglés. Los

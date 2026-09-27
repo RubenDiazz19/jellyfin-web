@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import globalize from 'lib/globalize';
 import { T } from '../../theme/tokens';
+import { posterDefault } from '../../theme/gradients';
 import { useResponsive } from '../../theme/responsive';
 import { CardOverlay } from '../cards/CardOverlay';
 import { PosterFrame } from '../cards/PosterFrame';
@@ -12,6 +13,8 @@ import { selectionVM, type SelectableItem } from '../../../domain/viewModels/Sel
 import { useSignalSelector } from '../../../domain/bridge/useViewModel';
 import type { PlaylistItem } from '../../../domain/api';
 import type { Navigate } from '../../../app/router';
+import { useCarouselScroll } from './useCarouselScroll';
+import { CarouselNavButton } from './CarouselNavButton';
 import '../../styles/carousels.css';
 type Props = {
     items: PlaylistItem[];
@@ -23,40 +26,12 @@ type Props = {
 export function CollectionCardCarousel({ items, navigate, listId }: Props) {
     const r = useResponsive();
     const isSelecting = useSignalSelector(selectionVM.selecting, (s) => s);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const [canScrollLeft, setCanScrollLeft] = useState(false);
-    const [canScrollRight, setCanScrollRight] = useState(false);
+    const { scrollContainerRef, canScrollLeft, canScrollRight, scrollByAmount } = useCarouselScroll([items]);
     const [isHovered, setIsHovered] = useState(false);
 
     // Reducción del ~18% para aligerar la tarjeta apaisada, dar aire al banner/logo y permitir 4-5 tarjetas visibles en pantalla
     const cardWidth = r.touch ? 200 : 316;
     const gap = r.touch ? 16 : 24;
-
-    const checkScrollButtons = () => {
-        const el = scrollContainerRef.current;
-        if (!el) return;
-        setCanScrollLeft(el.scrollLeft > 10);
-        setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
-    };
-
-    useEffect(() => {
-        checkScrollButtons();
-        const el = scrollContainerRef.current;
-        if (!el) return;
-        el.addEventListener('scroll', checkScrollButtons, { passive: true });
-        window.addEventListener('resize', checkScrollButtons);
-        return () => {
-            el.removeEventListener('scroll', checkScrollButtons);
-            window.removeEventListener('resize', checkScrollButtons);
-        };
-    }, [items]);
-
-    const scrollByAmount = (direction: 'left' | 'right') => {
-        const el = scrollContainerRef.current;
-        if (!el) return;
-        const amount = (el.clientWidth * 0.75) * (direction === 'left' ? -1 : 1);
-        el.scrollBy({ left: amount, behavior: 'smooth' });
-    };
 
     if (!items || items.length === 0) return null;
 
@@ -70,41 +45,7 @@ export function CollectionCardCarousel({ items, navigate, listId }: Props) {
                 width: '100%'
             }}
         >
-            {/* Flecha de navegación izquierda para escritorio */}
-            {!r.touch && canScrollLeft && (
-                <button
-                    type='button'
-                    aria-label='Desplazar a la izquierda'
-                    onClick={() => scrollByAmount('left')}
-                    style={{
-                        position: 'absolute',
-                        left: -18,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 44,
-                        height: 72,
-                        borderRadius: '0 8px 8px 0',
-                        background: 'rgba(9, 11, 16, 0.75)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderLeft: 'none',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 12,
-                        opacity: isHovered ? 1 : 0,
-                        transition: 'opacity 0.2s ease, background 0.2s ease, transform 0.15s ease',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.7)'
-                    }}
-                >
-                    <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                        <polyline points='15 18 9 12 15 6' />
-                    </svg>
-                </button>
-            )}
+            {!r.touch && <CarouselNavButton direction='left' onClick={() => scrollByAmount('left')} visible={isHovered && canScrollLeft} />}
 
             {/* Carrusel deslizable */}
             <div
@@ -136,41 +77,7 @@ export function CollectionCardCarousel({ items, navigate, listId }: Props) {
                 ))}
             </div>
 
-            {/* Flecha de navegación derecha para escritorio */}
-            {!r.touch && canScrollRight && (
-                <button
-                    type='button'
-                    aria-label='Desplazar a la derecha'
-                    onClick={() => scrollByAmount('right')}
-                    style={{
-                        position: 'absolute',
-                        right: -18,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 44,
-                        height: 72,
-                        borderRadius: '8px 0 0 8px',
-                        background: 'rgba(9, 11, 16, 0.75)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderRight: 'none',
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 12,
-                        opacity: isHovered ? 1 : 0,
-                        transition: 'opacity 0.2s ease, background 0.2s ease, transform 0.15s ease',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.7)'
-                    }}
-                >
-                    <svg width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-                        <polyline points='9 18 15 12 9 6' />
-                    </svg>
-                </button>
-            )}
+            {!r.touch && <CarouselNavButton direction='right' onClick={() => scrollByAmount('right')} visible={isHovered && canScrollRight} />}
         </div>
     );
 }
@@ -300,7 +207,7 @@ function CollectionVerticalCard({
                     style={{
                         position: 'absolute',
                         inset: 0,
-                        background: 'linear-gradient(180deg, transparent 25%, rgba(0,0,0,0.92))',
+                        background: posterDefault,
                         pointerEvents: 'none'
                     }}
                 />

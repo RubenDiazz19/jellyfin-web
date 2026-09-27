@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import globalize from 'lib/globalize';
 
-import { formatDateLong, formatEpisodeCode, formatRemaining } from '../utils/format';
+import { formatDateLong, formatEpisodeCode, formatRemaining, formatSeasonsCount } from '../utils/format';
 import { buildShowBreadcrumbs } from '../utils/breadcrumbs';
 import { translateStatus } from '../../domain/status';
 import { isShowFullyWatched } from '../../domain/showWatched';
@@ -207,7 +207,7 @@ function ShowHero({ show, navigate, hero }: { show: Show; navigate: Navigate; he
 
                 {!minimal && !isTrailerActive && (
                     <HeroMeta
-                        items={[show.year, `${show.seasons.length} temporadas`]}
+                        items={[show.year, formatSeasonsCount(show.seasons.length)]}
                         ageRating={show.rating.age}
                         imdbRating={show.rating.imdb}
                         badges={showBadges}

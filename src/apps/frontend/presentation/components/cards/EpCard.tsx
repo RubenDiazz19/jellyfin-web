@@ -10,6 +10,7 @@ import type { Navigate } from '../../../app/router';
 import { episodeKey } from '../../../domain/stores';
 import { useCardInteractions } from './useCardInteractions';
 import { LandscapeCardShell } from './LandscapeCardShell';
+import { episodeCard } from '../../theme/gradients';
 import { formatEpisodeCode } from '../../utils/format';
 
 type Props = { show: Show; season: Season; ep: Episode; navigate: Navigate };
@@ -45,7 +46,7 @@ export const EpCard = memo(function EpCardBase({ show, season, ep, navigate }: P
             selected={interactions.selected}
             outline={interactions.selected ? '3px solid #fff' : ep.current ? '1px solid rgba(255,255,255,0.95)' : 'none'}
             outlineOffset={interactions.selected ? -3 : ep.current ? 2 : 0}
-            gradient='linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.9))'
+            gradient={episodeCard}
             onClick={interactions.onClick}
             onContextMenu={interactions.onContextMenu}
             contextMenu={interactions.contextMenu}

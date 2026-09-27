@@ -2,6 +2,7 @@ import globalize from 'lib/globalize';
 
 import { memo } from 'react';
 import { T } from '../../theme/tokens';
+import { seasonCard } from '../../theme/gradients';
 import { SeasonWatchedButton } from '../controls/toggles/SeasonWatchedButton';
 import { FavButton } from '../controls/buttons/FavButton';
 import { CardProgress } from './CardProgress';
@@ -56,7 +57,7 @@ export const SeasonCard = memo(function SeasonCardBase({ show, season, navigate 
             >
                 <div style={{
                     position: 'absolute', inset: 0,
-                    background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.94) 100%)'
+                    background: seasonCard
                 }} />
 
                 <CardOverlay

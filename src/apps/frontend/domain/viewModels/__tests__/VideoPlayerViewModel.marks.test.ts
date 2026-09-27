@@ -251,6 +251,8 @@ describe('VideoPlayerViewModel — capítulos y segmentos en la barra', () => {
 
     test('cerrar no toca un <video> que ya ha tomado otra instancia', async () => {
         await open();
+        vi.mocked(video.load).mockClear();
+        vi.mocked(video.removeAttribute).mockClear();
         const first = vm;
 
         // Segunda instancia sobre el MISMO elemento (remontaje / HMR).

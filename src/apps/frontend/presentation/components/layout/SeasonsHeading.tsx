@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import globalize from 'lib/globalize';
 
 import { T } from '../../theme/tokens';
+import { formatSeasonsCount } from '../../utils/format';
 
 type Props = {
     seasonCount: number;
@@ -50,9 +51,7 @@ export function SeasonsHeading({ seasonCount, episodeCount, marginBottom }: Prop
         }
     };
 
-    const seasonsLabel = seasonCount === 1 ?
-        (globalize.translate('Season') ? `1 ${globalize.translate('Season').toLowerCase()}` : '1 temporada') :
-        (globalize.translate('HeaderSeasons') ? `${seasonCount} ${globalize.translate('HeaderSeasons').toLowerCase()}` : `${seasonCount} temporadas`);
+    const seasonsLabel = formatSeasonsCount(seasonCount);
 
     const episodesLabel = episodeCount === 1 ?
         (globalize.translate('ValueOneEpisode') || '1 episodio') :
